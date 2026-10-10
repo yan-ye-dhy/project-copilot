@@ -1,0 +1,27 @@
+# Local credentials; retain the template.
+.env
+.env.*
+!.env.example
+
+# Python environments, caches, build outputs.
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage*
+htmlcov/
+build/
+dist/
+*.egg-info/
+
+# Runtime data and local tooling.
+data/
+logs/
+vector_db/
+phoenix_data/
+models/
+.agents/
+.codex/
+.aws/

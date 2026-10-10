@@ -1,0 +1,23 @@
+# 面试笔记
+
+每个任务保留少量有代码和验证依据的问题。下面是回答思路，需结合自己的操作与理解重新组织，避免把助手实施等同于个人掌握。
+
+## D1：工程入口与配置
+
+### 1. 为什么把初始化放在lifespan，而不是模块顶层？
+
+导入模块会被服务启动、测试和工具检查触发。若导入即读取必填配置、连接存储或下载模型，测试入口会依赖外部环境，启动和清理也难以统一管理。当前 `create_app()`只建立应用；lifespan在提供请求前加载并校验配置，将其放到 `app.state`，以后新增资源也在相应生命周期内管理。
+
+证据：[`main.py`](../src/project_copilot/main.py)；D1用会抛错的Settings构造替身验证“导入不实例化”，并验证非法environment在lifespan启动阶段失败。当前尚无数据库客户端，不能声称验证过连接释放。
+
+### 2. 两个项目怎样避免读取错误配置或共享依赖？
+
+新项目拥有独立Git顶层、Python包、`.venv`和dotenv路径，不导入原项目模块。Settings从新项目文件位置确定dotenv绝对路径，并使用 `PROJECT_COPILOT_`前缀。已验证改变终端目录不会改读另一份dotenv，进程环境变量按既定优先级覆盖文件值。两套虚拟环境可以共享解释器，但各自的site-packages不同。
+
+证据：[`config.py`](../src/project_copilot/config.py)、`.venv/pyvenv.cfg`与 [D1验证记录](DEVELOPMENT_LOG.md#d1独立环境与最小api2026-10-10)。目前仅隔离本地入口；容器、存储与模型配置在后续任务逐步验证。
+
+### 3. 健康接口返回200能说明什么？
+
+本次实际HTTP200证明Uvicorn完成当前启动、FastAPI路由可达、配置可读并按契约返回JSON；环境变量覆盖也通过实际请求验证。它不能证明尚未接入的Embedding、Qdrant或PostgreSQL可用。后续需要按组件设计有意义的就绪和业务验证，区分启动、请求契约、真实存储及实际模型API。
+
+证据：[`main.py`](../src/project_copilot/main.py) 的健康路由；默认与修改配置后的两次HTTP结果、OpenAPI业务路径检查均见开发日志。
