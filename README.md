@@ -42,6 +42,7 @@ PROJECT_COPILOT_APP_NAME="Copilot Learning" uv run --frozen uvicorn project_copi
 
 ## 开发与学习记录
 
+- [D1设计、代码与运行导读](docs/D1_WALKTHROUGH.md)
 - [开发计划](docs/DEVELOPMENT_PLAN.md)
 - [参考审计](docs/REFERENCE_AUDIT.md)
 - [开发日志](docs/DEVELOPMENT_LOG.md)
