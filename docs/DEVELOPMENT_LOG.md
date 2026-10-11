@@ -4,7 +4,7 @@
 
 ## D1：独立环境与最小API（2026-10-10）
 
-**状态：工程实现与已有助手验收通过。2026-10-11改用三方规范后，GitHub同步/报告与完整学习/手动验收尚未登记，A/B未全部完成。** 本日只建立后续开发入口，不推进D2。以下命令、检查与HTTP请求由Codex执行，未计入用户自行学习和操作的成果；用户实际学习耗时尚未登记。
+**状态：工程实现与已有助手验收通过。2026-10-11已首次同步GitHub；固定开发报告与完整学习/手动验收尚未登记，A/B未全部完成。** 本日只建立后续开发入口，不推进D2。以下命令、检查与HTTP请求由Codex执行，未计入用户自行学习和操作的成果；用户实际学习耗时尚未登记。
 
 ### 目标与实际改动
 
@@ -91,3 +91,11 @@ Git历史：首次工程提交为 `8c2de0c chore(project): initialize isolated p
 适配开始时核实本地main分支、已有提交和干净工作区；remote未配置。用户说明尚无GitHub仓库并要求指导创建，已选择Public公开代码与文档；实际远端地址等待网页建仓后提供。此次没有开展D2、修改业务代码、自动开启用户手测或运行模型调用；历史自动结果和用户截图证据保持原意。
 
 文档验证：9份Markdown围栏闭合，40个本地链接目标存在，固定8项报告完整，`git diff --check`通过；业务源码、依赖声明和锁文件没有改动。规则复核确认原计划的架构、评测、费用和核心验收章节保留。
+
+### GitHub首次同步（2026-10-11）
+
+用户创建并提供 [yan-ye-dhy/project-copilot](https://github.com/yan-ye-dhy/project-copilot)。只读查询确认Public、默认main，首次`git ls-remote`没有refs；审查原有4条提交的跟踪文件，未发现真实凭据或私密运行数据。
+
+执行`git remote add origin https://github.com/yan-ye-dhy/project-copilot.git`。首次非交互push失败：Git未接入已登录的GitHub CLI，报`could not read Username`；在本项目配置凭据助手后，重试`git push -u origin main`成功，main开始跟踪origin/main。远端main已核对为`568ee738cf1b089872a1f0113944cd8788d6de1e`，与首次推送时的本地HEAD一致；本节和相关进度更新另作正常提交并同步。
+
+本次属于仓库准备及进度记录，未新增业务功能、重跑历史服务验收或开启用户手动测试；D1固定开发报告和完整B阶段仍待完成。

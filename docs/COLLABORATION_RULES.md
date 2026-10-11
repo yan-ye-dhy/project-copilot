@@ -49,6 +49,8 @@ Codex自行运行HTTP、数据库、RAG或Agent验收，仍属于助手验证；
 
 2026-10-11适配时快照：本地分支main，有D1及教学文档的真实提交；尚无remote。用户说明尚未创建GitHub仓库并要求指导创建，已明确选择Public，公开代码与项目文档。首次关联前需完成空仓库创建并获得实际地址，后续默认沿用当前main，用户指定其他分支时优先。此快照不替代每次任务前的Git核实。
 
+同日首次同步后，约定仓库为 [yan-ye-dhy/project-copilot](https://github.com/yan-ye-dhy/project-copilot)，可见性Public；`origin`地址为 `https://github.com/yan-ye-dhy/project-copilot.git`，本地main跟踪origin/main。Git仅在本项目配置中使用已登录的GitHub CLI凭据助手，不保存Token到仓库。实际推送与当前A/B状态见开发日志。
+
 ## 5. 固定开发报告
 
 每个Day开发结束时使用下面8项，给ChatGPT提供清晰入口；设计部分仅做定位摘要，完整教学交ChatGPT。未完成项如实填写。
