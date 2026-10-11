@@ -32,6 +32,8 @@
 
 ### 4. 需要能讲清的完整调用链
 
+从终端命令出发的分阶段调用、当前源码行号和对象联系，见 [完整导读中的运行链](D1_WALKTHROUGH.md#从终端命令到实际响应把两个文件连起来)。下面的简图用于复习。
+
 ```text
 Uvicorn导入 project_copilot.main:app
   → create_app注册健康路由（此时未实例化Settings）

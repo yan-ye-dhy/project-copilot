@@ -128,6 +128,164 @@ async def lifespan(application: FastAPI) -> AsyncIterator[None]:
 
 当前项目字段来源的优先级：构造参数 → 进程环境变量 → 指定.env → 默认值。规则见 [Pydantic Settings](https://pydantic.dev/docs/validation/latest/concepts/pydantic_settings/)。配置在本应用启动时加载一次，修改后需要重启服务。
 
+### 从终端命令到实际响应：把两个文件连起来
+
+2026-10-11补充。本节按真实时间顺序解释当前代码；范围为第2节的单进程命令，没有开启reload或多worker。以下是源码调用链分析，本轮没有重新运行服务。逐行阅读后，要沿这条链找到“谁触发函数、参数从哪来、结果交给谁”。
+
+先看整体时序，随后把各阶段落到具体行。行号对应当前D1源码。
+
+```mermaid
+sequenceDiagram
+    participant A as 终端A与uv
+    participant S as Uvicorn
+    participant M as main.py
+    participant C as config.py
+    participant F as FastAPI应用
+    participant B as 终端B与curl
+    A->>S: 在项目环境启动uvicorn
+    S->>M: 导入模块并获取app
+    M->>C: 导入配置类型与加载函数
+    M->>F: create_app构建应用并注册health
+    S->>F: 发送启动事件
+    F->>M: 进入lifespan(app)
+    M->>C: load_settings调用Settings构造
+    C-->>M: 返回校验后的配置对象
+    M->>F: 保存app.state.settings，暂停在yield
+    F-->>S: 启动准备完成
+    Note over S,F: Uvicorn开始监听8002，等待请求
+    B->>S: GET /health
+    S->>F: 交给应用处理HTTP请求
+    F->>M: 构建Request，执行health(request)
+    M->>F: 从request.app.state.settings读取配置
+    M-->>F: 返回Python字典
+    F-->>S: 序列化后的JSON与响应状态/头
+    S-->>B: HTTP 200与JSON正文
+    A->>S: Ctrl+C，正常停止
+    S->>F: 停止接收新连接并发送关闭事件
+    F->>M: 退出lifespan，继续yield后的finally
+    M-->>F: 完成当前收尾日志步骤
+    F-->>S: 关闭完成
+```
+
+#### A. 输入uv run：先执行工具，再导入Python模块
+
+```bash
+uv run --frozen uvicorn project_copilot.main:app --host 127.0.0.1 --port 8002
+```
+
+终端把这条命令交给uv。uv在新项目根目录识别pyproject、选择项目Python环境并按已有锁文件同步所需依赖，然后执行Uvicorn。包已安装到项目环境，所以Uvicorn能通过模块名找到src中的project_copilot包；uv不会按main.py行号直接调用health。
+
+Uvicorn解释 `project_copilot.main:app`：先导入 `project_copilot.main`，等导入完成后获取模块上的 `app` 属性。首次导入包还会执行 `__init__.py`，当前只有包说明。
+
+| 执行位置 | 当前发生的事情 | 留给后面发生的事情 |
+| --- | --- | --- |
+| main.py第3～9行 | 导入库；第9行需要先导入config模块 | lifespan和health还没被调用 |
+| config.py第10～11行 | 算出新项目根目录与.env绝对路径 | 尚未读.env内容 |
+| config.py第14～26行 | 执行类定义，建立字段、默认值与校验规则 | 尚未创建Settings实例 |
+| config.py第29行 | 定义load_settings函数，默认文件路径绑定为ENV_FILE | 第31行要等函数被调用才执行 |
+| 返回main.py第12、15行 | 获取logger，定义create_app函数 | create_app的函数体等第41行调用 |
+| main.py第41行 | 调用create_app，默认参数settings为None | 转入下面的应用构建流程 |
+
+遇到def时，Python先创建函数对象；函数体在调用时才执行。源码书写顺序与函数体执行顺序因此需要分别追踪。
+
+#### B. create_app执行：构建应用并登记处理关系
+
+从main.py第41行进入第15行函数后：
+
+1. 第18～25行定义并包装lifespan，留下一个可交给框架的生命周期函数，其函数体此时尚未执行。
+2. 第27行创建FastAPI对象，暂存在局部变量application中；`lifespan=lifespan`把生命周期函数交给框架保存。
+3. 第29～36行定义health，通过装饰器登记“GET /health由这个函数处理”；第31～36行尚未执行。
+4. 第38行返回这个应用；回到第41行，模块变量app接收它。
+
+Uvicorn获取app时，得到的就是这个已经登记路由、尚未加载项目配置的FastAPI对象。这里建立的是两种调用约定：服务启动/关闭时调用lifespan；请求路径匹配时调用health。
+
+#### C. 服务启动：进入lifespan，跨文件加载配置
+
+接下来Uvicorn通过ASGI生命周期协议通知应用启动。FastAPI/Starlette进入之前保存的生命周期上下文，执行main.py第19行的lifespan，并把当前应用传入application参数。
+
+```text
+main.py:20  settings是None，选择load_settings()
+  → config.py:29 进入load_settings
+  → config.py:31 调用Settings(_env_file=env_file)
+  → Pydantic读取配置来源、合并字段值、执行校验
+  → 返回一个Settings实例
+  → 返回main.py:20，保存到application.state.settings
+  → main.py:21 记录启动消息
+  → main.py:23 暂停在yield
+```
+
+默认值最终形成的对象，可以概念上理解为：
+
+```text
+app.state.settings.app_name = "Project Copilot"
+app.state.settings.environment = "development"
+```
+
+此处保存的是已读取、已校验的Python对象。它是后续请求的数据来源，不是.env文件本身。
+
+到达yield，框架知道启动准备已完成，向服务器报告startup.complete。当前标准host/port路径中，Uvicorn随后开始监听127.0.0.1:8002，等待请求。生命周期函数保持暂停，由框架其他执行路径处理请求；没有在lifespan里调用health。启动事件与启动完成事件的约定见 [ASGI生命周期协议](https://asgi.readthedocs.io/en/latest/specs/lifespan.html)。
+
+若Settings校验失败，这条链在config.py第31行中断，启动失败，尚未进入处理健康请求的阶段。不是curl收到请求后再发现错误。
+
+#### D. 输入curl：在另一个进程触发已注册的health
+
+```bash
+curl --fail --include http://127.0.0.1:8002/health
+```
+
+curl是客户端。它把GET方法、/health路径等请求信息发送给已有服务器；本机代理配置可能影响网络传输路径，但不改变到达应用后的处理链。
+
+| 顺序 | 执行者/位置 | 数据怎样传递 |
+| --- | --- | --- |
+| 1 | Uvicorn | 接收并解析HTTP请求，通过ASGI把请求信息交给应用 |
+| 2 | FastAPI/Starlette路由 | 按GET方法和/health路径匹配之前登记的处理函数 |
+| 3 | 框架创建Request | 把本次请求包装为对象，并提供给health的request参数 |
+| 4 | main.py第30～31行 | health开始执行，从request.app.state.settings获取启动配置 |
+| 5 | main.py第32～36行 | 把配置字段填入一个Python字典并返回给框架 |
+| 6 | FastAPI响应处理 | 根据返回类型处理并序列化为JSON字节，形成默认200状态和application/json内容类型 |
+| 7 | Uvicorn与curl | 服务器发回HTTP响应，curl按--include显示响应头和正文，然后结束这次命令 |
+
+返回字典转为JSON的行为见 [FastAPI基础流程](https://fastapi.tiangolo.com/tutorial/first-steps/)。不同版本的内部编码路径可以变化，本项目无需自行调用json.dumps或手拼HTTP报文。
+
+终端输出中的对应关系：
+
+```text
+HTTP/1.1 200 OK              ← 路由响应默认状态码
+Content-Type: application/json ← 框架生成的响应内容类型
+{"status":"ok", ...}         ← health返回字典序列化后的正文
+```
+
+正文中的status字段与HTTP状态码是两项独立信息。`"status": "ok"`是我们自己写的数据，HTTP200由框架的默认响应状态决定。curl的--fail根据HTTP错误状态判断失败，不根据JSON中的status字符串。
+
+#### E. 同一个应用对象把两条链接起来，关闭时再退出lifespan
+
+当前单应用场景中，下面四种写法指向同一个FastAPI对象：
+
+```text
+create_app局部变量application
+    = 返回后main模块的app
+    = 框架传给lifespan的application参数
+    = 请求对象的request.app
+```
+
+名字相同不是它们关联的原因；原因是返回值与框架传参都传递了同一个对象引用。所以启动时写 `application.state.settings`，请求时就能读 `request.app.state.settings`。
+
+每次请求有自己的Request，访问的是同一应用的配置。连续curl三次：本次单进程启动只构建一个应用、正常启动只加载一份配置，health执行三次。后两次请求沿D阶段执行，不重新导入main或调用create_app，也不重新读.env。
+
+在终端A按Ctrl+C正常停止时，Uvicorn停止接收新连接、等待正在处理的工作，再通知应用关闭；框架退出生命周期上下文，让执行继续到main.py第24～25行的finally，完成当前日志收尾。最后服务进程结束，终端A恢复提示符。一次curl结束仅结束客户端命令，不会关闭服务器。
+
+这一轮需要联系起来的两条主线是：
+
+```text
+启动：uv → Uvicorn → 导入main/config → create_app → app
+     → lifespan → load_settings → Settings → app.state.settings → 等待请求
+
+请求：curl → Uvicorn → 路由匹配 → health(request)
+     → request.app.state.settings → Python字典 → JSON响应 → curl输出
+```
+
+对照练习：指出配置错误会在哪条链中断；解释为什么改.env后未重启时响应仍使用旧值；指出换成不存在的路径时为何不会执行health。能用这条链解释现象，再继续下一增量。
+
 ## 5. 用两次变化理解校验
 
 先完成默认健康请求并停止服务，再在A执行：
