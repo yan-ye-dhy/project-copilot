@@ -4,7 +4,7 @@
 
 ## D1：独立环境与最小API（2026-10-10）
 
-**状态：工程实现与已有助手验收通过。2026-10-11已首次同步GitHub；固定开发报告与完整学习/手动验收尚未登记，A/B未全部完成。** 本日只建立后续开发入口，不推进D2。以下命令、检查与HTTP请求由Codex执行，未计入用户自行学习和操作的成果；用户实际学习耗时尚未登记。
+**状态：工程实现与已有助手验收通过，已首次同步GitHub。2026-10-11用户完成本轮手动验收并确认学习理解，阶段B完成；D1开发报告已补交到本地，本批文档待用户提交/推送，阶段A交接尚未完成。** 本日只建立后续开发入口，不推进D2。下文2026-10-10工程实施部分由Codex执行，2026-10-11用户手测另列于末尾；用户实际学习耗时尚未登记。
 
 ### 目标与实际改动
 
@@ -68,7 +68,7 @@ HTTP/1.1 200 OK
 
 ### 学习与提交
 
-新概念和真实调用链见 [D1学习笔记](STUDY_NOTES.md#d1独立工程入口与配置)，对应3个回答思路见 [D1面试笔记](INTERVIEW_NOTES.md#d1工程入口与配置)。当前先交ChatGPT学习，用户主动要求手动测试后由Codex单步指导；完整B阶段不因助手HTTP检查或一次用户请求成功而自动勾选。
+新概念和真实调用链见 [D1学习笔记](STUDY_NOTES.md#d1独立工程入口与配置)，对应3个回答思路见 [D1面试笔记](INTERVIEW_NOTES.md#d1工程入口与配置)。2026-10-11用户完成本轮手测，并明确确认已完成ChatGPT学习、能解释相关流程，B阶段据此登记完成；不是依据助手验收或一次请求推测掌握。
 
 Git历史：首次工程提交为 `8c2de0c chore(project): initialize isolated project skeleton`；截至规则适配前，另有两条教学文档提交。此前未推送，且新项目尚无remote。2026-10-11起按新规范授权常规推送，仍需先创建并关联实际GitHub仓库，不把本地commit当成已同步。
 
@@ -99,3 +99,36 @@ Git历史：首次工程提交为 `8c2de0c chore(project): initialize isolated p
 执行`git remote add origin https://github.com/yan-ye-dhy/project-copilot.git`。首次非交互push失败：Git未接入已登录的GitHub CLI，报`could not read Username`；在本项目配置凭据助手后，重试`git push -u origin main`成功，main开始跟踪origin/main。远端main已核对为`568ee738cf1b089872a1f0113944cd8788d6de1e`，与首次推送时的本地HEAD一致；本节和相关进度更新另作正常提交并同步。
 
 本次属于仓库准备及进度记录，未新增业务功能、重跑历史服务验收或开启用户手动测试；D1固定开发报告和完整B阶段仍待完成。
+
+### Git操作方式调整（2026-10-11）
+
+用户要求后续提交GitHub的步骤改为本人在Codex指导下操作。同步协作入口、规范、README与计划：Codex保留实现、自动验证、diff审核和报告职责；用户亲自执行暂存、commit及push，Codex逐步解释、等待反馈并核实结果。此前已完成的首次同步记录保留，本次规则修改不自动暂存、提交或推送。
+
+报告在用户Git操作前注明待提交/推送，核实真实结果后补全。Git交接指导与学习后主动开启的功能手动测试分别进行，A/B和下一Day门槛保持。本次只改文档，不开展新Day开发。
+
+### 用户手动验收与学习确认（2026-10-11）
+
+用户主动发送“开始D1的手动测试”，随后本人在 `/home/yanye/project-copilot` 的终端执行启动、请求与关闭；Codex逐步指导并依据截图/粘贴输出确认，未代运行服务或HTTP请求。基准复现写法为：
+
+```bash
+uv run --frozen uvicorn project_copilot.main:app --host 127.0.0.1 --port 8002
+# 另一个终端
+curl --noproxy 127.0.0.1 --fail --include http://127.0.0.1:8002/health
+```
+
+下表依据用户实际响应与日志登记；部分粘贴的curl命令首行有重复片段，以上保留规范复现写法，不把重复片段当成已确认执行的参数。只读检查未发现可能由误输入产生的 `url` 文件。
+
+| 场景 | 用户输入或观察 | 实际结果 | 判定 |
+| --- | --- | --- | --- |
+| 正常启动与默认健康请求 | 基准启动；PID137008；GET /health | 启动完成并监听8002；HTTP200，status=ok、service=Project Copilot、environment=development，访问日志200 | 通过 |
+| 正常关闭 | 在服务终端按Ctrl+C | Application shutdown complete；PID137008结束，返回命令提示符 | 通过 |
+| 服务名配置变化 | 启动命令前加 `PROJECT_COPILOT_APP_NAME="Copilot Learning"`；PID138765；再次GET | HTTP200，service变为Copilot Learning，environment仍为development，访问日志200 | 通过 |
+| 空白名称校验 | 启动命令前加 `PROJECT_COPILOT_APP_NAME="   "`，值为三个空格 | app_name报string_too_short；堆栈为lifespan→load_settings→Settings；启动失败并退出 | 按预期拒绝，通过 |
+| 环境枚举校验 | 启动命令前加 `PROJECT_COPILOT_ENVIRONMENT=staging` | environment报literal_error，列出development/test/production；启动失败并退出 | 按预期拒绝，通过 |
+| 恢复与最终关闭 | 不带临时变量前缀再次启动；PID140765；GET；最后Ctrl+C | HTTP200，恢复Project Copilot/development，访问日志200；Application shutdown complete，PID140765结束并返回提示符 | 通过 |
+
+用户最后明确反馈“已理解，能解释这些流程”，确认已完成ChatGPT的D1学习，能解释启动时加载配置、health读取配置与非法配置的启动阶段拦截；结合上述手测证据，阶段B完成。此次手测没有重新验证完整构造参数/进程环境/dotenv优先级、跨目录隔离、超长名称或导入无副作用，这些仍引用2026-10-10助手检查，不计作用户新验收。
+
+补交固定8项 [D1开发报告](reports/DAY_1.md)，更新计划和学习记录。此前9组自动检查及服务验收本轮未重跑；本轮只整理文档，业务源码、依赖和配置模板没有改动。报告与此前Git规则修改仍未暂存、提交或推送；核实已同步main仍为 `ec887b157251ace725fb103d2f318dcb5b2e3da0`。下一步由用户亲自完成Git交接；不自动开始D2。
+
+收尾文档检查通过：10份Markdown围栏闭合，47处本地链接目标存在，D1报告8项完整，`git diff --check`通过；只读核实索引无暂存改动，业务源码、依赖与配置模板diff为空。

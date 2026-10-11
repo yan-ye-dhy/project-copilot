@@ -2,7 +2,7 @@
 
 基于RAG与LangGraph的研发知识及工单协作智能体。当前完成D1最小工程入口：独立Python包、配置读取与 `GET /health`；RAG、模型、数据库和业务Agent将在后续阶段逐步实现。
 
-协作流程见 [长期协作规则](docs/COLLABORATION_RULES.md)：Codex开发、自动验证与提交报告，ChatGPT负责代码/架构教学，用户学习后主动要求Codex开始手动测试。以下命令是自助运行参考，Codex仅在用户要求后单步带练。
+协作流程见 [长期协作规则](docs/COLLABORATION_RULES.md)：Codex开发、自动验证、提供报告并指导Git操作；用户亲自提交和推送GitHub，随后通过ChatGPT学习代码/架构，学习后主动要求Codex开始手动测试。以下命令是自助运行参考，Codex仅在用户要求后单步带练。
 
 ## 本地运行
 
@@ -45,6 +45,7 @@ PROJECT_COPILOT_APP_NAME="Copilot Learning" uv run --frozen uvicorn project_copi
 ## 开发与学习记录
 
 - [D1设计、代码与运行导读](docs/D1_WALKTHROUGH.md)
+- [D1开发报告与验收交接](docs/reports/DAY_1.md)
 - [三方协作与8项开发报告规范](docs/COLLABORATION_RULES.md)
 - [开发计划](docs/DEVELOPMENT_PLAN.md)
 - [参考审计](docs/REFERENCE_AUDIT.md)
