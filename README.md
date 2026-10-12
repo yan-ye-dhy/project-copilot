@@ -1,6 +1,6 @@
 # Project Copilot
 
-基于RAG与LangGraph的研发知识及工单协作智能体。当前完成D1最小工程入口：独立Python包、配置读取与 `GET /health`；RAG、模型、数据库和业务Agent将在后续阶段逐步实现。
+基于RAG与LangGraph的研发知识及工单协作智能体。D1工程、学习与手测已完成；D2增加智谱Embedding客户端、请求契约测试与单条真实验证脚本，68项离线测试和一次2048维真实请求已通过。D2用户Git交接、学习与手测待完成；RAG、数据库和业务Agent按后续计划实现。
 
 协作流程见 [长期协作规则](docs/COLLABORATION_RULES.md)：Codex开发、自动验证、提供报告并指导Git操作；用户亲自提交和推送GitHub，随后通过ChatGPT学习代码/架构，学习后主动要求Codex开始手动测试。以下命令是自助运行参考，Codex仅在用户要求后单步带练。
 
@@ -46,6 +46,7 @@ PROJECT_COPILOT_APP_NAME="Copilot Learning" uv run --frozen uvicorn project_copi
 
 - [D1设计、代码与运行导读](docs/D1_WALKTHROUGH.md)
 - [D1开发报告与验收交接](docs/reports/DAY_1.md)
+- [D2开发报告与模型验证状态](docs/reports/DAY_2.md)
 - [三方协作与8项开发报告规范](docs/COLLABORATION_RULES.md)
 - [开发计划](docs/DEVELOPMENT_PLAN.md)
 - [参考审计](docs/REFERENCE_AUDIT.md)
@@ -54,3 +55,23 @@ PROJECT_COPILOT_APP_NAME="Copilot Learning" uv run --frozen uvicorn project_copi
 - [面试笔记](docs/INTERVIEW_NOTES.md)
 
 工程设计参考 [mfmezger/conversational-agent-langchain](https://github.com/mfmezger/conversational-agent-langchain)。原仓库保持只读；新项目保留独立包、环境与Git历史。本次没有移植原仓库整套入口或业务实现。
+
+## D2：Embedding与自动测试参考
+
+客户端位于 `src/project_copilot/infrastructure/models.py`。使用原文本数组请求智谱embedding-3，显式要求float，按每批文本条数分批；检查返回模型、条数、index、有限数值与预期维度。`embedding_batch_size=64`不是文档切分长度；`embedding_expected_dimensions=2048`用于本地校验，没有向请求添加dimensions参数。
+
+配置示例见 `.env.example`。真实密钥仅写入新项目根目录 `.env` 的 `PROJECT_COPILOT_ZHIPU_API_KEY`，Git忽略该文件。缺key时健康接口仍可启动，创建Embedding客户端才提示配置缺失。timeout为网络操作超时，默认20秒；SDK自动重试关闭。
+
+自动测试参考（真实SDK配假HTTP传输，不调用模型）：
+
+```bash
+uv run --frozen python -m pytest -q
+```
+
+最小真实验证参考：
+
+```bash
+uv run --frozen python scripts/embedding_smoke.py --live
+```
+
+脚本仅请求一条固定中文，输出状态、模型、条数和实际维度，使用with关闭客户端；不输出密钥或完整向量。官方embedding-3标准价为0.5元/百万tokens，实际按账号用量计费，见 [官方定价](https://docs.bigmodel.cn/cn/guide/start/pricing.md)。不加`--live`会显示参数错误并退出；没有新项目key则不创建模型客户端。此处命令供参考，学习后的手动测试仍由用户主动开启再逐步指导。

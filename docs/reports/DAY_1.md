@@ -69,3 +69,5 @@
 **8. 下一步计划**
 
 用户在Codex逐步指导下提交并推送本批文档，核实实际commit与GitHub链接，完成阶段A交接。阶段B已经完成。只有A/B都完成且用户明确要求下一Day，才开始D2：智谱Embedding请求契约与最小验证；Dense集合及入库仍留D4，模型费用授权继续遵守开发计划。
+
+2026-10-12交接确认：用户已亲自提交并推送上述文档，本地与GitHub main均核实为 [4c04a29d0dff34c19660958ecd2111d1cafe2d3b](https://github.com/yan-ye-dhy/project-copilot/commit/4c04a29d0dff34c19660958ecd2111d1cafe2d3b)，工作区当时干净。D1阶段A/B均完成；前文待提交状态保留为本报告生成时快照，最终Git信息由此次确认补齐。用户随后明确开启D2。

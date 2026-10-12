@@ -4,7 +4,7 @@
 
 ## D1：独立环境与最小API（2026-10-10）
 
-**状态：工程实现与已有助手验收通过，已首次同步GitHub。2026-10-11用户完成本轮手动验收并确认学习理解，阶段B完成；D1开发报告已补交到本地，本批文档待用户提交/推送，阶段A交接尚未完成。** 本日只建立后续开发入口，不推进D2。下文2026-10-10工程实施部分由Codex执行，2026-10-11用户手测另列于末尾；用户实际学习耗时尚未登记。
+**最终状态：D1阶段A/B均完成。** 2026-10-11用户完成本轮手测并确认学习理解；2026-10-12只读核实用户提交的 `4c04a29` 已同步GitHub，工作区当时干净。下文保留各次实施/交接时的历史状态，不将生成时的pending视为最新状态；用户实际学习耗时尚未登记。
 
 ### 目标与实际改动
 
@@ -132,3 +132,37 @@ curl --noproxy 127.0.0.1 --fail --include http://127.0.0.1:8002/health
 补交固定8项 [D1开发报告](reports/DAY_1.md)，更新计划和学习记录。此前9组自动检查及服务验收本轮未重跑；本轮只整理文档，业务源码、依赖和配置模板没有改动。报告与此前Git规则修改仍未暂存、提交或推送；核实已同步main仍为 `ec887b157251ace725fb103d2f318dcb5b2e3da0`。下一步由用户亲自完成Git交接；不自动开始D2。
 
 收尾文档检查通过：10份Markdown围栏闭合，47处本地链接目标存在，D1报告8项完整，`git diff --check`通过；只读核实索引无暂存改动，业务源码、依赖与配置模板diff为空。
+
+## D2：智谱Embedding最小契约（2026-10-12）
+
+**状态：客户端、68项离线验证及一次2048维真实smoke完成。** 新改动未暂存/提交/推送；用户学习和手测未开始，不登记完整A/B，也不推进D3。
+
+用户主动开启D2前，已核实D1本地及GitHub main均为 `4c04a29d0dff34c19660958ecd2111d1cafe2d3b`，D1交接完成。参考原智谱分支及其已安装SDK实现，保留原文本/float/batch64，使用新项目的OpenAI SDK适配以检查原始响应，避免SDK转换掩盖bool/字符串等错误。
+
+新增infrastructure包/models.py、单条smoke脚本及三份测试；修改Settings、脱敏配置模板、依赖声明/锁文件与过程文档。main.py与/health业务代码未改。key为可选SecretStr，仅创建模型客户端时要求；模型URL/timeout与batch有校验，客户端不在导入时创建。
+
+| 实际命令/检查 | 执行者与结果 |
+| --- | --- |
+| `UV_CACHE_DIR=/tmp/project-copilot-d2-uv-cache UV_PYTHON_DOWNLOADS=never uv sync --link-mode copy` | Codex，新项目独立安装成功：解析30包、安装14包；OpenAI2.54.0、HTTPX0.28.1、pytest8.4.2；未修改原项目环境 |
+| 首轮 `.venv/bin/python -m pytest -q` | Codex，仅收到部分输出后中断，未计通过 |
+| `timeout 45s .venv/bin/python -m pytest -q tests/test_models.py tests/test_embedding_smoke.py` | Codex，63 passed in 1.91s；全为假HTTP传输/向量及脚本默认保护 |
+| `timeout 25s .venv/bin/python -m pytest -vv -s -o faulthandler_timeout=10 tests/test_main.py` | Codex，TestClient停在后台portal线程等待，25秒后退出124；保留诊断失败，不修改业务入口或跳过回归 |
+| 改为显式lifespan+同进程ASGITransport后，`timeout 45s .venv/bin/python -m pytest -q` | Codex，68 passed in 1.35s；同时验证无key时健康响应和禁止模型客户端构造 |
+| `OPENAI_LOG= timeout 35s .venv/bin/python scripts/embedding_smoke.py --live` | Codex，用户保存新项目key后单条真实请求成功；返回embedding-3、1条、2048维，float/index/有限数值校验通过 |
+| `UV_CACHE_DIR=/tmp/project-copilot-d2-uv-cache UV_PYTHON_DOWNLOADS=never uv sync --locked --offline --check` | Codex，Resolved 30 packages、Checked 29 packages、Would make no changes；环境与锁文件一致 |
+
+响应契约覆盖中文原文、64+1批次、输出顺序、条数/维度/数值、畸形JSON、错误状态、超时与脱敏；SDKmax_retries=0。测试假key与3维向量不是供应商实测。CLI无--live时退出2；测试中的--live缺key分支退出1且不创建HTTP客户端。
+
+官方Markdown资料已只读核实：当前API最多64条/批、每条3072 tokens、默认2048维，标准价0.5元/百万tokens；来源见 [D2报告](reports/DAY_2.md)。encoding_format=float沿用原项目兼容参数，官方当前schema未列此字段；本次包含该参数的单条请求已成功。timeout20秒是本项目网络操作超时，不是整个任务总时限。
+
+用户表示会配置新项目密钥。检查当时新项目没有.env，也没有对应进程变量；随后仅用新项目.env.example生成本地空key模板，并核实.env被Git忽略。之后仅检查新项目key是否可用、URL是否为官方端点；用户保存配置后完成上表中的一次真实请求。未读取或复制旧项目真实.env，未打印密钥或完整向量；费用按实际账号用量，未读取账单或编造金额。
+
+真实命令的实际摘要如下，不以Mock结果代替：
+
+```json
+{"status": "ok", "model": "embedding-3", "texts": 1, "dimensions": 2048, "encoding_format": "float"}
+```
+
+SDK自动重试关闭，本轮未执行批量真实请求；with已关闭该模型HTTP客户端。阶段A仍待用户Git提交/推送，阶段B仍待学习与主动手测，固定8项交接见 [D2报告](reports/DAY_2.md)。
+
+最终检查：11份Markdown、51处本地链接与报告8项通过，9份Python文件AST可解析，`git diff --check`通过。扫描17个拟提交变更文件未发现真实key；.env被忽略、未跟踪，索引无暂存改动。Codex未执行本批Git暂存、commit或push。

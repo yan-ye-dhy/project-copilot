@@ -2,7 +2,7 @@
 
 编写日期：2026-10-09。项目：**基于 RAG 与 LangGraph 的研发知识及工单协作智能体**。
 
-本计划遵循用户的 V4 总指令，并根据并行系统学习与面试准备的安排于2026-10-09修订：34个主任务日＋1个可前移弹性日，每日项目投入1.5～2.5小时。已完成审计单列为前置成果。2026-10-10已通过D1工程验收；2026-10-11起采用 [三方协作规则](COLLABORATION_RULES.md)，已首次同步GitHub。用户现已完成D1手测并确认学习理解，阶段B完成；补交报告及本批文档待用户提交/推送，阶段A交接尚未完成。实际进度见第10节及 [开发日志](DEVELOPMENT_LOG.md)。参考证据、阶段0 Git状态与测试边界见 [REFERENCE_AUDIT.md](REFERENCE_AUDIT.md)。原仓库中的旧计划保留为历史资料，后续新项目以本文件为准。
+本计划遵循用户的 V4 总指令，并根据并行系统学习与面试准备的安排于2026-10-09修订：34个主任务日＋1个可前移弹性日，每日项目投入1.5～2.5小时。已完成审计单列为前置成果。按 [三方协作规则](COLLABORATION_RULES.md)，2026-10-12已核实D1的A/B均完成，用户明确开启D2。当前D2客户端、68项离线验证与一次2048维真实Embedding验收完成，Git交接及用户学习/手测尚未完成。实际进度见第10节及 [开发日志](DEVELOPMENT_LOG.md)。参考证据、阶段0 Git状态与测试边界见 [REFERENCE_AUDIT.md](REFERENCE_AUDIT.md)。原仓库中的旧计划保留为历史资料，后续新项目以本文件为准。
 
 ## 1. 工作区现状与开发边界
 
@@ -438,9 +438,11 @@ feat(agent): require approval for idempotent ticket creation
 
 这些是建议，不是已存在的历史。原仓库不整理或提交；新项目由用户在Codex指导下亲自提交、推送约定GitHub仓库/分支，失败如实报告，不强推或重写历史。未配置远端时先记录待同步并获取实际地址，不猜测仓库。每个完整模块验收后可交给ChatGPT新开学习窗口，如“Project Copilot · Dense RAG”“Project Copilot · 检索评测与优化”“Project Copilot · LangGraph与工单确认”。
 
-## 10. 当前开发进度：D1，独立环境与最小API
+## 10. 当前开发进度：D2，智谱Embedding最小契约
 
-**D1工程实现与已有助手验收通过，工程代码已首次同步GitHub；2026-10-11用户完成手测并确认学习理解，阶段B完成。** 已初始化独立仓库与 `.venv`，创建最小包、配置校验和 `/health`；参考原入口/配置后自行精简实现。[D1开发报告](reports/DAY_1.md) 已补交本地，与本批规则/进度文档待用户亲自提交并推送，阶段A交接尚未完成。D2未开始。
+**D1已完成：** 工程、自动验收、ChatGPT学习和用户手测完成；2026-10-12只读核实用户提交的 `4c04a29` 已同步GitHub，A/B均完成，见 [D1报告](reports/DAY_1.md)。用户已明确开启D2。
+
+**D2开发与自动技术验收完成；阶段A待用户Git交接，阶段B待学习与手测。** 新增智谱客户端、可选密钥/模型配置、单条smoke脚本及请求契约测试；使用独立安装的OpenAI兼容SDK，参考原适配的原文本、float、batch64参数，自行实现响应校验和资源关闭。全量68项离线测试通过，含无key的健康接口回归。用户在新项目.env保存密钥后，Codex单次调用embedding-3返回1条2048维向量；包含float参数的请求和数值/index/维度校验成功。该实调不计作用户手测，也未验证完整Qdrant链路。文件与验证边界见 [D2报告](reports/DAY_2.md)。
 
 历史Codex验收（2026-10-10）：9组离线配置/生命周期检查通过；默认及修改配置后的真实健康请求均HTTP200；OpenAPI业务路径只有 `/health`；锁定环境检查无需改动。失败的离线安装与沙箱监听尝试也记录在 [开发日志](DEVELOPMENT_LOG.md)，本轮未重跑这些检查。
 
@@ -458,7 +460,7 @@ git rev-parse --show-toplevel
 git status --short
 ```
 
-默认返回 `{"status":"ok","service":"Project Copilot","environment":"development"}`。学习材料见 [D1学习笔记](STUDY_NOTES.md#d1独立工程入口与配置)，供ChatGPT复习配置和运行链。当前剩余交接为用户提交并推送本批文档、核实报告Git信息；D1的A/B都完成且用户要求下一Day后，D2再研究智谱适配与最小Embedding契约。Dense集合和入库仍留D4。
+默认返回 `{"status":"ok","service":"Project Copilot","environment":"development"}`。D1命令保留为历史复现参考。D2当前待办为用户Git交接、ChatGPT学习与主动开启的手测；后续不自动进入D3。Dense集合和入库仍留D4。
 
 ## 11. 最终验收和可选裁剪
 
