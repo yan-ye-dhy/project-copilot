@@ -135,7 +135,7 @@ curl --noproxy 127.0.0.1 --fail --include http://127.0.0.1:8002/health
 
 ## D2：智谱Embedding最小契约（2026-10-12）
 
-**状态：客户端、68项离线验证及一次2048维真实smoke完成。** 新改动未暂存/提交/推送；用户学习和手测未开始，不登记完整A/B，也不推进D3。
+**开发期快照（D2提交前）：客户端、68项离线验证及一次2048维真实smoke完成。** 当时新改动未暂存/提交/推送；用户学习和手测未开始。最新交接与用户手测见本节末尾，不自动推进D3。
 
 用户主动开启D2前，已核实D1本地及GitHub main均为 `4c04a29d0dff34c19660958ecd2111d1cafe2d3b`，D1交接完成。参考原智谱分支及其已安装SDK实现，保留原文本/float/batch64，使用新项目的OpenAI SDK适配以检查原始响应，避免SDK转换掩盖bool/字符串等错误。
 
@@ -163,6 +163,18 @@ curl --noproxy 127.0.0.1 --fail --include http://127.0.0.1:8002/health
 {"status": "ok", "model": "embedding-3", "texts": 1, "dimensions": 2048, "encoding_format": "float"}
 ```
 
-SDK自动重试关闭，本轮未执行批量真实请求；with已关闭该模型HTTP客户端。阶段A仍待用户Git提交/推送，阶段B仍待学习与主动手测，固定8项交接见 [D2报告](reports/DAY_2.md)。
+SDK自动重试关闭，本轮未执行批量真实请求；with已关闭该模型HTTP客户端。本段写于提交前，当时阶段A待用户Git交接、阶段B待学习与主动手测；最终状态见下方补记和 [D2报告](reports/DAY_2.md)。
 
 最终检查：11份Markdown、51处本地链接与报告8项通过，9份Python文件AST可解析，`git diff --check`通过。扫描17个拟提交变更文件未发现真实key；.env被忽略、未跟踪，索引无暂存改动。Codex未执行本批Git暂存、commit或push。
+
+### 用户Git与手动验收补记（2026-10-12）
+
+用户亲自暂存并核对17个文件，提交 `e63d310cfbfbcb81d41ce448412ab50d7dee3f06`（`feat(models): add validated Zhipu embedding client`），执行 `git push origin main` 成功，随后 `git status --short --branch` 仅显示 `## main...origin/main`。Codex只读核实本地HEAD和干净状态；阶段A完成，报告首版的“待Git交接”是提交前快照。
+
+| 用户亲自执行 | 实际反馈 | 验证点 |
+| --- | --- | --- |
+| `uv run --frozen python scripts/embedding_smoke.py`，随后 `echo $?` | 提示必须显式添加`--live`；退出码2 | 默认保护，未进入模型请求 |
+| `uv run --frozen python scripts/embedding_smoke.py --live`，随后 `echo $?` | `{"status": "ok", "model": "embedding-3", "texts": 1, "dimensions": 2048, "encoding_format": "float"}`；退出码0 | 用户自己的单条真实请求及2048维校验，独立于Codex此前的真实smoke |
+| `PROJECT_COPILOT_ZHIPU_API_KEY="   " uv run --frozen python scripts/embedding_smoke.py --live`，随后 `echo $?` | `{"status": "error", "message": "请在新项目配置有效的PROJECT_COPILOT_ZHIPU_API_KEY"}`；退出码1 | 临时环境变量覆盖`.env`，客户端在请求前拒绝空白密钥 |
+
+三项用户手测符合预期；用户明确确认已完成ChatGPT学习，能说明主要调用链及空白密钥在请求前被拒绝的原因，阶段B完成。D2阶段A/B均完成；用户未要求D3，故不启动下一日开发。

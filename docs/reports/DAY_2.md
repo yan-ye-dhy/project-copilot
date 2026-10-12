@@ -1,6 +1,6 @@
 # 【Day 2 开发报告】
 
-日期：2026-10-12。客户端开发、离线验证与单条真实Embedding验收完成；阶段A待用户Git交接，阶段B待学习与手测。开发记录见 [开发日志](../DEVELOPMENT_LOG.md)。
+日期：2026-10-12。客户端开发、离线验证与Codex单条真实Embedding验收完成；用户已完成Git交接及三项手测，阶段A/B均完成，用户确认已完成ChatGPT学习并能说明主要调用链。下文保留提交前快照，并补记实际结果；详见 [开发日志](../DEVELOPMENT_LOG.md)。
 
 **1. 今日开发目标**
 
@@ -55,9 +55,13 @@ pytest使用假key、MockTransport或进程内ASGI，另有单条真实smoke，�
 
 最终文档/提交范围检查：`git diff --check`通过；11份Markdown围栏闭合、51处本地链接目标存在、8项报告完整；9份Python文件AST可解析。17个拟提交变更文件未包含真实key，.env未跟踪且被忽略；Git索引仍无暂存改动。
 
+**用户手动验收补记（独立于上述自动测试）**
+
+用户在学习后主动要求手测，并亲自运行：无`--live`时参数错误/退出2；带`--live`时返回`embedding-3`、1条2048维向量摘要/退出0；临时空白密钥覆盖时返回安全配置错误/退出1。用户随后明确确认能说明主要调用链与空白密钥被拒绝的原因。命令和实际输出见 [开发日志](../DEVELOPMENT_LOG.md#用户git与手动验收补记2026-10-12)。这三项不计入第5项的68项自动测试；Codex先前的单条实调也不计作用户手测。
+
 **6. GitHub 提交信息**
 
-分支main，origin为 [yan-ye-dhy/project-copilot](https://github.com/yan-ye-dhy/project-copilot)。当前已同步基线为D1提交 [4c04a29d0dff34c19660958ecd2111d1cafe2d3b](https://github.com/yan-ye-dhy/project-copilot/commit/4c04a29d0dff34c19660958ecd2111d1cafe2d3b)。D2新增改动尚未暂存、提交或推送，**待用户亲自操作**，暂无D2 commit ID或已同步链接；实际结果在用户操作后补充。
+提交前已同步基线为D1提交 [4c04a29d0dff34c19660958ecd2111d1cafe2d3b](https://github.com/yan-ye-dhy/project-copilot/commit/4c04a29d0dff34c19660958ecd2111d1cafe2d3b)，当时D2改动待用户操作。实际交接：用户亲自提交 [e63d310cfbfbcb81d41ce448412ab50d7dee3f06](https://github.com/yan-ye-dhy/project-copilot/commit/e63d310cfbfbcb81d41ce448412ab50d7dee3f06) 到`main`，执行`git push origin main`成功；本地`main`与`origin/main`同步、工作区干净。Codex未代执行Git写操作。
 
 **7. 后续学习提示**
 
@@ -69,4 +73,4 @@ pytest使用假key、MockTransport或进程内ASGI，另有单条真实smoke，�
 
 **8. 下一步计划**
 
-用户在Codex逐步指导下完成Git提交/推送，然后通过ChatGPT学习新增代码与测试。学习后仅在用户主动要求时开始手动测试。D2的A/B都完成且用户明确要求后，才进入D3文本加载与切分；Qdrant仍留D4。
+Git交接、三项用户手测及学习确认均已完成，D2阶段A/B完成。仅在用户明确要求后进入D3文本加载与切分；Qdrant仍留D4。
