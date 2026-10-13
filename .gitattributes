@@ -1,0 +1,2 @@
+# Preserve PDF bytes and use binary diff/merge handling.
+*.pdf binary

@@ -178,3 +178,28 @@ SDK自动重试关闭，本轮未执行批量真实请求；with已关闭该模�
 | `PROJECT_COPILOT_ZHIPU_API_KEY="   " uv run --frozen python scripts/embedding_smoke.py --live`，随后 `echo $?` | `{"status": "error", "message": "请在新项目配置有效的PROJECT_COPILOT_ZHIPU_API_KEY"}`；退出码1 | 临时环境变量覆盖`.env`，客户端在请求前拒绝空白密钥 |
 
 三项用户手测符合预期；用户明确确认已完成ChatGPT学习，能说明主要调用链及空白密钥在请求前被拒绝的原因，阶段B完成。D2阶段A/B均完成；用户未要求D3，故不启动下一日开发。
+
+## D3：文档读取与可检查的片段（2026-10-12）
+
+**状态：开发与离线自动验证完成，阶段A待用户Git交接，阶段B待ChatGPT学习与主动手测。** 用户明确开启D3；只读核实开始时HEAD及origin/main为D2补记提交`1602f5fdb0028b2525fb8b33d07758d0cbc1ef2c`，工作区干净。D2开发提交`e63d310`和用户验收补记均已由用户推送。
+
+新增`schemas/documents.py`、`rag/loaders.py`、`rag/splitters.py`及包入口；新增`scripts/inspect_document.py`、两份测试、三个自编TXT/MD/PDF样本与来源说明。显式依赖为`langchain-text-splitters`和`pypdfium2`，实际锁定1.1.3与5.14.0；transitive langchain-core为1.6.9。main、配置和D2模型客户端未修改。
+
+参考原`embedding_management.py:39–60`的读取、递归切分和metadata流程。独立试装原社区loader时出现弃用提示，核实[官方停止维护说明](https://github.com/langchain-ai/langchain-community/issues/674)后移除`langchain-community`及不再需要的依赖。最终TXT/MD对原字节严格UTF-8解码，PDF复用同款PDFium解析器；自写统一契约，未复制完整旧服务或导入旧包。递归切分仍使用成熟组件，按新计划750/150和最终字符回退。
+
+文档身份来自同次读取的原字节SHA-256，与文件名分离；chunk UUID包含文档身份、切分指纹、真实页索引、全局片段序号和文本指纹。`index_version`当前仅标识切分，未声称完整模型/向量索引版本。PDF解析串行锁遵守原生库线程约束，显式关闭文档/页/文本句柄；PDF换行规范为LF，空白页保留原编号。TXT/MD页码为None，空文档返回无片段；没有OCR。
+
+| 实际检查 | 执行者与结果 |
+| --- | --- |
+| `.venv/bin/python -m pytest -q tests/test_documents.py` | Codex，27 passed in 0.12s；真实三格式读取、PDF空页/页码、中文回退、稳定身份、空结果和错误 |
+| `timeout 45s .venv/bin/python -m pytest -q` | Codex，101 passed in 2.63s；包含原68项与新增33项，脚本JSON/错误/离线保护/跨进程稳定性均通过 |
+| 同一读取/切分API核对三个合成样本 | Codex，TXT 6片段最大750字符；MD 5片段最大750字符；PDF保留页0/1/2，仅页0和2产生片段 |
+| `UV_CACHE_DIR=/tmp/project-copilot-d3-uv-cache UV_PYTHON_DOWNLOADS=never uv sync --locked --offline --check` | Codex，Resolved 52 packages、Checked 50 packages、Would make no changes |
+
+本日验证全部使用本地自编文件；未读取真实.env内容、发模型请求、连接Qdrant或启动业务API。自动结果不登记为用户学习/手测。固定8项交接与学习关注点见 [D3报告](reports/DAY_3.md)，后续Git写操作仍由用户亲自完成，不自动进入D4。
+
+2026-10-12初检：当时20个变更文件（13新增、7修改）与D3范围一致；17份Python文件AST可解析、14份Markdown围栏闭合、61处本地链接目标存在、D3报告8项完整，`git diff --check`通过，但该命令未覆盖尚未跟踪的PDF。原有锁定依赖版本未改变，最终新增22个锁定包且不含community/classic；真实.env仍被忽略且未跟踪。当时本批尚未暂存、提交或推送。
+
+### Git交接补记（2026-10-13）
+
+用户亲自暂存20个D3文件。Codex只读检查`git diff --cached --check`时，发现合成PDF被视为文本，xref定长记录的行末空格触发10处格式提示（退出2）。新增`.gitattributes`中的`*.pdf binary`，让Git保留PDF字节并按二进制处理；当前范围21个文件（14新增、7修改），报告和日志同步补记。业务源码和PDF原字节未改，此轮只检查Git属性与文档，不重跑业务测试或模型请求；补充文件的暂存/提交/推送仍由用户操作。

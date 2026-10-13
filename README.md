@@ -1,6 +1,6 @@
 # Project Copilot
 
-基于RAG与LangGraph的研发知识及工单协作智能体。D1工程、学习与手测已完成；D2增加智谱Embedding客户端、请求契约测试与单条真实验证脚本，68项离线测试和一次2048维真实请求已通过。D2代码已由用户推送GitHub，三项用户手测符合预期；用户已确认完成ChatGPT学习并能说明调用链；D2阶段A/B均完成。RAG、数据库和业务Agent按后续计划实现。
+基于RAG与LangGraph的研发知识及工单协作智能体。D1/D2阶段A/B已完成；D3增加TXT/Markdown/PDF读取、递归切分、稳定片段标识和离线查看脚本，全量101项离线测试通过。D3待用户Git交接、ChatGPT学习与主动手测；索引、问答及业务Agent按后续计划实现。
 
 协作流程见 [长期协作规则](docs/COLLABORATION_RULES.md)：Codex开发、自动验证、提供报告并指导Git操作；用户亲自提交和推送GitHub，随后通过ChatGPT学习代码/架构，学习后主动要求Codex开始手动测试。以下命令是自助运行参考，Codex仅在用户要求后单步带练。
 
@@ -47,6 +47,7 @@ PROJECT_COPILOT_APP_NAME="Copilot Learning" uv run --frozen uvicorn project_copi
 - [D1设计、代码与运行导读](docs/D1_WALKTHROUGH.md)
 - [D1开发报告与验收交接](docs/reports/DAY_1.md)
 - [D2开发报告与模型验证状态](docs/reports/DAY_2.md)
+- [D3开发报告与文档切分验收](docs/reports/DAY_3.md)
 - [三方协作与8项开发报告规范](docs/COLLABORATION_RULES.md)
 - [开发计划](docs/DEVELOPMENT_PLAN.md)
 - [参考审计](docs/REFERENCE_AUDIT.md)
@@ -75,3 +76,19 @@ uv run --frozen python scripts/embedding_smoke.py --live
 ```
 
 脚本仅请求一条固定中文，输出状态、模型、条数和实际维度，使用with关闭客户端；不输出密钥或完整向量。官方embedding-3标准价为0.5元/百万tokens，实际按账号用量计费，见 [官方定价](https://docs.bigmodel.cn/cn/guide/start/pricing.md)。不加`--live`会显示参数错误并退出；没有新项目key则不创建模型客户端。此处命令供参考，学习后的手动测试仍由用户主动开启再逐步指导。
+
+## D3：离线查看文档与片段
+
+`rag/loaders.py`按UTF-8读取TXT/MD，以PDFium提取PDF文字层；`rag/splitters.py`逐页递归切分，默认750字符、目标重叠150字符，分隔符依次为段落、换行、空格和最终字符回退。字符数按Python `len`计算，不等于模型token数；自然边界不保证每对片段精确重叠150字符。
+
+每份文件保留原始字节SHA-256与内容身份；同内容改名不改变document ID，同名不同内容不会混为一份。片段另有UUID、整份文档中的序号和切分指纹，PDF的`page`为0起始真实页索引，TXT/MD为`null`。`index_version`在D3仅表示切分指纹，D4还需记录模型、维度和实际索引配置。
+
+离线参考命令（不读取密钥、不请求模型）：
+
+```bash
+uv run --frozen python scripts/inspect_document.py tests/fixtures/documents/sample.pdf
+```
+
+输出JSON包含按页原文、片段文本、来源、ID及长度；示例PDF有三页，中间空白页保留为页1，片段来自页0和页2。其他自编样本及来源说明见 [测试样本](tests/fixtures/documents/README.md)。可用`--chunk-size`与`--chunk-overlap`观察其他配置，要求`0 <= overlap < size`。
+
+空文档返回`status=empty`和空片段列表；非UTF-8文本、损坏PDF或不支持的类型明确报错。PDF只处理文字层，没有OCR或复杂版面还原。原社区loader依赖已[停止维护](https://github.com/langchain-ai/langchain-community/issues/674)，因此采用标准库和同款PDFium的薄适配，保留成熟递归切分器。手测仍等用户学完代码后主动开启。

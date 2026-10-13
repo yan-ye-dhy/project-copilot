@@ -2,7 +2,7 @@
 
 编写日期：2026-10-09。项目：**基于 RAG 与 LangGraph 的研发知识及工单协作智能体**。
 
-本计划遵循用户的 V4 总指令，并根据并行系统学习与面试准备的安排于2026-10-09修订：34个主任务日＋1个可前移弹性日，每日项目投入1.5～2.5小时。已完成审计单列为前置成果。按 [三方协作规则](COLLABORATION_RULES.md)，2026-10-12已核实D1的A/B均完成，用户明确开启D2。D2客户端、68项离线验证、Codex单条真实验收及用户三项手测均完成；Git交接已完成，用户确认ChatGPT学习与调用链理解，D2阶段A/B均完成。实际进度见第10节及 [开发日志](DEVELOPMENT_LOG.md)。参考证据、阶段0 Git状态与测试边界见 [REFERENCE_AUDIT.md](REFERENCE_AUDIT.md)。原仓库中的旧计划保留为历史资料，后续新项目以本文件为准。
+本计划遵循用户的 V4 总指令，并根据并行系统学习与面试准备的安排于2026-10-09修订：34个主任务日＋1个可前移弹性日，每日项目投入1.5～2.5小时。已完成审计单列为前置成果。按 [三方协作规则](COLLABORATION_RULES.md)，D1/D2阶段A/B均完成；2026-10-12用户明确开启D3。D3读取/切分与101项离线回归完成，Git交接及用户学习/手测待完成。实际进度见第10节及 [开发日志](DEVELOPMENT_LOG.md)。参考证据、阶段0 Git状态与测试边界见 [REFERENCE_AUDIT.md](REFERENCE_AUDIT.md)。原仓库中的旧计划保留为历史资料，后续新项目以本文件为准。
 
 ## 1. 工作区现状与开发边界
 
@@ -57,7 +57,7 @@
 | DeepSeek | `src/agent/backend/graph.py`、`src/agent/backend/nodes/grading.py` | 参考已修改的参数处理；工厂显式接收 key、model、timeout、retry；基线不启用相关性评分或查询改写 |
 | 智谱 Embedding | `src/agent/utils/embeddings.py` | 参考原文本输入、float 输出等适配；显式校验输出维度和请求/响应，移除闲置供应商分支 |
 | Qdrant | `src/agent/utils/vdb.py`、`src/agent/utils/retriever.py` | 参考客户端、集合和 Document 映射；先使用 `DENSE`，稀疏模型到 Hybrid 阶段才初始化 |
-| 文档读取 | `src/agent/backend/services/embedding_management.py`、`src/agent/routes/embeddings.py` | 复用成熟 Text/PDF loader；新写清晰的加载→切分→索引编排，补 UTF-8 Markdown；上传处理须适配 |
+| 文档读取 | `src/agent/backend/services/embedding_management.py`、`src/agent/routes/embeddings.py` | 参考 Text/PDF loader；因社区包停止维护，以UTF-8标准库和同款PDFium解析器薄适配，新写加载→切分→索引编排；上传处理须适配 |
 | 引用 | `src/agent/utils/utility.py`、`src/agent/backend/prompts.py` | 参考片段编号；新响应保留稳定标识和原文，验证引用编号能映射到本次证据 |
 | Hybrid 与 Rerank | `src/agent/utils/vdb.py`、`src/agent/utils/reranker.py`、`src/agent/backend/nodes/retrieval.py` | 用来学习接口和两阶段检索；新项目实现中文 BM25、可解释 RRF 和对照评测，不提前带入基线 |
 | LangGraph | `src/agent/backend/graph.py`、`src/agent/backend/state.py` | 参考 State 与条件边；另建业务图，模型自主选择知识/工单工具，避免复制旧固定 RAG 流程充当业务 Agent |
@@ -266,7 +266,7 @@ React、Dify、MCP学习不成为本项目的新交付要求；RAG/LangGraph系�
 | --- | --- | --- | --- | --- |
 | D1 | 独立工程入口；复习包结构/Settings/lifespan；读原 `api.py`、`utils/config.py` | `main.py`、`config.py`、`pyproject.toml`、`.gitignore`、`.env.example`、README | 处理新Git权限，初始化独立仓库/环境，只提供 `/health`；自己修改一个配置并解释读取顺序 | curl健康接口200；Git顶层为新目录；无旧项目导入或模型/数据库启动副作用 |
 | D2 | 智谱Embedding最小契约；理解文本输入、float输出、batch与维度；读原 `utils/embeddings.py:32` | `infrastructure/models.py`、`config.py`、模型请求契约测试 | 精简智谱客户端，显式key/model/URL/timeout；先验证请求契约，再最小真实Embedding smoke；自己解释两个chunk_size的区别 | 离线核对请求/错误结构，真实向量长度有记录；缺key与非法配置反馈明确，未声称Qdrant链路已通 |
-| D3 | 可检查的文档片段；理解loader/递归切分/metadata；读原 `backend/services/embedding_management.py` | `rag/loaders.py`、`splitters.py`、`schemas/documents.py`、加载切分测试 | 复用TXT/PDF loader并补UTF-8 MD，加入字符回退与稳定文档/片段身份；自己用无空格中文检查边界 | 三种小文件的原文/来源可核对，TXT/MD page可空、PDF页信息真实；长中文不超过当前字符上限，空文档有明确结果 |
+| D3 | 可检查的文档片段；理解loader/递归切分/metadata；读原 `backend/services/embedding_management.py` | `rag/loaders.py`、`splitters.py`、`schemas/documents.py`、加载切分测试 | 参考原loader，直接使用PDFium并严格读取UTF-8 TXT/MD；加入字符回退与稳定文档/片段身份；自己用无空格中文检查边界 | 三种小文件的原文/来源可核对，TXT/MD page可空、PDF页信息真实；长中文不超过当前字符上限，空文档有明确结果 |
 | D4 | 单文件真实进入Dense索引；理解向量空间与top-k；读原 `utils/vdb.py`、`utils/retriever.py` | `infrastructure/qdrant.py`、`rag/ingestion.py`、`retrieval.py`、最小Qdrant Compose和成功清单 | 先从后端读取一个受控文件完成顺序入库与一次检索，保存仅成功文档的简单manifest；自己核对一个chunk ID及来源，当天不接上传API | 真Qdrant保存/检索原文；维度/距离/字段匹配；模式为DENSE，未初始化BM25；成功清单与实际片段可核对 |
 | D5 | 基于证据生成回答与引用；理解prompt/回答契约；读原 `backend/graph.py:33`、`nodes/generation.py`、`utils/utility.py:106` | `infrastructure/models.py`、`rag/answering.py`、`schemas/rag.py`、`api/rag.py`、引用契约测试 | 增加显式参数的DeepSeek客户端和问答接口；自己沿一个引用编号找到对应片段 | 最小真实问答返回已知事实与原文；引用能映射到本次证据；未启用相关性评分、改写或重排 |
 | D6 | 薄上传接口接入与Dense验收；复习文件→向量→证据→答案；读原上传路由和 `api.py:27` | `api/documents.py`、上传契约/本阶段测试、tracing开关/run_id约定、学习记录 | 上传仅调用已验收的单文件入库服务，采用服务端临时名、类型/大小校验和清理；用户讲完整链路；tracing只留最小约定，不初始化Phoenix导出 | 上传不支持文件不误报成功、失败清理有效；已知资料问答与引用能核对；保存Dense-only运行记录，未实际导出Trace标待验证；不追加Hybrid或评测标注 |
@@ -438,11 +438,13 @@ feat(agent): require approval for idempotent ticket creation
 
 这些是建议，不是已存在的历史。原仓库不整理或提交；新项目由用户在Codex指导下亲自提交、推送约定GitHub仓库/分支，失败如实报告，不强推或重写历史。未配置远端时先记录待同步并获取实际地址，不猜测仓库。每个完整模块验收后可交给ChatGPT新开学习窗口，如“Project Copilot · Dense RAG”“Project Copilot · 检索评测与优化”“Project Copilot · LangGraph与工单确认”。
 
-## 10. 当前开发进度：D2，智谱Embedding最小契约
+## 10. 当前开发进度：D3，文档读取与切分
 
 **D1已完成：** 工程、自动验收、ChatGPT学习和用户手测完成；2026-10-12只读核实用户提交的 `4c04a29` 已同步GitHub，A/B均完成，见 [D1报告](reports/DAY_1.md)。用户已明确开启D2。
 
 **D2阶段A/B均完成；用户三项手测通过，并确认已完成ChatGPT学习、能说明主要调用链。** 新增智谱客户端、可选密钥/模型配置、单条smoke脚本及请求契约测试；使用独立安装的OpenAI兼容SDK，参考原适配的原文本、float、batch64参数，自行实现响应校验和资源关闭。全量68项离线测试通过，含无key的健康接口回归。用户在新项目.env保存密钥后，Codex单次调用embedding-3返回1条2048维向量；包含float参数的请求和数值/index/维度校验成功。该实调与后续用户亲自运行的成功请求分别记录，均未验证完整Qdrant链路。用户提交 `e63d310` 已推送main；手测的开关保护、单条真实请求和空白密钥拒绝均符合预期，见 [D2报告](reports/DAY_2.md)。
+
+**D3开发与自动验证完成；阶段A待用户Git交接，阶段B待学习与手测。** 开始时本地main与origin/main同步在D2补记提交`1602f5f`，工作区干净。实现三格式单文件读取、按页750/150递归切分、内容哈希与稳定UUID、空结果/错误处理及离线查看脚本。全量101项测试通过；PDF真实三页和中文长度有离线证据。因原`langchain-community`已[停止维护](https://github.com/langchain-ai/langchain-community/issues/674)，读取采用标准库与同款PDFium薄适配，切分保留独立成熟组件；参考来源、实际版本和边界见 [D3报告](reports/DAY_3.md)。本日没有调用收费模型或索引文件。
 
 历史Codex验收（2026-10-10）：9组离线配置/生命周期检查通过；默认及修改配置后的真实健康请求均HTTP200；OpenAPI业务路径只有 `/health`；锁定环境检查无需改动。失败的离线安装与沙箱监听尝试也记录在 [开发日志](DEVELOPMENT_LOG.md)，本轮未重跑这些检查。
 
@@ -460,7 +462,7 @@ git rev-parse --show-toplevel
 git status --short
 ```
 
-默认返回 `{"status":"ok","service":"Project Copilot","environment":"development"}`。D1命令保留为历史复现参考。D2已完成；仅在用户明确要求时进入D3。Dense集合和入库仍留D4。
+默认返回 `{"status":"ok","service":"Project Copilot","environment":"development"}`。D1命令保留为历史复现参考。D3当前待办为用户Git交接、ChatGPT学习与主动开启的手测；A/B完成且用户明确要求后才进入D4的单文件Dense索引。
 
 ## 11. 最终验收和可选裁剪
 
