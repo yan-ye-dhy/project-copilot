@@ -1,6 +1,6 @@
 # Project Copilot
 
-基于RAG与LangGraph的研发知识及工单协作智能体。D1/D2阶段A/B已完成；D3增加TXT/Markdown/PDF读取、递归切分、稳定片段标识和离线查看脚本，全量101项离线测试通过。D3待用户Git交接、ChatGPT学习与主动手测；索引、问答及业务Agent按后续计划实现。
+基于RAG与LangGraph的研发知识及工单协作智能体。D1/D2阶段A/B已完成；D3增加TXT/Markdown/PDF读取、递归切分、稳定片段标识和离线查看脚本，全量101项离线测试通过。D3开发提交已同步GitHub，用户七项手测通过并确认已完成ChatGPT学习、能解释关键流程，阶段A/B均完成；索引、问答及业务Agent按后续计划实现。
 
 协作流程见 [长期协作规则](docs/COLLABORATION_RULES.md)：Codex开发、自动验证、提供报告并指导Git操作；用户亲自提交和推送GitHub，随后通过ChatGPT学习代码/架构，学习后主动要求Codex开始手动测试。以下命令是自助运行参考，Codex仅在用户要求后单步带练。
 
@@ -91,4 +91,4 @@ uv run --frozen python scripts/inspect_document.py tests/fixtures/documents/samp
 
 输出JSON包含按页原文、片段文本、来源、ID及长度；示例PDF有三页，中间空白页保留为页1，片段来自页0和页2。其他自编样本及来源说明见 [测试样本](tests/fixtures/documents/README.md)。可用`--chunk-size`与`--chunk-overlap`观察其他配置，要求`0 <= overlap < size`。
 
-空文档返回`status=empty`和空片段列表；非UTF-8文本、损坏PDF或不支持的类型明确报错。PDF只处理文字层，没有OCR或复杂版面还原。原社区loader依赖已[停止维护](https://github.com/langchain-ai/langchain-community/issues/674)，因此采用标准库和同款PDFium的薄适配，保留成熟递归切分器。手测仍等用户学完代码后主动开启。
+空文档返回`status=empty`和空片段列表；非UTF-8文本、损坏PDF或不支持的类型明确报错。PDF只处理文字层，没有OCR或复杂版面还原。原社区loader依赖已[停止维护](https://github.com/langchain-ai/langchain-community/issues/674)，因此采用标准库和同款PDFium的薄适配，保留成熟递归切分器。用户已完成D3手测与学习确认，实际范围见 [D3报告](docs/reports/DAY_3.md)；下一Day仍等用户明确要求。
