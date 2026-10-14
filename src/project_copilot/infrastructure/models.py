@@ -1,6 +1,7 @@
-"""智谱Embedding适配：原文本请求、明确错误、向量契约与资源关闭。"""
+"""智谱Embedding与DeepSeek对话适配：显式请求、脱敏错误与响应契约。"""
 
 from collections.abc import Sequence
+from dataclasses import dataclass
 from math import isfinite
 from typing import Self
 
@@ -161,4 +162,188 @@ def create_embedding_client(
         model=settings.embedding_model,
         expected_dimensions=settings.embedding_expected_dimensions,
         batch_size=settings.embedding_batch_size,
+    )
+
+
+class ChatConfigError(ValueError):
+    """创建对话客户端所需的配置不完整。"""
+
+
+class ChatRequestError(RuntimeError):
+    """对话供应商请求错误，只对外提供脱敏信息。"""
+
+    def __init__(self, message: str, *, status_code: int | None = None) -> None:
+        super().__init__(message)
+        self.status_code = status_code
+
+
+class ChatResponseError(RuntimeError):
+    """HTTP成功但响应不满足本项目的对话协议。"""
+
+
+@dataclass(frozen=True)
+class ChatGeneration:
+    """原始回答文本、供应商实际模型标识与白名单Token计数。"""
+
+    content: str
+    model: str
+    usage: dict[str, int] | None
+
+
+class DeepSeekChat:
+    """同步JSON输出适配器；回答Schema与引用由回答层继续校验。"""
+
+    def __init__(
+        self,
+        client: OpenAI,
+        *,
+        model: str,
+        temperature: float,
+        max_tokens: int,
+    ) -> None:
+        self._client = client
+        self.model = model
+        self.temperature = temperature
+        self.max_tokens = max_tokens
+
+    def generate_json(self, messages: Sequence[dict[str, str]]) -> ChatGeneration:
+        """每次只有一个System和一个User消息；不重试或修复模型输出。"""
+        if (
+            not isinstance(messages, Sequence)
+            or isinstance(messages, (str, bytes))
+            or len(messages) != 2
+        ):
+            raise ValueError("对话输入必须包含一条System和一条User消息")
+        for message, role in zip(messages, ("system", "user"), strict=True):
+            if (
+                not isinstance(message, dict)
+                or set(message) != {"role", "content"}
+                or message.get("role") != role
+                or not isinstance(message.get("content"), str)
+                or not message["content"].strip()
+            ):
+                raise ValueError("对话消息必须依次为System和User，且仅含角色与非空文本")
+
+        try:
+            raw_response = self._client.chat.completions.with_raw_response.create(
+                model=self.model,
+                messages=[dict(message) for message in messages],
+                temperature=self.temperature,
+                max_tokens=self.max_tokens,
+                stream=False,
+                response_format={"type": "json_object"},
+                extra_body={"thinking": {"type": "disabled"}},
+            )
+            # 校验原始JSON，避免SDK宽松转换把bool或字符串Token计数变成int。
+            response = raw_response.http_response.json()
+        except APITimeoutError:
+            raise ChatRequestError("DeepSeek对话请求超时") from None
+        except APIConnectionError:
+            raise ChatRequestError("无法连接DeepSeek对话服务") from None
+        except APIStatusError as exc:
+            status = exc.status_code
+            if status in (401, 403):
+                message = "DeepSeek对话认证或权限失败，请检查新项目密钥"
+            elif status == 429:
+                message = "DeepSeek对话请求受限，请检查限流与账号状态"
+            elif status >= 500:
+                message = "DeepSeek对话服务暂时不可用"
+            else:
+                message = "DeepSeek对话请求被拒绝，请检查模型和输入配置"
+            raise ChatRequestError(message, status_code=status) from None
+        except (APIResponseValidationError, ValueError, TypeError):
+            raise ChatResponseError("DeepSeek对话响应无法解析") from None
+
+        return self._validate_response(response)
+
+    @staticmethod
+    def _validate_response(response: object) -> ChatGeneration:
+        if not isinstance(response, dict):
+            raise ChatResponseError("对话响应必须是JSON对象")
+        model = response.get("model")
+        if not isinstance(model, str) or not model.strip():
+            raise ChatResponseError("对话响应缺少有效模型标识")
+        choices = response.get("choices")
+        if not isinstance(choices, list) or len(choices) != 1:
+            raise ChatResponseError("对话响应必须包含且仅包含一个回答")
+        choice = choices[0]
+        if not isinstance(choice, dict) or choice.get("finish_reason") != "stop":
+            raise ChatResponseError("对话回答未正常完成")
+        message = choice.get("message")
+        if not isinstance(message, dict) or message.get("role") != "assistant":
+            raise ChatResponseError("对话回答必须是Assistant消息")
+        tool_calls = message.get("tool_calls")
+        if (
+            "tools" in message
+            or (tool_calls is not None and (not isinstance(tool_calls, list) or tool_calls))
+            or message.get("function_call") is not None
+        ):
+            raise ChatResponseError("对话回答不允许工具调用")
+        if message.get("refusal") is not None:
+            raise ChatResponseError("DeepSeek拒绝生成回答")
+        content = message.get("content")
+        if not isinstance(content, str) or not content.strip():
+            raise ChatResponseError("对话回答文本为空或非法")
+        usage = DeepSeekChat._validate_usage(response["usage"]) if "usage" in response else None
+        # content保留原文，JSON语法及本地回答Schema由调用者负责。
+        return ChatGeneration(content=content, model=model, usage=usage)
+
+    @staticmethod
+    def _validate_usage(value: object) -> dict[str, int]:
+        if not isinstance(value, dict):
+            raise ChatResponseError("对话Token用量必须是JSON对象")
+        usage: dict[str, int] = {}
+        required = ("prompt_tokens", "completion_tokens", "total_tokens")
+        optional = ("prompt_cache_hit_tokens", "prompt_cache_miss_tokens", "reasoning_tokens")
+        for field in (*required, *optional):
+            if field not in value and field in optional:
+                continue
+            count = value.get(field)
+            if type(count) is not int or count < 0:
+                raise ChatResponseError("对话Token用量必须是非负整数")
+            usage[field] = count
+        if usage["total_tokens"] != usage["prompt_tokens"] + usage["completion_tokens"]:
+            raise ChatResponseError("对话Token总量与输入输出计数不符")
+        if "completion_tokens_details" in value:
+            details = value["completion_tokens_details"]
+            if not isinstance(details, dict):
+                raise ChatResponseError("对话输出Token明细必须是JSON对象")
+            if "reasoning_tokens" in details:
+                reasoning = details["reasoning_tokens"]
+                if type(reasoning) is not int or reasoning < 0:
+                    raise ChatResponseError("对话推理Token用量必须是非负整数")
+                if "reasoning_tokens" in usage and usage["reasoning_tokens"] != reasoning:
+                    raise ChatResponseError("对话推理Token计数不一致")
+                usage["reasoning_tokens"] = reasoning
+        return usage
+
+    def close(self) -> None:
+        self._client.close()
+
+    def __enter__(self) -> Self:
+        return self
+
+    def __exit__(self, *_: object) -> None:
+        self.close()
+
+
+def create_chat_client(
+    settings: Settings, *, http_client: httpx.Client | None = None
+) -> DeepSeekChat:
+    """独立DeepSeek密钥、显式参数与零自动重试；构造不发模型请求。"""
+    key = settings.deepseek_api_key.get_secret_value().strip() if settings.deepseek_api_key else ""
+    if not key or not key.isascii() or any(character.isspace() for character in key):
+        raise ChatConfigError("请在新项目配置有效的PROJECT_COPILOT_DEEPSEEK_API_KEY")
+    client = OpenAI(
+        api_key=key,
+        base_url=str(settings.deepseek_base_url),
+        timeout=settings.deepseek_timeout_seconds,
+        max_retries=0,
+        http_client=http_client,
+    )
+    return DeepSeekChat(
+        client,
+        model=settings.deepseek_model,
+        temperature=settings.deepseek_temperature,
+        max_tokens=settings.deepseek_max_tokens,
     )

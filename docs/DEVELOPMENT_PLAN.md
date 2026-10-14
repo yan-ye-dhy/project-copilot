@@ -461,7 +461,7 @@ feat(agent): require approval for idempotent ticket creation
 
 这些是建议，不是已存在的历史。原仓库不整理或提交；新项目由用户在Codex指导下亲自提交、推送约定GitHub仓库/分支，失败如实报告，不强推或重写历史。未配置远端时先记录待同步并获取实际地址，不猜测仓库。每个完整模块验收后可交给ChatGPT新开学习窗口，如“Project Copilot · Dense RAG”“Project Copilot · 检索评测与优化”“Project Copilot · LangGraph与工单确认”。
 
-## 10. 当前开发进度：D4，单文件Dense索引与检索
+## 10. 当前开发进度：D5，结构化问答与引用
 
 **D1已完成：** 工程、自动验收、ChatGPT学习和用户手测完成；2026-10-12只读核实用户提交的 `4c04a29` 已同步GitHub，A/B均完成，见 [D1报告](reports/DAY_1.md)。用户已明确开启D2。
 
@@ -470,6 +470,8 @@ feat(agent): require approval for idempotent ticket creation
 **D3阶段A/B均完成。** 开始时本地main与origin/main同步在D2补记提交`1602f5f`，工作区干净。实现三格式单文件读取、按页750/150递归切分、内容哈希与稳定UUID、空结果/错误处理及离线查看脚本。全量101项测试通过；PDF真实三页和中文长度有离线证据。因原`langchain-community`已[停止维护](https://github.com/langchain-ai/langchain-community/issues/674)，读取采用标准库与同款PDFium薄适配，切分保留独立成熟组件；参考来源、实际版本和边界见 [D3报告](reports/DAY_3.md)。D3开发提交`45e74c02eef257f85e4360c2e14213fd82a8237d`已由用户推送，2026-10-13核实GitHub main与本地一致。同日用户亲自完成TXT/MD/PDF、稳定标识、15/3参数、空文件及15/15非法配置七项手测，Codex读取输出核对；用户确认已完成ChatGPT学习，能解释调用链、PDF页码及标识变化。本日没有调用收费模型或索引文件；本次微调仅更新文档，不重新实施D1–D3。
 
 **D4阶段A/B均完成。** 新增官方Qdrant SDK薄适配、完整Dense配置指纹、单文件入库/检索服务、成功清单与CLI；沿用D2/D3实现，不初始化BM25。开发期165项离线测试通过，真实Docker Qdrant1.19.2的HTTP存储测试另通过1项，2次授权Embedding请求完成最小索引/检索。用户已推送4349c106030649eeeeee92fc747b04664ecb8bd0；2026-10-14亲自完成保护开关、容器/就绪、集合配置、真实入库、精确计数、检索及清单配置冲突拒绝8个环节，并确认已完成ChatGPT学习、能解释调用链与两类HTTP服务。用户手测的2次模型请求独立于开发期2次，实际结果和边界见 [D4报告](reports/DAY_4.md)。
+
+**D5实现与自动验证完成，完整阶段A/B待用户交接。** 用户于2026-10-14明确开启D5；开始时核实D4收尾提交`061864bea22a54026f001c038cd272e2e8ca6da1`已同步main，工作区干净。新增显式DeepSeek客户端、固定Zero-shot消息、编号上下文、JSON/Pydantic契约、后端引用映射、`POST /rag/ask`及单条live脚本；全量358项离线测试通过，1项外部Qdrant测试默认跳过。用户配置新项目密钥并恢复Docker后，2次明确授权调用完成真实HTTP200问答，已知事实与PDF页0原文/元数据匹配，原集合精确count仍2，临时后端已关闭。没有增加依赖或改变D4索引配置；Git由用户操作，学习/手测尚未登记，见 [D5报告](reports/DAY_5.md)。
 
 历史Codex验收（2026-10-10）：9组离线配置/生命周期检查通过；默认及修改配置后的真实健康请求均HTTP200；OpenAPI业务路径只有 `/health`；锁定环境检查无需改动。失败的离线安装与沙箱监听尝试也记录在 [开发日志](DEVELOPMENT_LOG.md)，本轮未重跑这些检查。
 
@@ -487,7 +489,7 @@ git rev-parse --show-toplevel
 git status --short
 ```
 
-默认返回 `{"status":"ok","service":"Project Copilot","environment":"development"}`。D1命令保留为历史复现参考。D4开发代码、学习和手测已完成，本次验收补记仍待用户亲自提交、推送；用户明确要求后才进入D5，35日逐日安排保持不变。
+默认返回 `{"status":"ok","service":"Project Copilot","environment":"development"}`。D1命令保留为历史复现参考。D4验收补记已由用户推送061864b；本次仅实施用户开启的D5，35日逐日安排保持不变，不自动进入D6。
 
 ## 11. 最终验收和可选裁剪
 

@@ -43,3 +43,11 @@
 3. **如何证明Dense链路可用，又避免夸大效果？** 165项离线测试检查SDK请求/身份/失败契约；另1项Docker HTTP测试用假二维向量验证真实存储；2次授权模型请求才验证真实2048维索引与一个问题。这些层级分开记录，没有冻结评测集时不报告Recall/MRR；更换模型/维度/切分要新集合及新实验版本。
 
 依据：[Qdrant适配](../src/project_copilot/infrastructure/qdrant.py)、[入库服务](../src/project_copilot/rag/ingestion.py)、[真实HTTP测试](../tests/test_qdrant_integration.py)和 [D4报告](reports/DAY_4.md)。回答思路尚待用户通过ChatGPT学习并结合自己的手测复述。
+
+## D5：消息模板、回答契约与引用
+
+1. **为什么区分System和User，当前属于Zero-shot还是Few-shot？** 固定System声明角色、证据和输出规则，问题/检索数据在User里一次绑定；没有具体任务输入及标准输出示例，字段骨架仍是Zero-shot。角色分离降低数据被直接提升为高权限指令的风险，但完整注入防护效果尚待D19测试。
+2. **JSON mode和Pydantic有什么不同？** 前者让模型输出JSON格式；后者继续拒绝缺字段、额外字段、非法类型/状态和不合规则的引用列表。再检查编号指向本次实际发送的片段，最后还要判断事实支持；这四层不能互相替代。
+3. **怎样防止模型编造来源，又保证实验可追溯？** 模型只给引用编号，后端映射原文、稳定chunk ID、文件名和真实页索引；不让模型重新生成元数据。响应另记录Prompt/Schema指纹、Dense版本、请求/实际模型和可用usage；D10再冻结完整基线配置，不把单条样例当效果评测。
+
+依据：[消息与回答编排](../src/project_copilot/rag/answering.py)、[Schema](../src/project_copilot/schemas/rag.py)、[离线契约测试](../tests/test_answering.py)和 [D5报告](reports/DAY_5.md)。D5学习与用户手测待完成，不能将这些回答思路登记为已掌握。

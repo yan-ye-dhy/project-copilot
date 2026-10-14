@@ -1,6 +1,6 @@
 # Project Copilot
 
-基于RAG与LangGraph的研发知识及工单协作智能体。D1–D4阶段A/B已完成；D4实现单文件Embedding→独立Qdrant Dense入库与检索、成功清单及CLI。开发期165项离线测试、1项真实HTTP存储测试和两次授权Embedding联调通过；用户已推送4349c10，随后亲自完成8个手测环节并确认ChatGPT学习与理解。回答生成与业务Agent按后续计划实现。
+基于RAG与LangGraph的研发知识及工单协作智能体。D1–D4阶段A/B已完成。D5接入DeepSeek结构化问答、带来源的上下文与真实引用映射，358项离线测试及两次授权调用的真实HTTP问答验收通过；用户Git提交/推送及学习手测待完成，见 [D5报告](docs/reports/DAY_5.md)。业务Agent按后续计划实现。
 
 协作流程见 [长期协作规则](docs/COLLABORATION_RULES.md)：Codex开发、自动验证、提供报告并指导Git操作；用户亲自提交和推送GitHub，随后通过ChatGPT学习代码/架构，学习后主动要求Codex开始手动测试。以下命令是自助运行参考，Codex仅在用户要求后单步带练。
 
@@ -26,7 +26,7 @@ curl --fail http://127.0.0.1:8002/health
 {"status":"ok","service":"Project Copilot","environment":"development"}
 ```
 
-API文档位于 `http://127.0.0.1:8002/docs`。`/health`只表示当前应用能响应，不检查模型、Qdrant或PostgreSQL就绪状态；D4索引与检索通过独立CLI验证。
+API文档位于 `http://127.0.0.1:8002/docs`。`/health`只表示当前应用能响应，不检查模型、Qdrant或PostgreSQL就绪状态；D4索引与检索通过独立CLI验证，D5问答入口为`POST /rag/ask`。
 
 ## 配置与D1练习
 
@@ -49,6 +49,7 @@ PROJECT_COPILOT_APP_NAME="Copilot Learning" uv run --frozen uvicorn project_copi
 - [D2开发报告与模型验证状态](docs/reports/DAY_2.md)
 - [D3开发报告与文档切分验收](docs/reports/DAY_3.md)
 - [D4开发报告与真实Dense索引验收](docs/reports/DAY_4.md)
+- [D5开发报告与结构化问答交接](docs/reports/DAY_5.md)
 - [三方协作与8项开发报告规范](docs/COLLABORATION_RULES.md)
 - [开发计划](docs/DEVELOPMENT_PLAN.md)
 - [参考审计](docs/REFERENCE_AUDIT.md)
@@ -121,3 +122,28 @@ PROJECT_COPILOT_RUN_QDRANT_INTEGRATION=1 uv run --frozen python -m pytest -q tes
 ```
 
 普通`uv run --frozen python -m pytest -q`仍是离线测试，默认跳过这项外部服务测试。实际命令、结果与边界见D4报告。
+
+## D5：基于检索证据的结构化问答
+
+问答复用D4集合及成功清单，不再次入库。固定System消息描述角色、证据和JSON契约；问题与编号、来源、页索引、原文作为User消息中的JSON数据绑定。默认Zero-shot，格式骨架不是具体任务的输入/输出示例；Few-shot效果对照留D19。
+
+新项目`.env`另配置`PROJECT_COPILOT_DEEPSEEK_API_KEY`，无此key仍可启动health。默认`deepseek-flash`、temperature0、max_tokens1024、timeout30秒，显式关闭thinking与SDK自动重试。2026-10-14核验的[当前模型](https://api-docs.deepseek.com/quick_start/pricing/)为V4.1-Flash；旧`deepseek-chat/reasoner`已[退役](https://api-docs.deepseek.com/news/news260424/)，不作为新默认值。保留请求别名与实际返回模型，别名不能保证云端实现永久不变。
+
+以下供学习后复现参考；有效问答通常包含一次查询Embedding和一次DeepSeek生成，HTTP入口没有CLI的`--live`参数，发送POST即发起真实业务请求：
+
+```bash
+curl --noproxy 127.0.0.1 --fail --silent --show-error \
+  http://127.0.0.1:8002/rag/ask \
+  -H 'Content-Type: application/json' \
+  --data '{"question":"样本文档第一页描述了什么功能？"}'
+# 同一固定问题的CLI参考；两种入口择一使用，避免重复收费
+uv run --frozen python scripts/rag_smoke.py --live
+```
+
+返回`status/answer/citations`、实际发送的证据数量、Prompt/Schema指纹、Dense索引版本及模型参数/可用usage。引用的`text/metadata`由后端从本次证据取出，PDF的page仍从0开始。没有可用证据时返回`insufficient_evidence`，不调用聊天模型，generation为null；供应商未提供usage时也用null，不填假0。
+
+上下文按检索顺序使用完整片段，按chunk ID去重，累计原文最多6000字符；不截断单片段，超出剩余预算则跳过并继续，重新从1编号。这个字符预算不等于输入token上限。模型只能返回status、answer、citation_numbers；JSON重复字段、非法Schema和本次上下文之外的编号会被拒绝，不自动修复或重试。无效问题HTTP422，配置/清单错误503，上游请求或结果错误502；日志只记录错误类型。
+
+[JSON Output](https://api-docs.deepseek.com/guides/json_mode/)约束JSON格式，本地Pydantic继续检查字段与引用。有效编号只证明引用身份，不证明答案事实正确；证据支持率、弱证据/注入防护及Prompt对照按D19验收。D5没有新增依赖、上传、历史会话或前端。
+
+2026-10-14 Codex自动启动后端并发送一次真实POST，HTTP200返回“第一页描述了本地文档加载功能”，引用来自`sample.pdf`页索引0，原文与D3元数据匹配；只复用原有2点索引，随后关闭自动启动的后端。DeepSeek返回输入358、输出24、总计382 tokens；Embedding usage及实际账单未采集。这是一个已知样本的工程验收，不是冻结数据集效果评测，也不替代用户D5手测。

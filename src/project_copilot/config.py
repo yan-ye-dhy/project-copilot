@@ -12,7 +12,7 @@ ENV_FILE = PROJECT_ROOT / ".env"
 
 
 class Settings(BaseSettings):
-    """应用、智谱与独立Dense索引配置；导入时不连接外部服务。"""
+    """应用、模型与独立Dense索引配置；导入时不连接外部服务。"""
 
     model_config = SettingsConfigDict(
         env_file=ENV_FILE,
@@ -35,6 +35,13 @@ class Settings(BaseSettings):
     embedding_batch_size: int = Field(default=64, ge=1, le=64)
     zhipu_timeout_seconds: float = Field(default=20.0, gt=0, le=120, allow_inf_nan=False)
 
+    deepseek_api_key: SecretStr | None = None
+    deepseek_base_url: HttpUrl = "https://api.deepseek.com"
+    deepseek_model: Literal["deepseek-flash", "deepseek-v4-pro"] = "deepseek-flash"
+    deepseek_timeout_seconds: float = Field(default=30.0, gt=0, le=120, allow_inf_nan=False)
+    deepseek_temperature: float = Field(default=0.0, ge=0, le=2, allow_inf_nan=False)
+    deepseek_max_tokens: int = Field(default=1024, ge=1, le=4096)
+
     qdrant_url: HttpUrl = "http://127.0.0.1:6433"
     qdrant_collection_name: str = Field(
         default="pc_knowledge_dense_v0", pattern=r"^pc_[A-Za-z0-9_-]+$", max_length=120
@@ -50,6 +57,15 @@ class Settings(BaseSettings):
             raise ValueError("智谱base URL必须使用HTTPS")
         if value.username or value.password or value.query or value.fragment:
             raise ValueError("智谱base URL不能包含凭据、查询参数或片段")
+        return value
+
+    @field_validator("deepseek_base_url")
+    @classmethod
+    def validate_deepseek_base_url(cls, value: HttpUrl) -> HttpUrl:
+        if value.scheme != "https":
+            raise ValueError("DeepSeek base URL必须使用HTTPS")
+        if value.username or value.password or value.query or value.fragment:
+            raise ValueError("DeepSeek base URL不能包含凭据、查询参数或片段")
         return value
 
     @field_validator("qdrant_url")

@@ -1,4 +1,4 @@
-"""FastAPI最小入口：配置在启动时加载，当前仅开放健康接口。"""
+"""FastAPI入口：配置在启动时加载，问答客户端在请求时创建。"""
 
 import logging
 from collections.abc import AsyncIterator
@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 
+from project_copilot.api.rag import router as rag_router
 from project_copilot.config import Settings, load_settings
 
 
@@ -25,6 +26,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             logger.info("Stopping %s", application.state.settings.app_name)
 
     application = FastAPI(title="Project Copilot", version="0.1.0", lifespan=lifespan)
+    application.include_router(rag_router)
 
     @application.get("/health", tags=["health"])
     async def health(request: Request) -> dict[str, str]:

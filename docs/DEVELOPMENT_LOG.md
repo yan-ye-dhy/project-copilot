@@ -311,3 +311,48 @@ SDK自动重试关闭，本轮未执行批量真实请求；with已关闭该模�
 覆盖边界：此次没有重新执行165项离线或1项HTTP测试，没有另行验证服务端集合维度拒绝、全部原始向量数值、多进程并发/完整故障恢复或Recall/MRR。它验证的是给定样本的手动工程链路；历史自动证据保留，不扩大为用户本次验收。
 
 本次仅更新README、开发计划、开发日志、学习笔记和D4报告这5份文档；业务源码、测试、依赖与35日任务/预算未变，未由Codex新增模型请求，手测数据仍不提交。验收补记待用户亲自提交、推送，不自动进入D5。
+
+## D5：DeepSeek结构化问答与引用（2026-10-14）
+
+**当前状态：代码、离线及最小真实自动验收完成；完整阶段A/B待用户交接。** 用户明确开启D5；开始时本地main/origin/main和只读核实的GitHub main均为D4收尾提交`061864bea22a54026f001c038cd272e2e8ca6da1`，工作区干净，D1–D4阶段A/B已完成。用户随后要求继续完成，本轮范围仍仅D5。
+
+### 实际实现与来源
+
+新增显式DeepSeek对话客户端、可选独立密钥/参数、固定System与User消息、编号上下文、JSON/Pydantic回答契约、从本次证据映射的引用、`POST /rag/ask`及一条固定问题的live脚本；复用D4 DenseRetriever、成功清单和现有索引。没有新增依赖、修改D3/D4身份或索引配置，也未实现上传、历史会话、评分、改写或重排。
+
+原项目`graph.py:33`、`nodes/generation.py:24`、`utils/utility.py:106`分别用于参考非推理参数、消息构造与证据编号；不直接移植原context注入System的提示词。新Schema、引用映射、消息数据边界、预算/指纹及HTTP编排自主设计。逐段教学与调用链交ChatGPT，交接见 [D5报告](reports/DAY_5.md)和 [学习笔记](STUDY_NOTES.md#d5检索证据到结构化回答)。
+
+2026-10-14核验[官方当前模型与价格](https://api-docs.deepseek.com/quick_start/pricing/)、[退役公告](https://api-docs.deepseek.com/news/news260424/)、[非推理开关](https://api-docs.deepseek.com/guides/thinking_mode/)及[JSON Output](https://api-docs.deepseek.com/guides/json_mode/)：默认使用deepseek-flash，显式thinking.disabled、temperature0、max_tokens1024、timeout30秒、max_retries0、json_object。请求别名与实际返回模型分别记录；只靠JSON mode不能保证Schema正确或证据支持。
+
+### Codex实际自动验证
+
+工作目录为新项目。离线测试使用真实已安装的OpenAI SDK2.54.0及MockTransport，或记录调用的测试替身；没有把模拟回答/向量登记为真实模型结果。
+
+| 命令/检查 | 实际结果与范围 |
+| --- | --- |
+| `.venv/bin/python -m pytest tests/test_chat_models.py tests/test_models.py -q` | 初次180通过；兼容性修复后192通过。检查消息/JSON参数、显式非推理、零重试、脱敏错误、usage及资源关闭；原Embedding行为回归 |
+| `.venv/bin/python -m pytest -q`，补齐回答测试前 | 280通过、1默认跳过；不是最终总数 |
+| `timeout 30s .venv/bin/python -m pytest tests/test_answering.py tests/test_rag_smoke.py -q` | 42通过；消息数据边界、回答契约、预算/编号、空证据、错误与CLI gate |
+| 默认沙箱中的同步HTTP测试及8秒faulthandler诊断 | 线程池与事件循环唤醒等待，超时退出124；没有登记通过，模型均为假传输。允许本机运行权限后测试正常结束 |
+| `timeout 45s .venv/bin/python -m pytest -q`，第一次允许本机权限 | 357通过、1失败、1跳过。失败为测试直接在新版FastAPI application.routes查找被include的路由，实际POST已200；改为保留真实HTTP/OpenAPI契约断言 |
+| 同一45秒全量命令，修复后 | **358通过、1跳过，4.83秒**。真实SDK→D4检索编排→D5回答→ASGI响应的离线全链路及异常资源关闭通过；外部Qdrant测试默认跳过 |
+| 只读配置/清单检查 | 不打印密钥值；已有成功清单1份PDF、2块。初查无DeepSeek字段；用户按指导保存后确认可加载，默认flash/max_tokens1024 |
+| `curl --noproxy 127.0.0.1 --fail --silent --show-error http://127.0.0.1:6433/readyz`；`docker compose --env-file .env.example ps` | 准备阶段curl退出7、服务不可达；docker命令报Input/output error退出126。等待Windows Docker Desktop/WSL集成恢复，不据D4历史状态推断当前服务可用 |
+
+主链的结构验收不证明事实支持或效果指标。D5提供Prompt/Schema与上下文规则指纹，完整基线冻结仍留D10；Few-shot效果、弱证据/注入与Prompt对照留D19，不挤占D6上传或增加天数。
+
+### 真实验收授权与交接状态
+
+用户已明确授权本次**1次查询Embedding＋1次DeepSeek生成**，复用已有PDF，不重入库、不自动重试。按Embedding≤1000输入tokens、DeepSeek约3000输入/最多1024输出tokens、Flash峰时缓存未命中价估算约¥0.0005＋US$0.0022；这是事前预算估算，不是实付。这次授权已用于下列自动验收，不扩展为后续批量或用户手测的无限授权。
+
+用户在新项目`.env`保存DeepSeek key，Codex仅核对能否加载，不输出真实值；`.env.example`为模板，不自动覆盖已有`.env`。指导Windows Docker Desktop启动与WSL集成属于开发环境准备，不登记为用户已完成D5功能手测。
+
+Docker恢复后Codex执行`docker compose --env-file .env.example up -d qdrant`启动现有项目容器，readyz成功；没有删除集合或volume。使用临时脚本`timeout 100s .venv/bin/python /tmp/project-copilot-d5-live-check.py`（不作为仓库交付文件），先确认8002未占用、启动Uvicorn并GET health200，再只发送一次POST `/rag/ask`：`{"question":"样本文档第一页描述了什么功能？"}`。返回HTTP200/answered，答案为“样本文档第一页描述了本地文档加载功能。”；实际发送2块，1条引用number1指向sample.pdf页0，原文`Project Copilot page one: local document loading.`，UUID/全部metadata与D3样本匹配。Codex核对的是这一条已知事实，不把它当人工冻结gold评测。
+
+真实问答耗时1.606秒，请求及实际返回model均为deepseek-flash；usage为prompt358/completion24/total382、cache_hit0/cache_miss358。供应商未在本层采集Embedding usage，实际账单未查询，不从估算冒充实付。Prompt为rag-answer-v1，fingerprint为`83971da601780ea5a5f5e6e4b45f11d952cb261e50d7275a1efb38494a46a9ea`，回答Schema哈希为`ded2c45bf4b0dcd4888884ad1ff1bcbc729a1846ee0977ec90e7dfdd903c5941`。
+
+验收后POST Qdrant points/count exact=true得到count2，原成功清单/索引不重建。临时Uvicorn PID9184通过SIGINT正常停止，日志含startup/health200/ask200/shutdown complete；Qdrant容器保留运行。自动输出位于被Git忽略的`data/d5-auto/`，无密钥或完整向量，不提交运行数据。本轮没有额外执行live CLI或第三次模型请求。
+
+Git尚未暂存、提交或推送，由用户亲自操作；固定8项报告已生成。ChatGPT学习、D5手测及理解确认待用户主动开启，完整阶段A/B仍未完成，不自动开发D6。
+
+收尾：`UV_CACHE_DIR=/tmp/project-copilot-d4-uv-cache UV_PYTHON_DOWNLOADS=never uv sync --locked --offline --check`成功，58个包无需改动；13份Python AST、15份Markdown围栏、88处本地链接/锚点、8项报告、20个提交候选的行尾/换行及真实凭据扫描通过，未输出任何密钥值。`git diff --check`无输出，`.env`/`data/d5-auto/`被忽略，无新增依赖/锁文件改动；没有因文档收尾重复运行已通过的业务或模型验收。
