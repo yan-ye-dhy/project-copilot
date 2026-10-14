@@ -2,7 +2,7 @@
 
 编写日期：2026-10-09。项目：**基于 RAG 与 LangGraph 的研发知识及工单协作智能体**。
 
-本计划遵循用户的 V4 总指令，并根据并行系统学习与面试准备的安排于2026-10-09修订：34个主任务日＋1个可前移弹性日，每日项目投入1.5～2.5小时。已完成审计单列为前置成果。按 [三方协作规则](COLLABORATION_RULES.md)，D1/D2阶段A/B均完成；2026-10-12用户明确开启D3。D3读取/切分及101项离线回归已有提交45e74c0，2026-10-13用户七项手测通过并确认学习理解，阶段A/B均完成；同日仅微调后续Prompt、Agent/MCP学习与指标口径，35日结构不变。实际进度见第10节及 [开发日志](DEVELOPMENT_LOG.md)。参考证据、阶段0 Git状态与测试边界见 [REFERENCE_AUDIT.md](REFERENCE_AUDIT.md)。原仓库中的旧计划保留为历史资料，后续新项目以本文件为准。
+本计划遵循用户的 V4 总指令，并根据并行系统学习与面试准备的安排于2026-10-09修订：34个主任务日＋1个可前移弹性日，每日项目投入1.5～2.5小时。已完成审计单列为前置成果。按 [三方协作规则](COLLABORATION_RULES.md)，D1–D3阶段A/B均完成，D3收尾及后续Prompt/Agent/MCP计划微调已由用户推送f50abd4，35日结构不变。2026-10-13用户明确开启D4；单文件真实Dense索引与检索的自动验收完成，Git交接、ChatGPT学习及用户手测待完成。实际进度见第10节及 [开发日志](DEVELOPMENT_LOG.md)。参考证据、阶段0 Git状态与测试边界见 [REFERENCE_AUDIT.md](REFERENCE_AUDIT.md)。原仓库中的旧计划保留为历史资料，后续新项目以本文件为准。
 
 ## 1. 工作区现状与开发边界
 
@@ -461,13 +461,15 @@ feat(agent): require approval for idempotent ticket creation
 
 这些是建议，不是已存在的历史。原仓库不整理或提交；新项目由用户在Codex指导下亲自提交、推送约定GitHub仓库/分支，失败如实报告，不强推或重写历史。未配置远端时先记录待同步并获取实际地址，不猜测仓库。每个完整模块验收后可交给ChatGPT新开学习窗口，如“Project Copilot · Dense RAG”“Project Copilot · 检索评测与优化”“Project Copilot · LangGraph与工单确认”。
 
-## 10. 当前开发进度：D3，文档读取与切分
+## 10. 当前开发进度：D4，单文件Dense索引与检索
 
 **D1已完成：** 工程、自动验收、ChatGPT学习和用户手测完成；2026-10-12只读核实用户提交的 `4c04a29` 已同步GitHub，A/B均完成，见 [D1报告](reports/DAY_1.md)。用户已明确开启D2。
 
 **D2阶段A/B均完成；用户三项手测通过，并确认已完成ChatGPT学习、能说明主要调用链。** 新增智谱客户端、可选密钥/模型配置、单条smoke脚本及请求契约测试；使用独立安装的OpenAI兼容SDK，参考原适配的原文本、float、batch64参数，自行实现响应校验和资源关闭。全量68项离线测试通过，含无key的健康接口回归。用户在新项目.env保存密钥后，Codex单次调用embedding-3返回1条2048维向量；包含float参数的请求和数值/index/维度校验成功。该实调与后续用户亲自运行的成功请求分别记录，均未验证完整Qdrant链路。用户提交 `e63d310` 已推送main；手测的开关保护、单条真实请求和空白密钥拒绝均符合预期，见 [D2报告](reports/DAY_2.md)。
 
 **D3阶段A/B均完成。** 开始时本地main与origin/main同步在D2补记提交`1602f5f`，工作区干净。实现三格式单文件读取、按页750/150递归切分、内容哈希与稳定UUID、空结果/错误处理及离线查看脚本。全量101项测试通过；PDF真实三页和中文长度有离线证据。因原`langchain-community`已[停止维护](https://github.com/langchain-ai/langchain-community/issues/674)，读取采用标准库与同款PDFium薄适配，切分保留独立成熟组件；参考来源、实际版本和边界见 [D3报告](reports/DAY_3.md)。D3开发提交`45e74c02eef257f85e4360c2e14213fd82a8237d`已由用户推送，2026-10-13核实GitHub main与本地一致。同日用户亲自完成TXT/MD/PDF、稳定标识、15/3参数、空文件及15/15非法配置七项手测，Codex读取输出核对；用户确认已完成ChatGPT学习，能解释调用链、PDF页码及标识变化。本日没有调用收费模型或索引文件；本次微调仅更新文档，不重新实施D1–D3。
+
+**D4开发及自动验收完成；阶段A待用户Git交接，阶段B待ChatGPT学习与主动手测。** 新增官方Qdrant SDK薄适配、完整Dense配置指纹、单文件入库/检索服务、成功清单与CLI；沿用D2/D3实现，不初始化BM25。165项离线测试通过，真实Docker Qdrant1.19.2的HTTP存储测试另通过1项。用户明确授权2次最小Embedding请求；实际嵌入样本PDF的2个片段及1个问题，保存2048维命名Dense向量、Cosine及完整原文metadata，检索返回页0/2，清单与片段身份相符。自动证据不等于用户学习或手测，详见 [D4报告](reports/DAY_4.md)。
 
 历史Codex验收（2026-10-10）：9组离线配置/生命周期检查通过；默认及修改配置后的真实健康请求均HTTP200；OpenAPI业务路径只有 `/health`；锁定环境检查无需改动。失败的离线安装与沙箱监听尝试也记录在 [开发日志](DEVELOPMENT_LOG.md)，本轮未重跑这些检查。
 
@@ -485,7 +487,7 @@ git rev-parse --show-toplevel
 git status --short
 ```
 
-默认返回 `{"status":"ok","service":"Project Copilot","environment":"development"}`。D1命令保留为历史复现参考。D3学习与手测已完成；本次计划微调及验收记录仍待用户亲自提交、推送。用户明确要求后才进入D4，D4逐日任务保持原文不变。
+默认返回 `{"status":"ok","service":"Project Copilot","environment":"development"}`。D1命令保留为历史复现参考。D3学习、手测及收尾文档推送已完成；D4当前待用户Git交接和学习，手测等用户主动要求后再逐步指导。D4阶段A/B完成且用户明确要求后才进入D5，35日逐日安排保持不变。
 
 ## 11. 最终验收和可选裁剪
 

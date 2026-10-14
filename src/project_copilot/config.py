@@ -12,7 +12,7 @@ ENV_FILE = PROJECT_ROOT / ".env"
 
 
 class Settings(BaseSettings):
-    """应用与智谱配置；缺少模型密钥时仍可启动健康接口。"""
+    """应用、智谱与独立Dense索引配置；导入时不连接外部服务。"""
 
     model_config = SettingsConfigDict(
         env_file=ENV_FILE,
@@ -35,6 +35,14 @@ class Settings(BaseSettings):
     embedding_batch_size: int = Field(default=64, ge=1, le=64)
     zhipu_timeout_seconds: float = Field(default=20.0, gt=0, le=120, allow_inf_nan=False)
 
+    qdrant_url: HttpUrl = "http://127.0.0.1:6433"
+    qdrant_collection_name: str = Field(
+        default="pc_knowledge_dense_v0", pattern=r"^pc_[A-Za-z0-9_-]+$", max_length=120
+    )
+    qdrant_timeout_seconds: float = Field(default=10.0, gt=0, le=120, allow_inf_nan=False)
+    manifest_dir: Path = PROJECT_ROOT / "data" / "manifests"
+    rag_top_k: int = Field(default=5, ge=1, le=100)
+
     @field_validator("zhipu_base_url")
     @classmethod
     def validate_zhipu_base_url(cls, value: HttpUrl) -> HttpUrl:
@@ -43,6 +51,24 @@ class Settings(BaseSettings):
         if value.username or value.password or value.query or value.fragment:
             raise ValueError("智谱base URL不能包含凭据、查询参数或片段")
         return value
+
+    @field_validator("qdrant_url")
+    @classmethod
+    def validate_qdrant_url(cls, value: HttpUrl) -> HttpUrl:
+        if value.username or value.password or value.query or value.fragment:
+            raise ValueError("Qdrant URL不能包含凭据、查询参数或片段")
+        return value
+
+    @field_validator("manifest_dir")
+    @classmethod
+    def validate_manifest_dir(cls, value: Path) -> Path:
+        # uv可从其他目录执行，清单位置始终以新项目根目录为参照。
+        expanded = value.expanduser()
+        resolved = (expanded if expanded.is_absolute() else PROJECT_ROOT / expanded).resolve()
+        reference_root = PROJECT_ROOT.parent / "conversational-agent-langchain"
+        if resolved.is_relative_to(reference_root.resolve()):
+            raise ValueError("成功清单不能写入只读参考项目")
+        return resolved
 
 
 def load_settings(*, env_file: Path | None = ENV_FILE) -> Settings:

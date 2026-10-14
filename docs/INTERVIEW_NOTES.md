@@ -35,3 +35,11 @@
 3. **PDF页码如何保证引用可追溯？** 读取时保留0起始真实页索引及空白页，逐页切分不跨页合并。三页自编PDF仅页0/2产生片段，但后者仍是页2；TXT/MD用None，不虚构页0。没有OCR，图像式PDF可能明确返回无文本。
 
 依据：[读取与切分测试](../tests/test_documents.py)、[离线查看脚本测试](../tests/test_document_cli.py)和 [D3报告](reports/DAY_3.md)。当前尚未证明检索或回答效果。
+
+## D4：Dense索引的工程边界
+
+1. **向量库保存了什么，如何找回来源？** 集合定义named dense/2048维/Cosine；每个Point用D3 chunk UUID作ID，向量用于相似检索，payload保存原文与metadata。问题也由同一模型嵌入，过滤当前版本和完成文档后返回top-k证据；实际样本保留PDF页0/2，不能把Cosine score当正确率。
+2. **为什么写入完成后还要保存清单？** Qdrant completed只证明点写入，清单表示该文档已由应用登记完成。原子替换避免半份JSON；保存失败可能留下点，但新文档不进入成功范围。顺序单进程、稳定ID覆盖与跨存储事务/并发恢复是不同保证，后两者不能宣称D4已完成。
+3. **如何证明Dense链路可用，又避免夸大效果？** 165项离线测试检查SDK请求/身份/失败契约；另1项Docker HTTP测试用假二维向量验证真实存储；2次授权模型请求才验证真实2048维索引与一个问题。这些层级分开记录，没有冻结评测集时不报告Recall/MRR；更换模型/维度/切分要新集合及新实验版本。
+
+依据：[Qdrant适配](../src/project_copilot/infrastructure/qdrant.py)、[入库服务](../src/project_copilot/rag/ingestion.py)、[真实HTTP测试](../tests/test_qdrant_integration.py)和 [D4报告](reports/DAY_4.md)。回答思路尚待用户通过ChatGPT学习并结合自己的手测复述。

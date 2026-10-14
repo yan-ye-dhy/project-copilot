@@ -243,3 +243,44 @@ SDK自动重试关闭，本轮未执行批量真实请求；with已关闭该模�
 本次全部离线，没有读取真实.env、调用模型、连接Qdrant或启动API，也未重跑历史101项自动测试。同名不同内容、重复位置、跨进程身份、非法UTF-8、损坏PDF、错误路径、空MD/PDF及禁止模型调用的检查仍为开发期自动验证，不登记为用户本次手测；PDF文字层不扩展为OCR验收。
 
 本次只补记README、开发计划、开发日志、学习笔记和D3报告，并保留此前35日计划微调。代码/测试/依赖未修改，手测数据不提交；这五份文档尚待用户亲自暂存、提交和推送。
+
+## D4：单文件真实Dense索引与检索（2026-10-13）
+
+**状态：代码及自动验收完成；阶段A待用户Git交接，阶段B待ChatGPT学习及主动手测。** 开始前用户已亲自提交、推送D3收尾及计划微调 [f50abd48a21edcc65cca76a46aa4007534467d8d](https://github.com/yan-ye-dhy/project-copilot/commit/f50abd48a21edcc65cca76a46aa4007534467d8d)，Codex核实GitHub main、本地HEAD/origin/main一致且工作区干净。用户随后明确开启D4；沿用D2/D3，不修改原项目或既有加载/切分/Embedding实现。
+
+新增Qdrant官方SDK适配、DenseIndexSpec/成功清单/检索证据契约、ingestion/retrieval服务、单文件CLI、最小Compose和四份测试。客户端实际锁定1.19.1，新增9个锁定依赖项（含Windows条件包），Linux实际新增8个依赖包，原有锁定版本未变；共Resolved61、Checked58。Compose固定qdrant/qdrant:v1.19.2，project-copilot专属network/volume，宿主仅绑定127.0.0.1:6433。
+
+参考原vdb.py集合存在/余弦创建与retriever.py top-k接口；官方SDK提供存储基础设施，新项目设计向量/片段绑定、成功清单、双版本及检索编排。没有导入原包、初始化BM25或FastEmbed，也没有上传/问答接口。D3 metadata和UUID完整保留，另以dense_index_version标识模型/维度/切分等配置。
+
+当前清单仅支持顺序单进程。先核对已有清单/集合兼容，再发Embedding，Qdrant确认completed后原子保存；失败不返回入库成功。检索使用成功文档和Dense版本双过滤，再核对具体chunk ID、内容哈希及切分版本；稳定ID避免重复点，不意味着重复嵌入免费或已经实现跨存储事务。完整恢复、并发及效果评测按原后续任务推进。
+
+### 自动验证与真实服务
+
+| 实际命令/检查 | 执行者及结果 |
+| --- | --- |
+| `timeout 45s .venv/bin/python -m pytest -q` | Codex：165 passed, 1 skipped in4.41s；165项全离线，默认跳过HTTP服务测试 |
+| Qdrant适配测试 / pipeline+CLI测试 | 协作代理：34 passed in0.48s / 30 passed in2.16s；真实SDK配假传输或本地模式，不计作服务器实调 |
+| `PROJECT_COPILOT_RUN_QDRANT_INTEGRATION=1 .venv/bin/python -m pytest -q tests/test_qdrant_integration.py` | Codex：1 passed in0.76s；真实Docker HTTP、假二维向量，验证原文/页0和2/成功范围/重复覆盖/配置拒绝；随机pc_test_集合已清理 |
+| `UV_CACHE_DIR=/tmp/project-copilot-d4-uv-cache UV_PYTHON_DOWNLOADS=never uv sync --locked --offline --check` | Codex：退出0，Resolved61、Checked58、Would make no changes |
+| Compose配置、启动及HTTP就绪 | Codex：Docker Engine29.6.1，Compose5.3.0；`config --quiet`通过，`up -d qdrant`成功；实际服务1.19.2，`/readyz`返回200 |
+
+初始WSL未启用Docker集成；用户明确表示将开启Docker Desktop/WSL Integration，之后实际可用。沙箱中的socket与uv网络限制经必要执行授权解决，未通过新建其他项目或操作旧服务绕过。曾为备用验收下载官方v1.19.2二进制并核对SHA-256，最终无需运行，真实验收全部使用新Compose容器。
+
+### 两次明确授权的模型联调
+
+按计划8.3先说明2次请求范围及官方价0.5元/百万输入tokens，以1000 tokens估算约0.0005元；用户明确同意仅2次最小Embedding验收。未读取/打印.env原文，应用只使用新项目自身配置，SDK自动重试关闭。
+
+实际命令均使用临时uv缓存及`uv run --frozen python scripts/dense_index.py`，输出重定向到Git忽略的`data/d4-auto/`：
+
+| 子命令与输入 | 实际结果 |
+| --- | --- |
+| `ingest tests/fixtures/documents/sample.pdf --live` | 退出0；1次普通请求嵌入2片段，pc_knowledge_dense_v0写入2点并保存完成清单；0.6295秒 |
+| `search "local document loading" --live` | 退出0；第二次请求嵌入1个问题；top_k5实际返回2条，首条原文为Project Copilot page one: local document loading.，页0相关度0.71600187，页2为0.44767696；0.5442秒 |
+
+随后只读核对集合/已存Point/清单：唯一named dense、Cosine、无sparse；两个向量实际长度均2048且有限，原文、PDF页0/2、全部D3 metadata与chunk ID保留，Dense版本匹配。成功清单包含1个PDF和2个片段，应用点保留在专属volume，没有清理应用集合；不包含费用/密钥/完整向量的检查摘要保存在`data/d4-auto/storage-validation.json`。
+
+本次费用请求共2次，已使用完，不追加Embedding或聊天模型调用。未采集usage/账单，不能报告实际tokens/实付；仅证明一个合成样例的工程链路，不报告Recall/MRR或普遍检索效果。当前未进行用户D4学习确认或手测，所有上述验证均为Codex开发期验收。
+
+完整文件表、设计与8项交接见 [D4报告](reports/DAY_4.md)。本批20个文件（11新增、9修改）待用户亲自提交、推送；不将模型密钥、data/、Docker卷或备用下载加入Git，不自动进入D5。
+
+收尾检查：26份Python AST、15份Markdown围栏/表格、71处本地链接及7处锚点、D4固定8项报告通过；原35日任务与预算未变。9份已跟踪差异的git diff --check及11份新增文本的行尾/换行检查通过；.env和运行数据被忽略且无暂存改动。未使用的备用二进制临时下载已清理。文档补记不重跑已通过的业务测试或模型请求。
