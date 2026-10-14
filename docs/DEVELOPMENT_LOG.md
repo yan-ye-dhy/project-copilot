@@ -246,7 +246,9 @@ SDK自动重试关闭，本轮未执行批量真实请求；with已关闭该模�
 
 ## D4：单文件真实Dense索引与检索（2026-10-13）
 
-**状态：代码及自动验收完成；阶段A待用户Git交接，阶段B待ChatGPT学习及主动手测。** 开始前用户已亲自提交、推送D3收尾及计划微调 [f50abd48a21edcc65cca76a46aa4007534467d8d](https://github.com/yan-ye-dhy/project-copilot/commit/f50abd48a21edcc65cca76a46aa4007534467d8d)，Codex核实GitHub main、本地HEAD/origin/main一致且工作区干净。用户随后明确开启D4；沿用D2/D3，不修改原项目或既有加载/切分/Embedding实现。
+**开发期快照（提交前）：代码及自动验收完成；阶段A待用户Git交接，阶段B待ChatGPT学习及主动手测。** 开始前用户已亲自提交、推送D3收尾及计划微调 [f50abd48a21edcc65cca76a46aa4007534467d8d](https://github.com/yan-ye-dhy/project-copilot/commit/f50abd48a21edcc65cca76a46aa4007534467d8d)，Codex核实GitHub main、本地HEAD/origin/main一致且工作区干净。用户随后明确开启D4；沿用D2/D3，不修改原项目或既有加载/切分/Embedding实现。
+
+**最新状态（2026-10-14）：D4阶段A/B均完成。** 用户已推送4349c10、亲自完成8项手测，并确认已完成ChatGPT学习且能解释关键流程；具体证据见下方交接与验收补记。以下保留开发期记录。
 
 新增Qdrant官方SDK适配、DenseIndexSpec/成功清单/检索证据契约、ingestion/retrieval服务、单文件CLI、最小Compose和四份测试。客户端实际锁定1.19.1，新增9个锁定依赖项（含Windows条件包），Linux实际新增8个依赖包，原有锁定版本未变；共Resolved61、Checked58。Compose固定qdrant/qdrant:v1.19.2，project-copilot专属network/volume，宿主仅绑定127.0.0.1:6433。
 
@@ -284,3 +286,28 @@ SDK自动重试关闭，本轮未执行批量真实请求；with已关闭该模�
 完整文件表、设计与8项交接见 [D4报告](reports/DAY_4.md)。本批20个文件（11新增、9修改）待用户亲自提交、推送；不将模型密钥、data/、Docker卷或备用下载加入Git，不自动进入D5。
 
 收尾检查：26份Python AST、15份Markdown围栏/表格、71处本地链接及7处锚点、D4固定8项报告通过；原35日任务与预算未变。9份已跟踪差异的git diff --check及11份新增文本的行尾/换行检查通过；.env和运行数据被忽略且无暂存改动。未使用的备用二进制临时下载已清理。文档补记不重跑已通过的业务测试或模型请求。
+
+### 用户Git交接与手动验收补记（2026-10-14）
+
+用户亲自暂存20个文件，git diff --cached --check无输出，提交 [4349c106030649eeeeee92fc747b04664ecb8bd0](https://github.com/yan-ye-dhy/project-copilot/commit/4349c106030649eeeeee92fc747b04664ecb8bd0)并推送main成功（f50abd4..4349c10 main→main）。Codex核实GitHub main与本地HEAD/origin/main一致、工作区干净，阶段A完成；本段补齐原报告的提交前快照。
+
+用户随后主动开启D4手测，命令均由本人在新项目终端执行。Codex逐步指导、读取被Git忽略的`data/manual-d4/`结果文件，与D3原文/metadata、成功清单或此前结果比较，没有代运行服务、查看器或模型请求。
+
+| 用户实际操作 | 实际结果 | 验证范围 |
+| --- | --- | --- |
+| `uv run --frozen python scripts/dense_index.py ingest tests/fixtures/documents/sample.pdf`，无live | 提示必须显式添加live，退出2 | 保护开关在读取配置/构造客户端前拒绝 |
+| `docker compose --env-file .env.example up -d qdrant`及`ps` | project-copilot-qdrant-1，v1.19.2，Up，127.0.0.1:6433→6333 | 本人启动独立Qdrant容器 |
+| curl `/readyz`，绕过代理并显示响应头 | HTTP200，all shards are ready，退出0 | 实际HTTP就绪响应 |
+| GET `/collections/pc_knowledge_dense_v0` | status ok，green，唯一dense2048/Cosine、无sparse/multivector，points_count统计2，退出0 | 集合schema及入库前统计；此统计不冒充精确count |
+| `dense_index.py ingest tests/fixtures/documents/sample.pdf --live` | ok/DENSE，2块，UUID和原文身份保持，成功清单1份文档；0.9466秒，退出0 | 本人真实重入库及清单登记 |
+| POST `/collections/pc_knowledge_dense_v0/points/count`，JSON exact=true | 精确count=2，退出0 | 结合稳定ID确认本次重入库未增加重复点 |
+| `dense_index.py search "local document loading" --live` | ok/DENSE，top_k5返回2块，页0/2原文与全部metadata保留；首条页0 score0.71589005，另一条0.4474684；0.77秒，退出0 | 本人真实问题向量化与一个样例的证据检索 |
+| 进程变量`PROJECT_COPILOT_EMBEDDING_EXPECTED_DIMENSIONS=3`后运行同一ingest/live | error，索引配置与完成清单不一致，请使用新集合重新索引；退出1，无未处理Traceback | 加载/切分后由ManifestStore.load拒绝，早于ensure_collection、Embedding及upsert |
+
+手测前已说明这一轮仅2次真实请求及官方标准价/估算，用户随后亲自执行带live的入库和查询：1次含2片段、1次含1问题，与2026-10-13开发期2次授权调用分开记录。重定向路径误写为`dara/manual-64/search.json`时，Bash打开文件失败，uv/Python尚未启动，因此未新增模型调用；缺live及配置冲突也没有模型请求。没有采集实际usage/账单，不把费用预算或Cosine score当成实付或正确率。
+
+用户提出Qdrant集合接口是否来自容器，Codex结合Compose映射及main.py解释：Qdrant程序提供自己的HTTP服务，宿主6433映射容器6333；本项目FastAPI是另一个服务，启动后用8002且当前仅health，qdrant.py是SDK客户端适配器。用户随后明确回答“已学习，能够解释”，确认已通过ChatGPT学完D4并能解释入库/检索主链、清单配置约束及服务区别；结合上述真实操作，阶段B完成。
+
+覆盖边界：此次没有重新执行165项离线或1项HTTP测试，没有另行验证服务端集合维度拒绝、全部原始向量数值、多进程并发/完整故障恢复或Recall/MRR。它验证的是给定样本的手动工程链路；历史自动证据保留，不扩大为用户本次验收。
+
+本次仅更新README、开发计划、开发日志、学习笔记和D4报告这5份文档；业务源码、测试、依赖与35日任务/预算未变，未由Codex新增模型请求，手测数据仍不提交。验收补记待用户亲自提交、推送，不自动进入D5。

@@ -1,6 +1,6 @@
 # Project Copilot
 
-基于RAG与LangGraph的研发知识及工单协作智能体。D1–D3阶段A/B已完成；D4已实现单文件Embedding→独立Qdrant Dense入库与检索、成功清单及CLI。165项离线测试、1项真实HTTP存储测试和两次授权Embedding最小联调通过；D4待用户提交推送、ChatGPT学习及主动手测。回答生成与业务Agent按后续计划实现。
+基于RAG与LangGraph的研发知识及工单协作智能体。D1–D4阶段A/B已完成；D4实现单文件Embedding→独立Qdrant Dense入库与检索、成功清单及CLI。开发期165项离线测试、1项真实HTTP存储测试和两次授权Embedding联调通过；用户已推送4349c10，随后亲自完成8个手测环节并确认ChatGPT学习与理解。回答生成与业务Agent按后续计划实现。
 
 协作流程见 [长期协作规则](docs/COLLABORATION_RULES.md)：Codex开发、自动验证、提供报告并指导Git操作；用户亲自提交和推送GitHub，随后通过ChatGPT学习代码/架构，学习后主动要求Codex开始手动测试。以下命令是自助运行参考，Codex仅在用户要求后单步带练。
 
@@ -98,7 +98,7 @@ uv run --frozen python scripts/inspect_document.py tests/fixtures/documents/samp
 
 使用官方`qdrant-client`1.19.1与固定服务器镜像`qdrant/qdrant:v1.19.2`。Compose项目名为`project-copilot`，HTTP仅映射`127.0.0.1:6433`，使用独立named volume。WSL用户需先开启Docker Desktop及当前发行版的WSL Integration。
 
-以下为运行参考，学习后的手动测试仍等用户主动开启，不要求现在逐条操作：
+以下保留运行参考；D4用户手测已完成，无需因阅读此处再次运行收费命令：
 
 ```bash
 docker compose --env-file .env.example up -d qdrant
@@ -112,7 +112,7 @@ uv run --frozen python scripts/dense_index.py search "local document loading" --
 
 成功清单默认在`data/manifests/<collection>.json`，仅在Qdrant确认写入完成后原子保存。检索限定清单内文档和当前Dense版本，再校验具体片段身份；空清单返回空结果，不请求模型。清单保存失败时向量可能已写入，但本次不登记成功。当前支持顺序单进程入库，完整故障恢复及并发问题不在D4完成。
 
-入库输出包含文档/片段ID，检索输出包含实际原文、来源、PDF页索引和相关度。2026-10-13自动联调实际写入三页样本PDF的2个非空片段，查询返回页0/2，首条来自页0；这里只验证工程链路，效果评测留D7–D10。D4没有上传或问答API，也没有BM25、Rerank和聊天模型调用。
+入库输出包含文档/片段ID，检索输出包含实际原文、来源、PDF页索引和相关度。2026-10-13自动联调写入三页样本PDF的2个非空片段；2026-10-14用户重入库后精确计数仍为2，查询返回页0/2且首条来自页0，维度配置与清单不一致时在Embedding前拒绝。用户已确认理解，实际操作及覆盖边界见 [D4报告](docs/reports/DAY_4.md)。这里只验证工程链路，效果评测留D7–D10。D4没有上传或问答API，也没有BM25、Rerank和聊天模型调用。
 
 真实HTTP测试须单独开启，使用假二维向量，只创建/清理随机`pc_test_`集合，不调用收费模型：
 
