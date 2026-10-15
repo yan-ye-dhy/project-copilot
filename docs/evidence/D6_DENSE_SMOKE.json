@@ -1,0 +1,127 @@
+{
+  "acceptance_run_id": "b454e312-921e-42b3-a9e7-41a3364d736e",
+  "executed_by": "Codex automatic acceptance",
+  "date": "2026-10-15",
+  "timestamp_utc": "2026-10-15T15:21:36.964406+00:00",
+  "mode": "DENSE",
+  "base_commit": "cf5e373d7df905e196f9324e66d63cfb2dfe795b",
+  "code_dirty": true,
+  "fixture": "tests/fixtures/documents/sample.pdf",
+  "file_sha256": "c34a0f9af9202cfa7ec354ecadd7b15df8bebae6ae88767cc4820beaca77ce75",
+  "automatic_retry": false,
+  "trace_exported": false,
+  "phoenix_trace_verified": false,
+  "scope": "one known-fact upload and answer; not a retrieval benchmark",
+  "configuration": {
+    "collection": "pc_knowledge_dense_v0",
+    "embedding_model": "embedding-3",
+    "embedding_dimensions": 2048,
+    "embedding_batch_size": 64,
+    "top_k": 5,
+    "splitter": {
+      "chunk_size": 750,
+      "chunk_overlap": 150,
+      "separators": [
+        "\n\n",
+        "\n",
+        " ",
+        ""
+      ]
+    },
+    "splitter_version": "split-v1-bccb93671dcace12f58d366eb4ec6f530be20573f8b948a17484a0a00c989e78",
+    "upload_max_bytes": 5242880,
+    "tracing_enabled": false
+  },
+  "dependencies": {
+    "fastapi": "0.138.2",
+    "starlette": "1.7.0",
+    "python-multipart": "0.0.32",
+    "openai": "2.54.0",
+    "qdrant-client": "1.19.1"
+  },
+  "upload": {
+    "http_status": 200,
+    "run_id": "d8b28480-2cf3-4c74-8009-121e7fe711c8",
+    "elapsed_seconds": 0.9844,
+    "status": "indexed",
+    "mode": "DENSE",
+    "document": {
+      "document_id": "c8d63f20-bc98-52e9-a839-3bda4a1a0bfc",
+      "content_hash": "c34a0f9af9202cfa7ec354ecadd7b15df8bebae6ae88767cc4820beaca77ce75",
+      "source_name": "sample.pdf",
+      "chunk_ids": [
+        "a9834897-ad5b-573a-bcfd-dcf449878f4c",
+        "9380698a-0aad-5277-aace-5c22380fdfcb"
+      ]
+    },
+    "chunk_count": 2,
+    "size_bytes": 1167,
+    "index_version": "dense-v1-dcd4c24eaf2b4b2294513729d1d04d28b1792df4580351e500b3682868d04746",
+    "trace_exported": false
+  },
+  "answer": {
+    "http_status": 200,
+    "run_id": "e3434784-afe9-4f34-84ac-c19fceeed3ac",
+    "elapsed_seconds": 1.2227,
+    "question": "样本文档第一页描述了什么功能？",
+    "status": "answered",
+    "answer": "样本文档第一页描述了本地文档加载功能。",
+    "citations": [
+      {
+        "text": "Project Copilot page one: local document loading.",
+        "metadata": {
+          "document_id": "c8d63f20-bc98-52e9-a839-3bda4a1a0bfc",
+          "content_hash": "c34a0f9af9202cfa7ec354ecadd7b15df8bebae6ae88767cc4820beaca77ce75",
+          "source_name": "sample.pdf",
+          "page": 0,
+          "chunk_id": "a9834897-ad5b-573a-bcfd-dcf449878f4c",
+          "chunk_index": 0,
+          "index_version": "split-v1-bccb93671dcace12f58d366eb4ec6f530be20573f8b948a17484a0a00c989e78"
+        },
+        "number": 1
+      }
+    ],
+    "evidence_count": 2,
+    "prompt": {
+      "version": "rag-answer-v1",
+      "fingerprint": "83971da601780ea5a5f5e6e4b45f11d952cb261e50d7275a1efb38494a46a9ea",
+      "answer_schema_hash": "ded2c45bf4b0dcd4888884ad1ff1bcbc729a1846ee0977ec90e7dfdd903c5941",
+      "context_max_chars": 6000
+    },
+    "index_version": "dense-v1-dcd4c24eaf2b4b2294513729d1d04d28b1792df4580351e500b3682868d04746",
+    "generation": {
+      "requested_model": "deepseek-flash",
+      "actual_model": "deepseek-flash",
+      "temperature": 0.0,
+      "max_tokens": 1024,
+      "thinking": "disabled",
+      "usage": {
+        "prompt_tokens": 358,
+        "completion_tokens": 24,
+        "total_tokens": 382,
+        "prompt_cache_hit_tokens": 128,
+        "prompt_cache_miss_tokens": 230
+      }
+    }
+  },
+  "temporary_upload_files_remaining": 0,
+  "known_fact_and_citation_check": "passed; exact original metadata and page 0",
+  "qdrant_schema_read_http_status": 200,
+  "exact_points_after": 2,
+  "provider_request_counts": {
+    "embedding": 2,
+    "chat": 1
+  },
+  "billing_actual": null,
+  "embedding_usage": null,
+  "result": "passed",
+  "automatic_api_server_stopped": true,
+  "log_verification": {
+    "provider_successful_request_counts": {
+      "embedding": 2,
+      "chat": 1
+    },
+    "response_run_ids_matched_completion_log": true,
+    "application_shutdown_completed": true
+  }
+}

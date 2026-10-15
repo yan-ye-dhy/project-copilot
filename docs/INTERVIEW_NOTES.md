@@ -51,3 +51,11 @@
 3. **怎样防止模型编造来源，又保证实验可追溯？** 模型只给引用编号，后端映射原文、稳定chunk ID、文件名和真实页索引；不让模型重新生成元数据。响应另记录Prompt/Schema指纹、Dense版本、请求/实际模型和可用usage；D10再冻结完整基线配置，不把单条样例当效果评测。
 
 依据：[消息与回答编排](../src/project_copilot/rag/answering.py)、[Schema](../src/project_copilot/schemas/rag.py)、[离线契约测试](../tests/test_answering.py)和 [D5报告](reports/DAY_5.md)。2026-10-15用户完成D5手测，并明确确认已通过ChatGPT学习、能解释主调用链和空白密钥为何在模型请求前被拒绝；以上问答继续用于复盘，不据单条样例宣称整体效果或完整注入防护已验证。
+
+## D6：上传入口与Dense工程链路
+
+1. **上传接口怎样复用已有RAG？** multipart和文件校验只负责请求边界；随机临时路径交给原IngestionService，原来源名作为显示元数据，仍按解析→切分→Embedding→Qdrant→成功清单顺序完成。模型/库/清单失败不会返回indexed，临时文件在finally清理。
+2. **为什么既限制整个body，又限制文件字节？** multipart有额外边界与头；框架中间件统计实际ASGI字节，业务复制再限制单文件，不能只信Content-Length或把spool内存阈值当文件上限。扩展名和MIME只是初筛，内容仍须通过UTF-8/PDF解析。
+3. **线程池、入库保护和run_id分别解决什么？** 线程池承接同步IO/SDK调用；非阻塞进程锁避免两个HTTP上传覆盖清单，忙时409；run_id把本地请求/响应/日志关联起来。它们不构成跨进程事务或已导出的Phoenix Trace，后续按计划逐步验证。
+
+依据：[上传入口](../src/project_copilot/api/documents.py)、[入库编排](../src/project_copilot/rag/ingestion.py)、[请求关联](../src/project_copilot/infrastructure/tracing.py)。D6用户学习与手测尚待完成。

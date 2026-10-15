@@ -1,6 +1,6 @@
 # Project Copilot
 
-基于RAG与LangGraph的研发知识及工单协作智能体。D1–D5阶段A/B已完成。D5接入DeepSeek结构化问答、带来源的上下文与真实引用映射，开发期358项离线测试及一次真实HTTP问答（2次供应商请求）通过；用户已推送e01ad7d，并于2026-10-15完成10个手测环节及ChatGPT学习确认，见 [D5报告](docs/reports/DAY_5.md)。本次验收补记待用户提交，业务Agent按后续计划实现。
+基于RAG与LangGraph的研发知识及工单协作智能体。D1–D5阶段A/B已完成，D5收尾cf5e373已同步。D6新增单文件上传、大小/类型校验、失败清理及run_id，408项离线测试与一次真实上传问答验收通过；用户Git及学习手测待完成，见 [D6报告](docs/reports/DAY_6.md)。业务Agent按后续计划实现。
 
 协作流程见 [长期协作规则](docs/COLLABORATION_RULES.md)：Codex开发、自动验证、提供报告并指导Git操作；用户亲自提交和推送GitHub，随后通过ChatGPT学习代码/架构，学习后主动要求Codex开始手动测试。以下命令是自助运行参考，Codex仅在用户要求后单步带练。
 
@@ -50,6 +50,7 @@ PROJECT_COPILOT_APP_NAME="Copilot Learning" uv run --frozen uvicorn project_copi
 - [D3开发报告与文档切分验收](docs/reports/DAY_3.md)
 - [D4开发报告与真实Dense索引验收](docs/reports/DAY_4.md)
 - [D5开发报告与结构化问答交接](docs/reports/DAY_5.md)
+- [D6开发报告与上传/Dense模块验收](docs/reports/DAY_6.md)
 - [三方协作与8项开发报告规范](docs/COLLABORATION_RULES.md)
 - [开发计划](docs/DEVELOPMENT_PLAN.md)
 - [参考审计](docs/REFERENCE_AUDIT.md)
@@ -148,4 +149,24 @@ uv run --frozen python scripts/rag_smoke.py --live
 
 2026-10-14 Codex自动启动后端并发送一次真实POST，HTTP200返回“第一页描述了本地文档加载功能”，引用来自`sample.pdf`页索引0，原文与D3元数据匹配；只复用原有2点索引，随后关闭自动启动的后端。DeepSeek返回输入358、输出24、总计382 tokens；Embedding usage及实际账单未采集。这是一个已知样本的工程验收，不是冻结数据集效果评测，也不替代用户D5手测。
 
-2026-10-15用户另行亲自完成CLI保护、容器与就绪、后端启动及health、空白问题422、一次真实问答200与引用核对、临时空白密钥503、本地Schema接受/拒绝练习及服务关闭。此次DeepSeek输入358、输出25、总383 tokens；与前一天自动验收分别记录。用户确认已通过ChatGPT学完并能解释主调用链和密钥拒绝原因，D5阶段B完成；D6等待用户明确要求。
+2026-10-15用户另行亲自完成CLI保护、容器与就绪、后端启动及health、空白问题422、一次真实问答200与引用核对、临时空白密钥503、本地Schema接受/拒绝练习及服务关闭。此次DeepSeek输入358、输出25、总383 tokens；与前一天自动验收分别记录。用户确认已通过ChatGPT学完并能解释主调用链和密钥拒绝原因，D5阶段B完成；随后用户明确开启D6，见下节。
+
+## D6：单文件上传与请求关联
+
+`POST /documents/upload`接收multipart/form-data，仅接受一个名为`file`的文件字段，支持UTF-8 TXT/MD及文字层PDF。默认文件上限5MiB，可通过`PROJECT_COPILOT_UPLOAD_MAX_BYTES`调整（1字节至50MiB）；整体HTTP body另留64KiB表单余量，按实际接收字节检查，业务复制再限制文件字节。新增[python-multipart](https://fastapi.tiangolo.com/tutorial/request-files/)解析依赖；利用现有[Starlette请求体中间件](https://starlette.dev/middleware/#requestbodylimitmiddleware)限制整个body。
+
+以下为学习后运行参考；上传会真实请求Embedding，问答另请求问题Embedding和DeepSeek，执行前按项目费用约定确认范围：
+
+```bash
+curl --noproxy 127.0.0.1 --silent --show-error \
+  http://127.0.0.1:8002/documents/upload \
+  -F 'file=@tests/fixtures/documents/sample.pdf;type=application/pdf'
+```
+
+只有Qdrant写入与成功清单保存均完成后返回`status=indexed`、`mode=DENSE`、文档/片段ID、文件字节数、索引版本及run_id。原名经基本名称/后缀/MIME筛选后作为source_name；临时物理文件使用服务端随机名，所有正常/异常路径均尝试清理。实际内容由原UTF-8/PDF解析器校验；框架可能先将Windows上传路径规范为basename，文件名不会用于构造物理路径。
+
+HTTP415表示不支持的类型，422表示缺文件/非法名/解析失败/空文本，413表示文件或整个body超限，400表示表单结构非法；上传繁忙时409。配置或成功清单问题503，上游请求/结果错误502，临时IO失败500。上传采用进程内非阻塞锁保护完整入库，维持D4单进程顺序契约；跨进程/CLI并发、恢复和跨存储事务按后续阶段处理。同内容改名共享稳定ID，重新上传会覆盖该身份的显示来源。
+
+每个HTTP请求由服务端生成`X-Run-ID`，上传成功正文返回同值；请求完成日志记录run_id、方法、路径、状态、耗时和`trace_exported=false`。未知500响应提供安全detail及run_id；此处用于本地关联，Phoenix导出尚未实现。`PROJECT_COPILOT_TRACING_ENABLED`默认false，当前设true会明确拒绝配置，D33才接入实际导出。完整运行链与复盘问题见 [D6学习笔记](docs/STUDY_NOTES.md#d6上传接入与dense模块复盘)。
+
+2026-10-15用户授权后，Codex完成一次真实上传→问答：两接口均HTTP200，上传2块，引用与自编PDF页0原文及元数据一致；重复上传后集合精确点数仍为2，临时文件已清理，自动启动的后端正常关闭。仅2次Embedding＋1次DeepSeek，无自动重试；DeepSeek输入358、输出24、总382 tokens，Embedding usage及实际账单未采集。配置、Prompt版本、run_id与输出见 [D6自动验收记录](docs/evidence/D6_DENSE_SMOKE.json)。这是已知样本的工程验收，完整效果评测与用户学习手测仍待对应环节。

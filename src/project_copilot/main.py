@@ -3,11 +3,15 @@
 import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from uuid import uuid4
 
 from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 
+from project_copilot.api.documents import router as documents_router
 from project_copilot.api.rag import router as rag_router
 from project_copilot.config import Settings, load_settings
+from project_copilot.infrastructure.tracing import RequestContextMiddleware
 
 
 logger = logging.getLogger(__name__)
@@ -19,6 +23,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @asynccontextmanager
     async def lifespan(application: FastAPI) -> AsyncIterator[None]:
         application.state.settings = settings if settings is not None else load_settings()
+        logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(name)s %(message)s")
         logger.info("Starting %s", application.state.settings.app_name)
         try:
             yield
@@ -26,7 +31,18 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             logger.info("Stopping %s", application.state.settings.app_name)
 
     application = FastAPI(title="Project Copilot", version="0.1.0", lifespan=lifespan)
+    application.add_middleware(RequestContextMiddleware)
+    application.include_router(documents_router)
     application.include_router(rag_router)
+
+    @application.exception_handler(Exception)
+    async def unexpected_error(request: Request, exc: Exception) -> JSONResponse:
+        run_id = getattr(request.state, "run_id", None) or str(uuid4())
+        logger.error("Unhandled request error run_id=%s error_type=%s", run_id, type(exc).__name__)
+        return JSONResponse(
+            status_code=500, content={"detail": "服务器内部处理失败，请根据run_id排查", "run_id": run_id},
+            headers={"X-Run-ID": run_id},
+        )
 
     @application.get("/health", tags=["health"])
     async def health(request: Request) -> dict[str, str]:

@@ -142,3 +142,39 @@ CLI链：`rag_smoke.py`解析`--live`，没有开关在读取配置前退出2；
 本轮用户实际观察：遗漏live退出2；Qdrant就绪及health返回200；空白question先由RagQuestion拒绝为422；一次真实问答返回2块证据中的1条引用，sample.pdf页0原文与元数据一致。随后用命令级空白DeepSeek key启动新进程，合法问题返回503；设置变量只作用于该进程，密钥检查在检索调用前失败，原`.env`未改。手写ModelAnswer的合法引用`[1]`被接受，answered空引用被拒绝；这是本地契约练习，编号越界仍由回答层结合本次上下文判断。
 
 正常及临时配置的Uvicorn进程42244/47593均由用户关闭；Codex只读结果并离线对照原文，没有代发本轮请求。用户真实生成usage为358/25/383，区别于开发期自动358/24/382；本轮没有重跑358项自动测试，也未手测空检索或异常模型输出的HTTP502。后续复盘依据实际覆盖范围，不将一次已知事实问答当整体效果评测。
+
+## D6：上传接入与Dense模块复盘
+
+本节交ChatGPT结合D6代码与commit教学；学习和用户手测待本人主动开启。新运行依赖python-multipart负责解析表单，版本锁定0.0.32；显式约束已存在的Starlette≥1.7，使用其内置请求体限制。没有接入Phoenix导出。
+
+Codex已在用户授权下完成一次真实上传/问答，见 [自动验收记录](evidence/D6_DENSE_SMOKE.json)：上传2块后仍为2点，回答引用sample.pdf页0的真实原文，上传和问答各有独立run_id可关联完成日志；这不代表用户已完成学习/手测。将该记录作为ChatGPT追踪下图的实际输入和输出，不追加模型请求。
+
+参考原`routes/embeddings.py:35/89`的路由→服务与线程池分层；新项目自行实现单文件约束、服务端临时文件、校验/清理和请求关联。原代码的客户文件名拼路径、整文件无限读取、多文件并发及导入期初始化不照搬。`api.py:27`的Phoenix注册只用于理解未来接入位置，D6没有复制instrumentation。
+
+```mermaid
+flowchart TD
+    U[POST /documents/upload 单文件] --> V[表单、名称、类型与大小校验]
+    V --> T[服务端随机临时文件]
+    T --> I[D4 IngestionService]
+    I --> L[D3 解析原文、内容身份与按页切分]
+    L --> E[智谱片段 Embedding]
+    E --> Q[独立 Qdrant dense 向量与原文元数据]
+    Q --> M[写入完成后登记 manifest]
+    M --> C[返回 indexed 并清理临时文件]
+    A[POST /rag/ask 问题] --> R[D4 DenseRetriever 检查清单与索引]
+    R --> QE[智谱问题 Embedding]
+    QE --> Q
+    Q --> H[本次证据与身份核验]
+    H --> P[D5 固定 System、User 上下文]
+    P --> D[DeepSeek JSON 回答]
+    D --> S[本地 Schema 与编号校验]
+    S --> O[后端映射原文引用]
+```
+
+上传请求先由框架按真实字节限制整体body（默认5MiB文件额度＋64KiB表单余量），再限制最多一个file字段；临时复制另累计实际文件字节。UploadFile的spool由框架管理，自己的NamedTemporaryFile由finally删除；观察表单解析失败、空内容、Embedding/写库/清单失败时分别在哪一层退出。同步复制、解析和SDK操作在线程池执行。
+
+原文件名仅用于展示metadata，物理路径由服务端随机生成；ingest_file新增可选source_name，默认仍用于CLI原路径名，内容哈希及chunk ID规则不变。同内容异名共享身份，重新上传会覆盖该身份的展示来源；同名异内容仍是不同文档。HTTP入口用进程内非阻塞锁覆盖完整入库，忙时409；这继承单进程顺序约束，跨进程/CLI并发及完整故障恢复留D18。
+
+每个HTTP请求由服务端生成run_id，放在request.state、X-Run-ID和完成日志中；上传成功正文也返回该值。日志记录方法、路径、状态、耗时及trace_exported=false；未知500响应另返回安全detail和run_id。run_id用于本地请求关联，Phoenix Trace/span导出到D33实现。tracing_enabled默认false，D6设true会在配置校验时明确拒绝，避免误以为已经导出。
+
+ChatGPT复盘重点：沿一次上传和问答解释所有模块边界；区分5MiB文件限制与multipart总body、临时路径与来源名、run_id与未来Trace、线程池与进程内写入保护。自己定位一条失败请求的X-Run-ID，再解释为何indexed只在成功清单保存后返回；这些操作等用户主动开启D6手测时再带练。Few-shot的具体任务示例可在本次复盘讲解，效果实验仍留D19。

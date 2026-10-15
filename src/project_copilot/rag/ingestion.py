@@ -2,13 +2,16 @@
 
 import os
 import tempfile
-from collections.abc import Sequence
+from collections.abc import Iterator, Sequence
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Protocol
 
 from pydantic import ValidationError
 
-from project_copilot.infrastructure.qdrant import DenseQdrantStore
+from project_copilot.config import Settings
+from project_copilot.infrastructure.models import create_embedding_client
+from project_copilot.infrastructure.qdrant import DenseQdrantStore, create_qdrant_store
 from project_copilot.rag.loaders import load_document
 from project_copilot.rag.splitters import SplitConfig, split_document
 from project_copilot.schemas.retrieval import CompletedDocument, DenseIndexSpec, IndexManifest
@@ -25,6 +28,10 @@ class Embeddings(Protocol):
 
 class IngestionError(RuntimeError):
     """文档不能进入当前索引。"""
+
+
+class EmptyDocumentError(IngestionError):
+    """文档解析成功，但没有可索引的非空文本。"""
 
 
 class ManifestError(RuntimeError):
@@ -106,11 +113,16 @@ class IngestionService:
         if self.split_config.index_version != manifest.spec.splitter_version:
             raise IngestionError("切分配置与当前索引不一致，请使用新集合")
 
-    def ingest_file(self, path: str | Path) -> CompletedDocument:
+    def ingest_file(self, path: str | Path, *, source_name: str | None = None) -> CompletedDocument:
+        if source_name is not None and (not isinstance(source_name, str) or not source_name.strip()):
+            raise IngestionError("文档展示名称必须是非空字符串")
         document = load_document(path)
+        if source_name is not None:
+            # 上传使用服务端临时路径；展示名称不参与文件或片段的稳定身份。
+            document = document.model_copy(update={"source_name": source_name})
         chunks = split_document(document, self.split_config)
         if not chunks:
-            raise IngestionError("文档没有可索引的非空文本，未发Embedding请求")
+            raise EmptyDocumentError("文档没有可索引的非空文本，未发Embedding请求")
         previous = self.manifest.load()
         # 先验证存储契约，避免集合不兼容时仍产生Embedding费用。
         self.store.ensure_collection()
@@ -123,3 +135,18 @@ class IngestionService:
         )
         self.manifest.record(previous, completed)
         return completed
+
+
+@contextmanager
+def create_ingestion_service(settings: Settings) -> Iterator[IngestionService]:
+    """复用D4单文件链路；请求结束或失败时释放Embedding和Qdrant客户端。"""
+    split_config = SplitConfig()
+    spec = DenseIndexSpec(
+        collection_name=settings.qdrant_collection_name,
+        embedding_model=settings.embedding_model,
+        dimensions=settings.embedding_expected_dimensions,
+        splitter_version=split_config.index_version,
+    )
+    manifest = ManifestStore(settings.manifest_dir, spec)
+    with create_embedding_client(settings) as embeddings, create_qdrant_store(settings) as store:
+        yield IngestionService(embeddings, store, manifest, split_config=split_config)

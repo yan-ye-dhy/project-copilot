@@ -387,3 +387,54 @@ Docker恢复后Codex执行`docker compose --env-file .env.example up -d qdrant`�
 覆盖边界：358项离线测试及开发期HTTP验收本轮未重跑；没有用户空检索、坏JSON/越界引用HTTP502、完整弱证据/注入测试或Prompt对照。单个已知事实不产生整体准确率、Recall/MRR或普遍引用支持率。业务源码、依赖、配置模板与35日计划未变；本次只补六份文档，运行结果与真实.env继续被Git忽略，交用户亲自提交、推送。
 
 文档收尾检查通过：15份Markdown围栏、49张表格列数、88处本地链接及其中10处锚点、D5固定8项报告、六份修改文件行尾/换行；35日逐日任务行与HEAD完全一致。git diff --check无输出，暂存区为空，修改范围仅上述六份文档；.env和两份用户手测JSON被Git忽略。本次检查未运行业务测试、服务或收费模型。
+
+## D6：单文件上传与Dense模块验收（2026-10-15）
+
+**当前状态：实现、离线验证及最小真实自动验收完成；阶段A待用户Git交接，阶段B待学习手测。** 用户明确开启D6，开始时main/origin/main在D5收尾`cf5e373d7df905e196f9324e66d63cfb2dfe795b`，工作区干净，D1–D5阶段A/B均完成。用户随后要求继续，本轮始终只做D6。
+
+### 实际实现与设计边界
+
+新增POST /documents/upload及上传成功Schema，基本名称/后缀/MIME、单file字段、实际文件字节校验，服务端随机临时文件和finally清理。source_name可选参数在D3解析后/切分前替换展示名，D4默认CLI、身份及索引指纹不变；创建客户端/入库复用既有流程，indexed仅在清单保存后返回。
+
+新增本地run_id、X-Run-ID和完成耗时日志，复用Starlette内置中间件按真实body字节限制整体请求；默认5MiB文件＋64KiB表单余量，复制阶段另限制文件。tracing_enabled默认false，true明确拒绝，上传trace_exported=false；没有初始化Phoenix/OTel或声称导出通过。main另提供未知500安全响应及关联ID。
+
+审查发现HTTP多请求会破坏D4清单的顺序假设，增加单进程非阻塞锁覆盖完整service生命周期；忙时409，已复制文件仍清理。只保护HTTP单进程，跨进程/CLI并发及事务仍待后续。文件名来自解析后的multipart元数据，不构造物理路径；框架对Windows旧式路径取basename，校验器仍拒绝未规范化路径。相同内容改名共享身份，最近上传可能覆盖展示来源。
+
+参考原routes/embeddings.py:35/89的路由/服务/线程池，embedding_management.py的加载/切分/来源思路；未搬原客户路径拼接、整文件无限读取、多文件并发及导入期初始化。原api.py:27仅用于理解未来Phoenix位置。新增python-multipart0.0.32；Starlette已存在，显式限制≥1.7保证body中间件可用，其他旧包未升级。
+
+### Codex实际自动验证
+
+工作目录为新项目；模型全部使用测试替身，pipeline使用内存Qdrant和假二维向量，不把它们记为真实语义效果。同步ASGI线程测试沿用D5已知的本机运行权限，无收费服务请求。
+
+| 实际命令/检查 | 结果 |
+| --- | --- |
+| UV_CACHE_DIR与UV_PYTHON_DOWNLOADS按D4缓存设置，uv add --no-sync新增multipart，uv sync --locked --link-mode copy | 解析62个包，安装python-multipart0.0.32；新项目独立环境更新成功 |
+| 收紧multipart下界为0.0.32及显式Starlette约束，uv lock --offline、uv sync --locked --offline --link-mode copy | 成功；仅重建项目元数据，原包版本保持 |
+| `timeout 45s .venv/bin/python -m pytest -q`，加入新用例前 | 原358通过、1默认跳过，5.85秒 |
+| `timeout 45s .venv/bin/python -m pytest tests/test_request_context.py -q` | 9通过，1.41秒；run_id、actual/missing/underreported长度、422/404/安全500及配置失败 |
+| 三个D6测试文件首轮focused | 47通过、1失败；Windows路径在multipart解析时已规范为escape.txt，原测试误要求HTTP拒绝，未作为实现漏洞掩盖 |
+| 修正为验证规范化后的安全来源、另测校验器防御，并加入真实重叠HTTP用例；全量同一45秒命令 | **408通过、1默认跳过，6.14秒**；3格式、源名/页/ID、失败清理、上游/清单故障、并发409及旧功能回归 |
+| 只读Settings配置检查 | 两家key可加载，只输出布尔状态；默认flash/max_tokens1024、文件5242880字节、追踪关闭 |
+| curl 6433/readyz；Compose up -d qdrant后再查 | 起初连接失败退出7；启动已有容器后all shards are ready，未删除集合或volume |
+
+授权前准备快照：拟通过HTTP上传自编sample.pdf的2块，再问一条固定问题，最多2次Embedding＋1次DeepSeek；按两次Embedding各1000 tokens及DeepSeek3000输入/最多1024输出估算约¥0.001＋US$0.0022。当时已请求本轮授权、尚未执行，不复用D5已用完的授权；随后实际执行见下方补记。
+
+详细8项交接见 [D6报告](reports/DAY_6.md)；完整运行链与复盘图见 [学习笔记](STUDY_NOTES.md#d6上传接入与dense模块复盘)。Git尚未暂存/提交/推送；用户ChatGPT学习、D6手测与理解确认待主动开启，不自动进入D7。
+
+补上默认应用logging初始化后，全量再次408通过、1跳过，6.11秒；锁定环境检查59个包无需改动。等待收费授权期间，Codex另运行零模型真实HTTP预检：临时启动Uvicorn，GET health200，上传unsupported.exe得415、空TXT得422，三条X-Run-ID均出现在本地完成日志，trace_exported=false；这些请求在入库工厂前退出，模型请求0次，临时服务正常关闭。结果为被忽略的data/d6-auto/http-preflight.json与日志，没有冒充用户手测。
+
+授权前检查：9份Python AST、16份Markdown围栏、50张表格、97处本地链接及13处锚点、D6固定8项报告通过；35日逐日任务行未变。当时18个提交候选的行尾/换行及真实凭据扫描通过，未打印密钥；git diff --check无输出，暂存区为空，尚未执行D6收费调用。
+
+### 获授权后的最小真实自动验收（2026-10-15补记）
+
+用户明确回复“同意这3次最小真实验收”，Codex执行一次`timeout 150s .venv/bin/python /tmp/project-copilot-d6-live-check.py`，不重试。仅POST一次上传sample.pdf和一次固定问题“样本文档第一页描述了什么功能？”，日志实际记录2次智谱Embedding＋1次DeepSeek，均HTTP200；没有另跑live CLI或扩大语料。自动启动的Uvicorn进程24759已正常SIGINT关闭，原Qdrant及volume保留。
+
+上传HTTP200/indexed，1167字节、2块，约0.9844秒；文档UUID为`c8d63f20-bc98-52e9-a839-3bda4a1a0bfc`，原source_name、哈希与片段UUID不变。问答HTTP200/answered，约1.2227秒，答案为“样本文档第一页描述了本地文档加载功能。”；2块上下文、1条引用，number1对应sample.pdf页0原文`Project Copilot page one: local document loading.`，全部metadata与D3原文切分结果一致。
+
+上传run_id为`d8b28480-2cf3-4c74-8009-121e7fe711c8`，问答为`e3434784-afe9-4f34-84ac-c19fceeed3ac`，均可在实际完成日志中找到；上传正文和响应头同值。重复上传后精确点数仍为2，新增临时文件残留0，成功清单仍为该PDF；这验证本例稳定ID覆盖，不扩展为D18完整故障恢复或跨进程事务结论。trace_exported=false，没有验证Phoenix导出。
+
+实际DeepSeek模型deepseek-flash，输入358/输出24/总382 tokens，cache_hit128/cache_miss230；Embedding usage和实际账单未采集。Prompt/Schema/Dense指纹均与D5一致，未修改基线。可提交的 [D6验收记录](evidence/D6_DENSE_SMOKE.json)仅含自编样本、明确白名单配置与实际输出；开发基点cf5e373及code_dirty=true如实记录，未伪造D6commit。详细原始输出和日志位于被忽略的data/d6-auto；验收脚本位于/tmp，不作为产品新增入口。
+
+这是Codex自动验收，不登记为用户完成学习/手测，也不产生完整检索效果指标。D6代码与自动验证完成，用户Git、ChatGPT学习和用户手测仍待后续；不自动推进D7。
+
+收尾检查通过：19个提交候选，9份Python AST、1份验收JSON、16份Markdown围栏、50张表格、102处本地链接及13处锚点；固定8项报告、34个主任务日表格行与HEAD一致，可前移D35仍保留。候选文件未包含实际密钥，.env及data/d6-auto被忽略，git diff --check无输出，暂存区为空。独立只读审查未发现阻断交付的问题；没有为文档收尾追加模型请求或重复业务测试。

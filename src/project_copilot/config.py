@@ -49,6 +49,16 @@ class Settings(BaseSettings):
     qdrant_timeout_seconds: float = Field(default=10.0, gt=0, le=120, allow_inf_nan=False)
     manifest_dir: Path = PROJECT_ROOT / "data" / "manifests"
     rag_top_k: int = Field(default=5, ge=1, le=100)
+    upload_max_bytes: int = Field(default=5 * 1024 * 1024, ge=1, le=50 * 1024 * 1024)
+    tracing_enabled: bool = False
+
+    @field_validator("tracing_enabled")
+    @classmethod
+    def require_available_tracing(cls, value: bool) -> bool:
+        # D6仅预留开关，实际Phoenix导出到D33接入；不能静默宣称已启用。
+        if value:
+            raise ValueError("Phoenix导出尚未接入，请保持PROJECT_COPILOT_TRACING_ENABLED=false")
+        return value
 
     @field_validator("zhipu_base_url")
     @classmethod
