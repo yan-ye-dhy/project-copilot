@@ -1,6 +1,6 @@
 # Project Copilot
 
-基于RAG与LangGraph的研发知识及工单协作智能体。D1–D4阶段A/B已完成。D5接入DeepSeek结构化问答、带来源的上下文与真实引用映射，358项离线测试及两次授权调用的真实HTTP问答验收通过；用户Git提交/推送及学习手测待完成，见 [D5报告](docs/reports/DAY_5.md)。业务Agent按后续计划实现。
+基于RAG与LangGraph的研发知识及工单协作智能体。D1–D5阶段A/B已完成。D5接入DeepSeek结构化问答、带来源的上下文与真实引用映射，开发期358项离线测试及一次真实HTTP问答（2次供应商请求）通过；用户已推送e01ad7d，并于2026-10-15完成10个手测环节及ChatGPT学习确认，见 [D5报告](docs/reports/DAY_5.md)。本次验收补记待用户提交，业务Agent按后续计划实现。
 
 协作流程见 [长期协作规则](docs/COLLABORATION_RULES.md)：Codex开发、自动验证、提供报告并指导Git操作；用户亲自提交和推送GitHub，随后通过ChatGPT学习代码/架构，学习后主动要求Codex开始手动测试。以下命令是自助运行参考，Codex仅在用户要求后单步带练。
 
@@ -147,3 +147,5 @@ uv run --frozen python scripts/rag_smoke.py --live
 [JSON Output](https://api-docs.deepseek.com/guides/json_mode/)约束JSON格式，本地Pydantic继续检查字段与引用。有效编号只证明引用身份，不证明答案事实正确；证据支持率、弱证据/注入防护及Prompt对照按D19验收。D5没有新增依赖、上传、历史会话或前端。
 
 2026-10-14 Codex自动启动后端并发送一次真实POST，HTTP200返回“第一页描述了本地文档加载功能”，引用来自`sample.pdf`页索引0，原文与D3元数据匹配；只复用原有2点索引，随后关闭自动启动的后端。DeepSeek返回输入358、输出24、总计382 tokens；Embedding usage及实际账单未采集。这是一个已知样本的工程验收，不是冻结数据集效果评测，也不替代用户D5手测。
+
+2026-10-15用户另行亲自完成CLI保护、容器与就绪、后端启动及health、空白问题422、一次真实问答200与引用核对、临时空白密钥503、本地Schema接受/拒绝练习及服务关闭。此次DeepSeek输入358、输出25、总383 tokens；与前一天自动验收分别记录。用户确认已通过ChatGPT学完并能解释主调用链和密钥拒绝原因，D5阶段B完成；D6等待用户明确要求。

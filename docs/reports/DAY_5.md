@@ -1,6 +1,6 @@
 # 【Day 5 开发报告】
 
-日期：2026-10-14。当前实现、离线及最小真实自动验收完成，用户Git交接及阶段B待完成。D1–D4阶段A/B已完成；本轮只实施用户明确开启的D5。
+开发日期：2026-10-14；验收补记：2026-10-15。**D5阶段A/B均完成。** 用户已推送开发提交e01ad7d，亲自完成10个手测环节，并确认已通过ChatGPT学习、能解释主要流程。本次仅补记文档，仍交用户亲自提交、推送；D6等待用户明确要求。
 
 ## 1. 今日开发目标
 
@@ -41,7 +41,7 @@
 
 ## 5. 自动测试结果
 
-执行者均为Codex，工作目录为新项目。离线与真实模型验收分别记录：
+以下开发期自动验证均由Codex执行，工作目录为新项目。离线与真实模型验收分别记录：
 
 - `timeout 45s .venv/bin/python -m pytest -q`：**358 passed, 1 skipped，4.83秒**。外部Qdrant测试默认跳过；D1–D4回归、消息/Schema/引用/HTTP/CLI、真实SDK跨模块编排及资源关闭通过。
 - 默认沙箱中的同步HTTP测试超时；允许本机线程唤醒权限后通过。初次全量存在1个路由内部结构断言失败，已改为实际HTTP/OpenAPI契约验证并全量重跑；不是未处理业务失败。
@@ -50,14 +50,22 @@
 - 实际DeepSeek usage为输入358/输出24/总382 tokens，缓存命中0/未命中358；请求和返回模型均为deepseek-flash。Embedding usage及实际账单未采集，事前预算约¥0.0005＋US$0.0022不冒充实付。不报告Recall/MRR、普遍事实支持率或完整注入防护效果。
 - `UV_CACHE_DIR=/tmp/project-copilot-d4-uv-cache UV_PYTHON_DOWNLOADS=never uv sync --locked --offline --check`：锁定环境检查通过，58个包无需改动。13份改动Python AST、15份Markdown及88处本地链接/锚点、固定8项报告、行尾/换行及20个提交候选的真实凭据检查通过；`git diff --check`无输出，`.env`与运行数据被忽略。
 
-详细历史命令、失败原因与状态见 [开发日志](../DEVELOPMENT_LOG.md#d5deepseek结构化问答与引用2026-10-14)。用户D5功能手测尚未开启。
+以上为2026-10-14的历史自动验收，本轮没有重跑。详细命令、失败原因与状态见 [开发日志](../DEVELOPMENT_LOG.md#d5deepseek结构化问答与引用2026-10-14)。
+
+**用户手动验收补记（2026-10-15）**
+
+- 用户本人完成CLI gate退出2、容器Up/readyz200、正常启动/health200、空白问题422、一次真实问答200、临时空白密钥503、本地Schema练习及两次服务正常关闭，共10个环节。Codex读取用户保存的JSON并核对原文/元数据，没有代运行服务或请求模型。
+- 本轮真实答案为“样本文档第一页描述的是本地文档加载功能。”，引用number1指向sample.pdf页0；evidence_count为2、引用1条。DeepSeek输入358/输出25/总383 tokens，缓存命中128/未命中230；与前一天自动358/24/382分开记录。正常问答对应1次Embedding＋1次DeepSeek，无重新入库；Embedding usage及实际账单未采集。
+- 空白key请求返回503与安全detail；本地ModelAnswer接受合法引用、拒绝answered空引用。没有把本地练习记为供应商坏JSON/HTTP502测试，也没有本轮精确点数、空检索、完整注入/弱证据或Prompt对照结果。
+- 用户最后明确回复“已学习，能够解释”，确认主调用链和空白密钥请求前拒绝原因，阶段B据此完成。
 
 ## 6. GitHub 提交信息
 
 - 分支：`main`，跟踪`origin/main`。
 - 远端：`https://github.com/yan-ye-dhy/project-copilot.git`。
-- 当前基点：D4收尾`061864bea22a54026f001c038cd272e2e8ca6da1`，已同步GitHub。
-- **D5 commit ID：待用户提交；推送结果：待用户推送；暂无已同步的D5 GitHub提交链接。** Codex不自动add/commit/push。
+- 开发前基点：D4收尾`061864bea22a54026f001c038cd272e2e8ca6da1`。
+- D5开发提交：[e01ad7d0209d6db61a0b150070afe4a63163204e](https://github.com/yan-ye-dhy/project-copilot/commit/e01ad7d0209d6db61a0b150070afe4a63163204e)，`feat(rag): add structured DeepSeek answers and citations`。
+- 用户亲自commit/push成功；2026-10-15再次只读核实GitHub main、本地HEAD/origin/main一致，阶段A完成。本次验收补记文档待用户提交、推送，Codex不自动add/commit/push。
 
 ## 7. 后续学习提示
 
@@ -71,6 +79,6 @@
 
 ## 8. 下一步计划
 
-审核diff后指导用户亲自提交、推送；之后交ChatGPT学习。本次两次最小真实自动验收已完成，不自动重复收费。用户主动要求“开始D5的手动测试”才进入单步带练，学习理解和手测不能自动勾选。
+指导用户亲自提交、推送本次验收补记文档。D5开发Git交接、学习理解和手测均已完成；开发期与本轮各一次成功HTTP问答，分别包含1次Embedding＋1次DeepSeek请求，不因文档收尾重复调用模型。
 
 D6仍为上传接入与Dense模块复盘；只在D5阶段A/B完成且用户明确要求后启动，不因本次实现或收费授权自动推进。

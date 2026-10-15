@@ -50,4 +50,4 @@
 2. **JSON mode和Pydantic有什么不同？** 前者让模型输出JSON格式；后者继续拒绝缺字段、额外字段、非法类型/状态和不合规则的引用列表。再检查编号指向本次实际发送的片段，最后还要判断事实支持；这四层不能互相替代。
 3. **怎样防止模型编造来源，又保证实验可追溯？** 模型只给引用编号，后端映射原文、稳定chunk ID、文件名和真实页索引；不让模型重新生成元数据。响应另记录Prompt/Schema指纹、Dense版本、请求/实际模型和可用usage；D10再冻结完整基线配置，不把单条样例当效果评测。
 
-依据：[消息与回答编排](../src/project_copilot/rag/answering.py)、[Schema](../src/project_copilot/schemas/rag.py)、[离线契约测试](../tests/test_answering.py)和 [D5报告](reports/DAY_5.md)。D5学习与用户手测待完成，不能将这些回答思路登记为已掌握。
+依据：[消息与回答编排](../src/project_copilot/rag/answering.py)、[Schema](../src/project_copilot/schemas/rag.py)、[离线契约测试](../tests/test_answering.py)和 [D5报告](reports/DAY_5.md)。2026-10-15用户完成D5手测，并明确确认已通过ChatGPT学习、能解释主调用链和空白密钥为何在模型请求前被拒绝；以上问答继续用于复盘，不据单条样例宣称整体效果或完整注入防护已验证。

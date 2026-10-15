@@ -314,7 +314,7 @@ SDK自动重试关闭，本轮未执行批量真实请求；with已关闭该模�
 
 ## D5：DeepSeek结构化问答与引用（2026-10-14）
 
-**当前状态：代码、离线及最小真实自动验收完成；完整阶段A/B待用户交接。** 用户明确开启D5；开始时本地main/origin/main和只读核实的GitHub main均为D4收尾提交`061864bea22a54026f001c038cd272e2e8ca6da1`，工作区干净，D1–D4阶段A/B已完成。用户随后要求继续完成，本轮范围仍仅D5。
+**最终状态：D5阶段A/B均完成（2026-10-15）。** 用户已推送开发提交e01ad7d，完成本轮手测并确认ChatGPT学习理解，详见本节末尾补记。下文保留开发期记录。用户明确开启D5时，本地main/origin/main和只读核实的GitHub main均为D4收尾提交`061864bea22a54026f001c038cd272e2e8ca6da1`，工作区干净，D1–D4阶段A/B已完成；本轮范围始终仅D5。
 
 ### 实际实现与来源
 
@@ -324,7 +324,7 @@ SDK自动重试关闭，本轮未执行批量真实请求；with已关闭该模�
 
 2026-10-14核验[官方当前模型与价格](https://api-docs.deepseek.com/quick_start/pricing/)、[退役公告](https://api-docs.deepseek.com/news/news260424/)、[非推理开关](https://api-docs.deepseek.com/guides/thinking_mode/)及[JSON Output](https://api-docs.deepseek.com/guides/json_mode/)：默认使用deepseek-flash，显式thinking.disabled、temperature0、max_tokens1024、timeout30秒、max_retries0、json_object。请求别名与实际返回模型分别记录；只靠JSON mode不能保证Schema正确或证据支持。
 
-### Codex实际自动验证
+### Codex实际自动验证（2026-10-14，历史记录）
 
 工作目录为新项目。离线测试使用真实已安装的OpenAI SDK2.54.0及MockTransport，或记录调用的测试替身；没有把模拟回答/向量登记为真实模型结果。
 
@@ -341,7 +341,7 @@ SDK自动重试关闭，本轮未执行批量真实请求；with已关闭该模�
 
 主链的结构验收不证明事实支持或效果指标。D5提供Prompt/Schema与上下文规则指纹，完整基线冻结仍留D10；Few-shot效果、弱证据/注入与Prompt对照留D19，不挤占D6上传或增加天数。
 
-### 真实验收授权与交接状态
+### 真实验收授权与交接状态（开发期快照）
 
 用户已明确授权本次**1次查询Embedding＋1次DeepSeek生成**，复用已有PDF，不重入库、不自动重试。按Embedding≤1000输入tokens、DeepSeek约3000输入/最多1024输出tokens、Flash峰时缓存未命中价估算约¥0.0005＋US$0.0022；这是事前预算估算，不是实付。这次授权已用于下列自动验收，不扩展为后续批量或用户手测的无限授权。
 
@@ -353,6 +353,37 @@ Docker恢复后Codex执行`docker compose --env-file .env.example up -d qdrant`�
 
 验收后POST Qdrant points/count exact=true得到count2，原成功清单/索引不重建。临时Uvicorn PID9184通过SIGINT正常停止，日志含startup/health200/ask200/shutdown complete；Qdrant容器保留运行。自动输出位于被Git忽略的`data/d5-auto/`，无密钥或完整向量，不提交运行数据。本轮没有额外执行live CLI或第三次模型请求。
 
-Git尚未暂存、提交或推送，由用户亲自操作；固定8项报告已生成。ChatGPT学习、D5手测及理解确认待用户主动开启，完整阶段A/B仍未完成，不自动开发D6。
+开发交接前快照：Git尚未暂存、提交或推送，由用户亲自操作；固定8项报告已生成。当时ChatGPT学习、D5手测及理解确认待用户主动开启，不自动开发D6；最新状态以下方补记为准。
 
 收尾：`UV_CACHE_DIR=/tmp/project-copilot-d4-uv-cache UV_PYTHON_DOWNLOADS=never uv sync --locked --offline --check`成功，58个包无需改动；13份Python AST、15份Markdown围栏、88处本地链接/锚点、8项报告、20个提交候选的行尾/换行及真实凭据扫描通过，未输出任何密钥值。`git diff --check`无输出，`.env`/`data/d5-auto/`被忽略，无新增依赖/锁文件改动；没有因文档收尾重复运行已通过的业务或模型验收。
+
+### 用户Git交接、手动验收与学习确认（2026-10-15补记）
+
+用户亲自核对20个暂存文件及git diff --cached --check，提交 [e01ad7d0209d6db61a0b150070afe4a63163204e](https://github.com/yan-ye-dhy/project-copilot/commit/e01ad7d0209d6db61a0b150070afe4a63163204e)，执行git push origin main成功（061864b..e01ad7d main→main）。Codex当时已只读核实GitHub main与本地HEAD/origin/main一致、工作区干净，阶段A完成；2026-10-15收尾前再次核实结果相同。此前报告的待提交状态是开发期快照。
+
+用户主动开启D5手测，以下命令、服务和请求均由本人在新项目终端操作。Codex逐步指导、读取`data/manual-d5/`保存的结果，并通过D3 loader/splitter离线对照PDF原文和全部metadata；没有代发本轮HTTP、启动服务或模型请求。
+
+| 用户实际环节 | 实际结果 | 验证范围 |
+| --- | --- | --- |
+| 1. `uv run --frozen python scripts/rag_smoke.py`，无live；echo退出码 | argparse提示需live，退出2 | 配置加载/客户端构造前的CLI保护 |
+| 2. Compose使用.env.example启动qdrant，查看ps | v1.19.2，Up，127.0.0.1:6433→6333 | 用户启动既有容器 |
+| 3. curl 6433/readyz，echo退出码 | HTTP200，all shards are ready，退出0 | Qdrant就绪；正文末尾无换行使0与正文连在一起 |
+| 4. 普通Uvicorn命令启动8002 | PID42244，startup complete | 正常配置启动 |
+| 5. GET /health | HTTP200，Project Copilot/development | 当前应用与配置可响应 |
+| 6. POST /rag/ask，question为三个空格 | HTTP422，string_too_short，loc为body/question | 在请求体校验阶段拒绝 |
+| 7. 正常固定问题POST，保存answer.json | HTTP200/answered；2块证据、1条真实引用 | 用户真实RAG请求及Codex原文对照，见下文 |
+| 8. Ctrl+C关42244，再用三空格DeepSeek key前缀启动；正常问题POST | 原进程正常关闭；PID47593启动；HTTP503，安全detail保存为missing-key.json | 进程级配置覆盖与空白密钥拒绝；未提供服务端ChatConfigError日志，不登记观察到该日志 |
+| 9. 终端内联Python构造ModelAnswer | 合法引用[1]接受；answered空引用报ValidationError，回答必须包含引用编号 | 手写数据的本地契约练习，不是供应商坏输出或HTTP502测试 |
+| 10. Ctrl+C关闭临时服务 | shutdown complete，PID47593退出，返回提示符 | 用户完成本轮后端收尾；Qdrant未反馈关闭 |
+
+本轮实际答案为“样本文档第一页描述的是本地文档加载功能。”，引用number1的原文为`Project Copilot page one: local document loading.`，source_name为sample.pdf、page为0，chunk UUID为`a9834897-ad5b-573a-bcfd-dcf449878f4c`；全部metadata与样本一致。模型收到2块证据后引用其中1块；这不是对当前集合精确点数的重新验证。本轮没有重入库或执行count。
+
+手测前只读核对默认deepseek-flash/temperature0/max_tokens1024及既有1份PDF清单，并核验[智谱标准价](https://docs.bigmodel.cn/cn/guide/start/pricing)和[DeepSeek价格](https://api-docs.deepseek.com/quick_start/pricing/)。向用户说明本轮正常POST对应1次问题Embedding＋1次DeepSeek，按1000及3000/1024 tokens保守估算约¥0.0005＋US$0.0022，用户随后本人执行一次。实际DeepSeek usage为prompt358/completion25/total383，cache_hit128/cache_miss230；请求与返回模型均为deepseek-flash。Embedding usage、实付和独立端到端耗时未采集；预算不是账单。
+
+本轮模型请求与前一天Codex自动验收的1次Embedding＋1次DeepSeek分开记录，D5已知合计4次供应商请求。CLI拒绝、空白问题422和本地Schema练习不请求模型；临时空白key在create_chat_client中拒绝，发生在DenseRetriever.search之前，Embedding/聊天均未请求。此前Embedding/Qdrant客户端可能已构造，不能把构造客户端和发送请求混为一谈；HTTP503正文只提供安全detail。
+
+用户最后明确回复“已学习，能够解释”，确认已通过ChatGPT学完D5，能说明问题→检索证据→System/User消息→JSON/Pydantic校验→真实引用，以及空白密钥为何在模型请求前被拒绝。结合真实手测与开发提交已推送，阶段A/B均完成，不自动进入D6。
+
+覆盖边界：358项离线测试及开发期HTTP验收本轮未重跑；没有用户空检索、坏JSON/越界引用HTTP502、完整弱证据/注入测试或Prompt对照。单个已知事实不产生整体准确率、Recall/MRR或普遍引用支持率。业务源码、依赖、配置模板与35日计划未变；本次只补六份文档，运行结果与真实.env继续被Git忽略，交用户亲自提交、推送。
+
+文档收尾检查通过：15份Markdown围栏、49张表格列数、88处本地链接及其中10处锚点、D5固定8项报告、六份修改文件行尾/换行；35日逐日任务行与HEAD完全一致。git diff --check无输出，暂存区为空，修改范围仅上述六份文档；.env和两份用户手测JSON被Git忽略。本次检查未运行业务测试、服务或收费模型。
