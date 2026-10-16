@@ -390,7 +390,7 @@ Docker恢复后Codex执行`docker compose --env-file .env.example up -d qdrant`�
 
 ## D6：单文件上传与Dense模块验收（2026-10-15）
 
-**当前状态：实现、离线验证及最小真实自动验收完成；阶段A待用户Git交接，阶段B待学习手测。** 用户明确开启D6，开始时main/origin/main在D5收尾`cf5e373d7df905e196f9324e66d63cfb2dfe795b`，工作区干净，D1–D5阶段A/B均完成。用户随后要求继续，本轮始终只做D6。
+**当前状态：D6阶段A/B均完成；2026-10-16用户手测及学习理解已确认。** 用户明确开启D6，开始时main/origin/main在D5收尾`cf5e373d7df905e196f9324e66d63cfb2dfe795b`，工作区干净，D1–D5阶段A/B均完成。用户随后要求继续，本轮始终只做D6；开发期与用户手测分别记录如下。
 
 ### 实际实现与设计边界
 
@@ -438,3 +438,39 @@ Docker恢复后Codex执行`docker compose --env-file .env.example up -d qdrant`�
 这是Codex自动验收，不登记为用户完成学习/手测，也不产生完整检索效果指标。D6代码与自动验证完成，用户Git、ChatGPT学习和用户手测仍待后续；不自动推进D7。
 
 收尾检查通过：19个提交候选，9份Python AST、1份验收JSON、16份Markdown围栏、50张表格、102处本地链接及13处锚点；固定8项报告、34个主任务日表格行与HEAD一致，可前移D35仍保留。候选文件未包含实际密钥，.env及data/d6-auto被忽略，git diff --check无输出，暂存区为空。独立只读审查未发现阻断交付的问题；没有为文档收尾追加模型请求或重复业务测试。
+
+### 用户Git交接与手动验证（2026-10-16补记）
+
+用户亲自暂存19个文件、核对cached stat/check，提交 [a7ec08b616d31bcc8801f2fc0bf550210eb8f4c2](https://github.com/yan-ye-dhy/project-copilot/commit/a7ec08b616d31bcc8801f2fc0bf550210eb8f4c2)，push origin main成功（cf5e373..a7ec08b main→main）。Codex只读核实HEAD/origin/main一致、工作区干净，阶段A完成；2026-10-16手测收尾前再次核实一致。报告此前待提交文字为开发期快照，本次同步实际结果。
+
+用户主动开启D6手测，所有启动、HTTP、文件准备及关闭操作由本人执行。Codex指导并读取data/manual-d6保存的响应/头/点数，离线对照D3 PDF原文及D4成功清单，没有代发本轮HTTP、启动服务或模型请求。
+
+| 用户实际环节 | 实际结果与观察 | 验证范围 |
+| --- | --- | --- |
+| 1–2. 普通Uvicorn命令启动8002，GET /health | PID78004，startup complete；HTTP200，Project Copilot/development；响应头与完成日志run_id均为9b9ce0ae-43cf-4e6f-b89e-e11328793c21，2.03毫秒 | 应用启动、健康响应及本地请求关联 |
+| 3. 上传原PDF但filename设为sample.exe | HTTP415，提示仅支持TXT/MD/PDF；run_id d9159fd5-7a12-49cc-ba25-35b6d7564ece一致，54.76毫秒 | 类型校验在入库工厂前拒绝 |
+| 4. 创建0字节empty.txt并正确上传 | HTTP422，上传文件不能为空；run_id cc74ad0d-40ef-4134-8f4c-2a594109a327一致，2.11毫秒 | 复制后发现空文件、客户端构造前拒绝；前两次错命令见下文 |
+| 5–6. 上传too-large.txt，并用Path.stat/glob检查 | 文件实际5242881字节；最终HTTP413，上传文件超过允许的大小；run_id 1cdf4011-8a58-4030-8f7a-535acbfdec40一致，44.40毫秒；失败后/tmp上传临时文件0 | 默认5MiB文件额度与失败清理，未冒充整个body限制测试 |
+| 7–8. Compose启动qdrant、查看ps、GET /readyz | v1.19.2，Up，127.0.0.1:6433→6333；HTTP200，all shards are ready | 用户准备已有存储服务，无模型请求 |
+| 9. 上传sample.pdf一次，保存响应头/JSON | HTTP200，indexed/DENSE，2块/1167字节，source_name sample.pdf；run_id d4e2adc3-d314-4f09-8f93-caa5397d5c53三处一致，1075.91毫秒 | 真实上传入库，文档/片段UUID与D3、原成功清单一致 |
+| 10. Qdrant points/count，exact=true | HTTP200，result.count为2 | 重复上传稳定ID后，本例集合仍为2个片段 |
+| 11. 固定问题POST /rag/ask，保存响应头/JSON | HTTP200/answered，2块证据/1条引用；run_id 6f0da6cc-b2e2-42f7-a629-9ae3cb9740b2一致，1109.41毫秒 | 本轮实际问答及原文/全部metadata核对 |
+| 12. Ctrl+C关闭后端，随后检查临时文件 | shutdown complete，PID78004退出；修正检查命令后临时文件0 | 用户正常收尾；最后一次清理观察发生在停服后，未登记停服前再次检查 |
+
+实际回答为“样本文档第一页描述了本地文档加载功能。”；引用number1对应sample.pdf页0原文`Project Copilot page one: local document loading.`，文档UUID为`c8d63f20-bc98-52e9-a839-3bda4a1a0bfc`、chunk UUID为`a9834897-ad5b-573a-bcfd-dcf449878f4c`。Codex从用户保存结果核验全部metadata、内容哈希、Prompt/Schema与Dense指纹一致；原成功清单仍1份PDF，精确点数由用户实际请求核实。
+
+### 本轮费用、命令问题与覆盖边界
+
+用户在收到范围和估算后明确回复“同意这3次手测调用”。本轮一次PDF上传对应1次Embedding，随后固定问答对应1次问题Embedding＋1次DeepSeek；默认batch64、2048维、deepseek-flash/temperature0/max_tokens1024，无自动重试。事前按两次Embedding各1000输入tokens、DeepSeek3000输入/最多1024输出tokens保守估算约¥0.001＋US$0.0022，依据当日核验的 [智谱价格](https://docs.bigmodel.cn/cn/guide/start/pricing/)及 [DeepSeek价格](https://api-docs.deepseek.com/quick_start/pricing/)，不是实付。
+
+本轮实际DeepSeek usage为prompt358/completion24/total382，cache_hit128/cache_miss230；Embedding usage及实际账单未采集。用户提供了应用请求/完成日志，未另提供供应商HTTP日志；3次调用按已知请求流程及成功响应记录，不宣称查过账单。与开发期3次自动验收分开，D6已知合计4次Embedding＋2次DeepSeek，不能复用已消耗授权追加请求。两轮usage恰好相同，不覆盖原docs/evidence/D6_DENSE_SMOKE.json。
+
+用户第一次空文件命令将-F写成-f并把file值写成/@路径，实际GET得到405及curl22/3；第二次带引号字段内换行、仍为/@，POST得到422“请提供一个名为file的上传文件”；第三次正确-F/file=@后才验证到空文件拒绝。上传PDF前另一次--show-error后缺少空格，使参数和URL拼接，curl解析退出、未发送HTTP；随后正确命令只上传一次。超限时100 Continue为临时响应，最终结果413。Codex收尾Python命令多写右括号，用户收到SyntaxError后自行修正得到0；这些修正不改业务代码、不新增模型调用。
+
+用户另问--env-file .env.example的作用，已结合实际YAML与官方说明解释：它选择Compose变量来源，当前固定镜像/端口/卷无变量占位符，对这些值无实际影响、可以省略；不会自动把全部应用配置注入容器。没有因此修改Compose或.env。
+
+本轮未重跑408项自动测试，未手测并发409、整体body超限、名称/MIME其他边界、上游502/503、故障恢复或Phoenix导出；这些范围保留原自动覆盖/后续验收归属，不据单条问答产生整体准确率或Recall/MRR。后端已关闭，未收到用户停止Qdrant的反馈。本次只整理文档，不自动进入D7。
+
+用户最后明确回复“已学习，能够解释”，确认已通过ChatGPT学完D6，能解释multipart上传→校验→临时文件→入库/成功清单→检索回答，以及来源名与临时路径、run_id与Phoenix Trace的区别。结合已推送开发提交和实际手测，D6阶段A/B均完成；本次文档补记仍由用户亲自提交、推送，D7等待明确开启。
+
+文档收尾检查通过：16份Markdown围栏、51张表格列数、104处本地链接及13处锚点、D6固定8项报告、六份修改文件行尾/换行及真实凭据扫描；未输出密钥。.env和data/manual-d6被忽略，暂存区为空，git diff --check无输出。计划只更新第10节进度，34个主任务日及D35安排保持原样；独立只读事实审核通过。本次未运行业务测试、启动服务或新增模型调用，仅更新六份文档。

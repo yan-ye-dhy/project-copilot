@@ -58,4 +58,4 @@
 2. **为什么既限制整个body，又限制文件字节？** multipart有额外边界与头；框架中间件统计实际ASGI字节，业务复制再限制单文件，不能只信Content-Length或把spool内存阈值当文件上限。扩展名和MIME只是初筛，内容仍须通过UTF-8/PDF解析。
 3. **线程池、入库保护和run_id分别解决什么？** 线程池承接同步IO/SDK调用；非阻塞进程锁避免两个HTTP上传覆盖清单，忙时409；run_id把本地请求/响应/日志关联起来。它们不构成跨进程事务或已导出的Phoenix Trace，后续按计划逐步验证。
 
-依据：[上传入口](../src/project_copilot/api/documents.py)、[入库编排](../src/project_copilot/rag/ingestion.py)、[请求关联](../src/project_copilot/infrastructure/tracing.py)。D6用户学习与手测尚待完成。
+依据：[上传入口](../src/project_copilot/api/documents.py)、[入库编排](../src/project_copilot/rag/ingestion.py)、[请求关联](../src/project_copilot/infrastructure/tracing.py)。2026-10-16用户完成D6手测，并确认已通过ChatGPT学习、能解释主链及来源名/临时路径、run_id/Phoenix区别；以上问答继续用于结合实际输入、失败分支和日志复盘，不据单条样例宣称整体效果或Phoenix导出已验证。

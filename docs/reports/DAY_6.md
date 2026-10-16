@@ -1,6 +1,6 @@
 # 【Day 6 开发报告】
 
-日期：2026-10-15。实现、离线验证及最小真实自动验收完成；阶段A待用户Git交接，阶段B学习手测待完成。D1–D5阶段A/B及D5收尾cf5e373已同步；本轮仅用户开启的D6。
+开发日期：2026-10-15；手测补记：2026-10-16。阶段A/B均完成：开发提交a7ec08b由用户推送，用户手测通过，并明确确认已通过ChatGPT学习、能解释关键流程。本轮仅用户开启的D6；本次文档补记待用户提交。
 
 ## 1. 今日开发目标
 
@@ -44,13 +44,22 @@
 - 锁定环境检查59个包无需改动；Python AST、Markdown围栏/表格/本地链接与锚点、JSON、固定8项报告及凭据检查通过，35日任务行不变，git diff --check通过，暂存区为空；收尾共19个提交候选。
 - 用户明确批准后执行`timeout 150s .venv/bin/python /tmp/project-copilot-d6-live-check.py`：唯一一次上传与问答均HTTP200，分别约0.9844/1.2227秒；上传2块，回答“样本文档第一页描述了本地文档加载功能。”，引用sample.pdf页0，原文及全部metadata与D3一致。重复上传后Qdrant精确点数2，无临时上传文件残留；两条run_id均可关联真实完成日志，自动启动的Uvicorn正常关闭，已有Qdrant保留。
 - 本次仅2次Embedding＋1次DeepSeek，日志核对同数，无自动重试；DeepSeek usage为输入358/输出24/总382，cache_hit128/cache_miss230；Embedding usage及实际账单未采集，事前预算不是实付。可提交的[验收记录](../evidence/D6_DENSE_SMOKE.json)保存完整配置/版本与自编样本输出，临时脚本及运行日志留在/tmp、被忽略的data/d6-auto中。
-- Phoenix导出、完整检索效果评测均未执行；单个已知事实不产生准确率/Recall/MRR，用户学习/手测未开始。
+- Phoenix导出、完整检索效果评测均未执行；单个已知事实不产生准确率/Recall/MRR。以上为Codex开发期自动验证，不能代替下列用户手测。
+
+### 用户手动验证补记（2026-10-16）
+
+用户亲自启动/请求/关闭，Codex逐步指导并读取data/manual-d6的响应、离线对照PDF及成功清单，没有代发本轮HTTP或模型请求。实际通过：health200及run_id关联、不支持后缀415、空文件422、5242881字节文件413、失败后临时文件0；Qdrant启动与readyz200；PDF上传200/indexed/2块/1167字节，原来源与稳定ID一致，精确点数2；固定问答200，引用sample.pdf页0原文及全部metadata一致。
+
+上传run_id为`d4e2adc3-d314-4f09-8f93-caa5397d5c53`、日志耗时1075.91毫秒；问答为`6f0da6cc-b2e2-42f7-a629-9ae3cb9740b2`、1109.41毫秒，均与响应头匹配，上传正文亦同值。用户在费用确认后本轮另用2次Embedding＋1次DeepSeek，无自动重试；DeepSeek实际usage358/24/382、cache_hit128/cache_miss230，Embedding usage与实付未采集。与开发期3次分开记录，原自动验收JSON未覆盖。
+
+用户已关闭Uvicorn78004，随后核对临时文件0。curl参数/空格错误与Codex多写右括号的检查命令均已修正，实际结果及覆盖边界见 [开发日志](../DEVELOPMENT_LOG.md)。本轮未重跑408项测试，未手测并发409、整个body超限、上游502/503或Phoenix。用户明确回复“已学习，能够解释”，确认主调用链及来源名/临时路径、run_id/Phoenix区别，阶段B据此完成。
 
 ## 6. GitHub 提交信息
 
 - 分支：`main`，跟踪`origin/main`；远端为`https://github.com/yan-ye-dhy/project-copilot.git`。
 - 开发基点：[cf5e373d7df905e196f9324e66d63cfb2dfe795b](https://github.com/yan-ye-dhy/project-copilot/commit/cf5e373d7df905e196f9324e66d63cfb2dfe795b)，D5学习手测收尾已同步。
-- D6 commit：**待用户提交**；推送：**待用户执行**；暂无已同步的D6提交链接。Codex不自动暂存、提交或推送。
+- D6开发提交：[a7ec08b616d31bcc8801f2fc0bf550210eb8f4c2](https://github.com/yan-ye-dhy/project-copilot/commit/a7ec08b616d31bcc8801f2fc0bf550210eb8f4c2)，`feat(rag): add document upload and request correlation`。用户亲自commit并push成功（cf5e373..a7ec08b main→main）；2026-10-16再次核实本地HEAD与origin/main一致，补记前工作区干净。
+- 本次手测收尾仅更新文档，仍待用户亲自提交、推送；Codex不自动执行Git写操作。
 
 ## 7. 后续学习提示
 
@@ -64,6 +73,6 @@
 
 ## 8. 下一步计划
 
-指导用户亲自审核、提交并推送D6。之后由ChatGPT教学；用户主动要求D6手动测试后再单步带练。
+指导用户亲自提交、推送本次手测与学习完成补记。D6阶段A/B均完成，后续知识点仍可结合实际日志复盘。
 
 D7是语料来源与第一批人工gold，不自动开始。完整RAG效果评测、失败恢复和Trace按原35日计划推进。

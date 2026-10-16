@@ -1,6 +1,6 @@
 # Project Copilot
 
-基于RAG与LangGraph的研发知识及工单协作智能体。D1–D5阶段A/B已完成，D5收尾cf5e373已同步。D6新增单文件上传、大小/类型校验、失败清理及run_id，408项离线测试与一次真实上传问答验收通过；用户Git及学习手测待完成，见 [D6报告](docs/reports/DAY_6.md)。业务Agent按后续计划实现。
+基于RAG与LangGraph的研发知识及工单协作智能体。D1–D6阶段A/B已完成。D6开发提交a7ec08b已同步，408项离线测试和开发期真实上传问答通过；2026-10-16用户另行完成手测，并确认已通过ChatGPT学习、能解释主调用链，见 [D6报告](docs/reports/DAY_6.md)。业务Agent按后续计划实现。
 
 协作流程见 [长期协作规则](docs/COLLABORATION_RULES.md)：Codex开发、自动验证、提供报告并指导Git操作；用户亲自提交和推送GitHub，随后通过ChatGPT学习代码/架构，学习后主动要求Codex开始手动测试。以下命令是自助运行参考，Codex仅在用户要求后单步带练。
 
@@ -169,4 +169,6 @@ HTTP415表示不支持的类型，422表示缺文件/非法名/解析失败/空�
 
 每个HTTP请求由服务端生成`X-Run-ID`，上传成功正文返回同值；请求完成日志记录run_id、方法、路径、状态、耗时和`trace_exported=false`。未知500响应提供安全detail及run_id；此处用于本地关联，Phoenix导出尚未实现。`PROJECT_COPILOT_TRACING_ENABLED`默认false，当前设true会明确拒绝配置，D33才接入实际导出。完整运行链与复盘问题见 [D6学习笔记](docs/STUDY_NOTES.md#d6上传接入与dense模块复盘)。
 
-2026-10-15用户授权后，Codex完成一次真实上传→问答：两接口均HTTP200，上传2块，引用与自编PDF页0原文及元数据一致；重复上传后集合精确点数仍为2，临时文件已清理，自动启动的后端正常关闭。仅2次Embedding＋1次DeepSeek，无自动重试；DeepSeek输入358、输出24、总382 tokens，Embedding usage及实际账单未采集。配置、Prompt版本、run_id与输出见 [D6自动验收记录](docs/evidence/D6_DENSE_SMOKE.json)。这是已知样本的工程验收，完整效果评测与用户学习手测仍待对应环节。
+2026-10-15用户授权后，Codex完成一次真实上传→问答：两接口均HTTP200，上传2块，引用与自编PDF页0原文及元数据一致；重复上传后集合精确点数仍为2，临时文件已清理，自动启动的后端正常关闭。仅2次Embedding＋1次DeepSeek，无自动重试；DeepSeek输入358、输出24、总382 tokens，Embedding usage及实际账单未采集。配置、Prompt版本、run_id与输出见 [D6自动验收记录](docs/evidence/D6_DENSE_SMOKE.json)。这是已知样本的工程验收；完整效果评测留后续阶段，当时用户学习手测尚待完成，最新结果见下方补记。
+
+2026-10-16用户亲自完成请求关联、类型415/空文件422/实际文件超限413、失败后临时清理、Qdrant就绪、PDF上传、精确点数2和固定问答；引用与D3原文/元数据一致，随后关闭后端并确认临时文件0。手测另消耗授权的2次Embedding＋1次DeepSeek，实际usage358/24/382，与开发期分别记录；完整操作及问题修正在 [开发日志](docs/DEVELOPMENT_LOG.md)中保留。用户确认已通过ChatGPT学习、能解释主链及来源名/临时路径、run_id/Phoenix区别，D6阶段A/B均完成；D7等待本人明确开启。
