@@ -59,3 +59,11 @@
 3. **线程池、入库保护和run_id分别解决什么？** 线程池承接同步IO/SDK调用；非阻塞进程锁避免两个HTTP上传覆盖清单，忙时409；run_id把本地请求/响应/日志关联起来。它们不构成跨进程事务或已导出的Phoenix Trace，后续按计划逐步验证。
 
 依据：[上传入口](../src/project_copilot/api/documents.py)、[入库编排](../src/project_copilot/rag/ingestion.py)、[请求关联](../src/project_copilot/infrastructure/tracing.py)。2026-10-16用户完成D6手测，并确认已通过ChatGPT学习、能解释主链及来源名/临时路径、run_id/Phoenix区别；以上问答继续用于结合实际输入、失败分支和日志复盘，不据单条样例宣称整体效果或Phoenix导出已验证。
+
+## D7：可追溯语料与人工gold
+
+1. **为什么gold不直接保存当前chunk_id？** 切分参数改变会改变片段身份，比较需要固定原文证据；记录文档UUID/版本、原文和位置，再由后续评测器映射到各切分结果。字符重叠不等于事实支持，跨段还需核对全部必要证据。
+2. **为什么同义题和追问要分问题族？** 近重复问题跨开发/保留集会造成信息泄漏；D8按family分组，追问保存固定历史与独立问题。独立问题用于检索对照，不等于当前单轮接口已支持上下文理解。
+3. **自动校验通过是不是人工gold完成？** 不是。程序可验证JSON、版本、身份和原文切片，无法代替人工确认问题质量、证据充分性和无答案结论；所有Codex初稿为pending，严格模式明确拒绝，真实复核后才逐题登记。
+
+依据：[数据说明](../evals/datasets/copilot_v0/README.md)、[证据草稿](../evals/datasets/copilot_v0/labels.draft.jsonl)、[离线检查器](../evals/validate_dataset.py)。目前为5份来源、20题草稿、人工确认0题；D7学习与人工复核待用户开启。

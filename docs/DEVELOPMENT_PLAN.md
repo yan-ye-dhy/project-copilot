@@ -461,7 +461,7 @@ feat(agent): require approval for idempotent ticket creation
 
 这些是建议，不是已存在的历史。原仓库不整理或提交；新项目由用户在Codex指导下亲自提交、推送约定GitHub仓库/分支，失败如实报告，不强推或重写历史。未配置远端时先记录待同步并获取实际地址，不猜测仓库。每个完整模块验收后可交给ChatGPT新开学习窗口，如“Project Copilot · Dense RAG”“Project Copilot · 检索评测与优化”“Project Copilot · LangGraph与工单确认”。
 
-## 10. 当前开发进度：D6已完成
+## 10. 当前开发进度：D7，语料与第一批标注
 
 **D1已完成：** 工程、自动验收、ChatGPT学习和用户手测完成；2026-10-12只读核实用户提交的 `4c04a29` 已同步GitHub，A/B均完成，见 [D1报告](reports/DAY_1.md)。用户已明确开启D2。
 
@@ -491,7 +491,9 @@ git status --short
 
 默认返回 `{"status":"ok","service":"Project Copilot","environment":"development"}`。D1命令保留为历史复现参考。D5验收补记cf5e373已由用户推送；用户已明确开启D6，35日逐日安排保持不变。
 
-**D6阶段A/B均完成。** 从干净的main/cf5e373开始，新增单文件multipart上传、受限复制/随机临时文件与清理、原来源名保留、进程内忙碌保护、run_id和框架body上限；复用D3–D5链路。全量408项离线测试通过、1项外部测试默认跳过；开发期授权的2次Embedding＋1次DeepSeek完成上传/问答、原文引用与点数2核验，记录见 [D6自动验收](evidence/D6_DENSE_SMOKE.json)。用户已提交并推送`a7ec08b616d31bcc8801f2fc0bf550210eb8f4c2`，2026-10-16核实本地HEAD/origin/main一致。同日用户亲自完成类型/空文件/超限拒绝、请求关联、清理及另一次真实上传/问答，精确点数仍2，后端已正常关闭；手测另用本轮授权的2次Embedding＋1次DeepSeek，见 [D6报告](reports/DAY_6.md)。用户明确确认已通过ChatGPT学习、能解释主调用链及来源名/临时路径、run_id/Phoenix区别。multipart0.0.32为新增依赖，Starlette≥1.7只是约束现有包；Phoenix实际导出与完整效果评测仍待对应阶段。D7等待用户明确开启；35日逐日任务保持不变。
+**D6阶段A/B均完成。** 从干净的main/cf5e373开始，新增单文件multipart上传、受限复制/随机临时文件与清理、原来源名保留、进程内忙碌保护、run_id和框架body上限；复用D3–D5链路。全量408项离线测试通过、1项外部测试默认跳过；开发期授权的2次Embedding＋1次DeepSeek完成上传/问答、原文引用与点数2核验，记录见 [D6自动验收](evidence/D6_DENSE_SMOKE.json)。用户已提交并推送`a7ec08b616d31bcc8801f2fc0bf550210eb8f4c2`，2026-10-16核实本地HEAD/origin/main一致。同日用户亲自完成类型/空文件/超限拒绝、请求关联、清理及另一次真实上传/问答，精确点数仍2，后端已正常关闭；手测另用本轮授权的2次Embedding＋1次DeepSeek，见 [D6报告](reports/DAY_6.md)。用户明确确认已通过ChatGPT学习、能解释主调用链及来源名/临时路径、run_id/Phoenix区别。multipart0.0.32为新增依赖，Starlette≥1.7只是约束现有包；Phoenix实际导出与完整效果评测仍待对应阶段。收尾提交3f3159965b94655095acca599333e318dc5287b7已由用户同步，随后开启D7。
+
+**D7开发准备与离线验证已完成，人工gold尚待复核。** 从干净的main/3f31599开始，整理5份带来源的中文语料、20题问题/证据草稿和逐题复核视图；18题可回答、2题无答案候选，八类题型均有草稿。原文版本与字符位置检查通过，D7检查器及D3加载回归共58项通过；人工confirmed为0、pending为20，严格复核模式按预期拒绝。没有以AI草稿代替原计划约15–20题人工标注，D7尚未整体验收；待用户Git交接、ChatGPT学习和主动开启的人工复核。未划分/冻结开发与保留集，未实现检索指标或运行收费基线，见 [D7报告](reports/DAY_7.md)；35日任务表不变，不自动进入D8。
 
 ## 11. 最终验收和可选裁剪
 

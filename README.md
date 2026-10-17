@@ -1,6 +1,6 @@
 # Project Copilot
 
-基于RAG与LangGraph的研发知识及工单协作智能体。D1–D6阶段A/B已完成。D6开发提交a7ec08b已同步，408项离线测试和开发期真实上传问答通过；2026-10-16用户另行完成手测，并确认已通过ChatGPT学习、能解释主调用链，见 [D6报告](docs/reports/DAY_6.md)。业务Agent按后续计划实现。
+基于RAG与LangGraph的研发知识及工单协作智能体。D1–D6阶段A/B已完成，D6收尾3f31599已同步。D7已准备5份来源语料、20题标注草稿及离线检查工具；当前人工确认0题，待Git交接、学习和逐题复核，见 [D7报告](docs/reports/DAY_7.md)。业务Agent按后续计划实现。
 
 协作流程见 [长期协作规则](docs/COLLABORATION_RULES.md)：Codex开发、自动验证、提供报告并指导Git操作；用户亲自提交和推送GitHub，随后通过ChatGPT学习代码/架构，学习后主动要求Codex开始手动测试。以下命令是自助运行参考，Codex仅在用户要求后单步带练。
 
@@ -51,6 +51,7 @@ PROJECT_COPILOT_APP_NAME="Copilot Learning" uv run --frozen uvicorn project_copi
 - [D4开发报告与真实Dense索引验收](docs/reports/DAY_4.md)
 - [D5开发报告与结构化问答交接](docs/reports/DAY_5.md)
 - [D6开发报告与上传/Dense模块验收](docs/reports/DAY_6.md)
+- [D7开发报告与语料/标注草稿](docs/reports/DAY_7.md)
 - [三方协作与8项开发报告规范](docs/COLLABORATION_RULES.md)
 - [开发计划](docs/DEVELOPMENT_PLAN.md)
 - [参考审计](docs/REFERENCE_AUDIT.md)
@@ -171,4 +172,18 @@ HTTP415表示不支持的类型，422表示缺文件/非法名/解析失败/空�
 
 2026-10-15用户授权后，Codex完成一次真实上传→问答：两接口均HTTP200，上传2块，引用与自编PDF页0原文及元数据一致；重复上传后集合精确点数仍为2，临时文件已清理，自动启动的后端正常关闭。仅2次Embedding＋1次DeepSeek，无自动重试；DeepSeek输入358、输出24、总382 tokens，Embedding usage及实际账单未采集。配置、Prompt版本、run_id与输出见 [D6自动验收记录](docs/evidence/D6_DENSE_SMOKE.json)。这是已知样本的工程验收；完整效果评测留后续阶段，当时用户学习手测尚待完成，最新结果见下方补记。
 
-2026-10-16用户亲自完成请求关联、类型415/空文件422/实际文件超限413、失败后临时清理、Qdrant就绪、PDF上传、精确点数2和固定问答；引用与D3原文/元数据一致，随后关闭后端并确认临时文件0。手测另消耗授权的2次Embedding＋1次DeepSeek，实际usage358/24/382，与开发期分别记录；完整操作及问题修正在 [开发日志](docs/DEVELOPMENT_LOG.md)中保留。用户确认已通过ChatGPT学习、能解释主链及来源名/临时路径、run_id/Phoenix区别，D6阶段A/B均完成；D7等待本人明确开启。
+2026-10-16用户亲自完成请求关联、类型415/空文件422/实际文件超限413、失败后临时清理、Qdrant就绪、PDF上传、精确点数2和固定问答；引用与D3原文/元数据一致，随后关闭后端并确认临时文件0。手测另消耗授权的2次Embedding＋1次DeepSeek，实际usage358/24/382，与开发期分别记录；完整操作及问题修正在 [开发日志](docs/DEVELOPMENT_LOG.md)中保留。用户确认已通过ChatGPT学习、能解释主链及来源名/临时路径、run_id/Phoenix区别，D6阶段A/B均完成；随后用户明确开启D7。
+
+## D7：语料与证据标注准备
+
+[数据说明](evals/datasets/copilot_v0/README.md)记录5份中文语料的来源、字节版本及D3文档身份；[逐题复核队列](evals/datasets/copilot_v0/REVIEW_QUEUE.md)提供20题问题、参考答案与原文证据候选，覆盖八类题型。来源以已公开项目真实操作记录为主，补Docker/Qdrant官方资料的自编中文笔记；不冒充企业生产事故或真实用户提问集。
+
+离线检查命令：
+
+```bash
+uv run --frozen python evals/validate_dataset.py --dataset evals/datasets/copilot_v0
+```
+
+当前结构检查通过：18题可回答、2题无答案候选，pending20/confirmed0，ready_for_baseline=false。检查文档版本、原文字符区间与关联不能替代人工判定事实支持；添加`--require-reviewed`会按预期拒绝未复核草稿。D7要求的约15–20题人工gold仍待用户学习后逐题确认，未完成前不记当天整体验收通过。
+
+后续仅将来源清单列出的corpus文件入库，问题、标签和复核队列不进入知识库。D8负责扩充/问题族划分/冻结，D9实现检索评测器，D10运行基线；本轮没有模型调用、索引写入、指标结果或开发/保留划分。
