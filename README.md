@@ -1,6 +1,6 @@
 # Project Copilot
 
-基于RAG与LangGraph的研发知识及工单协作智能体。D1–D6阶段A/B已完成，D6收尾3f31599已同步。D7已准备5份来源语料、20题标注草稿及离线检查工具；当前人工确认0题，待Git交接、学习和逐题复核，见 [D7报告](docs/reports/DAY_7.md)。业务Agent按后续计划实现。
+基于RAG与LangGraph的研发知识及工单协作智能体。D1–D7阶段A/B已完成；D7开发提交acd87cd已同步，用户已通过ChatGPT学习、人工确认20题并完成严格检查。最新复核记录待用户提交，见 [D7报告](docs/reports/DAY_7.md)。业务Agent按后续计划实现。
 
 协作流程见 [长期协作规则](docs/COLLABORATION_RULES.md)：Codex开发、自动验证、提供报告并指导Git操作；用户亲自提交和推送GitHub，随后通过ChatGPT学习代码/架构，学习后主动要求Codex开始手动测试。以下命令是自助运行参考，Codex仅在用户要求后单步带练。
 
@@ -51,7 +51,7 @@ PROJECT_COPILOT_APP_NAME="Copilot Learning" uv run --frozen uvicorn project_copi
 - [D4开发报告与真实Dense索引验收](docs/reports/DAY_4.md)
 - [D5开发报告与结构化问答交接](docs/reports/DAY_5.md)
 - [D6开发报告与上传/Dense模块验收](docs/reports/DAY_6.md)
-- [D7开发报告与语料/标注草稿](docs/reports/DAY_7.md)
+- [D7开发报告与语料/人工复核](docs/reports/DAY_7.md)
 - [三方协作与8项开发报告规范](docs/COLLABORATION_RULES.md)
 - [开发计划](docs/DEVELOPMENT_PLAN.md)
 - [参考审计](docs/REFERENCE_AUDIT.md)
@@ -184,6 +184,6 @@ HTTP415表示不支持的类型，422表示缺文件/非法名/解析失败/空�
 uv run --frozen python evals/validate_dataset.py --dataset evals/datasets/copilot_v0
 ```
 
-当前结构检查通过：18题可回答、2题无答案候选，pending20/confirmed0，ready_for_baseline=false。检查文档版本、原文字符区间与关联不能替代人工判定事实支持；添加`--require-reviewed`会按预期拒绝未复核草稿。D7要求的约15–20题人工gold仍待用户学习后逐题确认，未完成前不记当天整体验收通过。
+2026-10-17用户实际核对后明确批量确认001–020全部通过：18题可回答、2题无答案，confirmed20/pending0。本人添加`--require-reviewed`再次检查通过，退出0、ready_for_baseline=true；复核前该模式曾正确拒绝pending草稿。检查文档版本、原文字符区间与关联不能替代人工判定事实支持；本轮确认依据为用户反馈。用户已确认ChatGPT学习和关键概念理解，D7阶段A/B完成。
 
-后续仅将来源清单列出的corpus文件入库，问题、标签和复核队列不进入知识库。D8负责扩充/问题族划分/冻结，D9实现检索评测器，D10运行基线；本轮没有模型调用、索引写入、指标结果或开发/保留划分。
+后续仅将来源清单列出的corpus文件入库，问题、标签和复核队列不进入知识库。`ready_for_baseline`只表示本目录人工复核门禁满足；D8负责扩充/问题族划分/冻结，D9实现检索评测器，D10运行基线。本轮没有模型调用、索引写入、指标结果或开发/保留划分；D8仍待用户主动开启。

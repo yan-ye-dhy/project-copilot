@@ -477,7 +477,7 @@ Docker恢复后Codex执行`docker compose --env-file .env.example up -d qdrant`�
 
 ## D7：语料来源与第一批证据标注准备（2026-10-16～17）
 
-**当前状态：资料/工具准备和自动验证完成，Git交接、用户学习与人工复核待完成；人工gold为0/20，D7未整体验收。** 用户已推送D6收尾`3f3159965b94655095acca599333e318dc5287b7`，明确开启D7；开始时main/origin/main一致，工作区干净。10月16日完成草稿与相关测试，复核过程中会话中断；10月17日用户要求继续，检查实际文件后接续，没有重做D1–D6或推进D8。
+**当前状态：D7阶段A/B均完成；开发提交acd87cd已由用户推送，人工gold为20/20，用户严格检查退出0并确认学习理解。** 本次复核记录待用户另行提交。用户已推送D6收尾`3f3159965b94655095acca599333e318dc5287b7`后明确开启D7，开始时main/origin/main一致、工作区干净；10月16日完成草稿及相关测试，中断后于17日接续交接和手动验证，没有重做D1–D6或推进D8。下文开发期的pending/待办保留为历史快照，最新实际结果见本节末尾补记。
 
 ### 实际新增材料与范围
 
@@ -504,3 +504,19 @@ sources.jsonl记录5份文档，questions.jsonl与labels.draft.jsonl各20条；8
 本轮没有项目模型API调用、索引写入、服务启动或费用；业务源码、依赖与uv.lock未变。原408项全量应用测试没有重跑，不宣称已取得Recall/MRR、完整准确率、人工gold或保留集结果。下一步按协作规则交用户Git、ChatGPT学习，用户主动要求后才带练人工复核；D7原定约15–20题人工目标仍待完成，不自动进入D8。
 
 收尾检查通过：18个提交候选，2份Python AST、45行JSONL、24份Markdown围栏、54张表格列数、138处本地链接与37处锚点、D7固定8项报告；计划仅更新第10节进度，34个主任务日与D35安排保持原样。文档与资料未含本项目实际密钥，未输出凭据值；.env和运行数据仍被忽略，git diff --check无输出，暂存区为空。语义及检查器只读复核未发现阻断项，人工confirmed仍0；没有为收尾追加模型调用、服务或旧业务测试。
+
+### 用户Git交接、手动检查与人工确认（2026-10-17补记）
+
+用户亲自提交 [acd87cd3f0287cdbe7ba7b3131500ab1db904add](https://github.com/yan-ye-dhy/project-copilot/commit/acd87cd3f0287cdbe7ba7b3131500ab1db904add)，`feat(evals): add corpus and evidence annotation drafts`；首次push将origin误写为oringin失败，修正为git push origin main后成功（3f31599..acd87cd main→main）。Codex只读核实HEAD/origin/main一致、工作区干净，资料及工具交接完成；此处更新开发报告此前待Git快照的实际结果。
+
+用户主动开启D7手动验证，亲自运行普通检查命令及echo退出码，实际得到5来源/20题、18可回答/2无答案候选、confirmed0/pending20、ready_for_baseline=false，退出0。随后本人添加--require-reviewed，得到“标签尚未全部人工确认，不能作为已复核基线输入”、退出1，验证草稿门禁正确拒绝。以上为用户操作，不替换为Codex历史测试。
+
+人工复核初始带练从001开始。Codex额外要求每题书面依据，用户反馈繁琐后改为：实际阅读核对后可按题号范围批量确认，仅存疑题补充说明；逐题写理由不是项目的硬性要求。用户随后明确回复“001–020已核对，全部通过”，据此将20条实际标签的review_status登记为confirmed，reviewed_by为用户终端身份yanye，reviewed_at统一为批量确认登记时间2026-10-17T22:14:55+08:00；未编造逐题书面理由或各自审核时间。
+
+同步更新复核队列的20条状态及已确认参考内容标识；JSONL的问题、参考答案、证据、文档身份/版本、题型和问题族未改。当前人工gold为20/20，这是依据用户明确批量确认登记，不是程序或Codex自行判定。Codex随后运行离线validate_dataset(require_reviewed=True)通过，confirmed20/pending0、ready_for_baseline=true，并与HEAD逐字段/字节核对：只改复核元数据，来源、问题及corpus字节不变。
+
+用户随后亲自再次执行`uv run --frozen python evals/validate_dataset.py --dataset evals/datasets/copilot_v0 --require-reviewed`及`echo $?`，实际返回status=ok、sources5/questions20、answerable18/unanswerable2、confirmed20/pending0/needs_changes0、ready_for_baseline=true，退出0；八类计数保持4/2/3/3/2/2/2/2。由此验证实际登记后的严格门禁，不能把同一结果当作检索效果或D8划分/冻结、D9评测、D10基线已完成。
+
+用户最终明确回复“已学习，能够解释”，确认已通过ChatGPT学完D7，能区分结构检查与人工gold、文档版本/原文位置与chunk_id。结合已推送的开发提交、实际人工确认和手动检查，D7阶段A/B均完成；本次标签复核元数据与文档补记待用户亲自提交推送。没有新增模型调用、索引操作、服务启动或业务代码，不自动进入D8。
+
+手测收尾核对通过：10份修改文件只涉及9份Markdown及复核JSONL；20条标签仅变更三个复核字段，sources/questions及5份corpus共7份文件字节未改，队列20题与标签一致。45行JSONL可解析，24份Markdown围栏、55张表格列数、138处本地链接及37处锚点、D7固定8项报告均通过；计划仅第10节进度变化，原35日任务安排未变。暂存区为空，.env及手测运行数据仍被忽略；Git交接由用户执行，本次没有为纯记录变更重跑旧业务测试。
