@@ -1,6 +1,6 @@
 # Project Copilot
 
-基于RAG与LangGraph的研发知识及工单协作智能体。D1–D7阶段A/B已完成；D7开发提交acd87cd已同步，用户已通过ChatGPT学习、人工确认20题并完成严格检查。最新复核记录待用户提交，见 [D7报告](docs/reports/DAY_7.md)。业务Agent按后续计划实现。
+基于RAG与LangGraph的研发知识及工单协作智能体。D1–D7阶段A/B已完成，D7收尾92513a7已同步。D8已扩充到40题、准备30开发/10保留的族级划分及冻结工具；新增20题待人工复核，正式冻结未生成，见 [D8报告](docs/reports/DAY_8.md)。业务Agent按后续计划实现。
 
 协作流程见 [长期协作规则](docs/COLLABORATION_RULES.md)：Codex开发、自动验证、提供报告并指导Git操作；用户亲自提交和推送GitHub，随后通过ChatGPT学习代码/架构，学习后主动要求Codex开始手动测试。以下命令是自助运行参考，Codex仅在用户要求后单步带练。
 
@@ -52,6 +52,7 @@ PROJECT_COPILOT_APP_NAME="Copilot Learning" uv run --frozen uvicorn project_copi
 - [D5开发报告与结构化问答交接](docs/reports/DAY_5.md)
 - [D6开发报告与上传/Dense模块验收](docs/reports/DAY_6.md)
 - [D7开发报告与语料/人工复核](docs/reports/DAY_7.md)
+- [D8开发报告与划分/冻结交接](docs/reports/DAY_8.md)
 - [三方协作与8项开发报告规范](docs/COLLABORATION_RULES.md)
 - [开发计划](docs/DEVELOPMENT_PLAN.md)
 - [参考审计](docs/REFERENCE_AUDIT.md)
@@ -186,4 +187,18 @@ uv run --frozen python evals/validate_dataset.py --dataset evals/datasets/copilo
 
 2026-10-17用户实际核对后明确批量确认001–020全部通过：18题可回答、2题无答案，confirmed20/pending0。本人添加`--require-reviewed`再次检查通过，退出0、ready_for_baseline=true；复核前该模式曾正确拒绝pending草稿。检查文档版本、原文字符区间与关联不能替代人工判定事实支持；本轮确认依据为用户反馈。用户已确认ChatGPT学习和关键概念理解，D7阶段A/B完成。
 
-后续仅将来源清单列出的corpus文件入库，问题、标签和复核队列不进入知识库。`ready_for_baseline`只表示本目录人工复核门禁满足；D8负责扩充/问题族划分/冻结，D9实现检索评测器，D10运行基线。本轮没有模型调用、索引写入、指标结果或开发/保留划分；D8仍待用户主动开启。
+后续仅将来源清单列出的corpus文件入库，问题、标签和复核队列不进入知识库。`ready_for_baseline`只表示本目录人工复核门禁满足；D7未执行模型调用、索引写入、指标计算或开发/保留划分。D8的后续扩充和当前状态见下节，D9实现检索评测器，D10运行基线。
+
+## D8：扩充评测集、问题族划分与冻结工具
+
+复用原5份语料并保留D7的20题及人工确认记录，追加`pc-d8-021`至`pc-d8-040`。现40题、35可回答/5无答案，八类题型分布为8/5/5/5/4/4/5/4；新20题均pending，不扩用D7的确认范围。相近题与追问按23个family分组，[划分清单](evals/datasets/copilot_v0/split_manifest.json)固定30开发/10保留，同族不跨侧，选择未依据任何检索效果。
+
+项目根目录的离线预检参考：
+
+```bash
+uv run --frozen python -m evals.freeze_dataset --dataset evals/datasets/copilot_v0
+```
+
+默认只检查划分，当前返回confirmed20/pending20、ready_for_freeze=false；`--freeze`要求全量人工确认，并拒绝覆盖已有冻结。生成后用`--verify`复算语料、问题、标签和划分的指纹，改动审核元数据也会失效。当前没有正式frozen_manifest.json，完整流程只在临时合成夹具验证，不计为用户手测。
+
+用法、文本定位规则、保留集边界和局限见 [数据说明](evals/datasets/copilot_v0/README.md)。开发完成后先由用户Git交接，再通过ChatGPT学习；用户主动开启D8手动验证后核对新增题、检查整族划分并执行正式冻结。D9评测器、D10真实基线尚未开始，本轮不调用模型或重建索引。

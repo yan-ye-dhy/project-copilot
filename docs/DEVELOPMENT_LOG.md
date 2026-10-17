@@ -477,7 +477,7 @@ Docker恢复后Codex执行`docker compose --env-file .env.example up -d qdrant`�
 
 ## D7：语料来源与第一批证据标注准备（2026-10-16～17）
 
-**当前状态：D7阶段A/B均完成；开发提交acd87cd已由用户推送，人工gold为20/20，用户严格检查退出0并确认学习理解。** 本次复核记录待用户另行提交。用户已推送D6收尾`3f3159965b94655095acca599333e318dc5287b7`后明确开启D7，开始时main/origin/main一致、工作区干净；10月16日完成草稿及相关测试，中断后于17日接续交接和手动验证，没有重做D1–D6或推进D8。下文开发期的pending/待办保留为历史快照，最新实际结果见本节末尾补记。
+**当前状态：D7阶段A/B均完成；开发提交acd87cd、收尾92513a7均已由用户推送，人工gold为20/20，用户严格检查退出0并确认学习理解。** 用户已推送D6收尾`3f3159965b94655095acca599333e318dc5287b7`后明确开启D7，开始时main/origin/main一致、工作区干净；10月16日完成草稿及相关测试，中断后于17日接续交接和手动验证，没有重做D1–D6。下文开发期的pending/待办保留为历史快照，最新实际结果见本节末尾补记。
 
 ### 实际新增材料与范围
 
@@ -520,3 +520,43 @@ sources.jsonl记录5份文档，questions.jsonl与labels.draft.jsonl各20条；8
 用户最终明确回复“已学习，能够解释”，确认已通过ChatGPT学完D7，能区分结构检查与人工gold、文档版本/原文位置与chunk_id。结合已推送的开发提交、实际人工确认和手动检查，D7阶段A/B均完成；本次标签复核元数据与文档补记待用户亲自提交推送。没有新增模型调用、索引操作、服务启动或业务代码，不自动进入D8。
 
 手测收尾核对通过：10份修改文件只涉及9份Markdown及复核JSONL；20条标签仅变更三个复核字段，sources/questions及5份corpus共7份文件字节未改，队列20题与标签一致。45行JSONL可解析，24份Markdown围栏、55张表格列数、138处本地链接及37处锚点、D7固定8项报告均通过；计划仅第10节进度变化，原35日任务安排未变。暂存区为空，.env及手测运行数据仍被忽略；Git交接由用户执行，本次没有为纯记录变更重跑旧业务测试。
+
+用户随后亲自提交并推送 [92513a74bddc5bc07fb78ade3b8e26863a23ce3f](https://github.com/yan-ye-dhy/project-copilot/commit/92513a74bddc5bc07fb78ade3b8e26863a23ce3f)，`docs(d7): record manual validation and approved gold`。push实际显示acd87cd..92513a7 main→main，Codex只读核实HEAD/origin/main一致、工作区干净，D7收尾同步完成。
+
+## D8：评测集扩充、问题族划分与冻结工具（2026-10-17）
+
+**当前状态：资料扩充与离线工具/相关自动验证完成；用户Git、ChatGPT学习、新20题人工复核和正式冻结待完成。** 用户明确开启D8；开始时main/origin/main均为92513a7，工作区干净。阶段A仍待用户提交推送，阶段B尚未开始，不自动进入D9。
+
+### 实际改动与设计
+
+复用D7的5份语料及来源记录，questions/labels原20行逐字节保留；追加pc-d8-021至040，全部pending、复核者/时间均null。总40题、35可回答/5无答案；知识8、术语5、精确名5、同义5、中文长文4、跨段4、无答案5、追问4。队列区分D7已确认与D8待复核，只根据后续用户明确反馈登记新确认，不把先前001–020的授权扩成40题。
+
+保守合并同义和追问链，共23个family。stable-content-identity含6题同侧；032与旧010归local-run-id，034与旧001归configuration-lifecycle，027/039及029/040同侧。split_manifest.json的copilot-v0-family-v1固定列出30开发/10保留，5个整族进入保留侧，18族进入开发侧；两侧八类均覆盖，可答/无答案分别26/4及9/1。划分依据题型与完整问题族，没有模型、检索指标或挑选效果更好的划分；同语料不同事实允许跨侧，不把主题相关直接等同同义题。
+
+evals/freeze_dataset.py提供validate_split、freeze_dataset、verify_freeze。默认只读预检，检查30–50题/约3:1、八类、ID不重不漏、同族同侧及每侧都有可答/无答案。全量人工确认后才允许创建frozen_manifest.json，现有冻结拒绝覆盖；核验重新读取固定输入，不按冻结清单任意路径读取文件。9份登记输入为sources/questions/labels/split及5份corpus，均记录原始字节SHA256，固定原文定位规则和split_id参与总指纹；生成时间及展示文档不参与。审核元数据也在标签文件内，修改会使原冻结失效。
+
+参考原routes/search.py中的page_content、metadata.page/source边界及原utils/vdb.py的集合契约，复用新项目D3 loader和D7检查器；划分、冻结与指纹逻辑自主设计，没有直接导入原agent包或复制依赖。没有新增依赖、修改业务源码/配置/锁文件或创建监控/评测框架。命令统一从根目录以python -m evals.freeze_dataset运行，避免脚本目录导入evals失败，无需修改sys.path。
+
+### 实际自动验证
+
+执行者为Codex；工作目录新项目，全部离线，不等于用户学习后的手动验证。
+
+| 实际命令/检查 | 结果 |
+| --- | --- |
+| `.venv/bin/python -m pytest -q tests/test_eval_freeze.py` | 初版29通过；补冻结字段/文本规则边界后35通过，0.58秒；只在临时合成数据中确认/冻结 |
+| `.venv/bin/python -m pytest -q tests/test_eval_dataset.py tests/test_eval_freeze.py tests/test_documents.py` | **93 passed，1.20秒**；D7检查器31项、D8冻结35项、D3相关27项，无失败 |
+| `.venv/bin/python evals/validate_dataset.py --dataset evals/datasets/copilot_v0` | 退出0，5来源/40题、35可答/5无答案，confirmed20/pending20、ready_for_baseline=false |
+| `.venv/bin/python -m evals.freeze_dataset --dataset evals/datasets/copilot_v0` | 退出0，30开发/10保留、23族，ready_for_freeze=false |
+| 上述普通数据检查添加`--require-reviewed` | 预期退出1，提示尚未全部人工确认 |
+| 上述划分工具添加`--freeze` | 预期退出1，提示不能正式冻结，执行后frozen_manifest.json仍不存在 |
+| 比较HEAD中原问题/标签及来源原文 | 原20行问题/标签字节保留，来源与5份corpus字节未变 |
+
+测试覆盖同族泄漏、ID重叠/遗漏/未知、题量/类别/比例、人工门禁、生成及复算、拒绝覆盖、合法问题/答案/复核字段/来源/划分/原文变更导致失效、展示文件无关、非法JSON、符号链接及LF定位规则。成功冻结仅发生在临时合成夹具，reviewer明确是test-human-reviewer，不登记为用户确认或正式数据冻结；未重跑旧应用全量测试、未启动HTTP/Docker或调用项目模型。
+
+### 交接与待验收
+
+新增20题仍需用户学习后人工核对，可按明确题号范围批量确认，无需逐题书面依据，存疑项再讨论；不重做D7。用户主动开启D8手动验证后，再观察40题状态、检查一个跨段证据与问题族，确认新标签并执行正式冻结及复算。当前冻结准备完成，不宣称D8整体验收通过，也不提前运行D9/D10。
+
+D8开发commit/推送待用户操作，Codex仅做只读Git审核及命令指导；最新报告见 [DAY_8.md](reports/DAY_8.md)。数据集仍由同5份小型自建语料反向拟题，不能把30/10划分当作独立生产评测或通用能力证明；D10只用开发集，D17冻结方案后才使用保留集比较，不据保留结果调参。
+
+开发收尾检查通过：13个提交候选（9个修改、4个新增）、2份Python AST、85行JSONL及划分JSON、25份Markdown围栏、58张表格列数、172处本地链接及59处锚点、D8固定8项报告。35日逐日安排与计划第10节之外内容未变；队列40题与标签ID/顺序一致，原20条字节及复核信息保留，新增20条复核者/时间为空。只读实现和分族语义审查未发现阻断项；暂存区为空，.env及运行数据仍被忽略，git diff --check无输出。未为文档收尾追加模型调用、服务或旧业务测试。
