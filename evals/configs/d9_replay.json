@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "dataset_fingerprint": "dataset-v1-54806b5174b2f3d2e4bd08b91b57569c5121929731112c3d375d4d42d4306b7e",
+  "split": "dev",
+  "question_ids": [
+    "pc-d7-001",
+    "pc-d7-013",
+    "pc-d7-017",
+    "pc-d8-023"
+  ],
+  "ks": [
+    1,
+    3,
+    5,
+    10
+  ],
+  "splitter": {
+    "chunk_size": 750,
+    "chunk_overlap": 150,
+    "separators": [
+      "\n\n",
+      "\n",
+      " ",
+      ""
+    ]
+  },
+  "ranking_origin": "synthetic_fixture"
+}

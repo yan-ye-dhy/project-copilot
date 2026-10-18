@@ -1,6 +1,6 @@
 # Project Copilot
 
-基于RAG与LangGraph的研发知识及工单协作智能体。D1–D8阶段A/B已完成。D8开发提交d5c782e已同步，40题已人工确认并冻结为30开发/10保留，用户正式复算及副本变化检测均通过，并确认完成ChatGPT学习、能解释关键区别；冻结/手测记录待用户提交，见 [D8报告](docs/reports/DAY_8.md)。业务Agent按后续计划实现。
+基于RAG与LangGraph的研发知识及工单协作智能体。D1–D8阶段A/B已完成，D8收尾056eff8已同步。D9已实现离线排名评测器，开发集固定样例验证文档/证据指标及结果保存；待用户Git交接、学习和主动开启的手动验证，见 [D9报告](docs/reports/DAY_9.md)。真实Dense基线留D10，业务Agent按后续计划实现。
 
 协作流程见 [长期协作规则](docs/COLLABORATION_RULES.md)：Codex开发、自动验证、提供报告并指导Git操作；用户亲自提交和推送GitHub，随后通过ChatGPT学习代码/架构，学习后主动要求Codex开始手动测试。以下命令是自助运行参考，Codex仅在用户要求后单步带练。
 
@@ -53,6 +53,7 @@ PROJECT_COPILOT_APP_NAME="Copilot Learning" uv run --frozen uvicorn project_copi
 - [D6开发报告与上传/Dense模块验收](docs/reports/DAY_6.md)
 - [D7开发报告与语料/人工复核](docs/reports/DAY_7.md)
 - [D8开发报告与划分/冻结交接](docs/reports/DAY_8.md)
+- [D9开发报告与离线评测交接](docs/reports/DAY_9.md)
 - [三方协作与8项开发报告规范](docs/COLLABORATION_RULES.md)
 - [开发计划](docs/DEVELOPMENT_PLAN.md)
 - [参考审计](docs/REFERENCE_AUDIT.md)
@@ -201,4 +202,12 @@ uv run --frozen python -m evals.freeze_dataset --dataset evals/datasets/copilot_
 
 默认只检查划分，当前数据全量已确认；`--freeze`要求全量人工确认，并拒绝覆盖已有冻结。用户已亲自创建 [正式冻结清单](evals/datasets/copilot_v0/frozen_manifest.json)，随后`--verify`返回verified、退出0，指纹一致。后续以`--verify`核验，修改问题、答案、审核元数据或划分都会使原冻结失效。
 
-用户另在data/manual-d8/tampered测试副本仅修改一条合法参考答案，副本`--verify`按预期退出1；正式9份输入仍与清单匹配。用法、指纹、保留集边界及局限见 [数据说明](evals/datasets/copilot_v0/README.md)。本轮操作全部离线；D9评测器、D10真实基线尚未开始，下一Day仍待用户明确开启。
+用户另在data/manual-d8/tampered测试副本仅修改一条合法参考答案，副本`--verify`按预期退出1；正式9份输入仍与清单匹配。用法、指纹、保留集边界及局限见 [数据说明](evals/datasets/copilot_v0/README.md)。D8操作全部离线，收尾056eff8已同步，用户随后明确开启D9。
+
+## D9：离线排名评测与原文证据映射
+
+`evals/metrics.py`分别计算文档/证据Recall@k、MRR@k及全部必需证据覆盖，保留重复chunk的原排名。gold按同文档版本/页的完整原文覆盖映射，可跨多个片段连续拼全；不把字符相交当成命中，无法唯一定位的重复文本明确报错。未修改D3或D8冻结数据。
+
+`evals/run.py`先核验冻结和数据指纹，仅允许开发集，明确选择子集或全部30题；重放排名、逐题耗时/错误及指标保存到新目录，拒绝覆盖。检索失败留在可回答题分母，无答案指标为null并单独统计，追问使用冻结独立问题。固定4题样例为synthetic_fixture，只有评测器验算意义，不是Dense检索成绩。
+
+运行参考、字段口径与样例手算见 [离线评测说明](evals/README.md)。本轮没有模型调用、Qdrant索引或保留集效果实验；D10再完成真实检索采集、向量缓存、基线及Prompt配置冻结。用户Git和ChatGPT学习后，再主动开启D9手动验证，不自动进入D10。

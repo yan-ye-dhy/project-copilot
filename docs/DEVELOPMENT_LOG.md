@@ -525,7 +525,7 @@ sources.jsonl记录5份文档，questions.jsonl与labels.draft.jsonl各20条；8
 
 ## D8：评测集扩充、问题族划分与冻结工具（2026-10-17）
 
-**当前状态：D8阶段A/B均完成；40题人工复核、正式冻结/复算及副本变化检测均通过，用户已确认ChatGPT学习和理解。** 开发提交d5c782e已由用户推送，本次冻结/手测记录待用户另行提交。用户明确开启D8时main/origin/main均为92513a7、工作区干净；下文开发期pending/待Git保留为历史快照，最新实际结果见本节末尾补记，不自动进入D9。
+**当前状态：D8阶段A/B均完成；40题人工复核、正式冻结/复算及副本变化检测均通过，用户已确认ChatGPT学习和理解。** 开发d5c782e、收尾056eff8均已由用户推送。用户明确开启D8时main/origin/main均为92513a7、工作区干净；下文开发期pending/待Git保留为历史快照，最新实际结果见本节末尾补记。
 
 ### 实际改动与设计
 
@@ -580,3 +580,42 @@ Codex随后只读比对正式9份输入哈希全部匹配，副本仅第一题�
 用户最后明确回复“已学习，能够解释”，确认已通过ChatGPT学完D8，能解释同族同侧防泄漏、预检/冻结/verify的区别，以及合法答案内容变化为何仍使冻结校验失败。结合已推送开发提交和本人实际操作，D8阶段A/B均完成；收尾记录待用户亲自提交/推送，不自动进入D9。
 
 手测收尾检查通过：10个文件（9修改、1新增正式冻结清单），85行JSONL、25份Markdown围栏、59张表格列数、176处本地链接与59处锚点、D8固定8项报告；计划只更新第10节，35日任务安排不变。正式9文件哈希及总指纹复算一致，队列40题与标签一致，原D7行保留、新20题仅三复核字段变化；独立只读事实审核通过。git diff --check无输出，暂存区为空，.env与data/manual-d8副本仍被忽略；未追加业务测试、模型调用或Git写操作。
+
+用户亲自提交并推送 [056eff8fbab6506915875144827fd8dd2ffea539](https://github.com/yan-ye-dhy/project-copilot/commit/056eff8fbab6506915875144827fd8dd2ffea539)，`docs(d8): record manual validation and frozen dataset`；push显示d5c782e..056eff8 main→main，Codex核实HEAD/origin/main一致、工作区干净，D8收尾同步完成。用户随后明确开启D9。
+
+## D9：最小离线排名评测器（2026-10-18）
+
+**当前状态：开发与相关离线自动验证完成，阶段A待用户亲自提交/推送，阶段B待ChatGPT学习与主动手动验证。** 从干净main/056eff8开始，只实现D9；没有改D3切分、D8冻结数据、业务源码或依赖，没有运行真实Dense基线、模型调用、服务或保留集检索。
+
+### 实际实现与边界
+
+evals/metrics.py复用D3 loader/splitter，将完整chunk在同页原文中唯一定位为Unicode字符[start,end)；重复文本有歧义则报错，不猜第一次出现。检索片段须与canonical目录的完整text/metadata一致，未知或篡改身份不混入普通未命中。gold按文档版本/页的原文位置判断：单片段或多个片段连续无缺口拼全并逐字匹配整个quote才计unit命中，记录首次完整覆盖的原排名；仅字符相交不计命中。这是保守原文覆盖，不是语义裁判或答案事实正确性评测。
+
+文档Recall按gold文档去重，文档MRR取首个相关chunk原排名；证据Recall按独立unit计，证据MRR取首个完整unit完成的前缀排名，另报告all_evidence_covered。重复结果占原排名但不增覆盖；无答案各项null且不进召回分母，检索失败按空排名计0留在可回答分母。
+
+evals/run.py只重放离线排名，先verify冻结/配置指纹，再检查dev选择、query、全部快照/片段/耗时/错误，验证后才创建新目录。question_ids=null表示全30开发题，明确列表表示子集；缺题/重复/额外题、保留集及覆盖输出均拒绝。追问使用冻结standalone_question。保存config.json、retrieval.jsonl、summary.json，包括代码commit/dirty、配置与快照SHA256、数据/切分指纹、依赖平台、原排名/分数/原文/错误及指标；阶段耗时来自快照，未采集null，本地单调时钟计算经过时间另记evaluation_ms，不冒充检索延迟或CPU time。p95采用nearest-rank并报告有效样本数。
+
+参考原tests/fakes/rag.py的固定返回/依赖隔离，核心逻辑自主实现。配置及4题样例明确为synthetic_fixture，既没有用Embedding排序，也没有真实查询Qdrant；recorded_retrieval仅是外部排名来源声明，D10还需真实模型/索引清单/缓存/Prompt及运行记录，不将当前收据冒充完整基线采集。
+
+### 实际验证
+
+执行者Codex，工作目录新项目；用户学习后手动验证另行开启。
+
+| 实际命令/检查 | 实际结果 |
+| --- | --- |
+| `.venv/bin/python -m evals.freeze_dataset --dataset evals/datasets/copilot_v0 --verify`，D9开始时 | 退出0，D8正式冻结verified，指纹54806b…4306b7e |
+| `.venv/bin/python -m pytest -q tests/test_eval_metrics.py` | 初稿36通过，补定点边界后38通过，0.10秒 |
+| `.venv/bin/python -m pytest -q tests/test_eval_run.py` | 最终24通过，0.77秒；初轮断言因新增失败分类字段更新，未发现业务实现失败 |
+| `.venv/bin/python -m pytest -q tests/test_eval_metrics.py tests/test_eval_run.py tests/test_eval_dataset.py tests/test_eval_freeze.py tests/test_documents.py` | **155 passed，1.70秒**；D9共62项、D7/D8/D3相关93项，无失败 |
+| `.venv/bin/python -m evals.run --dataset evals/datasets/copilot_v0 --config evals/configs/d9_replay.json --rankings evals/fixtures/d9_rankings.jsonl --output-dir data/evals/d9-auto-smoke-final` | 退出0，三份结果实际保存；4个固定开发题，3可答/1无答案/1模拟错误，mode=offline_replay |
+| 逐字节/哈希检查冻结输入与收尾commit | 9份登记输入及frozen_manifest共10份文件均未改，与HEAD一致；4条结果及配置/快照哈希正确 |
+
+固定样例001在rank2命中、rank3重复；013在rank1仅文档相关、rank2含全部gold；017无答案空结果；023模拟timeout但没有真实请求。因此@3文档Recall2/3、MRR1/2，证据Recall2/3、MRR1/3，完整覆盖2/3，与手算一致。无答案排除，模拟错误保留在3道可答分母内。阶段timings全部samples0/median与p95为null，refusal_accuracy=null；不将这些数字写成真实Dense效果或30题全量评测。
+
+首次smoke保存在data/evals/d9-auto-smoke；修正本地经过时间的表述后，用新目录d9-auto-smoke-final运行最终版本，没有覆盖旧结果。两个目录均为固定样例重放、无网络或模型费用；测试中的时间值也只属于合成夹具。最终四条逐题结果保留本地计算经过时间，不作为任何检索性能结论。没有为纯评测工具重跑全部旧应用测试。
+
+### 交接与下一步
+
+学习入口及字段说明见 [evals/README.md](../evals/README.md)，固定8项报告见 [DAY_9.md](reports/DAY_9.md)。D9开发commit/推送待用户亲自操作；ChatGPT学习后用户主动要求手动验证，再手算多gold/无命中/重复排名，观察4题回放结果和门禁。D9阶段B不提前勾选，也不自动进入D10或发起收费索引/Embedding。
+
+收尾检查通过：13个候选文件（5修改/8新增）、4份Python AST、27份Markdown围栏、65张表格列数、193处本地链接及60处锚点、4行固定排名JSONL、配置JSON及D9固定8项报告。计划仅第10节变化，35日任务表不变；D8全部10份冻结相关文件字节未改，业务源码/依赖无diff。独立只读实现与事实审核通过，git diff --check无输出，暂存区为空，.env及data/evals运行结果被忽略；未追加模型、服务或Git写操作。
