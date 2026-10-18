@@ -525,7 +525,7 @@ sources.jsonl记录5份文档，questions.jsonl与labels.draft.jsonl各20条；8
 
 ## D8：评测集扩充、问题族划分与冻结工具（2026-10-17）
 
-**当前状态：资料扩充与离线工具/相关自动验证完成；用户Git、ChatGPT学习、新20题人工复核和正式冻结待完成。** 用户明确开启D8；开始时main/origin/main均为92513a7，工作区干净。阶段A仍待用户提交推送，阶段B尚未开始，不自动进入D9。
+**当前状态：D8阶段A/B均完成；40题人工复核、正式冻结/复算及副本变化检测均通过，用户已确认ChatGPT学习和理解。** 开发提交d5c782e已由用户推送，本次冻结/手测记录待用户另行提交。用户明确开启D8时main/origin/main均为92513a7、工作区干净；下文开发期pending/待Git保留为历史快照，最新实际结果见本节末尾补记，不自动进入D9。
 
 ### 实际改动与设计
 
@@ -560,3 +560,23 @@ evals/freeze_dataset.py提供validate_split、freeze_dataset、verify_freeze。�
 D8开发commit/推送待用户操作，Codex仅做只读Git审核及命令指导；最新报告见 [DAY_8.md](reports/DAY_8.md)。数据集仍由同5份小型自建语料反向拟题，不能把30/10划分当作独立生产评测或通用能力证明；D10只用开发集，D17冻结方案后才使用保留集比较，不据保留结果调参。
 
 开发收尾检查通过：13个提交候选（9个修改、4个新增）、2份Python AST、85行JSONL及划分JSON、25份Markdown围栏、58张表格列数、172处本地链接及59处锚点、D8固定8项报告。35日逐日安排与计划第10节之外内容未变；队列40题与标签ID/顺序一致，原20条字节及复核信息保留，新增20条复核者/时间为空。只读实现和分族语义审查未发现阻断项；暂存区为空，.env及运行数据仍被忽略，git diff --check无输出。未为文档收尾追加模型调用、服务或旧业务测试。
+
+### 用户Git交接与手动验证（2026-10-18补记）
+
+用户已亲自提交并推送 [d5c782ec656ff7a5cf81ccb0de00b97bebd45f12](https://github.com/yan-ye-dhy/project-copilot/commit/d5c782ec656ff7a5cf81ccb0de00b97bebd45f12)，`feat(evals): add family splits and dataset freezing`；push显示92513a7..d5c782e main→main，Codex只读核实本地HEAD/origin/main一致、工作区干净，D8阶段A完成。上文待Git及pending状态保留为开发期快照，当前手动结果以本补记为准。
+
+用户主动开启D8手动验证，本人运行`uv run --frozen python -m evals.freeze_dataset --dataset evals/datasets/copilot_v0`和`echo $?`，实际40题/23族、30开发/10保留、35可答/5无答案、confirmed20/pending20，ready_for_freeze=false，退出0。随后本人添加`--freeze`，得到“标签尚未全部人工确认，不能正式冻结”，退出1；Codex只读确认没有生成frozen_manifest.json。两项结果验证预检及人工复核门禁，由用户操作，不记为Codex代做。
+
+人工核对环节以034的三条跨段证据及001/034同属configuration-lifecycle、同在dev为示例，指导核对新增021–040的答案支持、036–038无答案及039–040固定追问。用户随后明确回复“021–040已核对，全部通过”；据此仅将新20题review_status登记confirmed、reviewed_by登记yanye、reviewed_at统一为批量登记时间2026-10-18T21:41:27+08:00。原20题复核记录不变，没有要求逐题书面理由或伪造单题时间。
+
+同步队列的20处状态和已确认内容标识，问题/答案/证据、来源/corpus及划分未改。Codex自动核对标签仅三字段变化、原D7行字节不变，登记后validate_split通过：confirmed40/pending0、30/10、ready_for_freeze=true；此为登记完整性检查，不替代人工判断或用户实际冻结。当时尚未创建正式冻结，随后由用户亲自执行，见下方记录。
+
+用户全量确认后再次运行`uv run --frozen python -m evals.freeze_dataset --dataset evals/datasets/copilot_v0 --freeze`及`echo $?`，实际status=ok、state=frozen、dev30/holdout10、退出0，生成正式frozen_manifest.json；清单时间2026-10-18T13:51:42.739282+00:00（北京时间21:51:42.739282）。随后本人将末尾改为--verify运行，实际state=verified、退出0，两次总指纹均为dataset-v1-54806b5174b2f3d2e4bd08b91b57569c5121929731112c3d375d4d42d4306b7e。正式9份输入为sources/questions/labels/split与5份corpus；这不是临时合成夹具的冻结。
+
+用户另按指导使用shutil.copytree将整个目录复制到data/manual-d8/tampered，只给副本第一题reference_answer追加“（副本测试改动）”，打印副本路径及修改后答案。本人对副本执行`uv run --frozen python -m evals.freeze_dataset --dataset data/manual-d8/tampered --verify`及echo退出码，实际提示“冻结文件指纹或划分版本不匹配；不得沿用旧实验身份”、退出1，验证合法JSON内容变更也不能沿用原冻结。没有在正式数据中改答案或重建冻结，也没有手动测试重复freeze防覆盖或其余自动边界。
+
+Codex随后只读比对正式9份输入哈希全部匹配，副本仅第一题参考答案不同、其余字段/输入和冻结清单一致；原D7的20行标签字节保留，新20题仅三复核字段变化，questions/sources/split及5份corpus与开发提交不变。测试副本被Git忽略，不能进入语料或本次提交。本次只补数据复核元信息、正式清单及文档，未重跑业务测试或新增模型调用。
+
+用户最后明确回复“已学习，能够解释”，确认已通过ChatGPT学完D8，能解释同族同侧防泄漏、预检/冻结/verify的区别，以及合法答案内容变化为何仍使冻结校验失败。结合已推送开发提交和本人实际操作，D8阶段A/B均完成；收尾记录待用户亲自提交/推送，不自动进入D9。
+
+手测收尾检查通过：10个文件（9修改、1新增正式冻结清单），85行JSONL、25份Markdown围栏、59张表格列数、176处本地链接与59处锚点、D8固定8项报告；计划只更新第10节，35日任务安排不变。正式9文件哈希及总指纹复算一致，队列40题与标签一致，原D7行保留、新20题仅三复核字段变化；独立只读事实审核通过。git diff --check无输出，暂存区为空，.env与data/manual-d8副本仍被忽略；未追加业务测试、模型调用或Git写操作。

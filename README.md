@@ -1,6 +1,6 @@
 # Project Copilot
 
-基于RAG与LangGraph的研发知识及工单协作智能体。D1–D7阶段A/B已完成，D7收尾92513a7已同步。D8已扩充到40题、准备30开发/10保留的族级划分及冻结工具；新增20题待人工复核，正式冻结未生成，见 [D8报告](docs/reports/DAY_8.md)。业务Agent按后续计划实现。
+基于RAG与LangGraph的研发知识及工单协作智能体。D1–D8阶段A/B已完成。D8开发提交d5c782e已同步，40题已人工确认并冻结为30开发/10保留，用户正式复算及副本变化检测均通过，并确认完成ChatGPT学习、能解释关键区别；冻结/手测记录待用户提交，见 [D8报告](docs/reports/DAY_8.md)。业务Agent按后续计划实现。
 
 协作流程见 [长期协作规则](docs/COLLABORATION_RULES.md)：Codex开发、自动验证、提供报告并指导Git操作；用户亲自提交和推送GitHub，随后通过ChatGPT学习代码/架构，学习后主动要求Codex开始手动测试。以下命令是自助运行参考，Codex仅在用户要求后单步带练。
 
@@ -191,7 +191,7 @@ uv run --frozen python evals/validate_dataset.py --dataset evals/datasets/copilo
 
 ## D8：扩充评测集、问题族划分与冻结工具
 
-复用原5份语料并保留D7的20题及人工确认记录，追加`pc-d8-021`至`pc-d8-040`。现40题、35可回答/5无答案，八类题型分布为8/5/5/5/4/4/5/4；新20题均pending，不扩用D7的确认范围。相近题与追问按23个family分组，[划分清单](evals/datasets/copilot_v0/split_manifest.json)固定30开发/10保留，同族不跨侧，选择未依据任何检索效果。
+复用原5份语料并保留D7的20题及人工确认记录，追加`pc-d8-021`至`pc-d8-040`。40题、35可回答/5无答案，八类题型分布为8/5/5/5/4/4/5/4；2026-10-18用户实际核对并明确确认新增20题全部通过，现confirmed40/pending0。相近题与追问按23个family分组，[划分清单](evals/datasets/copilot_v0/split_manifest.json)固定30开发/10保留，同族不跨侧，选择未依据任何检索效果。
 
 项目根目录的离线预检参考：
 
@@ -199,6 +199,6 @@ uv run --frozen python evals/validate_dataset.py --dataset evals/datasets/copilo
 uv run --frozen python -m evals.freeze_dataset --dataset evals/datasets/copilot_v0
 ```
 
-默认只检查划分，当前返回confirmed20/pending20、ready_for_freeze=false；`--freeze`要求全量人工确认，并拒绝覆盖已有冻结。生成后用`--verify`复算语料、问题、标签和划分的指纹，改动审核元数据也会失效。当前没有正式frozen_manifest.json，完整流程只在临时合成夹具验证，不计为用户手测。
+默认只检查划分，当前数据全量已确认；`--freeze`要求全量人工确认，并拒绝覆盖已有冻结。用户已亲自创建 [正式冻结清单](evals/datasets/copilot_v0/frozen_manifest.json)，随后`--verify`返回verified、退出0，指纹一致。后续以`--verify`核验，修改问题、答案、审核元数据或划分都会使原冻结失效。
 
-用法、文本定位规则、保留集边界和局限见 [数据说明](evals/datasets/copilot_v0/README.md)。开发完成后先由用户Git交接，再通过ChatGPT学习；用户主动开启D8手动验证后核对新增题、检查整族划分并执行正式冻结。D9评测器、D10真实基线尚未开始，本轮不调用模型或重建索引。
+用户另在data/manual-d8/tampered测试副本仅修改一条合法参考答案，副本`--verify`按预期退出1；正式9份输入仍与清单匹配。用法、指纹、保留集边界及局限见 [数据说明](evals/datasets/copilot_v0/README.md)。本轮操作全部离线；D9评测器、D10真实基线尚未开始，下一Day仍待用户明确开启。

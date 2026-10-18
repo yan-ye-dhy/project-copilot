@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "split_id": "copilot-v0-family-v1",
+  "text_policy": "d3-utf8-lf-markdown-preserved-unicode-codepoints-half-open-v1",
+  "frozen_at": "2026-10-18T13:51:42.739282+00:00",
+  "files": {
+    "corpus/compose_environment.md": "430461b2055a55124fb75c340ba1304fa8ef1b3ea4079177e4848546e488c41e",
+    "corpus/dense_identity_and_citations.md": "e9de4bda8b4a0bb64c97168f37c38ab25d8bf4c49c857fd92004359eb58313c4",
+    "corpus/qdrant_vector_contract.md": "f1c5612bed353a4e65692ca921fd10b9aba2de4971dff5aeb97bea3477f76289",
+    "corpus/startup_and_config.md": "f678b895529d45ee44bde0cd13756ce3aa4e58d9d30eabe82c81117c2d7d43cc",
+    "corpus/upload_troubleshooting.md": "5b1f0d1b0be2fe57399a20708764877a93fb6ff2dcf924a409cf06b5354c53aa",
+    "labels.draft.jsonl": "0e4b2191ed6fd1eefc91d68b13fa17235c0557e42b92805ad2d8a3610db6f6b7",
+    "questions.jsonl": "376506f275408ea42c7ba33efa05de9b9490a20272577ae433d0f2ee671e8809",
+    "sources.jsonl": "2023d3432540d67955b106fdc2b7413624fad7e80a43177d470b6cfe5ebb5d02",
+    "split_manifest.json": "23e56c998f09e54bebdb5158b268ef536d6b57198b6df16544a12eef034cb270"
+  },
+  "fingerprint": "dataset-v1-54806b5174b2f3d2e4bd08b91b57569c5121929731112c3d375d4d42d4306b7e"
+}

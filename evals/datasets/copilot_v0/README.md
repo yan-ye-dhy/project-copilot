@@ -1,6 +1,6 @@
 # Copilot V0：语料、人工复核与划分
 
-本目录服务于D7–D10的中文研发知识检索评测。D7整理5份可追溯语料和20题，用户于2026-10-17实际核对并明确确认全部通过。D8在相同语料上追加20题草稿，现共40题、35可回答/5无答案、confirmed20/pending20；新增题尚未人工确认，正式冻结未生成。结构检查通过本身不等于人工确认，也不表示系统效果达标。
+本目录服务于D7–D10的中文研发知识检索评测。D7的20题已于2026-10-17由用户核对确认；2026-10-18用户明确确认D8新增021–040全部通过，现40题、35可回答/5无答案、confirmed40/pending0。用户已亲自创建正式冻结并复算通过。结构检查通过本身不等于人工确认，数据冻结也不表示系统效果达标。
 
 当前开发依据为D6收尾提交`3f3159965b94655095acca599333e318dc5287b7`。语料是已公开项目记录和官方资料的自编中文整理，不能宣称来自企业生产事故；问题为Codex拟题，不冒充真实用户原始提问。来源类型、参考链接/版本和取得日期逐文记录在sources.jsonl中。
 
@@ -11,12 +11,12 @@
 | `corpus/*.md` | 实际被评测的中文原文；不包含问题、标准答案、标签或评测报告 |
 | `sources.jsonl` | 语料路径、来源类型、参考依据、D3文档UUID和字节SHA256版本 |
 | `questions.jsonl` | 问题ID、题型、问题族、问题文字及追问的固定历史/独立问题 |
-| `labels.draft.jsonl` | 参考答案、独立证据单元、原文定位和复核状态；D7的20题confirmed，D8新增20题pending，冻结时仍使用同一文件名 |
+| `labels.draft.jsonl` | 参考答案、独立证据单元、原文定位和复核状态；40题均已人工confirmed，冻结保留此文件名 |
 | `REVIEW_QUEUE.md` | 便于人工复核的问题/答案/原文视图；区分已确认与待复核，JSONL为数据依据 |
 | `../../validate_dataset.py` | 离线检查来源、身份、版本、引用位置和状态；没有检索、评分或模型调用 |
-| `split_manifest.json` | `copilot-v0-family-v1`划分候选：30题开发、10题保留；正式冻结前可根据人工复核修正 |
+| `split_manifest.json` | 已冻结的`copilot-v0-family-v1`划分：30题开发、10题保留 |
 | `../../freeze_dataset.py` | 离线检查划分、全量人工确认后创建冻结清单、复算冻结指纹 |
-| `frozen_manifest.json` | 仅在实际人工复核全部通过并执行冻结后创建；当前不存在，不提前填造指纹 |
+| `frozen_manifest.json` | 用户全量人工确认后实际生成的冻结清单，登记9份输入的SHA256及总指纹 |
 
 后续入库仅使用sources.jsonl列出的corpus文件，问题、标签和REVIEW_QUEUE不得作为检索语料，否则会把答案直接泄漏到知识库。D7未把新语料写入现有Qdrant，已有sample.pdf的2点验收数据也不属于此评测语料集。
 
@@ -30,9 +30,9 @@ document_id沿用D3的内容字节哈希→UUID规则，document_version为原�
 
 ## 问题与人工复核
 
-题型使用knowledge、terminology、exact_match、paraphrase、chinese_long、cross_passage、unanswerable、follow_up，40题数量依次为8/5/5/5/4/4/5/4。family_id把同义题或同一追问链联系起来；D8已有23族的划分候选，尚未正式冻结。覆盖八类只说明题型设计有覆盖，不能仅凭计数判断难度、证据质量或代表性。
+题型使用knowledge、terminology、exact_match、paraphrase、chinese_long、cross_passage、unanswerable、follow_up，40题数量依次为8/5/5/5/4/4/5/4。family_id把同义题或同一追问链联系起来；23族的30/10划分已于D8冻结。覆盖八类只说明题型设计有覆盖，不能仅凭计数判断难度、证据质量或代表性。
 
-follow_up保存固定history、原始追问和standalone_question；D7两题已随标签人工确认，D8新增两题仍待复核。后续检索对照使用独立问题以隔离查询理解，单轮RAG接口仍不因数据文件而自动具备多轮改写能力。其余题的history为空，standalone_question为null。
+follow_up保存固定history、原始追问和standalone_question，4题均随标签人工确认。后续检索对照使用独立问题以隔离查询理解，单轮RAG接口仍不因数据文件而自动具备多轮改写能力。其余题的history为空，standalone_question为null。
 
 可回答题必须有参考答案及原文证据；无答案题的reference_answer为null、evidence为空，原因说明缺失什么信息。无答案是相对于本目录完整语料的判断，不能仅因检索未命中就改成无答案，也不能用模型常识补充语料没有的事实。
 
@@ -40,11 +40,11 @@ review_status初始为pending，reviewed_by/reviewed_at均为null。用户学习
 
 用户主动开启D7手动验证后，先验证pending草稿被严格模式拒绝，再明确反馈“001–020已核对，全部通过”。据此将D7的20题登记为confirmed，reviewed_by=yanye，reviewed_at统一为批量确认登记时间2026-10-17T22:14:55+08:00；只改这三个复核字段，来源、问题、答案及证据保持原样。用户本人随后严格检查通过并确认学习理解，D7首批人工目标已完成。
 
-D8的`pc-d8-021`至`pc-d8-040`全部为pending，原20题问题与标签保留原字节和确认记录。新增题仍需学习后人工核对；不能把D7的确认范围扩成40题，也不要求重做已确认的20题。新题若涉及同义表达/追问链，人工还需核对family是否应合并；程序无法识别使用不同family名称的语义近重复。
+D8新增20题初稿均为pending，原20题问题与标签保留原字节和确认记录。2026-10-18用户明确回复“021–040已核对，全部通过”，据此仅更新新增题的review_status、reviewed_by、reviewed_at，分别为confirmed、yanye、统一批量登记时间2026-10-18T21:41:27+08:00；问题、答案、证据及D7记录未改。复核按实际范围批量登记，不补造逐题理由或各题单独时间。程序仍无法识别使用不同family名称的语义近重复，不能代替这项人工判断。
 
 ## 开发/保留划分与冻结
 
-`split_manifest.json`只保存schema_version、split_id及两侧问题ID，family以questions.jsonl为准，不重复维护。当前固定按完整问题族分组，依据题型覆盖选出30开发/10保留，没有使用任何检索结果或效果指标，也没有随机重抽挑选更好结果。
+`split_manifest.json`只保存schema_version、split_id及两侧问题ID，family以questions.jsonl为准，不重复维护。已冻结划分按完整问题族分组，依据题型覆盖选出30开发/10保留，没有使用任何检索结果或效果指标，也没有随机重抽挑选更好结果。
 
 | 保留问题族 | 整族题号 |
 | --- | --- |
@@ -62,6 +62,14 @@ D8的`pc-d8-021`至`pc-d8-040`全部为pending，原20题问题与标签保留�
 
 冻结后改动问题、答案、证据、来源版本、审核元数据或划分都会使原校验失败；新增其他未登记文件不会自动成为语料。工具拒绝覆盖已有冻结，故障或标签修正须明确记录新数据版本，不能悄悄覆写旧结果。指纹是完整性检查，不是签名或防篡改权限系统；本地单进程维护，不支持并发编辑时冻结。
 
+2026-10-18用户实际执行`--freeze`退出0，随后`--verify`退出0，两次返回同一指纹，见 [正式冻结清单](frozen_manifest.json)：
+
+```text
+dataset-v1-54806b5174b2f3d2e4bd08b91b57569c5121929731112c3d375d4d42d4306b7e
+```
+
+清单记录UTC时间2026-10-18T13:51:42.739282+00:00，即北京时间21:51:42.739282。用户另将整个目录复制到被Git忽略的data/manual-d8/tampered，只修改副本第一题的参考答案；副本`--verify`退出1，提示指纹不匹配。正式9份输入仍与清单哈希一致，测试副本不属于评测语料或待提交数据。
+
 ## 离线检查与边界
 
 开发者可运行：
@@ -71,19 +79,17 @@ uv run --frozen python evals/validate_dataset.py --dataset evals/datasets/copilo
 uv run --frozen python evals/validate_dataset.py --dataset evals/datasets/copilot_v0 --require-reviewed
 ```
 
-第一条检查结构与原文一致性，返回pending/confirmed等计数；第二条要求全量人工确认。D7登记20题后本人严格检查退出0；D8追加20题pending后，第二条再次退出1是正确门禁，并非原20题确认失效。ready_for_baseline只代表当前目录人工复核状态，不代表划分已冻结或D9评测器已验收。
+第一条检查结构与原文一致性，返回pending/confirmed等计数；第二条要求全量人工确认。D8开发时新20题pending，严格门禁拒绝；现40题已确认。ready_for_baseline只代表人工复核状态，正式冻结以frozen_manifest及verify为准，不能据此声称D9评测器已验收。
 
 D8新增工具从项目根目录按模块运行，`-m`让Python定位evals.freeze_dataset：
 
 ```bash
-# 默认只检查划分，不写文件；当前应返回40题、30/10、ready_for_freeze=false
+# 默认只检查划分，不写文件；当前为40题、30/10、ready_for_freeze=true
 uv run --frozen python -m evals.freeze_dataset --dataset evals/datasets/copilot_v0
-# 以下为学习后手动阶段参考：全量人工确认前--freeze会拒绝，不创建文件
-uv run --frozen python -m evals.freeze_dataset --dataset evals/datasets/copilot_v0 --freeze
-# 只有实际生成frozen_manifest.json后，--verify才可校验已冻结数据
+# 当前已有正式冻结，后续使用--verify复算；无需再次执行--freeze
 uv run --frozen python -m evals.freeze_dataset --dataset evals/datasets/copilot_v0 --verify
 ```
 
-默认检查与verify不修改数据；freeze不修改标签，只在门禁通过后独占创建frozen_manifest.json，已有文件拒绝覆盖。CLI成功退出0，数据/冻结门禁错误退出1，命令参数错误退出2，错误信息不回显问题、证据或密钥。当前仅在临时合成夹具验证完整冻结流程，不算正式数据已冻结或用户手动验证。
+默认检查与verify不修改数据；freeze不修改标签，只在门禁通过后独占创建frozen_manifest.json，已有文件拒绝覆盖。CLI成功退出0，数据/冻结门禁错误退出1，命令参数错误退出2，错误信息不回显问题、证据或密钥。开发期完整冻结仅在合成夹具验证；本次正式冻结由用户在实际人工确认后执行，两者分别记录。
 
 工具不读取.env、不建立模型/数据库连接，不自动修改数据。真实来源、无答案充分性、题目质量和证据是否足以回答，仍依赖人工判断。本目录是小型自建项目数据集，存在题目由资料反向拟定、主题较窄的局限，不能宣称通用中文RAG能力或统计显著提升。

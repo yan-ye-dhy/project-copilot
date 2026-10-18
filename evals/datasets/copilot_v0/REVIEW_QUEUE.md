@@ -1,10 +1,10 @@
 # D7～D8逐题复核队列
 
-共40题：D7的pc-d7-001～020已由用户yanye于2026-10-17明确批量确认，保留全部原始问题、答案、证据及复核元数据；D8新增pc-d8-021～040由Codex起草，20题全部pending，尚未人工确认。此文件用于学习和复核，不属于检索语料；正式字段以JSONL为准。
+共40题：D7的pc-d7-001～020已由用户yanye于2026-10-17明确批量确认；D8新增pc-d8-021～040由Codex起草，用户于2026-10-18明确回复“021–040已核对，全部通过”，现40题全部confirmed。此文件用于学习和复核，不属于检索语料；正式字段以JSONL为准。
 
 每题核对问题含义、来源版本、证据完整性与答案支持；同题多个必需证据单元均须支持。无答案题检查sources.jsonl中全部5份语料，追问检查固定历史和独立问题。gold按原文版本和位置保存，不绑定当前chunk_id。
 
-用户实际核对后可按明确题号范围批量确认；仅存疑或需修改的题补充说明，无需逐题重复书面依据。Codex不得把结构检查通过、AI起草或D7的确认延伸为D8已通过。D7批量确认登记时间保持2026-10-17T22:14:55+08:00；D8复核者与时间均为空，等待用户明确反馈。
+用户实际核对后可按明确题号范围批量确认；仅存疑或需修改的题补充说明，无需逐题重复书面依据。Codex不得把结构检查通过、AI起草或D7的确认延伸为D8已通过。D7批量确认登记时间保持2026-10-17T22:14:55+08:00；D8复核者为yanye，批量确认登记时间为2026-10-18T21:41:27+08:00，不编造各题独立复核时间或书面理由。
 
 以下问题族供D8划分使用：同义题和同一追问链必须同侧。新增题复用已有相近问题族；不能为凑30/10强拆问题族。正式划分与冻结状态以对应manifest为准，复核队列本身不代表已经冻结。
 
@@ -280,11 +280,11 @@
 
 ## pc-d8-021 · knowledge
 
-问题族：health-probe-boundary；人工状态：pending（待用户实际核对）。
+问题族：health-probe-boundary；人工状态：confirmed（复核者：yanye，批量确认）。
 
 **问题：** GET /health返回哪些字段，从哪里读取？为什么HTTP200不足以证明模型API与向量库可用？
 
-**参考答案候选：** 返回status、service、environment，从app.state.settings读取服务名和环境；接口没有探测模型API或向量库，因此HTTP200不代表这些外部依赖可用。
+**已确认参考答案：** 返回status、service、environment，从app.state.settings读取服务名和环境；接口没有探测模型API或向量库，因此HTTP200不代表这些外部依赖可用。
 
 证据 pc-d8-021-e1：[启动与配置排查笔记 / 健康检查的边界](corpus/startup_and_config.md#健康检查的边界)；来源类型project_experience，字符区间[798, 927)，page=null。
 
@@ -292,11 +292,11 @@
 
 ## pc-d8-022 · knowledge
 
-问题族：stable-content-identity；人工状态：pending（待用户实际核对）。
+问题族：stable-content-identity；人工状态：confirmed（复核者：yanye，批量确认）。
 
 **问题：** chunk_id由哪些因素共同生成？相同文字位于不同位置时会合并为同一个片段吗？
 
-**参考答案候选：** 由文档身份、切分版本、原页索引、片段位置和片段文本哈希共同生成；切分参数或相关实现版本变化会影响指纹和片段身份，同一文字在不同位置不会合并成同一个片段。
+**已确认参考答案：** 由文档身份、切分版本、原页索引、片段位置和片段文本哈希共同生成；切分参数或相关实现版本变化会影响指纹和片段身份，同一文字在不同位置不会合并成同一个片段。
 
 证据 pc-d8-022-e1：[Dense身份与引用排查笔记 / 文档与片段身份](corpus/dense_identity_and_citations.md#文档与片段身份)；来源类型project_experience，字符区间[554, 684)，page=null。
 
@@ -304,11 +304,11 @@
 
 ## pc-d8-023 · knowledge
 
-问题族：embedding-local-dimension-check；人工状态：pending（待用户实际核对）。
+问题族：embedding-local-dimension-check；人工状态：confirmed（复核者：yanye，批量确认）。
 
 **问题：** PROJECT_COPILOT_EMBEDDING_EXPECTED_DIMENSIONS是模型降维参数吗？客户端与存储层分别如何约束响应向量？
 
-**参考答案候选：** 它仅用于本地响应与索引校验，不作为模型API的dimensions参数；客户端检查每条向量长度和有限数值，存储层也校验向量，改成本地预期3不会让2048维模型输出变成3维。
+**已确认参考答案：** 它仅用于本地响应与索引校验，不作为模型API的dimensions参数；客户端检查每条向量长度和有限数值，存储层也校验向量，改成本地预期3不会让2048维模型输出变成3维。
 
 证据 pc-d8-023-e1：[Qdrant向量契约笔记 / 本地维度预期不是模型参数](corpus/qdrant_vector_contract.md#本地维度预期不是模型参数)；来源类型official_documentation_note，字符区间[742, 892)，page=null。
 
@@ -316,11 +316,11 @@
 
 ## pc-d8-024 · knowledge
 
-问题族：stable-content-identity；人工状态：pending（待用户实际核对）。
+问题族：stable-content-identity；人工状态：confirmed（复核者：yanye，批量确认）。
 
 **问题：** 模型、维度或切分方案变化后，本项目为何要求新集合和新索引配置？这是否表示Qdrant本身禁止追加命名向量？
 
-**参考答案候选：** 项目要求新集合和新索引配置，以免新旧结果混入原基线，这是为实验可复现制定的约束；不表示Qdrant所有版本都禁止增加其他命名向量。
+**已确认参考答案：** 项目要求新集合和新索引配置，以免新旧结果混入原基线，这是为实验可复现制定的约束；不表示Qdrant所有版本都禁止增加其他命名向量。
 
 证据 pc-d8-024-e1：[Qdrant向量契约笔记 / 本地维度预期不是模型参数](corpus/qdrant_vector_contract.md#本地维度预期不是模型参数)；来源类型official_documentation_note，字符区间[894, 987)，page=null。
 
@@ -328,11 +328,11 @@
 
 ## pc-d8-025 · terminology
 
-问题族：upload-response-stages；人工状态：pending（待用户实际核对）。
+问题族：upload-response-stages；人工状态：confirmed（复核者：yanye，批量确认）。
 
 **问题：** 上传日志中先出现HTTP100 Continue再出现413，两种状态分别表示什么，最终应按哪个判断结果？
 
-**参考答案候选：** 100 Continue是允许继续发送请求体的临时响应；413才是本次超限上传的最终拒绝状态，不能把100当成上传成功。
+**已确认参考答案：** 100 Continue是允许继续发送请求体的临时响应；413才是本次超限上传的最终拒绝状态，不能把100当成上传成功。
 
 证据 pc-d8-025-e1：[单文件上传排查笔记 / 类型、空文件和额度](corpus/upload_troubleshooting.md#类型空文件和额度)；来源类型project_experience，字符区间[850, 912)，page=null。
 
@@ -340,11 +340,11 @@
 
 ## pc-d8-026 · terminology
 
-问题族：named-vector-spaces；人工状态：pending（待用户实际核对）。
+问题族：named-vector-spaces；人工状态：confirmed（复核者：yanye，批量确认）。
 
 **问题：** Qdrant的collection与point是什么关系？一个point除了向量还可以携带什么，命名向量又扩展了什么？
 
-**参考答案候选：** collection组织可检索points；point可以带向量及payload，命名向量允许同一point有多个向量空间，各空间有自己的维度和距离度量。
+**已确认参考答案：** collection组织可检索points；point可以带向量及payload，命名向量允许同一point有多个向量空间，各空间有自己的维度和距离度量。
 
 证据 pc-d8-026-e1：[Qdrant向量契约笔记 / Collection与命名向量](corpus/qdrant_vector_contract.md#collection与命名向量)；来源类型official_documentation_note，字符区间[207, 346)，page=null。
 
@@ -352,11 +352,11 @@
 
 ## pc-d8-027 · terminology
 
-问题族：citation-assembly；人工状态：pending（待用户实际核对）。
+问题族：citation-assembly；人工状态：confirmed（复核者：yanye，批量确认）。
 
 **问题：** citation_numbers和返回给用户的原文、来源、页码是什么关系？这些引用元数据由模型直接填写吗？
 
-**参考答案候选：** 模型只产生status、answer、citation_numbers；后端先做JSON和ModelAnswer校验，再按本次上下文检查编号越界，最后根据编号从真实证据构造原文、来源、页码元数据。
+**已确认参考答案：** 模型只产生status、answer、citation_numbers；后端先做JSON和ModelAnswer校验，再按本次上下文检查编号越界，最后根据编号从真实证据构造原文、来源、页码元数据。
 
 证据 pc-d8-027-e1：[Dense身份与引用排查笔记 / 引用契约与事实支持](corpus/dense_identity_and_citations.md#引用契约与事实支持)；来源类型project_experience，字符区间[962, 1115)，page=null。
 
@@ -364,11 +364,11 @@
 
 ## pc-d8-028 · exact_match
 
-问题族：stable-content-identity；人工状态：pending（待用户实际核对）。
+问题族：stable-content-identity；人工状态：confirmed（复核者：yanye，批量确认）。
 
 **问题：** D4～D6默认Qdrant集合名、向量空间名、维度、距离度量及Embedding模型分别是什么？
 
-**参考答案候选：** 集合pc_knowledge_dense_v0，单一命名向量dense，2048维，Cosine距离，Embedding模型embedding-3。
+**已确认参考答案：** 集合pc_knowledge_dense_v0，单一命名向量dense，2048维，Cosine距离，Embedding模型embedding-3。
 
 证据 pc-d8-028-e1：[Qdrant向量契约笔记 / 本项目采用的契约](corpus/qdrant_vector_contract.md#本项目采用的契约)；来源类型official_documentation_note，字符区间[443, 605)，page=null。
 
@@ -376,11 +376,11 @@
 
 ## pc-d8-029 · exact_match
 
-问题族：service-port-storage；人工状态：pending（待用户实际核对）。
+问题族：service-port-storage；人工状态：confirmed（复核者：yanye，批量确认）。
 
 **问题：** 当前Compose配置把Qdrant的HTTP端口绑定到宿主机哪个地址和端口，容器端口与持久卷挂载目录分别是什么？
 
-**参考答案候选：** 宿主机绑定127.0.0.1:6433，转发到容器6333；命名卷qdrant_data挂载到/qdrant/storage。
+**已确认参考答案：** 宿主机绑定127.0.0.1:6433，转发到容器6333；命名卷qdrant_data挂载到/qdrant/storage。
 
 证据 pc-d8-029-e1：[Compose环境与服务边界笔记 / 端口和持久卷](corpus/compose_environment.md#端口和持久卷)；来源类型official_documentation_note，字符区间[1028, 1157)，page=null。
 
@@ -388,11 +388,11 @@
 
 ## pc-d8-030 · paraphrase
 
-问题族：curl-upload-form；人工状态：pending（待用户实际核对）。
+问题族：curl-upload-form；人工状态：confirmed（复核者：yanye，批量确认）。
 
 **问题：** 把curl命令拆成几行后，终端说--show-errorhttp://127.0.0.1这个选项不存在，是上传接口报错了吗？
 
-**参考答案候选：** 不是接口响应；Shell续行反斜杠只消除换行，不会补空格，--show-error与下一行URL粘连成未知选项，错误发生在请求发送之前。
+**已确认参考答案：** 不是接口响应；Shell续行反斜杠只消除换行，不会补空格，--show-error与下一行URL粘连成未知选项，错误发生在请求发送之前。
 
 证据 pc-d8-030-e1：[单文件上传排查笔记 / curl文件表单](corpus/upload_troubleshooting.md#curl文件表单)；来源类型project_experience，字符区间[456, 526)，page=null。
 
@@ -400,11 +400,11 @@
 
 ## pc-d8-031 · paraphrase
 
-问题族：compose-variable-layers；人工状态：pending（待用户实际核对）。
+问题族：compose-variable-layers；人工状态：confirmed（复核者：yanye，批量确认）。
 
 **问题：** 目前启动qdrant少写了--env-file .env.example，会导致镜像、映射端口或卷变成另一套值吗？
 
-**参考答案候选：** 不会：截至D6的YAML只有固定镜像、端口和卷，没有变量占位符或服务级environment/env_file；所以该命令行选项不改变这些值，可以直接docker compose up -d qdrant。
+**已确认参考答案：** 不会：截至D6的YAML只有固定镜像、端口和卷，没有变量占位符或服务级environment/env_file；所以该命令行选项不改变这些值，可以直接docker compose up -d qdrant。
 
 证据 pc-d8-031-e1：[Compose环境与服务边界笔记 / 当前项目为什么可以省略](corpus/compose_environment.md#当前项目为什么可以省略)；来源类型official_documentation_note，字符区间[721, 923)，page=null。
 
@@ -412,11 +412,11 @@
 
 ## pc-d8-032 · chinese_long
 
-问题族：local-run-id；人工状态：pending（待用户实际核对）。
+问题族：local-run-id；人工状态：confirmed（复核者：yanye，批量确认）。
 
 **问题：** 同学看到测试代码覆盖409忙碌、整体body超限和上游异常，想把它们写成D6用户亲手验证过的分支。依据语料能这样登记吗？X-Run-ID和trace_exported=false又能证明哪些事？
 
-**参考答案候选：** 不能，这些分支由自动测试覆盖，本轮用户没有手测。X-Run-ID关联响应和完成日志，上传成功正文也返回同一run_id；trace_exported=false表示未导出Phoenix Trace，不能把本地关联记录算成已导出的Trace。
+**已确认参考答案：** 不能，这些分支由自动测试覆盖，本轮用户没有手测。X-Run-ID关联响应和完成日志，上传成功正文也返回同一run_id；trace_exported=false表示未导出Phoenix Trace，不能把本地关联记录算成已导出的Trace。
 
 证据 pc-d8-032-e1：[单文件上传排查笔记 / 临时文件与请求关联](corpus/upload_troubleshooting.md#临时文件与请求关联)；来源类型project_experience，字符区间[1079, 1198)，page=null。
 
@@ -424,11 +424,11 @@
 
 ## pc-d8-033 · chinese_long
 
-问题族：health-probe-boundary；人工状态：pending（待用户实际核对）。
+问题族：health-probe-boundary；人工状态：confirmed（复核者：yanye，批量确认）。
 
 **问题：** 我先看到应用/health返回200，再看到Qdrant的/readyz返回all shards are ready，就准备宣称模型密钥有效、RAG回答正确。这两项检查分别覆盖什么，为什么仍不足以得出这个结论？
 
-**参考答案候选：** 应用/health只读取配置并返回状态，没有探测模型或向量库；Qdrant /readyz成功仅表示存储服务就绪。两者都不能证明模型密钥有效或回答内容正确，还需对应的模型和回答验证。
+**已确认参考答案：** 应用/health只读取配置并返回状态，没有探测模型或向量库；Qdrant /readyz成功仅表示存储服务就绪。两者都不能证明模型密钥有效或回答内容正确，还需对应的模型和回答验证。
 
 证据 pc-d8-033-e1：[启动与配置排查笔记 / 健康检查的边界](corpus/startup_and_config.md#健康检查的边界)；来源类型project_experience，字符区间[798, 927)，page=null。
 
@@ -440,11 +440,11 @@
 
 ## pc-d8-034 · cross_passage
 
-问题族：configuration-lifecycle；人工状态：pending（待用户实际核对）。
+问题族：configuration-lifecycle；人工状态：confirmed（复核者：yanye，批量确认）。
 
 **问题：** 只执行docker compose up -d qdrant为什么不会同时启动项目/health？应另外怎样启动项目API，配置又在启动的哪个阶段保存？
 
-**参考答案候选：** Compose只定义qdrant，FastAPI未容器化；要在项目根目录另执行uv run --frozen uvicorn project_copilot.main:app --host 127.0.0.1 --port 8002。Uvicorn导入并构建应用后，lifespan启动时load_settings读取配置并保存到application.state.settings。
+**已确认参考答案：** Compose只定义qdrant，FastAPI未容器化；要在项目根目录另执行uv run --frozen uvicorn project_copilot.main:app --host 127.0.0.1 --port 8002。Uvicorn导入并构建应用后，lifespan启动时load_settings读取配置并保存到application.state.settings。
 
 证据 pc-d8-034-e1：[Compose环境与服务边界笔记 / 当前项目为什么可以省略](corpus/compose_environment.md#当前项目为什么可以省略)；来源类型official_documentation_note，字符区间[925, 1015)，page=null。
 
@@ -460,11 +460,11 @@
 
 ## pc-d8-035 · cross_passage
 
-问题族：stable-content-identity；人工状态：pending（待用户实际核对）。
+问题族：stable-content-identity；人工状态：confirmed（复核者：yanye，批量确认）。
 
 **问题：** 入库在Embedding前对成功清单和现有集合分别检查什么？不兼容时会删除集合重建吗，本地清单原子替换能当成跨存储事务保证吗？
 
-**参考答案候选：** 成功清单检查同集合的模型、维度、切分等配置；集合检查恰有预期dense向量，维度和距离匹配。已知不兼容在Embedding前拒绝，不会自动删除集合或改写旧索引；本地文件原子替换不代表Qdrant与清单之间有跨存储事务。
+**已确认参考答案：** 成功清单检查同集合的模型、维度、切分等配置；集合检查恰有预期dense向量，维度和距离匹配。已知不兼容在Embedding前拒绝，不会自动删除集合或改写旧索引；本地文件原子替换不代表Qdrant与清单之间有跨存储事务。
 
 证据 pc-d8-035-e1：[Dense身份与引用排查笔记 / 成功清单与重复上传](corpus/dense_identity_and_citations.md#成功清单与重复上传)；来源类型project_experience，字符区间[700, 827)，page=null。
 
@@ -476,37 +476,37 @@
 
 ## pc-d8-036 · unanswerable
 
-问题族：missing-compose-client-version；人工状态：pending（待用户实际核对）。
+问题族：missing-compose-client-version；人工状态：confirmed（复核者：yanye，批量确认）。
 
 **问题：** 本项目D6手测时，宿主机Docker Compose客户端的精确版本号是多少？
 
-**无答案候选理由：** 五份语料没有记录Docker Compose客户端精确版本；Compose笔记还明确说明该值未记录。不能把Qdrant镜像或服务版本当成Compose客户端版本，须人工检查全体语料确认。
+**已确认无答案理由：** 五份语料没有记录Docker Compose客户端精确版本；Compose笔记还明确说明该值未记录。不能把Qdrant镜像或服务版本当成Compose客户端版本，须人工检查全体语料确认。
 
 检查范围：sources.jsonl列出的完整5份语料；gold证据为空。
 
 ## pc-d8-037 · unanswerable
 
-问题族：missing-mcp-deployment；人工状态：pending（待用户实际核对）。
+问题族：missing-mcp-deployment；人工状态：confirmed（复核者：yanye，批量确认）。
 
 **问题：** 依据这五份语料，Project Copilot已经部署的MCP Server使用哪个传输方式和监听地址？
 
-**无答案候选理由：** 五份语料只描述现有启动、上传、Dense和Qdrant/Compose契约，没有已部署MCP Server的传输方式或监听地址。不能从FastAPI或Qdrant端口推导MCP服务配置，须人工检查全体语料确认缺失。
+**已确认无答案理由：** 五份语料只描述现有启动、上传、Dense和Qdrant/Compose契约，没有已部署MCP Server的传输方式或监听地址。不能从FastAPI或Qdrant端口推导MCP服务配置，须人工检查全体语料确认缺失。
 
 检查范围：sources.jsonl列出的完整5份语料；gold证据为空。
 
 ## pc-d8-038 · unanswerable
 
-问题族：missing-hnsw-configuration；人工状态：pending（待用户实际核对）。
+问题族：missing-hnsw-configuration；人工状态：confirmed（复核者：yanye，批量确认）。
 
 **问题：** pc_knowledge_dense_v0集合实际使用的HNSW m和ef_construct数值分别是多少？
 
-**无答案候选理由：** 五份语料给出集合名、向量名、维度与距离，但没有该集合的HNSW实际配置或查询记录；不能以服务版本或常见默认值冒充实际值，须人工检查全体语料确认缺失。
+**已确认无答案理由：** 五份语料给出集合名、向量名、维度与距离，但没有该集合的HNSW实际配置或查询记录；不能以服务版本或常见默认值冒充实际值，须人工检查全体语料确认缺失。
 
 检查范围：sources.jsonl列出的完整5份语料；gold证据为空。
 
 ## pc-d8-039 · follow_up
 
-问题族：citation-assembly；人工状态：pending（待用户实际核对）。
+问题族：citation-assembly；人工状态：confirmed（复核者：yanye，批量确认）。
 
 **问题：** 那证据不足时也得填一个编号吗？
 
@@ -515,9 +515,9 @@
 - user：Project Copilot模型返回的answered回答可以没有引用吗？
 - assistant：answered必须带有引用，后端还会检查引用编号。
 
-**独立问题候选：** Project Copilot在证据不足时应如何填写citation_numbers，是否必须为了满足answered契约填入一个编号？
+**已确认独立问题：** Project Copilot在证据不足时应如何填写citation_numbers，是否必须为了满足answered契约填入一个编号？
 
-**参考答案候选：** 不需要，证据不足时引用必须为空；不能为了满足answered必须有引用的契约而随意填编号。
+**已确认参考答案：** 不需要，证据不足时引用必须为空；不能为了满足answered必须有引用的契约而随意填编号。
 
 证据 pc-d8-039-e1：[Dense身份与引用排查笔记 / 引用契约与事实支持](corpus/dense_identity_and_citations.md#引用契约与事实支持)；来源类型project_experience，字符区间[962, 1115)，page=null。
 
@@ -525,7 +525,7 @@
 
 ## pc-d8-040 · follow_up
 
-问题族：service-port-storage；人工状态：pending（待用户实际核对）。
+问题族：service-port-storage；人工状态：confirmed（复核者：yanye，批量确认）。
 
 **问题：** 那它和容器是同一个生命周期吗，排障可以随意删除吗？
 
@@ -534,9 +534,9 @@
 - user：Compose里的qdrant_data是用来做什么的？
 - assistant：它是挂载到Qdrant容器/qdrant/storage的命名卷，用于持久数据。
 
-**独立问题候选：** 当前Compose的qdrant_data持久卷与Qdrant容器是否共享同一个生命周期，排障时能否随意删除该卷？
+**已确认独立问题：** 当前Compose的qdrant_data持久卷与Qdrant容器是否共享同一个生命周期，排障时能否随意删除该卷？
 
-**参考答案候选：** 不是，容器与持久数据有各自生命周期；qdrant_data是挂载到/qdrant/storage的命名卷，排障时不能随意删除。
+**已确认参考答案：** 不是，容器与持久数据有各自生命周期；qdrant_data是挂载到/qdrant/storage的命名卷，排障时不能随意删除。
 
 证据 pc-d8-040-e1：[Compose环境与服务边界笔记 / 端口和持久卷](corpus/compose_environment.md#端口和持久卷)；来源类型official_documentation_note，字符区间[1028, 1157)，page=null。
 
