@@ -1,6 +1,6 @@
 # Project Copilot
 
-基于RAG与LangGraph的研发知识及工单协作智能体。D1–D8阶段A/B已完成，D8收尾056eff8已同步。D9已实现离线排名评测器，开发集固定样例验证文档/证据指标及结果保存；待用户Git交接、学习和主动开启的手动验证，见 [D9报告](docs/reports/DAY_9.md)。真实Dense基线留D10，业务Agent按后续计划实现。
+基于RAG与LangGraph的研发知识及工单协作智能体。D1–D9阶段A/B已完成，D9开发提交0aeadef已同步；离线排名评测器、用户学习与验证结果见 [D9报告](docs/reports/DAY_9.md)。本次六份收尾文档待用户Git提交/推送；真实Dense基线留D10，业务Agent按后续计划实现。
 
 协作流程见 [长期协作规则](docs/COLLABORATION_RULES.md)：Codex开发、自动验证、提供报告并指导Git操作；用户亲自提交和推送GitHub，随后通过ChatGPT学习代码/架构，学习后主动要求Codex开始手动测试。以下命令是自助运行参考，Codex仅在用户要求后单步带练。
 
@@ -210,4 +210,6 @@ uv run --frozen python -m evals.freeze_dataset --dataset evals/datasets/copilot_
 
 `evals/run.py`先核验冻结和数据指纹，仅允许开发集，明确选择子集或全部30题；重放排名、逐题耗时/错误及指标保存到新目录，拒绝覆盖。检索失败留在可回答题分母，无答案指标为null并单独统计，追问使用冻结独立问题。固定4题样例为synthetic_fixture，只有评测器验算意义，不是Dense检索成绩。
 
-运行参考、字段口径与样例手算见 [离线评测说明](evals/README.md)。本轮没有模型调用、Qdrant索引或保留集效果实验；D10再完成真实检索采集、向量缓存、基线及Prompt配置冻结。用户Git和ChatGPT学习后，再主动开启D9手动验证，不自动进入D10。
+运行参考、字段口径与样例手算见 [离线评测说明](evals/README.md)。D9开发提交0aeadef已由用户推送；2026-10-19用户亲自运行4题重放、核算013，并确认已完成ChatGPT学习、理解主流程。其余汇总核算、连续覆盖算例及三项异常门禁按用户明确委托由Codex验证通过，分别记于 [D9报告](docs/reports/DAY_9.md)，阶段A/B均完成；本次收尾文档待用户提交。
+
+D9没有模型调用、Qdrant索引或保留集效果实验；D10再完成真实检索采集、向量缓存、基线及Prompt配置冻结，等待用户明确开启。

@@ -585,7 +585,7 @@ Codex随后只读比对正式9份输入哈希全部匹配，副本仅第一题�
 
 ## D9：最小离线排名评测器（2026-10-18）
 
-**当前状态：开发与相关离线自动验证完成，阶段A待用户亲自提交/推送，阶段B待ChatGPT学习与主动手动验证。** 从干净main/056eff8开始，只实现D9；没有改D3切分、D8冻结数据、业务源码或依赖，没有运行真实Dense基线、模型调用、服务或保留集检索。
+**当前状态：D9阶段A/B均完成，本次学习与验证收尾文档待用户提交/推送。** 开发提交0aeadef已同步；2026-10-19用户完成重放、013核算及学习确认，剩余检查按其明确委托由Codex补验，详见本节末尾。开发从干净main/056eff8开始，只实现D9；没有改D3切分、D8冻结数据、业务源码或依赖，没有运行真实Dense基线、模型调用、服务或保留集检索。
 
 ### 实际实现与边界
 
@@ -599,7 +599,7 @@ evals/run.py只重放离线排名，先verify冻结/配置指纹，再检查dev�
 
 ### 实际验证
 
-执行者Codex，工作目录新项目；用户学习后手动验证另行开启。
+以下为2026-10-18开发期记录，执行者Codex，工作目录新项目；2026-10-19的用户操作与委托补验另列。
 
 | 实际命令/检查 | 实际结果 |
 | --- | --- |
@@ -616,6 +616,39 @@ evals/run.py只重放离线排名，先verify冻结/配置指纹，再检查dev�
 
 ### 交接与下一步
 
-学习入口及字段说明见 [evals/README.md](../evals/README.md)，固定8项报告见 [DAY_9.md](reports/DAY_9.md)。D9开发commit/推送待用户亲自操作；ChatGPT学习后用户主动要求手动验证，再手算多gold/无命中/重复排名，观察4题回放结果和门禁。D9阶段B不提前勾选，也不自动进入D10或发起收费索引/Embedding。
+学习入口及字段说明见 [evals/README.md](../evals/README.md)，固定8项报告见 [DAY_9.md](reports/DAY_9.md)。开发期交接时Git与学习/手动验证尚待用户操作，以下补记实际结果；不自动进入D10或发起收费索引/Embedding。
 
 收尾检查通过：13个候选文件（5修改/8新增）、4份Python AST、27份Markdown围栏、65张表格列数、193处本地链接及60处锚点、4行固定排名JSONL、配置JSON及D9固定8项报告。计划仅第10节变化，35日任务表不变；D8全部10份冻结相关文件字节未改，业务源码/依赖无diff。独立只读实现与事实审核通过，git diff --check无输出，暂存区为空，.env及data/evals运行结果被忽略；未追加模型、服务或Git写操作。
+
+### 用户Git同步、学习及验证补记（2026-10-19）
+
+用户已亲自提交并推送 [0aeadef3bd84e66649d72a4358c10cbe62f9f7fe](https://github.com/yan-ye-dhy/project-copilot/commit/0aeadef3bd84e66649d72a4358c10cbe62f9f7fe)，`feat(evals): add offline retrieval metrics and replay runner`；push显示056eff8..0aeadef main→main。Codex只读核实HEAD/origin/main一致，开始手动验证时工作区干净。
+
+用户主动开启D9手动验证，亲自执行：
+
+```bash
+uv run --frozen python -m evals.run \
+  --dataset evals/datasets/copilot_v0 \
+  --config evals/configs/d9_replay.json \
+  --rankings evals/fixtures/d9_rankings.jsonl \
+  --output-dir data/manual-d9/replay-01
+echo $?
+```
+
+实际status=ok、退出0，保存config.json/retrieval.jsonl/summary.json；4题含3可答、1无答案及1模拟检索失败。Codex只读核对文件，收据代码为0aeadef完整提交、dirty=false、model_calls=0，canonical目录16片段，输入SHA256与固定快照一致。用户对013亲自给出@1文档Recall=1/证据Recall=0、@3证据Recall=1/MRR=0.5，符合两条gold在第2个片段全部覆盖的结果。
+
+用户随后明确要求“你直接验证吧”，将剩余核算和门禁委托Codex；下列结果不登记为用户亲自操作：
+
+| 执行者 | 实际检查 | 结果 |
+| --- | --- | --- |
+| Codex，用户本次委托 | 读取原4条结果独立汇总，检查无答案及模拟失败分母 | 证据Recall@3=(1+1+0)/3=2/3，MRR@3=(1/2+1/2+0)/3=1/3；023失败仍在分母3，017指标null并单列 |
+| Codex，用户本次委托 | 内存合成abcd/defg/ghij及gold cdefgh，调用指标函数 | @1/@2证据Recall为0，@3为1；首次完整覆盖rank3、MRR=1/3；未新增正式gold |
+| Codex，用户本次委托 | `.venv/bin/python -m evals.run`，副本排名只删除失败题023，其余使用原配置 | 退出1；拒绝缺题，未创建结果目录 |
+| Codex，用户本次委托 | 同一CLI，副本配置只改split=holdout，其余使用原排名 | 退出1；保留集门禁拒绝，未创建结果目录，未计算保留集效果 |
+| Codex，用户本次委托 | 同一CLI，原输入及`--output-dir data/manual-d9/replay-01` | 退出1；拒绝覆盖，原三份结果逐字节未变 |
+
+三项CLI均返回“评测输入或输出校验失败；请检查冻结、配置和排名快照”。完整实际命令、输入副本及结果保存在被忽略的`data/manual-d9/codex-verify-0i0rmfd1/verification.json`；正式9份冻结输入及清单共10文件哈希与HEAD字节均未变。阶段耗时仍全部未采集，refusal_accuracy=null；固定4题不代表全部30开发题或真实Dense成绩。本轮未重跑pytest、启动服务或调用模型，Codex未进行Git写操作。
+
+用户最后明确确认“已完成，理解主流程”，确认已通过ChatGPT完成D9代码学习。结合本人重放和013核算、明确委托的剩余补验及已同步开发提交，D9阶段A/B均完成；本次仅补记六份文档，待用户亲自提交/推送，等待用户要求才进入D10。
+
+本次文档检查通过：28份已跟踪Markdown的围栏、67张表格、196处本地链接及61处锚点，D9报告固定8项；计划仅第10节进度变化，34行主任务与独立D35弹性节保持原样。六份文档diff及git diff --check通过，暂存区为空，无未忽略的新文件；.env、原重放及补验记录仍被忽略。正式冻结10文件与HEAD字节一致；独立只读复核通过，README首页状态已同步修正。

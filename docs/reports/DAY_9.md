@@ -1,6 +1,6 @@
 # 【Day 9 开发报告】
 
-日期：2026-10-18。D9最小离线评测器开发及相关自动验证完成；阶段A待用户亲自提交/推送，阶段B待ChatGPT学习和主动开启的手动验证。本轮没有运行真实Dense基线，不提前进入D10。
+开发日期：2026-10-18；学习与验证补记：2026-10-19。D9阶段A/B均完成：开发提交已由用户推送，用户完成ChatGPT学习确认、亲自重放和013核算，剩余检查按明确委托由Codex补验。本次收尾文档待用户亲自提交/推送；没有运行真实Dense基线，不提前进入D10。
 
 ## 1. 今日开发目标
 
@@ -37,7 +37,7 @@
 
 ## 5. 自动测试结果
 
-执行者Codex，工作目录新项目；全部离线，无模型、Qdrant/HTTP服务、索引写入或费用，不代替用户手动验证。
+以下为2026-10-18开发期自动验证，执行者Codex，工作目录新项目；全部离线，无模型、Qdrant/HTTP服务、索引写入或费用。2026-10-19用户操作及明确委托的补验另列，不混记执行者。
 
 | 实际命令/检查 | 结果 |
 | --- | --- |
@@ -52,15 +52,29 @@
 
 收尾通过13个候选文件、4份Python AST、27份Markdown围栏、65张表格、193处本地链接及60处锚点、配置/4行排名及固定8项报告；计划仅第10节进度变化，35日安排不变。独立只读实现/事实复核通过，git diff --check无输出，暂存区为空，.env及运行结果被忽略。
 
+2026-10-19学习后验证：
+
+| 执行者 | 实际操作 | 结果 |
+| --- | --- | --- |
+| 用户 | `uv run --frozen python -m evals.run --dataset evals/datasets/copilot_v0 --config evals/configs/d9_replay.json --rankings evals/fixtures/d9_rankings.jsonl --output-dir data/manual-d9/replay-01`，随后`echo $?` | status=ok、退出0；三份结果保存，4题/3可答/1无答案/1模拟失败 |
+| 用户 | 核算013的文档与证据指标 | @1文档Recall1、证据Recall0；@3证据Recall1、MRR0.5，均正确 |
+| Codex，用户要求“你直接验证吧”后 | 原结果/收据与汇总独立复核，连续覆盖内存算例 | 原输入哈希及0aeadef/dirty=false/model_calls=0一致；证据Recall@3=2/3、MRR@3=1/3；合成跨片段gold首次完整rank3 |
+| Codex，同次委托 | CLI分别删除失败题023、将split改为holdout、复用原输出目录 | 三项均退出1，前两项不创建结果目录；原三份结果及D8冻结10文件字节未变 |
+
+完整门禁命令、输入副本及结果保存在被忽略的`data/manual-d9/codex-verify-0i0rmfd1/verification.json`，细节见 [开发日志](../DEVELOPMENT_LOG.md#用户git同步学习及验证补记2026-10-19)。后两行属于Codex补验，未记为用户手动操作；本轮没有重跑pytest或进行模型/服务调用。阶段耗时和拒答准确率仍未采集，4题合成结果仅验证工具。
+
+本次六份收尾文档的Markdown、表格、内部链接/锚点与固定8项报告检查通过，git diff --check无输出；计划仅第10节进度变化，34主任务日＋1弹性日不变。暂存区为空，运行数据未纳入提交。
+
 ## 6. GitHub 提交信息
 
 - 分支：`main`，跟踪`origin/main`；仓库为`https://github.com/yan-ye-dhy/project-copilot.git`。
 - 开发基点：[056eff8fbab6506915875144827fd8dd2ffea539](https://github.com/yan-ye-dhy/project-copilot/commit/056eff8fbab6506915875144827fd8dd2ffea539)，D8收尾已由用户推送，开启D9时工作区干净。
-- D9 commit：**待用户提交**；推送：**待用户执行**；暂无已同步D9提交链接。Codex未暂存、提交或推送。
+- D9开发commit：[0aeadef3bd84e66649d72a4358c10cbe62f9f7fe](https://github.com/yan-ye-dhy/project-copilot/commit/0aeadef3bd84e66649d72a4358c10cbe62f9f7fe)，`feat(evals): add offline retrieval metrics and replay runner`；用户已推送，输出056eff8..0aeadef main→main，Codex只读核实HEAD/origin/main一致。
+- 本次六份学习与验证收尾文档：**待用户提交/推送**，不预填新commit。Codex未暂存、提交或推送。
 
 ## 7. 后续学习提示
 
-交ChatGPT结合 [D9学习笔记](../STUDY_NOTES.md#d9从原始排名到文档与证据指标)、[评测说明](../../evals/README.md)及本轮commit带读：
+用户已确认通过ChatGPT学完、理解主流程；以下保留为复习入口，结合 [D9学习笔记](../STUDY_NOTES.md#d9从原始排名到文档与证据指标)、[评测说明](../../evals/README.md)及开发commit：
 
 1. 文档级与证据级Recall/MRR的分母与原始排名，多gold及跨段的全部覆盖。
 2. 原文位置映射、连续quote拼接及歧义拒绝，为什么字符相交不够。
@@ -70,6 +84,6 @@
 
 ## 8. 下一步计划
 
-先由用户亲自Git提交推送开发成果，再交ChatGPT学习。用户主动开启D9手动验证后，手算多gold/重复/无命中，亲自运行4题回放并观察逐题文件、分母、耗时与门禁。当前不勾选阶段B，不自动进入D10。
+用户已回复“已完成，理解主流程”；结合已推送开发提交、本人重放/013核算及明确委托的剩余补验，D9阶段A/B均完成。下一步仅指导用户亲自提交本次六份收尾文档，不再安排逐项手算，不自动进入D10。
 
 D10在用户明确开启后，再按费用规则准备真实索引/查询向量、缓存、开发集V0与分层回答核验，冻结Prompt及实验配置；本次没有执行收费调用，也不把D9合成数字记作V0或优化结果。
