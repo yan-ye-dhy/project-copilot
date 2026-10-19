@@ -1,0 +1,32 @@
+[
+  {
+    "phase": "document_vectors",
+    "text_count": 16,
+    "elapsed_ms": 1168.065200000001,
+    "cache": {
+      "hit_texts": 0,
+      "miss_texts": 16,
+      "api_calls": 1
+    }
+  },
+  {
+    "phase": "smoke_query_vectors",
+    "text_count": 2,
+    "elapsed_ms": 246.14165100001628,
+    "cache": {
+      "hit_texts": 0,
+      "miss_texts": 2,
+      "api_calls": 1
+    }
+  },
+  {
+    "phase": "remaining_query_vectors",
+    "text_count": 28,
+    "elapsed_ms": 460.9400020000294,
+    "cache": {
+      "hit_texts": 0,
+      "miss_texts": 28,
+      "api_calls": 1
+    }
+  }
+]

@@ -259,3 +259,15 @@ ChatGPT带读重点：
 5. **什么结果能说明什么**：样例4题手算@3的文档Recall2/3、MRR1/2，证据Recall2/3、MRR1/3，只验证代码。阶段耗时未采集为null，evaluation_ms只是单调时钟本地计算经过时间；没有检索性能、正确拒答或实际回答支持率结论。
 
 复盘例：两gold在原排名2和4完整命中，rank3是重复项，@3 Recall1/2、MRR1/2；@4 Recall1、MRR仍1/2。用户实际核算013：第1名文档Recall1、证据Recall0，@3证据Recall1、MRR0.5。其余由Codex依委托验算：abcd/defg/ghij覆盖gold cdefgh直到rank3才完整、证据MRR1/3；4题汇总证据Recall@3为2/3、MRR@3为1/3，023模拟失败仍在分母3，无答案017单列。没有要求用户继续逐项手算，也没有将155项自动回归记为用户操作。
+
+## D10：真实采集、缓存与可复查基线
+
+本节是ChatGPT学习入口，用户D10学习和手动验证尚待主动开启。先读 [评测运行链](../evals/README.md#d10真实采集与基线合同)、[完整冻结配置](../evals/configs/dense_v0.json)及 [D10报告](reports/DAY_10.md)，离线269项已通过；实际V0见 [基线报告](../evals/reports/DENSE_V0.md)，人工支持率仍待用户核验。
+
+1. **采集与评分**：baseline.collect先核验配置/数据，用D4入库及Qdrant获取真实排名，再交D9评分；retrieval子目录model_calls=0只表示评分器无模型，外层manifest另记采集计数。
+2. **缓存身份**：原文SHA加供应商/模型/维度/float决定可复用身份，文档与问题相同文本可共享；损坏停止，不能悄悄重新收费。完整query_vectors保留实际向量，后续公平对照复用，切分后新文本仍需付费。
+3. **Prompt冻结**：查看System/User原文、一次payload绑定、整块/顺序/编号规则、ModelAnswer JSON Schema与各自哈希，再追assert_runtime_matches怎样在请求前拒绝变化。Zero-shot格式骨架不等于Few-shot示范，云端别名也不等于永久固定权重。
+4. **真实延迟口径**：三批模型准备耗时单列，逐题的embedding时间是缓存查读，search才是实际Qdrant查询；不把批时间摊成独立API延迟，也不将缓存热路径冒充冷端到端。
+5. **回答支持判断**：固定八类样本用静态retriever复用排名，RagAnswerer保留真实引用，RecordingChat保存消息/原content；Pydantic成功只证明结构，不证明声明有证据支持。人工列全声明，缺引用也算未支持，纯拒答支持率N/A但错误拒答仍失败。
+
+D10已真实采集30题与八类回答：7条结构通过、003缺少JSON字段引号而被拒绝，原文保留；017输出一次证据不足，不等于全量拒答率。30个问题向量已用禁止请求的delegate复查缓存命中且逐值一致。人工review八题仍pending，用户学习/手动验证尚待主动开启；不提前优化或重写D8 gold。

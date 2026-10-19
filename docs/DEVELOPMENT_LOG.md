@@ -652,3 +652,48 @@ echo $?
 用户最后明确确认“已完成，理解主流程”，确认已通过ChatGPT完成D9代码学习。结合本人重放和013核算、明确委托的剩余补验及已同步开发提交，D9阶段A/B均完成；本次仅补记六份文档，待用户亲自提交/推送，等待用户要求才进入D10。
 
 本次文档检查通过：28份已跟踪Markdown的围栏、67张表格、196处本地链接及61处锚点，D9报告固定8项；计划仅第10节进度变化，34行主任务与独立D35弹性节保持原样。六份文档diff及git diff --check通过，暂存区为空，无未忽略的新文件；.env、原重放及补验记录仍被忽略。正式冻结10文件与HEAD字节一致；独立只读复核通过，README首页状态已同步修正。
+
+用户随后亲自提交并推送 [91eea87624778ec88ff71ee65c0e129b1dc8de22](https://github.com/yan-ye-dhy/project-copilot/commit/91eea87624778ec88ff71ee65c0e129b1dc8de22)，`docs(d9): record verification and learning completion`；push显示0aeadef..91eea87 main→main。Codex只读核实HEAD/origin/main一致、工作区干净，D9收尾同步完成，用户明确开启D10。
+
+## D10：真实Dense基线与配置冻结（2026-10-19）
+
+**当前状态：D10开发、真实采集和机器封存完成，阶段A待用户Git交接，阶段B待学习及人工验证。** 从干净main/91eea87开始，仅实施D10；下文初期环境/费用待回复为历史快照，实际运行结果见后续补记，不自动进入D11。
+
+### 实现范围与参考
+
+新增evals/cache.py按供应商URL/模型/维度/float/原文SHA持久复用向量；按唯一文本和明确batch分批，原子保存并校验内容哈希，损坏时停止，不自动重收费。原文与密钥不进入缓存文件，完整问题向量另存被忽略的运行目录。仅顺序单进程，原始客户端由外层关闭。
+
+evals/baseline_config.py和configs/dense_v0.json冻结完整System/User模板/模板哈希/变量、Zero-shot无示例、6000字符整块预算/排序/去重/编号、Pydantic Schema及哈希、模型URL/生成参数/关闭thinking/JSON模式、Embedding/索引/切分配置，运行前对照实际代码和设置。配置指纹为baseline-config-v1-2e43988981644b482c5917093586b25e406e5158452e84a0478a3326d793bea1；模型别名可能更新，真实响应模型与日期仍须记录。
+
+evals/baseline.py复用D4 IngestionService/ManifestStore/DenseQdrantStore、D5 RagAnswerer和D9 run_evaluation/evaluate_ranking，自主编排数据采集，不复制旧项目实现或导入旧包。正式dev30题、26可答/4无答案，独立pc_eval_dense_v0集合；默认全16片段预取，2题smoke通过后才嵌入余28题。每题保存实际query、排名/原文/分数/耗时或错误，失败留分母；按D9规则评分。批量Embedding准备耗时单列，逐题Embedding计时只表示本地向量缓存读取，不能冒充冷API耗时。
+
+预先按每类首题固定001/010/002/003/009/013/017/020八道dev回答样本；仅复用本次排名前5条，不再次检索，保存消息、原始content、实际模型/usage、结构校验结果或失败。review.jsonl的claims/支持/拒答判断pending，不因程序通过自动确认。机器产物manifest记录字节哈希、代码/dirty、日期/平台、索引清单、缓存条件及实际调用数；人工review不纳入机器哈希，verify不等于人工质量验收。
+
+### 实际离线验证与费用准备
+
+Codex在新项目运行：缓存59项通过（0.20秒）、配置39项通过（1.14秒）；采集编排初轮13通过/1失败，发现cold批次数误写死为3，修正为唯一文本分批计算后，连同D9/D8/D7/D3相关回归共267项通过（5.07秒），见 [D10报告](reports/DAY_10.md)。配置初轮一处测试类别预期与冻结题型不符，已修正断言；没有改数据迁就测试。测试全为fake/offline，不冒充真实效果或用户手动操作。
+
+实际plan命令`.venv/bin/python -m evals.baseline plan --dataset evals/datasets/copilot_v0 --config evals/configs/dense_v0.json`退出0，5文档/16片段/30问题、10330片段字符/1663问题字符、默认冷缓存3批/最多8次回答、model_calls=0。本地只输出“密钥已配置”布尔值和参数一致结果，未输出密钥或执行收费调用。
+
+2026-10-19核实[智谱官方定价](https://docs.bigmodel.cn/cn/guide/start/pricing)Embedding-3标准￥0.5/百万tokens（同步数组不是Batch API折扣）；[DeepSeek官方定价](https://api-docs.deepseek.com/quick_start/pricing/)flash峰值未命中输入$0.30/百万、输出$1.20/百万。按Embedding总25k tokens、八次回答各12k输入/1024输出估算￥0.0125＋US$0.0386304，非账单或硬额度。已按计划8.3请求本轮最多3次Embedding/8次回答授权，尚待明确回复；SDK自动重试0。
+
+Docker CLI当前报Input/output error，沙箱本机HTTP检查受限，不能据此断定Qdrant已停；已异步请用户恢复Docker Desktop和WSL集成。真实执行、环境核实及产物报告后续按实际结果补记；本次不改业务源码、依赖、D8冻结数据或35日任务表，不暂存/提交/推送Git。
+
+
+### 环境恢复与真实基线补记
+
+用户先回复“继续，wsl已经打开”，随后在已说明的3次Embedding＋最多8次回答/费用范围后要求“继续完成”；按该次指令继续本轮范围，不追加重试调用。只读检查受限沙箱Docker socket报permission denied，经正常权限提升后docker ps可读。Codex用现有Compose启动Qdrant；环境恢复后容器曾退出255，重新启动时短暂连接重置，随后readyz HTTP200、服务1.19.2、独立评测集合尚不存在，才发模型请求。期间未删除卷、旧集合或数据。
+
+最终离线命令仍为上述八个测试文件组合，实际 **269 passed，5.35秒**；补充了verify必备产物/完整路径集合与status门禁，采集文件单独测试 **16 passed，7.70秒**。源码收据补记SDK依赖版本、16份相关源码SHA256；之后没有改动这些已记录源码。
+
+实际运行`.venv/bin/python -m evals.baseline collect --dataset evals/datasets/copilot_v0 --config evals/configs/dense_v0.json --output-dir data/evals/dense-v0-20261019-01 --cache-dir data/evals/embedding-cache --live --answers`退出0，2026-10-19 19:07:20（UTC+8）完成。只发3次Embedding（16/2/28文本）和8次DeepSeek，无自动重试；30道dev检索无错误、26可答/4无答案，原始问题/独立追问、排名/分数/片段/耗时/错误完整保存。Qdrant独立集合dense/Cosine/2048维、精确16点，原应用集合仍2点。
+
+真实证据Recall@1=0.666667、@3=0.858974、@5与@10=1.0；证据MRR@5=0.836538，文档Recall@5=1.0。pc-d7-003、pc-d7-012、pc-d8-034、pc-d8-039在@3证据不完整、@5恢复；这不是优化对照或保留集成绩，小型自建语料不能证明通用泛化。30题向量已在本地query_vectors保存，另用禁止发请求的delegate逐值核对全部缓存命中，hit30/miss0/api_calls0；没有重新索引或生成回答来证明复用。
+
+八类固定回答中7条结构/引用编号通过，pc-d7-003返回的citation_numbers键少开头双引号，json.loads在字符153抛JSONDecodeError；模型原文、消息及usage保留，未修补、重试或修改Prompt，作为V0生成失败。pc-d7-017输出一次insufficient_evidence，仅记录输出，不据此代替人工拒答判断或声称4题拒答正确。八题review均pending，人工声明/支持率/拒答正确率未填。
+
+DeepSeek八次合计prompt17277/completion687/total17964 tokens（含非法JSON），服务端缓存命中0；按官方峰值未命中价折算约US$0.0060075，仅估算。Embedding usage及实际账单未采集保持null。逐题缓存读向量median0.725/p950.845ms、实际search median5.090/p956.735ms、含记录/本地校验total median6.489/p958.142ms；均30样本，三批准备耗时1168.07/246.14/460.94ms单列，不伪造冷API逐题延迟。
+
+完整本地12份机器产物通过baseline verify，human_review=pending/day10_accepted=false；运行时commit91eea87、dirty=true如实保留，16份源码SHA支持后续核对。公开快照`evals/results/dense-v0-20261019-01/`包含14份非敏感文件（12份机器/派生文件哈希、1份归档清单、1份待人工review）；完整query_vectors和重复本地清单只留data，公开保留它们的SHA及原完整run_manifest。原始采集没有被覆盖，当前用户Git提交/推送待执行，阶段B待学习与主动验证；完整边界见 [V0报告](../evals/reports/DENSE_V0.md)。
+
+收尾实际检查通过：29候选文件（6修改/23新增）、6份Python AST、30份Markdown围栏、72张表格、223处本地链接/64处锚点、全部新JSON/JSONL及日报8项；新文件尾空白/结尾换行通过。公开12份机器/派生文件SHA和运行16份源码SHA匹配，完整本地verify通过。另用公开evaluation_config/rankings在`data/evals/dense-v0-20261019-public-replay-check`离线重评分，指标、分母、错误及阶段耗时与原汇总逐值一致，model_calls=0。正式D8冻结10文件与HEAD字节一致，业务src/D9指标/依赖无diff，计划仅第10节变化；未发现实际密钥出现在候选文件，.env/data及向量缓存仍被忽略，git diff --check通过，暂存区为空。用户学习/手测与人工支持判断没有自动确认，Codex未进行Git写操作。

@@ -1,0 +1,73 @@
+{
+  "format_version": 1,
+  "run_id": "dense-v0-20261019-01",
+  "mode": "live_dense_baseline",
+  "recorded_at": "2026-10-19T11:07:20.060699+00:00",
+  "code": {
+    "commit": "91eea87624778ec88ff71ee65c0e129b1dc8de22",
+    "dirty": true
+  },
+  "source_sha256": {
+    "evals/baseline.py": "0bb94ac7ff73996b322e0d8cb35c87e85955012c9f1085476d01ab2fc9f947d5",
+    "evals/baseline_config.py": "c88969ca0079c045a2ba97be6e875849ec2de852cfbdb3a8a9b25003726cb95d",
+    "evals/cache.py": "7f22c9d5b4b342998b2e6f34183d8884f3eb8765ba47e2d8514c21fb49228d5b",
+    "evals/run.py": "7d940200ceb90383158e13f04df7f3cbc8c921d8604b4de97dc1b325709bb5ae",
+    "evals/metrics.py": "a8ceead5799cb0384deac928a652a082a5a585338b67bbb2f3a93aef98ef979e",
+    "src/project_copilot/config.py": "3e6aff382e956f7b7caa6daf288dc9f4b039debaab163f9ba2ceba7a6c88f922",
+    "src/project_copilot/infrastructure/models.py": "46673765a8437a86cfaaf6bd053cf08601e016e037fd6beb67aaab6449c2d8d9",
+    "src/project_copilot/infrastructure/qdrant.py": "a792d03a8f6558421bb1d7aa89e5e3f28c35878fe54fbc36cf653b3cf94c8d8d",
+    "src/project_copilot/rag/answering.py": "b9304476659edd2ee600f9f8f8c2a442b3dce1053180d19154303319eb9e4d81",
+    "src/project_copilot/rag/ingestion.py": "d9865a7eed93631fc9a9ba94748066170dbc1a76b9f837634dc24a29b0effb7f",
+    "src/project_copilot/rag/retrieval.py": "3164d30cc905b70b00a83db892bfaacd89cd4194880f5454434d79f048e1ed55",
+    "src/project_copilot/rag/loaders.py": "fa6f345c2567da3494186e1ec8760986605e7e9941d098b5d0fff3055fb7fab7",
+    "src/project_copilot/rag/splitters.py": "7571edaa53b2d499fb4a34962efe02d186c512b800de9e0a52b3ab33fbce1aa5",
+    "src/project_copilot/schemas/rag.py": "9fe3a6f37bdb72f5adc3e83303c61d5d2c890f7929bbfcdc1f060caa3eba917c",
+    "src/project_copilot/schemas/documents.py": "1227b04b955bae9b5d670c53c57a8613fa8df9dd6ee028735d33956d0e33516e",
+    "src/project_copilot/schemas/retrieval.py": "49bc98c4282c732f9e8f7a99360d90715fff638997f2c75a7bdbdf4468813eb2"
+  },
+  "configuration_fingerprint": "baseline-config-v1-2e43988981644b482c5917093586b25e406e5158452e84a0478a3326d793bea1",
+  "dataset_fingerprint": "dataset-v1-54806b5174b2f3d2e4bd08b91b57569c5121929731112c3d375d4d42d4306b7e",
+  "qdrant_url": "http://127.0.0.1:6433/",
+  "collection_name": "pc_eval_dense_v0",
+  "runtime": {
+    "python": "3.13.14",
+    "platform": "Linux-6.18.33.2-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+    "machine": "x86_64",
+    "cpu": "x86_64",
+    "dependencies": {
+      "openai": "2.54.0",
+      "qdrant-client": "1.19.1",
+      "langchain-text-splitters": "1.1.3",
+      "pydantic": "2.14.0"
+    }
+  },
+  "cache_stats": {
+    "hit_texts": 46,
+    "miss_texts": 46,
+    "api_calls": 3
+  },
+  "model_calls": {
+    "embedding": 3,
+    "chat": 8
+  },
+  "embedding_usage": null,
+  "actual_billed_cost": null,
+  "timing_condition": "query-vector-cache-hit; provider-batch-time-separate; no-explicit-warmup",
+  "retrieval_evaluation": "D9 replay of actual Qdrant rankings; replay model_calls=0 is scoring only",
+  "human_review": "pending",
+  "day10_accepted": false,
+  "files": {
+    "answers.jsonl": "b63551f78b8ae8bc4370ec023616bef0263f39cbf8340d7263ddacfb6e11d365",
+    "baseline_config.json": "a3aa8144b09bc9f9af5f1ee31103dd3f89b5aa2b263287b8acb1dfee9d59c1e5",
+    "embedding_batches.json": "4fee88c91ea0d5a9151976e73379a3f0a23e8c7396e712b1b615b2153d0cc0d2",
+    "evaluation_config.json": "dea612eefc693c1f14c4d68810ddc26cebcd2da745ee1752e7bce75f46d70e0f",
+    "index_manifest.json": "f01728b6c36643bab054bdc448f85abd913fa41773d33c3f3a3fdaf50e44198c",
+    "index_manifests/pc_eval_dense_v0.json": "55ed06f49132cbfdee8c321a6f5f84c7b8f32c62a2d433a2f2dce4ac78ec86cd",
+    "query_vectors.jsonl": "272e9fe4ffb89f735946e363f04cbd3eadd43bb3d603892e652f03c3e8212618",
+    "rankings.jsonl": "9f3ae440c76dff6c801da4775b18aeb2373cd84fa80cbacf0d14f5160bb75906",
+    "retrieval/config.json": "fb80a05c71482eb086a4ad62fb2f33d9a04442542851be97021abe8623151b98",
+    "retrieval/retrieval.jsonl": "1715065ec717e8e580c1280b6950326ac92a0cced1134fd2faf575062b9c175c",
+    "retrieval/summary.json": "e0cc799c885b5b063a8fb3b8419da96abd639b435b2d45d05d85106b0b6031a2",
+    "status.json": "05213341e23943c84e15454aa9f3ca10809d98a5c3d18b57ca252032ea36b30e"
+  }
+}

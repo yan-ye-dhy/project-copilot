@@ -1,0 +1,27 @@
+{
+  "format_version": 1,
+  "run_id": "dense-v0-20261019-01",
+  "mode": "public_snapshot_without_vectors",
+  "local_full_archive": "data/evals/dense-v0-20261019-01",
+  "source_manifest_sha256": "518cf87ee009b8a1b4e4bbb33ae2f537ccfa7b6ef4334b5835a6f6c23b2cbbba",
+  "excluded_large_files": {
+    "index_manifests/pc_eval_dense_v0.json": "55ed06f49132cbfdee8c321a6f5f84c7b8f32c62a2d433a2f2dce4ac78ec86cd",
+    "query_vectors.jsonl": "272e9fe4ffb89f735946e363f04cbd3eadd43bb3d603892e652f03c3e8212618"
+  },
+  "human_review": "pending",
+  "review_file_policy": "review.jsonl editable; excluded from machine hashes",
+  "files": {
+    "answers.jsonl": "b63551f78b8ae8bc4370ec023616bef0263f39cbf8340d7263ddacfb6e11d365",
+    "bad_cases.jsonl": "0ad9bf90e0b80829c8388f6d7bbe2893784c7fe6b38914b98214f320fc861dff",
+    "baseline_config.json": "a3aa8144b09bc9f9af5f1ee31103dd3f89b5aa2b263287b8acb1dfee9d59c1e5",
+    "embedding_batches.json": "4fee88c91ea0d5a9151976e73379a3f0a23e8c7396e712b1b615b2153d0cc0d2",
+    "evaluation_config.json": "dea612eefc693c1f14c4d68810ddc26cebcd2da745ee1752e7bce75f46d70e0f",
+    "index_manifest.json": "f01728b6c36643bab054bdc448f85abd913fa41773d33c3f3a3fdaf50e44198c",
+    "rankings.jsonl": "9f3ae440c76dff6c801da4775b18aeb2373cd84fa80cbacf0d14f5160bb75906",
+    "retrieval/config.json": "fb80a05c71482eb086a4ad62fb2f33d9a04442542851be97021abe8623151b98",
+    "retrieval/retrieval.jsonl": "1715065ec717e8e580c1280b6950326ac92a0cced1134fd2faf575062b9c175c",
+    "retrieval/summary.json": "e0cc799c885b5b063a8fb3b8419da96abd639b435b2d45d05d85106b0b6031a2",
+    "run_manifest.json": "518cf87ee009b8a1b4e4bbb33ae2f537ccfa7b6ef4334b5835a6f6c23b2cbbba",
+    "status.json": "05213341e23943c84e15454aa9f3ca10809d98a5c3d18b57ca252032ea36b30e"
+  }
+}

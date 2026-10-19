@@ -1,0 +1,13 @@
+{
+  "state": "recorded",
+  "complete": true,
+  "retrieval_errors": 0,
+  "answer_errors": 1,
+  "answers_requested": true,
+  "human_review": "pending",
+  "day10_accepted": false,
+  "model_calls": {
+    "embedding": 3,
+    "chat": 8
+  }
+}

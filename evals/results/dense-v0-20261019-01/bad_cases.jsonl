@@ -1,0 +1,5 @@
+{"question_id": "pc-d7-003", "stage": "retrieval", "reason": "incomplete_evidence_at_3", "recovered_at_5": true}
+{"question_id": "pc-d7-012", "stage": "retrieval", "reason": "incomplete_evidence_at_3", "recovered_at_5": true}
+{"question_id": "pc-d8-034", "stage": "retrieval", "reason": "incomplete_evidence_at_3", "recovered_at_5": true}
+{"question_id": "pc-d8-039", "stage": "retrieval", "reason": "incomplete_evidence_at_3", "recovered_at_5": true}
+{"question_id": "pc-d7-003", "stage": "generation", "reason": "invalid_json", "error_type": "JSONDecodeError", "position": 153, "message": "Expecting property name enclosed in double quotes", "retried": false}
