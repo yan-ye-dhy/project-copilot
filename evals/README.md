@@ -112,9 +112,9 @@ uv run --frozen python -m evals.baseline verify \
 | embedding_batches.json、query_vectors.jsonl | 批量向量准备耗时/缓存统计；问题与原向量关联，后续复用不再收费 |
 | rankings.jsonl、retrieval/三份D9结果 | 原始真实排名/分数/片段/逐题错误、指标及评分收据；评分器自身model_calls=0不代表采集未调用模型 |
 | answers.jsonl | 可选8题，复用排名前5条，保存完整消息、供应商实际模型/usage、原始content、结构化回答或校验错误；不重复检索 |
-| review.jsonl | 人工声明/引用支持与拒答判断草稿，pending；缺引用事实也需入分母，纯拒答支持率N/A但错误拒答仍失败 |
-| status.json、manifest.json | 采集完整性、实际调用计数、模型/代码/时间/平台/缓存条件与机器文件字节哈希；不代表D10人工验收通过 |
+| review.jsonl | 独立人工复核记录；采集时pending，用户确认后填写声明与引用支持、正确拒答及失败。缺引用事实也需入分母，纯拒答支持率N/A |
+| status.json、manifest.json | 保留采集时完整性、调用及环境/哈希快照；其中pending/accepted=false不随人工复核改写，当前人工状态读取review |
 
 逐题embedding时间是已准备查询向量的本地缓存读取时间，provider批量时间单列，不能摊成“独立请求延迟”。query总计包含本地读向量/保存/查询，非冷启动模型端到端；无显式预热，按执行顺序观察。未发生的fusion/rerank保持null，Embedding usage及账单未采集保持null；DeepSeek可用usage保留，估算金额与实际账单分开。
 
-机器哈希清单排除可追加人工判断的review.jsonl；verify只核验原采集产物，没有人工审核就不填支持率或拒答正确率。完整向量与缓存只放被忽略的data，公开时仅挑选自建非敏感原文及结果，保留归档指纹。集合/向量缓存均为顺序单进程实验用途；不扩展为业务并发索引服务。
+机器哈希清单排除可追加人工判断的review.jsonl；verify只核验原采集产物，没有人工审核就不填支持率或拒答正确率。status/run_manifest/archive_manifest中的pending/accepted=false保留采集时快照；后续人工确认只更新独立review与报告，不能修改原始回答、排名或Prompt。2026-10-20八题人工复核已完成，结果与分母见 [V0报告](reports/DENSE_V0.md)。完整向量与缓存只放被忽略的data，公开时仅挑选自建非敏感原文及结果，保留归档指纹。集合/向量缓存均为顺序单进程实验用途；不扩展为业务并发索引服务。

@@ -31,9 +31,17 @@ k表示返回的原始chunk数量；按26道可答题宏平均，失败若出现
 
 - **pc-d7-003：生成返回非法JSON。** citation_numbers字段缺少开头双引号，本地json.loads在字符153拒绝，错误为Expecting property name enclosed in double quotes。原始content和消息已保存，未修补原输出、重试或改变Prompt；即使JSON模式也必须本地校验。此题计入8题失败分母。
 - **pc-d7-003、pc-d7-012、pc-d8-034、pc-d8-039：@3证据尚不完整。** 到@5全部恢复覆盖；这是排名靠后/跨证据覆盖的基线案例，不是最大k的未召回。
-- **pc-d7-017：返回insufficient_evidence。** 程序记录一次拒答输出，人工正确性仍pending；不能据这一题声称4道无答案已全部验证或可靠拒答率100%。
+- **pc-d7-017：返回insufficient_evidence。** 2026-10-20用户核对后确认此次拒答正确；不能据这一题声称4道无答案已全部验证或可靠拒答率100%。
 
-原始回答、完整System/User、实际模型和usage、解析结果或错误见 [answers](../results/dense-v0-20261019-01/answers.jsonl)，案例索引见 [bad_cases](../results/dense-v0-20261019-01/bad_cases.jsonl)。[人工复核草稿](../results/dense-v0-20261019-01/review.jsonl)八题均pending：需列出全部事实声明、有效引用及支持判断，缺引用事实同样入分母；纯拒答支持率N/A，错误拒答仍失败。当前不填写人工引用支持率、事实正确率或拒答正确率。
+原始回答、完整System/User、实际模型和usage、解析结果或错误见 [answers](../results/dense-v0-20261019-01/answers.jsonl)，案例索引见 [bad_cases](../results/dense-v0-20261019-01/bad_cases.jsonl)。[人工复核记录](../results/dense-v0-20261019-01/review.jsonl)于2026-10-20由用户明确确认：001/010/002/009/013/020事实及引用支持通过，003保留结构失败，017拒答正确。Codex据此拆分登记24项声明及原文支持位置，009“用户管理自己的样本”明确为合理推论，其余23项为直接支持；不把模型原始失败文本当成有效回答。
+
+| 人工抽检口径 | 结果 | 分母与边界 |
+| --- | --- | --- |
+| 八题端到端通过 | 7/8，87.5% | 六条有效事实回答＋一次正确拒答；003结构失败保留在8题分母 |
+| 有效回答声明支持 | 24/24 | 仅六条有效事实回答，含1项用户接受的合理推论；所有需证据声明均登记，未发现缺引用或不受支持项 |
+| 抽样拒答正确 | 1/1 | 仅017，无事实声明，支持率N/A；不代表开发集全部4道无答案题 |
+
+这是预选八类每类一题的人工核验，不能把局部声明支持24/24当作8/8成功或30题整体回答准确率。用户批量确认原话、复核时间、每项声明、引用编号与原文子串均在review保存。
 
 ## 耗时、缓存与费用
 
@@ -56,4 +64,6 @@ DeepSeek八次（包含JSON失败）合计输入17277、输出687、总17964 tok
 
 完整本地目录`data/evals/dense-v0-20261019-01`的12份机器产物verify通过，review另行维护；公开快照见 [归档清单](../results/dense-v0-20261019-01/archive_manifest.json)。公开副本不含query_vectors大数组及重复的本地清单文件，但保留它们的SHA256与完整原运行manifest；可通过rankings/evaluation_config离线重评分，不应把精简副本当完整本地目录运行baseline verify。
 
-已完成真实采集、失败保留及机器配置/结果封存。D10阶段A尚待用户Git提交/推送；阶段B待ChatGPT学习和用户主动验证、人工回答核验。机器complete/verified不代表人工已通过；未开始D11优化，也未使用保留集选择配置。
+2026-10-19开发提交 [12226d7b2c52b14e1d853288f508a8aff35cc2f6](https://github.com/yan-ye-dhy/project-copilot/commit/12226d7b2c52b14e1d853288f508a8aff35cc2f6)已由用户推送。2026-10-20用户本人通过完整基线核验、公开排名离线重评分、30向量缓存逐值复用及修改Prompt副本拒绝，新增模型调用0；随后确认完成ChatGPT学习并能解释主流程，八题人工复核已登记，D10阶段A/B均完成。本次收尾记录待用户提交，未开始D11或使用保留集选择配置。
+
+status.json、run_manifest.json及archive_manifest.json仍保留采集时human_review=pending/day10_accepted=false，机器文件字节与原清单一致；这些是原运行快照。当前人工状态以独立review.jsonl及本报告为准，不为显示“完成”改写原始排名、回答或冻结配置。

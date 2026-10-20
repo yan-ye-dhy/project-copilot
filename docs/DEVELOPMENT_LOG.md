@@ -657,7 +657,7 @@ echo $?
 
 ## D10：真实Dense基线与配置冻结（2026-10-19）
 
-**当前状态：D10开发、真实采集和机器封存完成，阶段A待用户Git交接，阶段B待学习及人工验证。** 从干净main/91eea87开始，仅实施D10；下文初期环境/费用待回复为历史快照，实际运行结果见后续补记，不自动进入D11。
+**当前状态：D10阶段A/B均完成，学习与手动验证收尾记录待用户提交/推送。** 开发12226d7已同步；2026-10-20用户完成机器完整性、离线重评分、缓存复用/Prompt副本拒绝、八题人工核验及学习理解确认，详见本节末尾。从干净main/91eea87开始，仅实施D10；下文初期环境/费用/人工pending保留为历史快照，不自动进入D11。
 
 ### 实现范围与参考
 
@@ -697,3 +697,27 @@ DeepSeek八次合计prompt17277/completion687/total17964 tokens（含非法JSON�
 完整本地12份机器产物通过baseline verify，human_review=pending/day10_accepted=false；运行时commit91eea87、dirty=true如实保留，16份源码SHA支持后续核对。公开快照`evals/results/dense-v0-20261019-01/`包含14份非敏感文件（12份机器/派生文件哈希、1份归档清单、1份待人工review）；完整query_vectors和重复本地清单只留data，公开保留它们的SHA及原完整run_manifest。原始采集没有被覆盖，当前用户Git提交/推送待执行，阶段B待学习与主动验证；完整边界见 [V0报告](../evals/reports/DENSE_V0.md)。
 
 收尾实际检查通过：29候选文件（6修改/23新增）、6份Python AST、30份Markdown围栏、72张表格、223处本地链接/64处锚点、全部新JSON/JSONL及日报8项；新文件尾空白/结尾换行通过。公开12份机器/派生文件SHA和运行16份源码SHA匹配，完整本地verify通过。另用公开evaluation_config/rankings在`data/evals/dense-v0-20261019-public-replay-check`离线重评分，指标、分母、错误及阶段耗时与原汇总逐值一致，model_calls=0。正式D8冻结10文件与HEAD字节一致，业务src/D9指标/依赖无diff，计划仅第10节变化；未发现实际密钥出现在候选文件，.env/data及向量缓存仍被忽略，git diff --check通过，暂存区为空。用户学习/手测与人工支持判断没有自动确认，Codex未进行Git写操作。
+
+
+### 用户Git同步、学习与手动验证补记（2026-10-20）
+
+用户亲自提交并推送 [12226d7b2c52b14e1d853288f508a8aff35cc2f6](https://github.com/yan-ye-dhy/project-copilot/commit/12226d7b2c52b14e1d853288f508a8aff35cc2f6)，`feat(evals): add dense V0 baseline and frozen configuration`；push显示91eea87..12226d7 main→main。Codex只读核实HEAD/origin/main一致、工作区干净，开发阶段A完成；当时学习/手测尚待用户主动开启。
+
+2026-10-20用户明确开启D10手动验证，以下操作由用户本人执行，Codex只读核对其输出/文件，不把开发期269项自动测试改记为用户操作：
+
+| 实际操作 | 用户反馈与Codex核对 |
+| --- | --- |
+| `uv run --frozen python -m evals.baseline verify --dataset evals/datasets/copilot_v0 --output-dir data/evals/dense-v0-20261019-01`及`echo $?` | verified、12文件，human_review=pending/day10_accepted=false，退出0；此处是原采集快照的机器核验 |
+| `uv run --frozen python -m evals.run --dataset evals/datasets/copilot_v0 --config evals/results/dense-v0-20261019-01/evaluation_config.json --rankings evals/results/dense-v0-20261019-01/rankings.jsonl --output-dir data/manual-d10/replay-01` | 用户反馈“已运行”；Codex读取三份输出，30题/26可答/4无答案/错误0，逐题除本地evaluation_ms外同原结果，所有汇总/耗时一致，model_calls=0，代码12226d7/dirty=false |
+| 纯读缓存，CacheOnly.embed_documents仅抛错，CachedEmbeddings加载已保存30道query并assert逐值相等 | 用户输出“向量逐值一致：30”，hit_texts30/miss_texts0/api_calls0，说明实际复用同一向量而未重新请求 |
+| 复制配置到`data/manual-d10/changed-prompt.json`，只追加System消息，再运行`uv run --frozen python -m evals.baseline plan --dataset evals/datasets/copilot_v0 --config data/manual-d10/changed-prompt.json`及`echo $?` | status=error、退出1，按预期拒绝Prompt变化；没有修改正式配置或执行模型请求 |
+
+随后Codex整理八题事实/引用核对表，用户实际核对后明确回复：“001、010、002、009、013、020事实与引用支持通过；003保留结构失败；017拒答正确。”按该反馈登记8行review confirmed，reviewed_by=yanye，登记时间2026-10-20T18:44:18+08:00。六条有效回答拆分24项需证据声明，23项直接支持，009的“用户负责管理自己样本”1项注明为用户接受的合理推论；每项保留该次有效引用编号、chunk_id及原文子串，不能用未被用户接受的AI判定代替确认。
+
+人工主结果为预选八题端到端7/8（87.5%）：六条有效事实回答＋一次正确拒答；003的answer=null、非法JSON原文和错误保留，继续作为8题失败。局部声明支持24/24仅适用六条有效回答，不含003无有效回答/引用映射或017纯拒答，也不能当作8/8或30题回答正确率。拒答正确1/1仅017，支持率N/A，不外推开发集全部4道无答案题。所有需证据声明均记录，若缺引用同样须记未支持；本次有效六条未发现此类项。
+
+用户另明确确认“已学习，能够解释”，涵盖真实采集→向量缓存→Qdrant排名→离线评分→回答契约及003仍为失败的原因。结合开发已同步、本人手动验证与人工核对，D10阶段A/B均完成；本次九份收尾文件待用户亲自提交/推送，未开启D11。
+
+本次仅更新八份文档和公开review.jsonl，本地data/evals下被忽略的review同步登记。原始answers/rankings/Prompt、公开12份机器/派生产物、archive_manifest/status/run_manifest及D8冻结文件保持原字节；它们的pending/day10_accepted=false表示采集时状态，当前人工结论读取独立review及基线报告。没有为显示完成改写机器快照，没有重跑pytest、采集、Docker或模型调用，Git写操作仍由用户执行。
+
+收尾实际检查通过九文件、8行review/24项声明，所有引用编号/来源/chunk_id及原文子串正确；公开12机器/派生文件及归档清单与HEAD原字节一致，本地12机器文件、运行16源码SHA及D8冻结10文件均匹配。30份Markdown围栏、75张表格、225处本地链接/64锚点及固定8项报告通过，计划仅第10节、34主任务＋1弹性日不变。独立只读事实/状态复核通过，git diff --check无输出，暂存区为空，无未忽略的新文件；.env、手动副本及本地review保持被忽略，检查新增模型调用0。
