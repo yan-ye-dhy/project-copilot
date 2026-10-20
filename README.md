@@ -1,6 +1,6 @@
 # Project Copilot
 
-基于RAG与LangGraph的研发知识及工单协作智能体。D1–D10阶段A/B已完成，D10开发提交12226d7已同步；2026-10-20用户完成学习确认、离线手动验证与八题人工复核，本次收尾记录待用户提交，见 [D10报告](docs/reports/DAY_10.md)。业务Agent按后续计划实现。
+基于RAG与LangGraph的研发知识及工单协作智能体。D1–D10阶段A/B已完成，D10收尾提交1b69fbe已同步。D11已完成单因素切分候选与离线自动检查，待用户提交/推送、ChatGPT学习及主动手动验证，见 [D11报告](docs/reports/DAY_11.md)。业务Agent按后续计划实现。
 
 协作流程见 [长期协作规则](docs/COLLABORATION_RULES.md)：Codex开发、自动验证、提供报告并指导Git操作；用户亲自提交和推送GitHub，随后通过ChatGPT学习代码/架构，学习后主动要求Codex开始手动测试。以下命令是自助运行参考，Codex仅在用户要求后单步带练。
 
@@ -219,3 +219,9 @@ D9没有模型调用、Qdrant索引或保留集效果实验；D10的真实采集
 `evals/baseline.py`复用现有D4/D5与D9，提供plan/显式live采集/verify。仅使用冻结的30道dev题，独立集合pc_eval_dense_v0；按模型/供应商/文本指纹缓存向量，先2题smoke再继续，失败题不丢分母。固定八类各一题回答，保存完整消息/原始content/usage和待人工核验表，不自动确认引用支持。
 
 完整Prompt/Schema/模型参数见 [V0配置](evals/configs/dense_v0.json)，执行链及耗时口径见 [评测说明](evals/README.md#d10真实采集与基线合同)。2026-10-19实际采集5文档/16片段、30题，3次Embedding＋8次回答，无自动重试；证据Recall@5=1.0，回答7条结构通过、1条非法JSON被拒绝并保留。2026-10-20用户人工确认六条有效回答及一次拒答通过，003仍为失败，八题端到端7/8；有效回答24项声明支持通过，其中1项为合理推论。详见 [真实V0报告](evals/reports/DENSE_V0.md)、[复核记录](evals/results/dense-v0-20261019-01/review.jsonl)及 [公开归档](evals/results/dense-v0-20261019-01/archive_manifest.json)。高召回仅针对小型自建开发集；原机器产物保留采集时pending快照，当前人工状态见复核记录。
+
+## D11：单因素切分候选
+
+根据V0四道dev检索Bad Case，准备 [500字符候选](evals/configs/chunk_size500.json)：只改变chunk_size，保留overlap150、分隔符和全部模型/检索/Prompt规则。复用D3切分与D9原文定位，新增只读 [边界检查器](evals/chunking.py)；默认业务切分仍为750/150。
+
+离线结果为16→27片段，四题六段gold仍各自单块包含，承载片段缩短；这不代表真实排名或Recall改善。中文截句、Markdown标题与正文分离、长gold需跨块等限制均有测试。原始位置/片段见 [检查快照](evals/results/chunk-size500-preflight/inspection.json)，假设、开销与D12对照条件见 [候选报告](evals/reports/CHUNK_SIZE500_PREFLIGHT.md)。本日没有模型请求或Qdrant操作，未开启D12。

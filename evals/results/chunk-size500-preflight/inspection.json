@@ -1,0 +1,372 @@
+{
+  "status": "ok",
+  "mode": "offline_boundary_inspection",
+  "candidate_id": "dense-v1-size500-candidate",
+  "candidate_file_sha256": "99f759a807ac0273ae2850813d1cf52d2861d614de08bcfc66cfc86cc6578943",
+  "dataset_fingerprint": "dataset-v1-54806b5174b2f3d2e4bd08b91b57569c5121929731112c3d375d4d42d4306b7e",
+  "split": "dev",
+  "baseline_run_id": "dense-v0-20261019-01",
+  "baseline_configuration_fingerprint": "baseline-config-v1-2e43988981644b482c5917093586b25e406e5158452e84a0478a3326d793bea1",
+  "changed_factor": "chunk_size",
+  "model_calls": 0,
+  "qdrant_requests": 0,
+  "retrieval_evaluation": null,
+  "answer_evaluation": null,
+  "splitters": {
+    "baseline": {
+      "chunk_size": 750,
+      "chunk_overlap": 150,
+      "separators": [
+        "\n\n",
+        "\n",
+        " ",
+        ""
+      ]
+    },
+    "candidate": {
+      "chunk_size": 500,
+      "chunk_overlap": 150,
+      "separators": [
+        "\n\n",
+        "\n",
+        " ",
+        ""
+      ]
+    }
+  },
+  "splitter_versions": {
+    "baseline": "split-v1-bccb93671dcace12f58d366eb4ec6f530be20573f8b948a17484a0a00c989e78",
+    "candidate": "split-v1-630826a6c60457d1ad5791b1a491e3b55540e6814ce759b266173bd756c61e5a"
+  },
+  "corpus": {
+    "documents": 5,
+    "original_chars": 9331
+  },
+  "stats": {
+    "baseline": {
+      "chunk_count": 16,
+      "total_chunk_chars": 10330,
+      "min_chunk_chars": 260,
+      "max_chunk_chars": 740,
+      "median_chunk_chars": 683.0
+    },
+    "candidate": {
+      "chunk_count": 27,
+      "total_chunk_chars": 10389,
+      "min_chunk_chars": 115,
+      "max_chunk_chars": 499,
+      "median_chunk_chars": 412
+    }
+  },
+  "cases": [
+    {
+      "question_id": "pc-d7-003",
+      "query": "两家模型凭据还没配好，能先把后端启动起来吗？空白凭据会在哪一步被拒绝？",
+      "baseline_evidence_completion_ranks": {
+        "pc-d7-003-e1": 4
+      },
+      "evidence": [
+        {
+          "gold": {
+            "evidence_id": "pc-d7-003-e1",
+            "source_id": "pc-startup",
+            "document_id": "123afbc0-2f62-5d8f-b651-f43f2b446d6c",
+            "document_version": "f678b895529d45ee44bde0cd13756ce3aa4e58d9d30eabe82c81117c2d7d43cc",
+            "quote": "两家模型密钥字段允许缺省，应用可以在没有模型密钥时启动。真正创建Embedding或Chat客户端时，工厂才取出密钥并去除空白；空值会在发出模型请求前拒绝。这和app_name、environment在启动阶段的字段校验不同。",
+            "page": null,
+            "start_char": 943,
+            "end_char": 1056,
+            "section": "密钥检查发生在哪里"
+          },
+          "baseline": {
+            "intersecting_chunks": [
+              {
+                "chunk_id": "4716aa06-e7fc-5d81-9ee2-dcb3077e64e2",
+                "source_name": "startup_and_config.md",
+                "page": null,
+                "start_char": 499,
+                "end_char": 1181,
+                "chars": 682,
+                "text": "\n\nSettings使用PROJECT_COPILOT_前缀，默认服务名是Project Copilot，默认environment是development。app_name去除首尾空白后至少有一个字符；environment只接受development、test、production。\n\nD1用户临时覆盖APP_NAME为Copilot Learning后，健康响应的service随之变化。将APP_NAME设为全空格，或将ENVIRONMENT设为staging，均触发Settings校验错误并使应用启动失败。命令前的临时变量只影响该次启动，不会改写配置文件。\n\n## 健康检查的边界\n\nGET /health从app.state.settings读取服务名和环境，返回status、service、environment。D1默认响应为HTTP200、status为ok。这个接口没有探测模型API或向量库，因此健康接口成功不证明外部依赖可用。\n\n## 密钥检查发生在哪里\n\n两家模型密钥字段允许缺省，应用可以在没有模型密钥时启动。真正创建Embedding或Chat客户端时，工厂才取出密钥并去除空白；空值会在发出模型请求前拒绝。这和app_name、environment在启动阶段的字段校验不同。\n\nD2用户运行embedding_smoke.py时，不带--live得到退出码2；显式--live后返回一条2048维向量摘要；临时空白智谱密钥返回安全配置错误、退出码1。--live是命令行的显式实调开关，并不绕过密钥校验。\n\n## 可追溯来源"
+              }
+            ],
+            "single_chunk_covering_ids": [
+              "4716aa06-e7fc-5d81-9ee2-dcb3077e64e2"
+            ]
+          },
+          "candidate": {
+            "intersecting_chunks": [
+              {
+                "chunk_id": "bd11b07b-108f-5796-a435-50b963d19b1e",
+                "source_name": "startup_and_config.md",
+                "page": null,
+                "start_char": 796,
+                "end_char": 1181,
+                "chars": 385,
+                "text": "\n\nGET /health从app.state.settings读取服务名和环境，返回status、service、environment。D1默认响应为HTTP200、status为ok。这个接口没有探测模型API或向量库，因此健康接口成功不证明外部依赖可用。\n\n## 密钥检查发生在哪里\n\n两家模型密钥字段允许缺省，应用可以在没有模型密钥时启动。真正创建Embedding或Chat客户端时，工厂才取出密钥并去除空白；空值会在发出模型请求前拒绝。这和app_name、environment在启动阶段的字段校验不同。\n\nD2用户运行embedding_smoke.py时，不带--live得到退出码2；显式--live后返回一条2048维向量摘要；临时空白智谱密钥返回安全配置错误、退出码1。--live是命令行的显式实调开关，并不绕过密钥校验。\n\n## 可追溯来源"
+              }
+            ],
+            "single_chunk_covering_ids": [
+              "bd11b07b-108f-5796-a435-50b963d19b1e"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "question_id": "pc-d7-012",
+      "query": "把同一文件改名再挪到另一个目录，内容没变，还算同一份文档吗？显示名称有什么作用？",
+      "baseline_evidence_completion_ranks": {
+        "pc-d7-012-e1": 4
+      },
+      "evidence": [
+        {
+          "gold": {
+            "evidence_id": "pc-d7-012-e1",
+            "source_id": "pc-dense",
+            "document_id": "4a53c91e-5675-5e39-8b79-491aa96ea5c7",
+            "document_version": "e9de4bda8b4a0bb64c97168f37c38ab25d8bf4c49c857fd92004359eb58313c4",
+            "quote": "loader对一次读取的文件字节计算SHA-256，再以内容哈希生成稳定document_id。仅改文件名或物理路径，字节不变时文档身份不变。source_name负责展示来源，不参与文档身份。",
+            "page": null,
+            "start_char": 455,
+            "end_char": 552,
+            "section": "文档与片段身份"
+          },
+          "baseline": {
+            "intersecting_chunks": [
+              {
+                "chunk_id": "17b8925a-2b6a-5793-87ad-1ca2c52f581e",
+                "source_name": "dense_identity_and_citations.md",
+                "page": null,
+                "start_char": 0,
+                "end_char": 698,
+                "chars": 698,
+                "text": "# Dense身份与引用排查笔记\n\n资料日期：2026-10-16。适用范围：Project Copilot D3～D6，公开代码快照3f3159965b94655095acca599333e318dc5287b7。本文由Codex从自编样本、源码及实际记录整理，仍待人工核验，不代表已完成人工gold。\n\n## 样本页码与原文\n\n自编sample.pdf共3页，原始页索引为0、1、2；页1为空白。loader保留全部页及原索引，splitter跳过空白文本且不跨页合并，所以默认只产生页0、页2的两个片段。空白页不会使原页2重新编号为页1；TXT和Markdown的page则为null。\n\n第一页片段原文是“Project Copilot page one: local document loading.”。页码0表示PDF第一页，不表示文件缺少第一页。D6用户问“样本文档第一页描述了什么功能？”，真实回答提到本地文档加载，引用来自sample.pdf页0，与该原文一致。\n\n## 文档与片段身份\n\nloader对一次读取的文件字节计算SHA-256，再以内容哈希生成稳定document_id。仅改文件名或物理路径，字节不变时文档身份不变。source_name负责展示来源，不参与文档身份。\n\nchunk_id由文档身份、切分版本、原页索引、片段位置和片段文本哈希共同生成。切分参数或相关实现版本变化，会改变切分指纹并影响片段身份；相同原文出现在不同位置也不会合并为一个片段。D3用户验证了改名后身份稳定，以及将切分参数改为15/3后版本与片段ID变化。\n\n## 成功清单与重复上传"
+              }
+            ],
+            "single_chunk_covering_ids": [
+              "17b8925a-2b6a-5793-87ad-1ca2c52f581e"
+            ]
+          },
+          "candidate": {
+            "intersecting_chunks": [
+              {
+                "chunk_id": "d06053e1-f2d6-55bc-bac1-d22b07f9877c",
+                "source_name": "dense_identity_and_citations.md",
+                "page": null,
+                "start_char": 441,
+                "end_char": 827,
+                "chars": 386,
+                "text": "\n\n## 文档与片段身份\n\nloader对一次读取的文件字节计算SHA-256，再以内容哈希生成稳定document_id。仅改文件名或物理路径，字节不变时文档身份不变。source_name负责展示来源，不参与文档身份。\n\nchunk_id由文档身份、切分版本、原页索引、片段位置和片段文本哈希共同生成。切分参数或相关实现版本变化，会改变切分指纹并影响片段身份；相同原文出现在不同位置也不会合并为一个片段。D3用户验证了改名后身份稳定，以及将切分参数改为15/3后版本与片段ID变化。\n\n## 成功清单与重复上传\n\n入库依次完成加载、切分、检查清单与集合契约、Embedding、Qdrant upsert，最后写入本地成功清单。清单保存同一集合的模型、维度、切分等配置；不一致时拒绝混用。清单文件用临时写入加原子替换，不能据此声称Qdrant与本地文件具备跨存储事务。"
+              }
+            ],
+            "single_chunk_covering_ids": [
+              "d06053e1-f2d6-55bc-bac1-d22b07f9877c"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "question_id": "pc-d8-034",
+      "query": "只执行docker compose up -d qdrant为什么不会同时启动项目/health？应另外怎样启动项目API，配置又在启动的哪个阶段保存？",
+      "baseline_evidence_completion_ranks": {
+        "pc-d8-034-e1": 1,
+        "pc-d8-034-e2": 4,
+        "pc-d8-034-e3": 4
+      },
+      "evidence": [
+        {
+          "gold": {
+            "evidence_id": "pc-d8-034-e1",
+            "source_id": "docker-compose",
+            "document_id": "41e0a6d7-7148-5641-88e4-1ca3aba61fd1",
+            "document_version": "430461b2055a55124fb75c340ba1304fa8ef1b3ea4079177e4848546e488c41e",
+            "quote": "这不影响宿主机运行的Python应用：应用仍由自己的Settings读取本项目配置。FastAPI没有被该Compose文件定义成容器，不能把容器启动误解为同时启动了本项目API。",
+            "page": null,
+            "start_char": 925,
+            "end_char": 1015,
+            "section": "当前项目为什么可以省略"
+          },
+          "baseline": {
+            "intersecting_chunks": [
+              {
+                "chunk_id": "ecb74e18-60f1-5342-865e-cbd161d7ba15",
+                "source_name": "compose_environment.md",
+                "page": null,
+                "start_char": 703,
+                "end_char": 1312,
+                "chars": 609,
+                "text": "\n\n## 当前项目为什么可以省略\n\n截至D6，docker-compose.yml只有qdrant服务，镜像是qdrant/qdrant:v1.19.2；ports、volumes都是固定值，没有环境变量占位符，也没有服务级environment或env_file。因此--env-file .env.example不会改变该YAML中镜像、端口或卷的这些值。当前也可用docker compose up -d qdrant启动同一个服务。\n\n这不影响宿主机运行的Python应用：应用仍由自己的Settings读取本项目配置。FastAPI没有被该Compose文件定义成容器，不能把容器启动误解为同时启动了本项目API。\n\n## 端口和持久卷\n\n端口127.0.0.1:6433:6333表示宿主机回环地址的6433端口转发到容器6333端口，访问范围限制在本机绑定地址。qdrant_data:/qdrant/storage把命名卷挂到容器数据目录，容器与持久数据有各自生命周期，排障时不能随意删除卷。[端口定义](https://docs.docker.com/reference/compose-file/services/#ports)、[卷定义](https://docs.docker.com/reference/compose-file/volumes/)\n\n## Qdrant与FastAPI的边界"
+              }
+            ],
+            "single_chunk_covering_ids": [
+              "ecb74e18-60f1-5342-865e-cbd161d7ba15"
+            ]
+          },
+          "candidate": {
+            "intersecting_chunks": [
+              {
+                "chunk_id": "3a961e84-7741-5fda-8b0e-e023ecaa4dd6",
+                "source_name": "compose_environment.md",
+                "page": null,
+                "start_char": 923,
+                "end_char": 1312,
+                "chars": 389,
+                "text": "\n\n这不影响宿主机运行的Python应用：应用仍由自己的Settings读取本项目配置。FastAPI没有被该Compose文件定义成容器，不能把容器启动误解为同时启动了本项目API。\n\n## 端口和持久卷\n\n端口127.0.0.1:6433:6333表示宿主机回环地址的6433端口转发到容器6333端口，访问范围限制在本机绑定地址。qdrant_data:/qdrant/storage把命名卷挂到容器数据目录，容器与持久数据有各自生命周期，排障时不能随意删除卷。[端口定义](https://docs.docker.com/reference/compose-file/services/#ports)、[卷定义](https://docs.docker.com/reference/compose-file/volumes/)\n\n## Qdrant与FastAPI的边界"
+              }
+            ],
+            "single_chunk_covering_ids": [
+              "3a961e84-7741-5fda-8b0e-e023ecaa4dd6"
+            ]
+          }
+        },
+        {
+          "gold": {
+            "evidence_id": "pc-d8-034-e2",
+            "source_id": "pc-startup",
+            "document_id": "123afbc0-2f62-5d8f-b651-f43f2b446d6c",
+            "document_version": "f678b895529d45ee44bde0cd13756ce3aa4e58d9d30eabe82c81117c2d7d43cc",
+            "quote": "在项目根目录执行 `uv run --frozen uvicorn project_copilot.main:app --host 127.0.0.1 --port 8002`。uv使用项目环境和锁定依赖，Uvicorn导入main模块并取得app；模块末尾的create_app构建应用、注册路由和中间件。构建应用时不连接模型、Qdrant或Phoenix。",
+            "page": null,
+            "start_char": 163,
+            "end_char": 343,
+            "section": "启动命令与执行顺序"
+          },
+          "baseline": {
+            "intersecting_chunks": [
+              {
+                "chunk_id": "159f5fec-60b5-59b9-b908-bc7be3a96961",
+                "source_name": "startup_and_config.md",
+                "page": null,
+                "start_char": 0,
+                "end_char": 643,
+                "chars": 643,
+                "text": "# 启动与配置排查笔记\n\n资料日期：2026-10-16。适用范围：Project Copilot D1～D6，代码快照3f3159965b94655095acca599333e318dc5287b7。本文由Codex依据公开代码及真实开发记录整理，属于待人工核验的语料草稿，不是人工gold。\n\n## 启动命令与执行顺序\n\n在项目根目录执行 `uv run --frozen uvicorn project_copilot.main:app --host 127.0.0.1 --port 8002`。uv使用项目环境和锁定依赖，Uvicorn导入main模块并取得app；模块末尾的create_app构建应用、注册路由和中间件。构建应用时不连接模型、Qdrant或Phoenix。\n\n进入lifespan启动阶段后，load_settings读取本项目配置，结果保存到application.state.settings。启动成功才开始处理请求；关闭时执行lifespan的finally并记录停止日志。用户D1真实操作已观察到启动完成及Ctrl+C后的正常关闭。\n\n## 配置字段与启动失败\n\nSettings使用PROJECT_COPILOT_前缀，默认服务名是Project Copilot，默认environment是development。app_name去除首尾空白后至少有一个字符；environment只接受development、test、production。"
+              }
+            ],
+            "single_chunk_covering_ids": [
+              "159f5fec-60b5-59b9-b908-bc7be3a96961"
+            ]
+          },
+          "candidate": {
+            "intersecting_chunks": [
+              {
+                "chunk_id": "3cc5b3f1-d8b4-58ca-b560-1f3e722a815b",
+                "source_name": "startup_and_config.md",
+                "page": null,
+                "start_char": 0,
+                "end_char": 499,
+                "chars": 499,
+                "text": "# 启动与配置排查笔记\n\n资料日期：2026-10-16。适用范围：Project Copilot D1～D6，代码快照3f3159965b94655095acca599333e318dc5287b7。本文由Codex依据公开代码及真实开发记录整理，属于待人工核验的语料草稿，不是人工gold。\n\n## 启动命令与执行顺序\n\n在项目根目录执行 `uv run --frozen uvicorn project_copilot.main:app --host 127.0.0.1 --port 8002`。uv使用项目环境和锁定依赖，Uvicorn导入main模块并取得app；模块末尾的create_app构建应用、注册路由和中间件。构建应用时不连接模型、Qdrant或Phoenix。\n\n进入lifespan启动阶段后，load_settings读取本项目配置，结果保存到application.state.settings。启动成功才开始处理请求；关闭时执行lifespan的finally并记录停止日志。用户D1真实操作已观察到启动完成及Ctrl+C后的正常关闭。\n\n## 配置字段与启动失败"
+              }
+            ],
+            "single_chunk_covering_ids": [
+              "3cc5b3f1-d8b4-58ca-b560-1f3e722a815b"
+            ]
+          }
+        },
+        {
+          "gold": {
+            "evidence_id": "pc-d8-034-e3",
+            "source_id": "pc-startup",
+            "document_id": "123afbc0-2f62-5d8f-b651-f43f2b446d6c",
+            "document_version": "f678b895529d45ee44bde0cd13756ce3aa4e58d9d30eabe82c81117c2d7d43cc",
+            "quote": "进入lifespan启动阶段后，load_settings读取本项目配置，结果保存到application.state.settings。启动成功才开始处理请求；关闭时执行lifespan的finally并记录停止日志。用户D1真实操作已观察到启动完成及Ctrl+C后的正常关闭。",
+            "page": null,
+            "start_char": 345,
+            "end_char": 485,
+            "section": "启动命令与执行顺序"
+          },
+          "baseline": {
+            "intersecting_chunks": [
+              {
+                "chunk_id": "159f5fec-60b5-59b9-b908-bc7be3a96961",
+                "source_name": "startup_and_config.md",
+                "page": null,
+                "start_char": 0,
+                "end_char": 643,
+                "chars": 643,
+                "text": "# 启动与配置排查笔记\n\n资料日期：2026-10-16。适用范围：Project Copilot D1～D6，代码快照3f3159965b94655095acca599333e318dc5287b7。本文由Codex依据公开代码及真实开发记录整理，属于待人工核验的语料草稿，不是人工gold。\n\n## 启动命令与执行顺序\n\n在项目根目录执行 `uv run --frozen uvicorn project_copilot.main:app --host 127.0.0.1 --port 8002`。uv使用项目环境和锁定依赖，Uvicorn导入main模块并取得app；模块末尾的create_app构建应用、注册路由和中间件。构建应用时不连接模型、Qdrant或Phoenix。\n\n进入lifespan启动阶段后，load_settings读取本项目配置，结果保存到application.state.settings。启动成功才开始处理请求；关闭时执行lifespan的finally并记录停止日志。用户D1真实操作已观察到启动完成及Ctrl+C后的正常关闭。\n\n## 配置字段与启动失败\n\nSettings使用PROJECT_COPILOT_前缀，默认服务名是Project Copilot，默认environment是development。app_name去除首尾空白后至少有一个字符；environment只接受development、test、production。"
+              }
+            ],
+            "single_chunk_covering_ids": [
+              "159f5fec-60b5-59b9-b908-bc7be3a96961"
+            ]
+          },
+          "candidate": {
+            "intersecting_chunks": [
+              {
+                "chunk_id": "3cc5b3f1-d8b4-58ca-b560-1f3e722a815b",
+                "source_name": "startup_and_config.md",
+                "page": null,
+                "start_char": 0,
+                "end_char": 499,
+                "chars": 499,
+                "text": "# 启动与配置排查笔记\n\n资料日期：2026-10-16。适用范围：Project Copilot D1～D6，代码快照3f3159965b94655095acca599333e318dc5287b7。本文由Codex依据公开代码及真实开发记录整理，属于待人工核验的语料草稿，不是人工gold。\n\n## 启动命令与执行顺序\n\n在项目根目录执行 `uv run --frozen uvicorn project_copilot.main:app --host 127.0.0.1 --port 8002`。uv使用项目环境和锁定依赖，Uvicorn导入main模块并取得app；模块末尾的create_app构建应用、注册路由和中间件。构建应用时不连接模型、Qdrant或Phoenix。\n\n进入lifespan启动阶段后，load_settings读取本项目配置，结果保存到application.state.settings。启动成功才开始处理请求；关闭时执行lifespan的finally并记录停止日志。用户D1真实操作已观察到启动完成及Ctrl+C后的正常关闭。\n\n## 配置字段与启动失败"
+              }
+            ],
+            "single_chunk_covering_ids": [
+              "3cc5b3f1-d8b4-58ca-b560-1f3e722a815b"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "question_id": "pc-d8-039",
+      "query": "Project Copilot在证据不足时应如何填写citation_numbers，是否必须为了满足answered契约填入一个编号？",
+      "baseline_evidence_completion_ranks": {
+        "pc-d8-039-e1": 4
+      },
+      "evidence": [
+        {
+          "gold": {
+            "evidence_id": "pc-d8-039-e1",
+            "source_id": "pc-dense",
+            "document_id": "4a53c91e-5675-5e39-8b79-491aa96ea5c7",
+            "document_version": "e9de4bda8b4a0bb64c97168f37c38ab25d8bf4c49c857fd92004359eb58313c4",
+            "quote": "模型只生成status、answer和citation_numbers。后端先解析JSON并用ModelAnswer校验状态、引用是否为空及编号是否重复；回答编排再结合本次上下文检查编号是否越界。随后按编号从本次真实证据构造原文、来源、页码等引用元数据。answered必须有引用，证据不足时引用必须为空。",
+            "page": null,
+            "start_char": 962,
+            "end_char": 1115,
+            "section": "引用契约与事实支持"
+          },
+          "baseline": {
+            "intersecting_chunks": [
+              {
+                "chunk_id": "48ae217d-7647-5925-9b58-ff495844778b",
+                "source_name": "dense_identity_and_citations.md",
+                "page": null,
+                "start_char": 552,
+                "end_char": 1230,
+                "chars": 678,
+                "text": "\n\nchunk_id由文档身份、切分版本、原页索引、片段位置和片段文本哈希共同生成。切分参数或相关实现版本变化，会改变切分指纹并影响片段身份；相同原文出现在不同位置也不会合并为一个片段。D3用户验证了改名后身份稳定，以及将切分参数改为15/3后版本与片段ID变化。\n\n## 成功清单与重复上传\n\n入库依次完成加载、切分、检查清单与集合契约、Embedding、Qdrant upsert，最后写入本地成功清单。清单保存同一集合的模型、维度、切分等配置；不一致时拒绝混用。清单文件用临时写入加原子替换，不能据此声称Qdrant与本地文件具备跨存储事务。\n\nD6重复上传相同sample.pdf后，响应为indexed、2个片段、1167字节，清单仍是一份文档，Qdrant精确点数仍为2。upsert复用稳定片段ID，没有累加成4点。这个结果只说明该样本的身份复用，不等于完整故障恢复验证。\n\n## 引用契约与事实支持\n\n模型只生成status、answer和citation_numbers。后端先解析JSON并用ModelAnswer校验状态、引用是否为空及编号是否重复；回答编排再结合本次上下文检查编号是否越界。随后按编号从本次真实证据构造原文、来源、页码等引用元数据。answered必须有引用，证据不足时引用必须为空。\n\nJSON语法正确、Pydantic校验通过和引用编号有效，均不能自动证明答案得到原文事实支持；仍需人工逐条核对问题、答案与证据。本轮只验证了一个已知事实，不能据此报告完整RAG准确率、Recall或MRR。\n\n## 可追溯来源"
+              }
+            ],
+            "single_chunk_covering_ids": [
+              "48ae217d-7647-5925-9b58-ff495844778b"
+            ]
+          },
+          "candidate": {
+            "intersecting_chunks": [
+              {
+                "chunk_id": "f13339fa-1b91-58cf-b96f-df6565154277",
+                "source_name": "dense_identity_and_citations.md",
+                "page": null,
+                "start_char": 684,
+                "end_char": 1115,
+                "chars": 431,
+                "text": "\n\n## 成功清单与重复上传\n\n入库依次完成加载、切分、检查清单与集合契约、Embedding、Qdrant upsert，最后写入本地成功清单。清单保存同一集合的模型、维度、切分等配置；不一致时拒绝混用。清单文件用临时写入加原子替换，不能据此声称Qdrant与本地文件具备跨存储事务。\n\nD6重复上传相同sample.pdf后，响应为indexed、2个片段、1167字节，清单仍是一份文档，Qdrant精确点数仍为2。upsert复用稳定片段ID，没有累加成4点。这个结果只说明该样本的身份复用，不等于完整故障恢复验证。\n\n## 引用契约与事实支持\n\n模型只生成status、answer和citation_numbers。后端先解析JSON并用ModelAnswer校验状态、引用是否为空及编号是否重复；回答编排再结合本次上下文检查编号是否越界。随后按编号从本次真实证据构造原文、来源、页码等引用元数据。answered必须有引用，证据不足时引用必须为空。"
+              }
+            ],
+            "single_chunk_covering_ids": [
+              "f13339fa-1b91-58cf-b96f-df6565154277"
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "limitation": "仅原文边界检查；单块包含gold不代表会被检索到，V1排名、Recall/MRR、延迟及费用待D12真实对照。"
+}

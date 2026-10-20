@@ -118,3 +118,22 @@ uv run --frozen python -m evals.baseline verify \
 逐题embedding时间是已准备查询向量的本地缓存读取时间，provider批量时间单列，不能摊成“独立请求延迟”。query总计包含本地读向量/保存/查询，非冷启动模型端到端；无显式预热，按执行顺序观察。未发生的fusion/rerank保持null，Embedding usage及账单未采集保持null；DeepSeek可用usage保留，估算金额与实际账单分开。
 
 机器哈希清单排除可追加人工判断的review.jsonl；verify只核验原采集产物，没有人工审核就不填支持率或拒答正确率。status/run_manifest/archive_manifest中的pending/accepted=false保留采集时快照；后续人工确认只更新独立review与报告，不能修改原始回答、排名或Prompt。2026-10-20八题人工复核已完成，结果与分母见 [V0报告](reports/DENSE_V0.md)。完整向量与缓存只放被忽略的data，公开时仅挑选自建非敏感原文及结果，保留归档指纹。集合/向量缓存均为顺序单进程实验用途；不扩展为业务并发索引服务。
+
+## D11：切分候选的离线边界检查
+
+[chunk_size500.json](configs/chunk_size500.json)绑定D10归档与配置指纹，唯一变量为chunk_size750→500，overlap150及默认分隔符不变。它是候选描述，不是可交给D10采集器的正式基线配置；不能放宽D10校验或覆盖V0索引来运行候选。
+
+[chunking.py](chunking.py)的只读运行参考（无需密钥、Docker或模型费用）：
+
+```bash
+uv run --frozen python -m evals.chunking \
+  --dataset evals/datasets/copilot_v0 \
+  --baseline-dir evals/results/dense-v0-20261019-01 \
+  --candidate evals/configs/chunk_size500.json
+```
+
+调用链为main→inspect_chunking→核验归档输入/完整V0合同及D8冻结→限制关注题为真实dev检索Bad Case→同源语料两次build_chunk_catalog→按同页原文位置列交集/单块完整包含→stdout JSON。程序不写数据、不读取.env、不创建客户端；可重定向到被忽略的data目录观察输出，正式 [检查快照](results/chunk-size500-preflight/inspection.json)由Codex本日离线生成。
+
+输出cases中的gold沿用原文版本/页/字符位置，intersecting_chunks含原文、实际区间及ID，single_chunk_covering_ids只表示某块包含完整quote；多块联合覆盖继续沿用D9规则，不能用交集代替完整证据。baseline_evidence_completion_ranks来自封存的真实V0排名；candidate没有排名，retrieval_evaluation/answer_evaluation均为null，model_calls/qdrant_requests均为0。冻结完整性校验会读取全量文件核对指纹，但候选分析只消费这四道dev标签，不做保留集效果分析。
+
+实际16→27片段、累计片段字符10330→10389。较小chunk可能减少混合主题，也可能增加碎片、重复及工具开销；overlap150不是每对相邻段必然重复150字。假设、边界限制、参考来源与D12真实对照前置条件见 [候选报告](reports/CHUNK_SIZE500_PREFLIGHT.md)。本日不生成候选向量/排名，不据此认定优化收益。

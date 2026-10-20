@@ -721,3 +721,29 @@ DeepSeek八次合计prompt17277/completion687/total17964 tokens（含非法JSON�
 本次仅更新八份文档和公开review.jsonl，本地data/evals下被忽略的review同步登记。原始answers/rankings/Prompt、公开12份机器/派生产物、archive_manifest/status/run_manifest及D8冻结文件保持原字节；它们的pending/day10_accepted=false表示采集时状态，当前人工结论读取独立review及基线报告。没有为显示完成改写机器快照，没有重跑pytest、采集、Docker或模型调用，Git写操作仍由用户执行。
 
 收尾实际检查通过九文件、8行review/24项声明，所有引用编号/来源/chunk_id及原文子串正确；公开12机器/派生文件及归档清单与HEAD原字节一致，本地12机器文件、运行16源码SHA及D8冻结10文件均匹配。30份Markdown围栏、75张表格、225处本地链接/64锚点及固定8项报告通过，计划仅第10节、34主任务＋1弹性日不变。独立只读事实/状态复核通过，git diff --check无输出，暂存区为空，无未忽略的新文件；.env、手动副本及本地review保持被忽略，检查新增模型调用0。
+
+### D10收尾同步核实（2026-10-20）
+
+用户亲自提交并推送 [1b69fbefd83c0998dfaf0976b91f44a7f484d274](https://github.com/yan-ye-dhy/project-copilot/commit/1b69fbefd83c0998dfaf0976b91f44a7f484d274)，`docs(d10): record manual validation and answer reviews`。开启D11时Codex只读核实main/origin/main均指向此提交，工作区干净；D10阶段A/B及收尾同步均完成，下文才按用户明确请求开始D11。
+
+## D11：单因素切分候选与离线边界（2026-10-20）
+
+**当前状态：实现和自动验证完成，阶段A待用户Git提交/推送；阶段B待ChatGPT学习及用户主动手动验证。** 用户只开启D11，本日不运行D12真实切分对照。
+
+从V0真实dev的003/012/034/039四条检索Bad Case提出size750→500的单一假设，保留overlap150、分隔符、Dense算法及冻结Prompt/模型合同。原四题@3证据不完整、@5恢复；不是遗漏gold，也不能认定size为确定原因。003的非法JSON生成失败单独保留，未作为本日修复目标。
+
+新增`evals/configs/chunk_size500.json`、`evals/chunking.py`、两份边界/输入测试、离线`inspection.json`和 [候选报告](../evals/reports/CHUNK_SIZE500_PREFLIGHT.md)。复用D3现有SplitConfig/split_document及D9 build_chunk_catalog，默认业务src未修改，无新增依赖。原项目只读参考递归组件及750/200/分隔符用法；候选选择、归档绑定、边界检查及测试是自主实现，没有照搬不存在的中文标题解析器。
+
+检查器先绑定V0归档哈希与三个实际消费输入、完整基线配置指纹/D8冻结，再限制关注题属于dev且来自真实检索Bad Case；按同源文档重建两个原文位置目录，输出六段gold及相交/单块完整包含的片段。不读取.env、不写数据或创建模型/存储客户端；输出中候选retrieval_evaluation/answer_evaluation均为null，原V0完成rank单独标注，不能将旧排名套给新chunk。
+
+| 实际自动命令/检查（执行者Codex，新项目Python3.13） | 结果 |
+| --- | --- |
+| `.venv/bin/python -m pytest -q tests/test_chunking_inspection.py tests/test_chunking_boundaries.py` | 25 passed，3.13秒；覆盖单因素/归档/冻结/dev门禁与中文/Markdown边界 |
+| 上述两文件加`tests/test_documents.py tests/test_eval_metrics.py tests/test_eval_run.py tests/test_baseline_config.py tests/test_baseline.py tests/test_eval_cache.py tests/test_eval_freeze.py tests/test_eval_dataset.py`，同一pytest命令 | **294 passed，8.19秒**；D11新增25项，相关旧验证269项 |
+| `.venv/bin/python -m evals.chunking --dataset evals/datasets/copilot_v0 --baseline-dir evals/results/dense-v0-20261019-01 --candidate evals/configs/chunk_size500.json`，stdout保存到`evals/results/chunk-size500-preflight/inspection.json` | 退出0；原文9331字不变，16→27块、累计片段字符10330→10389，四题六段gold仍各自单块完整包含；model_calls=0、qdrant_requests=0 |
+
+离线检查中003/012/039承载片段682/698/678→385/386/431字符；034仍需跨文档，两份来源的承载块609/643→389/499。小块可能聚焦也可能碎片化；全27块ID改变，1条相同文本具备同模型缓存复用条件，26条新文本共10129字符，是否命中其他缓存/Token/费用未采集。点数+68.75%不能当费用同比增长；150重叠预算也不保证每对段实际重叠150字，测试保留中文截句、标题分离及520字gold需多块等限制。
+
+独立只读代码复核未发现阻塞问题，另执行25项相关测试通过；主记录以上述实际命令为准。D11没有候选向量、排名、Recall/MRR、回答、延迟或费用结果，没有Qdrant/模型请求、业务/Prompt/标签变更。Git提交、ChatGPT学习和手动验证均未代用户完成，完整8项交接见 [D11报告](reports/DAY_11.md)。D12仍需本日A/B完成和用户明确开启，再遵守费用授权、复用30个问题原向量及固定k/Prompt等条件做真实对照。
+
+收尾核实13个改动文件（6修改/7新增），空白/AST/JSON、8份Markdown围栏、48张表格、172处本地链接/12处锚点及8项报告通过。离线快照重算一致；V0公开12产物/16运行源码哈希一致，D8冻结10文件与HEAD字节一致且verify通过。计划第10节外不变，无业务/依赖diff，git diff --check通过，暂存区为空，常见凭据格式检查通过且.env/data仍被忽略；未读取真实密钥。

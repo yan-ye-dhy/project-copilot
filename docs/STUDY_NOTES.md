@@ -271,3 +271,15 @@ ChatGPT带读重点：
 5. **回答支持判断**：固定八类样本用静态retriever复用排名，RagAnswerer保留真实引用，RecordingChat保存消息/原content；Pydantic成功只证明结构，不证明声明有证据支持。人工列全声明，缺引用也算未支持，纯拒答支持率N/A但错误拒答仍失败。
 
 D10真实采集30题与八类回答：7条结构通过，003缺少JSON字段引号被拒绝；用户人工确认六条有效回答的事实/引用与017拒答正确，003继续计失败，端到端7/8。六条有效回答的24项声明获支持，其中009的“用户管理自己样本”为合理推论；这一局部24/24不替代八题结果，017支持率N/A，拒答仅抽检1题。用户本人核对30向量逐值复用、hit30/miss0/api_calls0，并验证Prompt副本被拒绝。原机器pending/accepted=false保留采集快照，当前结果见review；不自动推进D11。
+
+## D11：一个切分假设的边界与代价
+
+本节是交给ChatGPT的学习提纲，尚未登记用户已理解或手动验证。入口见 [D11报告](reports/DAY_11.md)、[候选与原文对照](../evals/reports/CHUNK_SIZE500_PREFLIGHT.md)。
+
+1. **为什么只改size？** V0的003/012/039 gold位于较长混合内容块，rank4才覆盖，034还涉及跨文档；尝试750→500看是否能缩小主题范围。保留overlap150与分隔符，避免同时增加中文标点/Markdown策略后无法归因；这是假设，真正排名需D12验证。
+2. **实际执行链**：`python -m evals.chunking`→main解析三个路径→inspect_chunking核对V0归档/消费文件→validate_baseline_config复用D8冻结与完整合同→只选真实dev Bad Case→load_document→build_chunk_catalog两次→split_document/递归切分→唯一原文位置→_boundary列gold交集与单块包含→输出JSON。整个链路没有.env、Embedding、Qdrant或回答，和D10真实采集链有明确边界。
+3. **中文标点、Markdown与overlap**：默认先空行/换行/空格再逐字符回退，不会自动按中文句号切句，也不理解`##`标题层级；原文保留不代表标题正文永远同块。size以Python len的Unicode字符计，非token。150是重叠预算，段落合并可能使实际重叠更少；无分隔的字符回退样例才展示固定150重叠。size降低后名义overlap比例上升，是本次变量带来的成本取舍。
+4. **身份与gold**：切分参数/组件版本进入index_version，全部chunk_id随候选变化；document_id、字节版本及gold位置不变。检查快照让人沿start_char/end_char核对quote，单块完整包含不等于该块被检索到；>500字的证据可能要多块连续拼全，仍沿D9口径。
+5. **如何读结果**：16→27点、累计字符10330→10389，仅证明切分形态变化；不把点数当Token/费用或把六段完整包含当Recall提升。候选仍保留来源链接，可能造成更多干扰；D12须看真实早期排名、全dev指标/耗时和恶化，而非只展示三个缩短片段。
+
+参考原项目`src/agent/backend/services/embedding_management.py:39–60`的递归组件参数，复用新项目D3/D9；候选检查器与单因素门禁是自主实现。可供后续主动手测的小练习：只在data副本改overlap观察第二变量被拒绝；对照003原文943–1056与候选块796–1181，说明“原文证据位置”和“候选块边界”为何不同。练习尚未执行，不因此标记学习完成。

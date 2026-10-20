@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "candidate_id": "dense-v1-size500-candidate",
+  "baseline_run_id": "dense-v0-20261019-01",
+  "baseline_archive_sha256": "aee143bdfadc96cdeb26ce9e7b9e3b56c47a3212d11704be09d3789f69972250",
+  "baseline_configuration_fingerprint": "baseline-config-v1-2e43988981644b482c5917093586b25e406e5158452e84a0478a3326d793bea1",
+  "changed_factor": "chunk_size",
+  "splitter": {
+    "chunk_size": 500,
+    "chunk_overlap": 150,
+    "separators": ["\n\n", "\n", " ", ""]
+  },
+  "focus_question_ids": ["pc-d7-003", "pc-d7-012", "pc-d8-034", "pc-d8-039"]
+}
