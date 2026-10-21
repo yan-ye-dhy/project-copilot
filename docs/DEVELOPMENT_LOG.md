@@ -766,3 +766,33 @@ DeepSeek八次合计prompt17277/completion687/total17964 tokens（含非法JSON�
 本次只补六份Markdown收尾文档；D8冻结10文件、D10公开12机器产物/16运行源码及D11正式配置/检查器/边界快照按字节或SHA保持一致。三个手动样本/结果文件均被Git忽略，没有覆盖机器归档、Prompt或gold；未读取.env、运行服务、模型、真实采集或pytest，Git写操作仍由用户亲自完成。
 
 本次收尾检查通过六份Markdown围栏/空白、42张表、158处本地链接/12处锚点、固定8项报告与独立只读事实复核。计划仅第10节变化，git diff --check无输出、暂存区为空，无未忽略新文件；本次收尾提交和推送待用户亲自执行。
+
+### D11收尾同步核实（2026-10-21）
+
+用户亲自提交并推送 [559190f13583765dd3ffbec59c435845fe198737](https://github.com/yan-ye-dhy/project-copilot/commit/559190f13583765dd3ffbec59c435845fe198737)，`docs(d11): record manual validation and learning completion`；Codex只读核实main/origin/main相同、工作区干净。D11阶段A/B和收尾同步均完成，随后按用户明确请求开启D12。
+
+## D12：V0与单因素切分候选的真实对照（2026-10-21）
+
+**当前状态：代码、离线验证与一次授权真实实验完成；阶段A待用户提交/推送，阶段B待ChatGPT学习与主动手动验证。** 只做750→500、overlap150及原分隔符不变的一组候选，未实现D13/BM25或第二轮参数搜索。
+
+新增`evals/chunking_run.py`、`evals/comparison.py`和两份测试，分别负责plan/显式live/verify、离线成对统计；复用D3原文切分、D4清单入库、D9评分和D10缓存/合同。使用独立候选集合pc_eval_dense_v1_size500，原V0必须存在且16点/payload一致，不能自动创建空基线；候选/输出既有则拒绝，不删除数据。业务src、依赖与锁文件不变。数据/原源码/归档→历史30问题向量哈希链、数值/模型合同和32段dev gold完整映射均在请求前核验；新编排与统计为自主实现。
+
+| 实际命令/检查（Codex，新项目环境） | 结果 |
+| --- | --- |
+| `.venv/bin/python -m evals.chunking_run plan --dataset evals/datasets/copilot_v0 --baseline-dir evals/results/dense-v0-20261019-01 --baseline-private-dir data/evals/dense-v0-20261019-01 --candidate evals/configs/chunk_size500.json --cache-dir data/evals/embedding-cache` | 退出0，5文档16→27块、30原问题向量；初始1命中/26缺失/10129字符，1次预计Embedding、60本地查询，plan模型调用0 |
+| `.venv/bin/python -m pytest -q tests/test_chunking_run.py tests/test_eval_comparison.py tests/test_chunking_inspection.py tests/test_chunking_boundaries.py tests/test_baseline_config.py tests/test_baseline.py tests/test_eval_cache.py tests/test_eval_metrics.py tests/test_eval_run.py tests/test_eval_freeze.py tests/test_eval_dataset.py tests/test_documents.py` | **333 passed，9.74秒**；D12新增39项，相关旧294项。合成向量/内存Qdrant不是供应商效果 |
+| Docker/运行时预检 | 初期docker退出126 I/O错误，用户恢复Desktop/WSL后沙箱socket受限，经环境权限审核只读检查并启动现有服务；Qdrant1.19.2，原V0点16、应用示例点2匹配，候选尚不存在；模型白名单符合原合同，仅输出密钥是否配置 |
+| `.venv/bin/python -m evals.chunking_run collect`，同plan的5个路径参数，再加`--output-dir data/evals/dense-v1-size500-20261021-01 --live --max-new-texts 26` | 退出0，实际1次Embedding/26新文本，复用30问题原向量，60次交错Qdrant查询，两侧错误0，问题Embedding/聊天0，无自动重试 |
+| `.venv/bin/python -m evals.chunking_run verify --dataset evals/datasets/copilot_v0 --output-dir data/evals/dense-v1-size500-20261021-01`及对应公开归档路径 | 均verified、19份封存产物；manual_review=pending、day12_accepted=false为本次自动采集快照 |
+
+离线初轮328项通过；独立审查和测试随后补齐历史源码哈希与全部gold付费前映射两项保护，另补清单漏文件、V0缺失/错误payload及费用上限拒绝，最终上述333项全绿后才实调。未将程序检查替代人工gold/学习确认。
+
+用户明确同意“这1次Embedding及60次本地检索”后才运行真实采集，2026-10-21T08:55:34.385402+00:00完成（UTC+8为16:55）。初始1条缓存命中/26缺失，批向量1200.433ms；入库重用27条，最终累计hit28/miss26/api1，命中次数非独立原文数。问题原向量SHA绑定，未重新Embedding，未调用DeepSeek。按本日[官方价格](https://docs.bigmodel.cn/cn/guide/models/embedding/embedding-3)0.5元/百万tokens，以3万输入tokens保守预算约¥0.015，实际Embedding usage/账单未采集，保持null。
+
+真实26道可答题6改善/5退化/15不变，mixed0；4无答案两侧均非空命中，未生成答案，拒答率null。证据Recall@1为0.666667→0.769231，@3为0.858974→0.897436，@5为1.0→0.923077，@10均1.0；MRR@5为0.836538→0.858974。012原文gold完整，完成rank4→1；003更短块仍完整却4→6，007由2→6，故保留750/150默认，不能只展示上升项。V0本轮重查与历史所有逐题指标一致；机器原始文件未覆盖。
+
+search中位4.380→4.362ms，30对差中位约−0.028ms、p95约+0.702ms，单轮/无显式预热/小语料不支持提速结论。原问题向量读校验等准备41.777ms与文档Embedding批次单列，逐题Embedding/fusion/rerank保持null；索引写入总耗时未采集。云端embedding别名跨日不能保证权重永久固定，日期/模型合同和21份源码哈希已保存。
+
+公开`evals/results/dense-v1-size500-20261021-01/`为本地20文件原字节副本（19份机器产物＋manifest），不含问题向量/密钥，约2.94MB；两侧完整排名、评分、32段gold映射及逐题原文均保留。独立只读结果审查通过；人工学习及012/003代表改善/退化的原文映射核验仍待用户主动手测。完整交接见 [D12报告](reports/DAY_12.md)与 [实验报告](../evals/reports/CHUNKING_V1.md)，本轮不进行Git写操作或自动进入D13。
+
+收尾检查通过32个候选文件（6修改/26新增）、4份Python AST、新JSON/JSONL、源码与文档空白；机器清单保留D4无结尾换行的原格式，不改写封存字节。8份Markdown围栏、51张表、190处本地链接/13锚点及固定8项报告通过。V0 12产物、D8冻结10文件、D11候选/快照不变，V1 19产物/21源码哈希与公私20文件字节一致。常见凭据模式检查通过，.env/data/缓存仍被忽略，计划仅第10节变化，业务/依赖无diff；git diff --check通过，暂存区为空，独立只读事实/状态复核通过。

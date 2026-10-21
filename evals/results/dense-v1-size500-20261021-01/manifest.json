@@ -1,0 +1,310 @@
+{
+  "schema_version": 1,
+  "run_id": "dense-v1-size500-20261021-01",
+  "mode": "paired_dense_chunking",
+  "recorded_at": "2026-10-21T08:55:34.385402+00:00",
+  "code": {
+    "commit": "559190f13583765dd3ffbec59c435845fe198737",
+    "dirty": true
+  },
+  "configuration_fingerprint": "chunking-experiment-v1-31bae4ea73fb8fae76ddb4c15f6a48efe30b896e594fdec05d867c5f18843b2c",
+  "dataset_fingerprint": "dataset-v1-54806b5174b2f3d2e4bd08b91b57569c5121929731112c3d375d4d42d4306b7e",
+  "source_sha256": {
+    "evals/baseline.py": "0bb94ac7ff73996b322e0d8cb35c87e85955012c9f1085476d01ab2fc9f947d5",
+    "evals/baseline_config.py": "c88969ca0079c045a2ba97be6e875849ec2de852cfbdb3a8a9b25003726cb95d",
+    "evals/cache.py": "7f22c9d5b4b342998b2e6f34183d8884f3eb8765ba47e2d8514c21fb49228d5b",
+    "evals/run.py": "7d940200ceb90383158e13f04df7f3cbc8c921d8604b4de97dc1b325709bb5ae",
+    "evals/metrics.py": "a8ceead5799cb0384deac928a652a082a5a585338b67bbb2f3a93aef98ef979e",
+    "src/project_copilot/config.py": "3e6aff382e956f7b7caa6daf288dc9f4b039debaab163f9ba2ceba7a6c88f922",
+    "src/project_copilot/infrastructure/models.py": "46673765a8437a86cfaaf6bd053cf08601e016e037fd6beb67aaab6449c2d8d9",
+    "src/project_copilot/infrastructure/qdrant.py": "a792d03a8f6558421bb1d7aa89e5e3f28c35878fe54fbc36cf653b3cf94c8d8d",
+    "src/project_copilot/rag/answering.py": "b9304476659edd2ee600f9f8f8c2a442b3dce1053180d19154303319eb9e4d81",
+    "src/project_copilot/rag/ingestion.py": "d9865a7eed93631fc9a9ba94748066170dbc1a76b9f837634dc24a29b0effb7f",
+    "src/project_copilot/rag/retrieval.py": "3164d30cc905b70b00a83db892bfaacd89cd4194880f5454434d79f048e1ed55",
+    "src/project_copilot/rag/loaders.py": "fa6f345c2567da3494186e1ec8760986605e7e9941d098b5d0fff3055fb7fab7",
+    "src/project_copilot/rag/splitters.py": "7571edaa53b2d499fb4a34962efe02d186c512b800de9e0a52b3ab33fbce1aa5",
+    "src/project_copilot/schemas/rag.py": "9fe3a6f37bdb72f5adc3e83303c61d5d2c890f7929bbfcdc1f060caa3eba917c",
+    "src/project_copilot/schemas/documents.py": "1227b04b955bae9b5d670c53c57a8613fa8df9dd6ee028735d33956d0e33516e",
+    "src/project_copilot/schemas/retrieval.py": "49bc98c4282c732f9e8f7a99360d90715fff638997f2c75a7bdbdf4468813eb2",
+    "evals/chunking_run.py": "5946829f89d750fa905d67f26443498e8033008d0a6b300e06a7a28749f4fc1e",
+    "evals/comparison.py": "b55915738115affa3b03bcb8e27d71f832a82077a69f4a853e8d213a0f42fee0",
+    "evals/chunking.py": "4ee0a65ee1662278128397fb23a03b10a4ece947d0822d4f97b07a4920c4741e",
+    "evals/freeze_dataset.py": "5b961a42eca10cb09293d970244863f98de0c9b4d48e2ae0e0fcd3ce258db2bb",
+    "evals/validate_dataset.py": "4eda09a21add766cc76155c98111d544161ef7cacb6e38d9c16fa9ff02bfbdc1"
+  },
+  "runtime": {
+    "python": "3.13.14",
+    "platform": "Linux-6.18.33.2-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+    "dependencies": {
+      "qdrant-client": "1.19.1",
+      "openai": "2.54.0",
+      "langchain-text-splitters": "1.1.3"
+    }
+  },
+  "qdrant_url": "http://127.0.0.1:6433/",
+  "collections": {
+    "baseline": {
+      "collection_name": "pc_eval_dense_v0",
+      "embedding_model": "embedding-3",
+      "dimensions": 2048,
+      "vector_name": "dense",
+      "distance": "Cosine",
+      "splitter_version": "split-v1-bccb93671dcace12f58d366eb4ec6f530be20573f8b948a17484a0a00c989e78"
+    },
+    "candidate": {
+      "collection_name": "pc_eval_dense_v1_size500",
+      "embedding_model": "embedding-3",
+      "dimensions": 2048,
+      "vector_name": "dense",
+      "distance": "Cosine",
+      "splitter_version": "split-v1-630826a6c60457d1ad5791b1a491e3b55540e6814ce759b266173bd756c61e5a"
+    }
+  },
+  "query_vectors_sha256": "272e9fe4ffb89f735946e363f04cbd3eadd43bb3d603892e652f03c3e8212618",
+  "query_order": [
+    {
+      "question_id": "pc-d7-001",
+      "order": [
+        "baseline",
+        "candidate"
+      ]
+    },
+    {
+      "question_id": "pc-d7-002",
+      "order": [
+        "candidate",
+        "baseline"
+      ]
+    },
+    {
+      "question_id": "pc-d7-003",
+      "order": [
+        "baseline",
+        "candidate"
+      ]
+    },
+    {
+      "question_id": "pc-d7-004",
+      "order": [
+        "candidate",
+        "baseline"
+      ]
+    },
+    {
+      "question_id": "pc-d7-007",
+      "order": [
+        "baseline",
+        "candidate"
+      ]
+    },
+    {
+      "question_id": "pc-d7-009",
+      "order": [
+        "candidate",
+        "baseline"
+      ]
+    },
+    {
+      "question_id": "pc-d7-010",
+      "order": [
+        "baseline",
+        "candidate"
+      ]
+    },
+    {
+      "question_id": "pc-d7-011",
+      "order": [
+        "candidate",
+        "baseline"
+      ]
+    },
+    {
+      "question_id": "pc-d7-012",
+      "order": [
+        "baseline",
+        "candidate"
+      ]
+    },
+    {
+      "question_id": "pc-d7-013",
+      "order": [
+        "candidate",
+        "baseline"
+      ]
+    },
+    {
+      "question_id": "pc-d7-014",
+      "order": [
+        "baseline",
+        "candidate"
+      ]
+    },
+    {
+      "question_id": "pc-d7-015",
+      "order": [
+        "candidate",
+        "baseline"
+      ]
+    },
+    {
+      "question_id": "pc-d7-017",
+      "order": [
+        "baseline",
+        "candidate"
+      ]
+    },
+    {
+      "question_id": "pc-d7-018",
+      "order": [
+        "candidate",
+        "baseline"
+      ]
+    },
+    {
+      "question_id": "pc-d7-020",
+      "order": [
+        "baseline",
+        "candidate"
+      ]
+    },
+    {
+      "question_id": "pc-d8-022",
+      "order": [
+        "candidate",
+        "baseline"
+      ]
+    },
+    {
+      "question_id": "pc-d8-023",
+      "order": [
+        "baseline",
+        "candidate"
+      ]
+    },
+    {
+      "question_id": "pc-d8-024",
+      "order": [
+        "candidate",
+        "baseline"
+      ]
+    },
+    {
+      "question_id": "pc-d8-025",
+      "order": [
+        "baseline",
+        "candidate"
+      ]
+    },
+    {
+      "question_id": "pc-d8-027",
+      "order": [
+        "candidate",
+        "baseline"
+      ]
+    },
+    {
+      "question_id": "pc-d8-028",
+      "order": [
+        "baseline",
+        "candidate"
+      ]
+    },
+    {
+      "question_id": "pc-d8-029",
+      "order": [
+        "candidate",
+        "baseline"
+      ]
+    },
+    {
+      "question_id": "pc-d8-031",
+      "order": [
+        "baseline",
+        "candidate"
+      ]
+    },
+    {
+      "question_id": "pc-d8-032",
+      "order": [
+        "candidate",
+        "baseline"
+      ]
+    },
+    {
+      "question_id": "pc-d8-034",
+      "order": [
+        "baseline",
+        "candidate"
+      ]
+    },
+    {
+      "question_id": "pc-d8-035",
+      "order": [
+        "candidate",
+        "baseline"
+      ]
+    },
+    {
+      "question_id": "pc-d8-036",
+      "order": [
+        "baseline",
+        "candidate"
+      ]
+    },
+    {
+      "question_id": "pc-d8-037",
+      "order": [
+        "candidate",
+        "baseline"
+      ]
+    },
+    {
+      "question_id": "pc-d8-039",
+      "order": [
+        "baseline",
+        "candidate"
+      ]
+    },
+    {
+      "question_id": "pc-d8-040",
+      "order": [
+        "candidate",
+        "baseline"
+      ]
+    }
+  ],
+  "timing_policy": "paired-interleaved; alternating-side-first; no-explicit-warmup; preload-separate",
+  "cache_stats": {
+    "hit_texts": 28,
+    "miss_texts": 26,
+    "api_calls": 1
+  },
+  "model_calls": {
+    "embedding": 1,
+    "query_embedding": 0,
+    "chat": 0
+  },
+  "embedding_usage": null,
+  "actual_billed_cost": null,
+  "files": {
+    "baseline_evaluation_config.json": "dea612eefc693c1f14c4d68810ddc26cebcd2da745ee1752e7bce75f46d70e0f",
+    "baseline_rankings.jsonl": "3b0d812642c9cdb511eb8307965ee80ea89825691cdec19c6e67b59f67ac9369",
+    "baseline_retrieval/config.json": "7ed09b4eec3afacd1eaef7a334d30615ff9a0c74f8fce0c2f32bb07c5781a551",
+    "baseline_retrieval/retrieval.jsonl": "e8a4f23680050da4aa76a0ec580950b01de9bf5857ac3c1902d236ea1be8dd5d",
+    "baseline_retrieval/summary.json": "8e8cfbd190b2fcbb0ab7716cabdca620ec4552e7ca7b78dc76b7d093d7b289e0",
+    "candidate_evaluation_config.json": "abaf7ab1850454b2bae51ca2354f17984b880b0c20870d1417bb3d8448db887d",
+    "candidate_rankings.jsonl": "33063dc057808245c0786efbd1a5657de966a7ab880f0c429f9d5d9673b00e70",
+    "candidate_retrieval/config.json": "6ccf548752d97ac0e69e2c4afeb5615fe897a9a99f6884d5f2bf26e191b32748",
+    "candidate_retrieval/retrieval.jsonl": "a9b9d31a2cfea35136bec1dbf2b4ad2eb8127df790fefa671d0369df3d6514a1",
+    "candidate_retrieval/summary.json": "1937728bdd10572d7907661d081fe0c4f6df734c10002de59210240f4840055b",
+    "case_details.jsonl": "af4616a1fd0796101de756e2867d8ee23c5e34c54b9c1fe2fefb092f55263b22",
+    "comparison.json": "a606a8e714c3593238fa59f360d2d43a7f33b8b7ffe20c3e82e56b488a2b7fa6",
+    "embedding_batches.json": "1eff5dec2ffb5e9e887eef37868dd918cd0ac0e0f3e4909c7c906e97e0591b72",
+    "experiment_config.json": "824c009cd8ba0df711a6adfa2ee2c24ad7d422462567e9a0a7c4b0855eee0474",
+    "gold_mapping.json": "3c6086a82ddaf556019315fb257cad96e95b67005cf15047b9e06a5ffc227171",
+    "historical_v0_recheck.json": "79188d28a940645967c2be65302490b1a7a82ce3d109da9b1a4f35f82d4c9ec5",
+    "index_manifest.json": "d1850d77ce9e46ee0f4181541d6f5a402906ced71f0d15f3a5823f2a9468812e",
+    "index_manifests/pc_eval_dense_v1_size500.json": "605820aeb641490a2eee82bffec0cb0148c42dcc117e264fab5f9c83604ed388",
+    "status.json": "924fb5c254547506aa37f8505e0699bd9091ac52d2f8e5801c48c6b8c1e9bbec"
+  }
+}

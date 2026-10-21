@@ -1,0 +1,87 @@
+{
+  "run_id": "baseline_retrieval",
+  "mode": "offline_replay",
+  "ranking_origin": "recorded_retrieval",
+  "dataset_fingerprint": "dataset-v1-54806b5174b2f3d2e4bd08b91b57569c5121929731112c3d375d4d42d4306b7e",
+  "split": "dev",
+  "available_dev_questions": 30,
+  "mapping_rule": "exact-quote-contiguous-union-v1",
+  "timing_source": "snapshot_reported_ms; evaluation_ms_is_local_scoring_only",
+  "evaluation_config": {
+    "schema_version": 1,
+    "dataset_fingerprint": "dataset-v1-54806b5174b2f3d2e4bd08b91b57569c5121929731112c3d375d4d42d4306b7e",
+    "split": "dev",
+    "question_ids": null,
+    "ks": [
+      1,
+      3,
+      5,
+      10
+    ],
+    "splitter": {
+      "chunk_size": 750,
+      "chunk_overlap": 150,
+      "separators": [
+        "\n\n",
+        "\n",
+        " ",
+        ""
+      ]
+    },
+    "ranking_origin": "recorded_retrieval"
+  },
+  "effective_question_ids": [
+    "pc-d7-001",
+    "pc-d7-002",
+    "pc-d7-003",
+    "pc-d7-004",
+    "pc-d7-007",
+    "pc-d7-009",
+    "pc-d7-010",
+    "pc-d7-011",
+    "pc-d7-012",
+    "pc-d7-013",
+    "pc-d7-014",
+    "pc-d7-015",
+    "pc-d7-017",
+    "pc-d7-018",
+    "pc-d7-020",
+    "pc-d8-022",
+    "pc-d8-023",
+    "pc-d8-024",
+    "pc-d8-025",
+    "pc-d8-027",
+    "pc-d8-028",
+    "pc-d8-029",
+    "pc-d8-031",
+    "pc-d8-032",
+    "pc-d8-034",
+    "pc-d8-035",
+    "pc-d8-036",
+    "pc-d8-037",
+    "pc-d8-039",
+    "pc-d8-040"
+  ],
+  "input_sha256": {
+    "config": "dea612eefc693c1f14c4d68810ddc26cebcd2da745ee1752e7bce75f46d70e0f",
+    "rankings": "3b0d812642c9cdb511eb8307965ee80ea89825691cdec19c6e67b59f67ac9369"
+  },
+  "splitter_version": "split-v1-bccb93671dcace12f58d366eb4ec6f530be20573f8b948a17484a0a00c989e78",
+  "catalog_chunks": 16,
+  "code": {
+    "commit": "559190f13583765dd3ffbec59c435845fe198737",
+    "dirty": true
+  },
+  "runtime": {
+    "python": "3.13.14",
+    "system": "Linux",
+    "machine": "x86_64",
+    "langchain_text_splitters": "1.1.3",
+    "pydantic": "2.14.0"
+  },
+  "model_calls": 0,
+  "index_manifest": null,
+  "prompt_config": null,
+  "cache_condition": "not_applicable_to_offline_replay",
+  "warmup": null
+}

@@ -1,0 +1,17 @@
+{
+  "initial_cache": {
+    "unique_texts": 27,
+    "cached_texts": 1,
+    "missing_texts": 26,
+    "missing_chars": 10129,
+    "missing_utf8_bytes": 17443,
+    "embedding_requests": 1
+  },
+  "after_prefill": {
+    "hit_texts": 1,
+    "miss_texts": 26,
+    "api_calls": 1
+  },
+  "preparation_ms": 41.77668000011181,
+  "document_vectors_ms": 1200.4331900006946
+}

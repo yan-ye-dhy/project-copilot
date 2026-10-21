@@ -1,0 +1,75 @@
+{
+  "format_version": 1,
+  "spec": {
+    "collection_name": "pc_eval_dense_v1_size500",
+    "embedding_model": "embedding-3",
+    "dimensions": 2048,
+    "vector_name": "dense",
+    "distance": "Cosine",
+    "splitter_version": "split-v1-630826a6c60457d1ad5791b1a491e3b55540e6814ce759b266173bd756c61e5a"
+  },
+  "documents": [
+    {
+      "document_id": "123afbc0-2f62-5d8f-b651-f43f2b446d6c",
+      "content_hash": "f678b895529d45ee44bde0cd13756ce3aa4e58d9d30eabe82c81117c2d7d43cc",
+      "source_name": "startup_and_config.md",
+      "chunk_ids": [
+        "3cc5b3f1-d8b4-58ca-b560-1f3e722a815b",
+        "7e223b3d-3cef-5a4c-9097-e6e50d271101",
+        "bd11b07b-108f-5796-a435-50b963d19b1e",
+        "49e241e1-235f-536f-a819-a9ba637bcb9c",
+        "7946b911-4a96-50d6-8c1e-590d060a6a98"
+      ]
+    },
+    {
+      "document_id": "233ed25d-d962-51e2-9f55-799215258f04",
+      "content_hash": "5b1f0d1b0be2fe57399a20708764877a93fb6ff2dcf924a409cf06b5354c53aa",
+      "source_name": "upload_troubleshooting.md",
+      "chunk_ids": [
+        "9024dd0f-5ca5-571e-bbbf-6af187bf1e33",
+        "21b60c3c-dcb1-589d-8866-6fc3087fb0c7",
+        "24b713e7-0ec7-5bde-9250-3f6b80f9a8c9",
+        "55771206-47b1-5458-aa64-8e52a97b7424",
+        "4c834841-ee15-574d-9714-c71cb6bf9498"
+      ]
+    },
+    {
+      "document_id": "4a53c91e-5675-5e39-8b79-491aa96ea5c7",
+      "content_hash": "e9de4bda8b4a0bb64c97168f37c38ab25d8bf4c49c857fd92004359eb58313c4",
+      "source_name": "dense_identity_and_citations.md",
+      "chunk_ids": [
+        "357beadc-0c66-5506-9155-476d7722d8f7",
+        "d06053e1-f2d6-55bc-bac1-d22b07f9877c",
+        "f13339fa-1b91-58cf-b96f-df6565154277",
+        "12d58000-61e2-5c14-8ee0-1c5299be65a7",
+        "8e59280c-ca00-5356-baed-ffc5c90f5a54",
+        "2d010193-8d0c-583e-82c4-e02002cbc9a9",
+        "7c57caea-073d-5332-980b-cec5d3ef029e"
+      ]
+    },
+    {
+      "document_id": "41e0a6d7-7148-5641-88e4-1ca3aba61fd1",
+      "content_hash": "430461b2055a55124fb75c340ba1304fa8ef1b3ea4079177e4848546e488c41e",
+      "source_name": "compose_environment.md",
+      "chunk_ids": [
+        "816d2e8f-ff7f-58b6-9e74-a435b564f624",
+        "d31c2d32-f065-581c-90cc-93a9ccfc710b",
+        "3a961e84-7741-5fda-8b0e-e023ecaa4dd6",
+        "d27aaf3f-70c0-5fa1-90a0-0ca9fd1ff485",
+        "6b4cd837-b4e6-509e-a596-2d68c14f0501"
+      ]
+    },
+    {
+      "document_id": "2eab042a-28ae-5128-9c40-2e1601ce649f",
+      "content_hash": "f1c5612bed353a4e65692ca921fd10b9aba2de4971dff5aeb97bea3477f76289",
+      "source_name": "qdrant_vector_contract.md",
+      "chunk_ids": [
+        "f253073c-2f09-54e2-8fed-9231fd5a974c",
+        "dfda7879-21e5-5e14-b460-9ec000ad7a09",
+        "ff00f09b-5b22-5ae9-800c-207302bf4c8e",
+        "e19635c7-8c66-5741-98d4-f21c05777a25",
+        "dda838ca-f810-5b71-a178-9403777e457c"
+      ]
+    }
+  ]
+}

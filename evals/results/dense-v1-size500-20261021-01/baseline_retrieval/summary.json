@@ -1,0 +1,79 @@
+{
+  "run_id": "baseline_retrieval",
+  "mode": "offline_replay",
+  "ranking_origin": "recorded_retrieval",
+  "dataset_fingerprint": "dataset-v1-54806b5174b2f3d2e4bd08b91b57569c5121929731112c3d375d4d42d4306b7e",
+  "split": "dev",
+  "available_dev_questions": 30,
+  "mapping_rule": "exact-quote-contiguous-union-v1",
+  "timing_source": "snapshot_reported_ms; evaluation_ms_is_local_scoring_only",
+  "question_count": 30,
+  "answerable_count": 26,
+  "unanswerable_count": 4,
+  "retrieval_error_count": 0,
+  "at_k": {
+    "1": {
+      "document_recall": 0.8461538461538461,
+      "document_mrr": 0.8846153846153846,
+      "evidence_recall": 0.6666666666666666,
+      "evidence_mrr": 0.7307692307692307,
+      "all_evidence_covered": 0.6153846153846154
+    },
+    "3": {
+      "document_recall": 0.9807692307692307,
+      "document_mrr": 0.9294871794871795,
+      "evidence_recall": 0.8589743589743589,
+      "evidence_mrr": 0.8076923076923077,
+      "all_evidence_covered": 0.8461538461538461
+    },
+    "5": {
+      "document_recall": 1.0,
+      "document_mrr": 0.9294871794871795,
+      "evidence_recall": 1.0,
+      "evidence_mrr": 0.8365384615384616,
+      "all_evidence_covered": 1.0
+    },
+    "10": {
+      "document_recall": 1.0,
+      "document_mrr": 0.9294871794871795,
+      "evidence_recall": 1.0,
+      "evidence_mrr": 0.8365384615384616,
+      "all_evidence_covered": 1.0
+    }
+  },
+  "timings_ms": {
+    "embedding": {
+      "samples": 0,
+      "median": null,
+      "p95": null
+    },
+    "search": {
+      "samples": 30,
+      "median": 4.379782500109286,
+      "p95": 5.927592001171433
+    },
+    "fusion": {
+      "samples": 0,
+      "median": null,
+      "p95": null
+    },
+    "rerank": {
+      "samples": 0,
+      "median": null,
+      "p95": null
+    },
+    "total": {
+      "samples": 30,
+      "median": 4.462520499146194,
+      "p95": 6.018422000124701
+    }
+  },
+  "unanswerable": {
+    "count": 4,
+    "empty_hits": 0,
+    "nonempty_hits": 4,
+    "retrieval_errors": 0,
+    "refusal_accuracy": null
+  },
+  "bad_cases": []
+}

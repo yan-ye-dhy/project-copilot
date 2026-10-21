@@ -1,6 +1,6 @@
 # Project Copilot
 
-基于RAG与LangGraph的研发知识及工单协作智能体。D1–D11阶段A/B已完成，D11开发提交d53fe15已同步；2026-10-21用户完成四项手动验证并确认学习理解，本次收尾文档待用户提交，见 [D11报告](docs/reports/DAY_11.md)。业务Agent按后续计划实现。
+基于RAG与LangGraph的研发知识及工单协作智能体。D1–D11阶段A/B及收尾同步已完成；D12已完成真实切分对照和自动验证，待用户提交/推送、ChatGPT学习及主动手动验证，见 [D12报告](docs/reports/DAY_12.md)。500字符候选有改善也有退化，当前默认仍为750/150。业务Agent按后续计划实现。
 
 协作流程见 [长期协作规则](docs/COLLABORATION_RULES.md)：Codex开发、自动验证、提供报告并指导Git操作；用户亲自提交和推送GitHub，随后通过ChatGPT学习代码/架构，学习后主动要求Codex开始手动测试。以下命令是自助运行参考，Codex仅在用户要求后单步带练。
 
@@ -225,3 +225,9 @@ D9没有模型调用、Qdrant索引或保留集效果实验；D10的真实采集
 根据V0四道dev检索Bad Case，准备 [500字符候选](evals/configs/chunk_size500.json)：只改变chunk_size，保留overlap150、分隔符和全部模型/检索/Prompt规则。复用D3切分与D9原文定位，新增只读 [边界检查器](evals/chunking.py)；默认业务切分仍为750/150。
 
 离线结果为16→27片段，四题六段gold仍各自单块包含，承载片段缩短；这不代表真实排名或Recall改善。中文截句、Markdown标题与正文分离、长gold需跨块等限制均有测试。原始位置/片段见 [检查快照](evals/results/chunk-size500-preflight/inspection.json)，假设、开销与D12对照条件见 [候选报告](evals/reports/CHUNK_SIZE500_PREFLIGHT.md)。本日没有模型请求或Qdrant操作，未开启D12。
+
+## D12：真实切分对照
+
+[采集器](evals/chunking_run.py)复用30条历史问题向量，单独建立27块候选索引，在同一轮交错查询V0/候选并复用D9评分。[比较器](evals/comparison.py)记录逐题改善、退化、分类Bad Case和成对耗时；完整Prompt/模型合同及32段原文gold映射保留在 [公开无向量归档](evals/results/dense-v1-size500-20261021-01/experiment_config.json)。
+
+2026-10-21授权执行1次Embedding（26条新文本）、60次本地检索，0问题Embedding/聊天调用，两侧错误0。26道可答题6改善/5退化/15不变：证据Recall@1为0.6667→0.7692，@5为1.0000→0.9231；4道无答案另计，未测拒答。012证据完成rank4→1，003却4→6，说明边界更短仍可能掉出top5。默认切分保持750/150，结果与局限见 [V1对照报告](evals/reports/CHUNKING_V1.md)。当前学习/手动验证待用户主动开启。

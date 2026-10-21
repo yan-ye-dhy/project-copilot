@@ -137,3 +137,43 @@ uv run --frozen python -m evals.chunking \
 输出cases中的gold沿用原文版本/页/字符位置，intersecting_chunks含原文、实际区间及ID，single_chunk_covering_ids只表示某块包含完整quote；多块联合覆盖继续沿用D9规则，不能用交集代替完整证据。baseline_evidence_completion_ranks来自封存的真实V0排名；candidate没有排名，retrieval_evaluation/answer_evaluation均为null，model_calls/qdrant_requests均为0。冻结完整性校验会读取全量文件核对指纹，但候选分析只消费这四道dev标签，不做保留集效果分析。
 
 实际16→27片段、累计片段字符10330→10389。较小chunk可能减少混合主题，也可能增加碎片、重复及工具开销；overlap150不是每对相邻段必然重复150字。假设、边界限制、参考来源与D12真实对照前置条件见 [候选报告](reports/CHUNK_SIZE500_PREFLIGHT.md)。本日不生成候选向量/排名，不据此认定优化收益。
+
+## D12：原向量复用与真实切分对照
+
+[chunking_run.py](chunking_run.py)提供plan/collect/verify；[comparison.py](comparison.py)读取两份D9评分记录，输出候选减基线的成对变化。D11描述文件保持原样，运行时结合完整V0合同生成 [experiment_config.json](results/dense-v1-size500-20261021-01/experiment_config.json)，保留Prompt/Schema/生成参数和Embedding合同，只更改size及对应候选/索引身份。D10采集器继续只接受原固定基线，不放宽它的校验。
+
+plan只读冻结语料、V0公开/私有归档及向量缓存，不读.env或创建客户端：
+
+```bash
+uv run --frozen python -m evals.chunking_run plan \
+  --dataset evals/datasets/copilot_v0 \
+  --baseline-dir evals/results/dense-v0-20261019-01 \
+  --baseline-private-dir data/evals/dense-v0-20261019-01 \
+  --candidate evals/configs/chunk_size500.json \
+  --cache-dir data/evals/embedding-cache
+```
+
+公开归档哈希→私有manifest→原query_vectors的哈希链须一致，30个dev题的ID/顺序/query/Embedding合同/2048维有限数值严格检查；历史运行源码漂移、损坏缓存、原文gold不能完整映射均在请求前拒绝。问题只读取原向量，缺失不会悄悄补做Embedding。当前费用计划取决于实际缓存，本日初始1命中/26缺失；实调后再plan会显示暖缓存，不能用它改写原调用数。
+
+collect仅在`--live`且用户授权新增文本后运行，`--max-new-texts`默认0；原V0须已经存在且16点/原文/payload完全匹配，候选须为全新`pc_eval_dense_v1_size500`集合。缺失V0不自动创建、既有候选不覆盖；结果目录也拒绝覆盖。先一次文档向量prefill，入库复用缓存；前两题两侧smoke成功才继续，其后错误仍留在分母。每题两侧使用完全相同的已保存向量，先查询哪侧交替；无显式预热、未生成回答。
+
+本轮已在授权下执行一次采集，**无需重跑collect**。公开20份文件含19份封存产物，不含问题向量或密钥，原字节同本地输出；完整性检查可离线运行：
+
+```bash
+uv run --frozen python -m evals.chunking_run verify \
+  --dataset evals/datasets/copilot_v0 \
+  --output-dir evals/results/dense-v1-size500-20261021-01
+```
+
+| 产物 | 含义 |
+| --- | --- |
+| experiment_config.json、两份evaluation_config.json | 完整父合同/候选合同、唯一变量、历史查询向量SHA与各自D9配置 |
+| index_manifest.json、index_manifests/ | 候选成功清单；原V0只读，不修改原集合或归档 |
+| embedding_batches.json | 初始缓存、prefill后统计、离线准备/批向量耗时，区别于入库后的重复缓存命中 |
+| baseline_rankings/candidate_rankings.jsonl、两份retrieval目录 | 本轮60次真实查询、排名/原文/分数/错误、D9逐题及聚合指标 |
+| gold_mapping.json、case_details.jsonl | 全32个dev gold原文位置→两套chunk映射，以及逐题两侧原始证据/指标，供用户核验 |
+| comparison.json | 同轮26可答题各k指标差值、改善/退化/不变/mixed、分类Bad Case、成对耗时；4无答案另计 |
+| historical_v0_recheck.json | 历史V0与本轮V0的指标复核；它的跨日耗时差不当作受控延迟结果 |
+| status.json、manifest.json | 原采集状态、实际调用、21份源码哈希/依赖/执行顺序、19份文件指纹；manual_review=pending/accepted=false保留采集快照 |
+
+比较器可记录mixed，防止某项上升掩盖另一项下降；错误转移与无答案单列。人工学习/映射复核在用户主动手测后登记，不改写机器pending快照。代表案例012完成rank4→1，003完成rank4→6；Recall@5由1降为24/26，当前默认保持750/150。详细数值、时间与费用局限见 [真实对照报告](reports/CHUNKING_V1.md)；保留集仍等D17。

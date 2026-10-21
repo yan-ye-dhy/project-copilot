@@ -1,0 +1,16 @@
+{
+  "state": "recorded",
+  "complete": true,
+  "retrieval_errors": {
+    "baseline": 0,
+    "candidate": 0
+  },
+  "model_calls": {
+    "embedding": 1,
+    "query_embedding": 0,
+    "chat": 0
+  },
+  "reused_query_vectors": 30,
+  "manual_review": "pending",
+  "day12_accepted": false
+}
