@@ -274,7 +274,7 @@ D10真实采集30题与八类回答：7条结构通过，003缺少JSON字段引�
 
 ## D11：一个切分假设的边界与代价
 
-本节是交给ChatGPT的学习提纲，尚未登记用户已理解或手动验证。入口见 [D11报告](reports/DAY_11.md)、[候选与原文对照](../evals/reports/CHUNK_SIZE500_PREFLIGHT.md)。
+2026-10-21用户已通过ChatGPT学习，并明确确认能够解释主流程、overlap预算及边界覆盖与检索效果的区别；本人四项手动验证通过。以下保留为复习提纲，入口见 [D11报告](reports/DAY_11.md)、[候选与原文对照](../evals/reports/CHUNK_SIZE500_PREFLIGHT.md)。
 
 1. **为什么只改size？** V0的003/012/039 gold位于较长混合内容块，rank4才覆盖，034还涉及跨文档；尝试750→500看是否能缩小主题范围。保留overlap150与分隔符，避免同时增加中文标点/Markdown策略后无法归因；这是假设，真正排名需D12验证。
 2. **实际执行链**：`python -m evals.chunking`→main解析三个路径→inspect_chunking核对V0归档/消费文件→validate_baseline_config复用D8冻结与完整合同→只选真实dev Bad Case→load_document→build_chunk_catalog两次→split_document/递归切分→唯一原文位置→_boundary列gold交集与单块包含→输出JSON。整个链路没有.env、Embedding、Qdrant或回答，和D10真实采集链有明确边界。
@@ -282,4 +282,4 @@ D10真实采集30题与八类回答：7条结构通过，003缺少JSON字段引�
 4. **身份与gold**：切分参数/组件版本进入index_version，全部chunk_id随候选变化；document_id、字节版本及gold位置不变。检查快照让人沿start_char/end_char核对quote，单块完整包含不等于该块被检索到；>500字的证据可能要多块连续拼全，仍沿D9口径。
 5. **如何读结果**：16→27点、累计字符10330→10389，仅证明切分形态变化；不把点数当Token/费用或把六段完整包含当Recall提升。候选仍保留来源链接，可能造成更多干扰；D12须看真实早期排名、全dev指标/耗时和恶化，而非只展示三个缩短片段。
 
-参考原项目`src/agent/backend/services/embedding_management.py:39–60`的递归组件参数，复用新项目D3/D9；候选检查器与单因素门禁是自主实现。可供后续主动手测的小练习：只在data副本改overlap观察第二变量被拒绝；对照003原文943–1056与候选块796–1181，说明“原文证据位置”和“候选块边界”为何不同。练习尚未执行，不因此标记学习完成。
+参考原项目`src/agent/backend/services/embedding_management.py:39–60`的递归组件参数，复用新项目D3/D9；候选检查器与单因素门禁是自主实现。用户本轮已运行检查器并观察003原文`[943,1056)`在682→385字符承载块中的位置；三段300字实验输出300/302/302字符、相邻重叠0，额外2字符来自保留的空行。只在data副本将overlap150→100，检查器按双因素拒绝、退出1；正式候选不变。用户实际操作与Codex只读核对分开记录，阶段A/B均完成，收尾文档待用户提交。

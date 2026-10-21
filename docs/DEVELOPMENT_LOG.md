@@ -728,7 +728,7 @@ DeepSeek八次合计prompt17277/completion687/total17964 tokens（含非法JSON�
 
 ## D11：单因素切分候选与离线边界（2026-10-20）
 
-**当前状态：实现和自动验证完成，阶段A待用户Git提交/推送；阶段B待ChatGPT学习及用户主动手动验证。** 用户只开启D11，本日不运行D12真实切分对照。
+**最终状态：D11阶段A/B均完成。** 开发提交d53fe15已由用户推送；2026-10-21用户完成四项手动验证并确认已通过ChatGPT学习、能解释关键区别，本次收尾文档待用户提交。下文保留开发期和后续学习验收的实际记录，D12仍待用户明确开启。
 
 从V0真实dev的003/012/034/039四条检索Bad Case提出size750→500的单一假设，保留overlap150、分隔符、Dense算法及冻结Prompt/模型合同。原四题@3证据不完整、@5恢复；不是遗漏gold，也不能认定size为确定原因。003的非法JSON生成失败单独保留，未作为本日修复目标。
 
@@ -747,3 +747,22 @@ DeepSeek八次合计prompt17277/completion687/total17964 tokens（含非法JSON�
 独立只读代码复核未发现阻塞问题，另执行25项相关测试通过；主记录以上述实际命令为准。D11没有候选向量、排名、Recall/MRR、回答、延迟或费用结果，没有Qdrant/模型请求、业务/Prompt/标签变更。Git提交、ChatGPT学习和手动验证均未代用户完成，完整8项交接见 [D11报告](reports/DAY_11.md)。D12仍需本日A/B完成和用户明确开启，再遵守费用授权、复用30个问题原向量及固定k/Prompt等条件做真实对照。
 
 收尾核实13个改动文件（6修改/7新增），空白/AST/JSON、8份Markdown围栏、48张表格、172处本地链接/12处锚点及8项报告通过。离线快照重算一致；V0公开12产物/16运行源码哈希一致，D8冻结10文件与HEAD字节一致且verify通过。计划第10节外不变，无业务/依赖diff，git diff --check通过，暂存区为空，常见凭据格式检查通过且.env/data仍被忽略；未读取真实密钥。
+
+### 用户Git同步、学习与手动验证补记（2026-10-21）
+
+用户亲自提交并推送 [d53fe15fc0101e893076fe8dc8595d7a091eb605](https://github.com/yan-ye-dhy/project-copilot/commit/d53fe15fc0101e893076fe8dc8595d7a091eb605)，`feat(evals): add single-factor chunking candidate and boundary checks`，push显示1b69fbe..d53fe15 main→main。Codex已核实开发同步；2026-10-21手测开始时再次只读确认main/origin/main一致、工作区干净，阶段A完成。
+
+用户主动开启D11手动验证，逐环节本人操作与反馈如下；Codex仅读取结果文件或核对反馈，未代用户运行检查器，也未重跑开发期294项测试：
+
+| 用户实际操作 | 反馈与Codex核对 |
+| --- | --- |
+| 创建data/manual-d11，执行`uv run --frozen python -m evals.chunking --dataset evals/datasets/copilot_v0 --baseline-dir evals/results/dense-v0-20261019-01 --candidate evals/configs/chunk_size500.json > data/manual-d11/inspection.json`及`echo $?` | 退出0；Codex读取JSON，与开发快照逐值一致，16→27块、原文9331字符、模型/Qdrant调用0、效果评估null |
+| 在JSON中观察003题的gold及两种承载块，反馈“已看到” | gold`[943,1056)`不变，承载块由`[499,1181)`682字符变为`[796,1181)`385字符，完整原文均匹配；V0完成rank4不能套作候选排名 |
+| 运行带练内联Python，创建甲/乙/丙各300字、双换行分隔的paragraphs.txt，按500/150切分并打印位置 | 用户输出长度300/302/302，范围`[0,300)`、`[300,602)`、`[602,904)`，相邻实际重叠0；Codex只读确认904字符样本与命令一致，2字符差来自保留换行 |
+| 读取正式候选后另存two-factors.json副本，只改overlap150→100，再用检查器运行该副本 | 用户输出明确双因素拒绝、退出1；副本size仍500，Codex核对仅overlap不同，正式配置未修改 |
+
+用户随后明确确认“已学习，能够解释”，能说明冻结校验→两种切分→原文位置→边界JSON、overlap预算，以及边界完整包含gold不等于检索改善。结合已推送开发提交与实际四项手测，D11阶段A/B均完成。未使用测试通过自动推定个人掌握；D12尚未开启，候选Recall/MRR、回答与延迟仍待真实对照。
+
+本次只补六份Markdown收尾文档；D8冻结10文件、D10公开12机器产物/16运行源码及D11正式配置/检查器/边界快照按字节或SHA保持一致。三个手动样本/结果文件均被Git忽略，没有覆盖机器归档、Prompt或gold；未读取.env、运行服务、模型、真实采集或pytest，Git写操作仍由用户亲自完成。
+
+本次收尾检查通过六份Markdown围栏/空白、42张表、158处本地链接/12处锚点、固定8项报告与独立只读事实复核。计划仅第10节变化，git diff --check无输出、暂存区为空，无未忽略新文件；本次收尾提交和推送待用户亲自执行。

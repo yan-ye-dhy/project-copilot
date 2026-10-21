@@ -1,6 +1,6 @@
 # Project Copilot
 
-基于RAG与LangGraph的研发知识及工单协作智能体。D1–D10阶段A/B已完成，D10收尾提交1b69fbe已同步。D11已完成单因素切分候选与离线自动检查，待用户提交/推送、ChatGPT学习及主动手动验证，见 [D11报告](docs/reports/DAY_11.md)。业务Agent按后续计划实现。
+基于RAG与LangGraph的研发知识及工单协作智能体。D1–D11阶段A/B已完成，D11开发提交d53fe15已同步；2026-10-21用户完成四项手动验证并确认学习理解，本次收尾文档待用户提交，见 [D11报告](docs/reports/DAY_11.md)。业务Agent按后续计划实现。
 
 协作流程见 [长期协作规则](docs/COLLABORATION_RULES.md)：Codex开发、自动验证、提供报告并指导Git操作；用户亲自提交和推送GitHub，随后通过ChatGPT学习代码/架构，学习后主动要求Codex开始手动测试。以下命令是自助运行参考，Codex仅在用户要求后单步带练。
 
