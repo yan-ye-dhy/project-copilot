@@ -1,0 +1,124 @@
+{
+  "date": "2026-10-22",
+  "executor": "Codex自动验收；不是用户手动验证",
+  "mode": "bm25_smoke_only",
+  "base_commit": "b364f0e9c84f8a745865121c81cfaf1c3c257e73",
+  "code_dirty": true,
+  "source_sha256": {
+    "src/project_copilot/rag/bm25.py": "487b56bde868e70d72375fcff6474c8ca60170bac1f6b1e4f4099b1c28a7b31d",
+    "scripts/bm25_index.py": "f2fa152e91731db0a4514c21f2ee620c0e39c831501bcd9e32e7f608197a7967",
+    "tests/test_bm25.py": "dcff2338abff32572b7063145bdf60c4a64f73053bb5680ab968ddcd27c7fb8e",
+    "tests/test_bm25_cli.py": "d1ec9a22d31051c6395596dd988078843d4ad44c40e8a08ff9fd06f4cf33dd16",
+    "pyproject.toml": "9409e6ed609b0c62e30b936879d45e8b18ccd8a310ecd805c59b3205e4d2dd7f",
+    "uv.lock": "30a148b406ee70913238650bddb4699c89bc9cb07d5def8c7664dae903451747"
+  },
+  "manifest_path": "evals/results/dense-v0-20261019-01/index_manifest.json",
+  "manifest_sha256": "f01728b6c36643bab054bdc448f85abd913fa41773d33c3f3a3fdaf50e44198c",
+  "collection": "pc_eval_dense_v0",
+  "documents": 5,
+  "chunks": 16,
+  "qdrant_points_count": 16,
+  "qdrant_payload_matches_snapshot": true,
+  "qdrant_operations": [
+    "get_collection",
+    "retrieve"
+  ],
+  "vectors_read": false,
+  "dense_index_version": "dense-v1-ad576b843bcc63bce13648b47889757f644a1f0757f729d06c0e1e11995dceb9",
+  "bm25_fingerprint": "bm25-v1-bf46d098c0e51cdb7e9324d28a9817024023619f595aae73bf7f8d3b340567d1",
+  "tokenizer": {
+    "rule": "zh-tech-nfkc-casefold-search-v1",
+    "jieba": "0.42.1",
+    "dictionary_sha256": "7197c3211ddd98962b036cdf40324d1ea2bfaa12bd028e68faa70111a88e12a8",
+    "mode": "search",
+    "hmm": false,
+    "stopwords": false,
+    "unicode_version": "15.1.0"
+  },
+  "bm25": {
+    "algorithm": "BM25L",
+    "implementation": "0.2.2",
+    "numpy_version": "2.5.4",
+    "k1": 1.5,
+    "b": 0.75,
+    "delta": 0.5
+  },
+  "model_calls": 0,
+  "qdrant_writes": 0,
+  "cases": [
+    {
+      "query": "/documents/upload",
+      "tokens": [
+        "/documents/upload"
+      ],
+      "hit_count": 1,
+      "hits": [
+        {
+          "chunk_id": "20d1d047-8c07-503d-8453-7927723589ba",
+          "source_name": "upload_troubleshooting.md",
+          "score": 2.762122963696754
+        }
+      ]
+    },
+    {
+      "query": "--env-file",
+      "tokens": [
+        "--env-file"
+      ],
+      "hit_count": 2,
+      "hits": [
+        {
+          "chunk_id": "b3cd958a-be0d-5eb1-8147-5672057ffa56",
+          "source_name": "compose_environment.md",
+          "score": 9.83704825644964
+        },
+        {
+          "chunk_id": "ecb74e18-60f1-5342-865e-cbd161d7ba15",
+          "source_name": "compose_environment.md",
+          "score": 2.368083786665037
+        }
+      ]
+    },
+    {
+      "query": "上传文件不能为空",
+      "tokens": [
+        "上传",
+        "文件",
+        "不能",
+        "为",
+        "空"
+      ],
+      "hit_count": 3,
+      "hits": [
+        {
+          "chunk_id": "c5870fa6-353b-5292-bdf6-a4431d0a40a6",
+          "source_name": "upload_troubleshooting.md",
+          "score": 36.94606741354102
+        },
+        {
+          "chunk_id": "20d1d047-8c07-503d-8453-7927723589ba",
+          "source_name": "upload_troubleshooting.md",
+          "score": 30.73509220357643
+        },
+        {
+          "chunk_id": "48ae217d-7647-5925-9b58-ff495844778b",
+          "source_name": "dense_identity_and_citations.md",
+          "score": 16.553983821535198
+        }
+      ]
+    },
+    {
+      "query": "unknownxyz987",
+      "tokens": [
+        "unknownxyz987"
+      ],
+      "hit_count": 0,
+      "hits": []
+    }
+  ],
+  "limitations": [
+    "固定四个词项/边界样例，不是全dev效果对照",
+    "未做RRF/回答生成/保留集评测",
+    "快照不自动监听Qdrant；成功清单改变后须显式重建"
+  ]
+}

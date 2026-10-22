@@ -815,3 +815,30 @@ search中位4.380→4.362ms，30对差中位约−0.028ms、p95约+0.702ms，单
 本轮只补8份Markdown（根README、计划第10节、日志、学习/面试笔记、D12报告、evals说明和V1报告），原始排名/合同/状态及D8/D10/D11内容不改。重评分与副本、辅助阅读材料均在被忽略的data，不读取.env、运行collect/服务/Qdrant查询、模型或pytest；新增模型调用0，Git写操作仍由用户亲自完成，D13尚未开启。
 
 本次收尾检查通过8份Markdown空白/围栏、54张表、190处本地链接/13锚点及固定8项报告，计划第10节外不变。V1公私20文件/19产物/21源码SHA、V0公开12产物、D8冻结10文件、D11候选/快照均保持一致；独立只读事实/状态审查通过。git diff --check无输出，暂存区为空，无未忽略新增文件；仅登记012/003代表人工复核，8份收尾文档待用户亲自提交/推送。
+
+## D13：中文BM25最小检索（2026-10-22）
+
+**状态：实现与Codex自动验证完成，阶段A待用户提交/推送；阶段B待ChatGPT学习及用户主动开始手动验证。** 用户已推送D12收尾b364f0e，D13开始时main/origin/main一致且工作区干净；本日未执行Git写操作。
+
+新增`rag/bm25.py`和`bm25_index.py`的tokenize/build/search入口。jieba0.42.1搜索模式关闭HMM，不用停用词/用户词典；NFKC/casefold后中文与技术词分开处理，路径、错误码、下划线及命令选项保留整体。rank-bm250.2.2提供BM25L固定k1=1.5/b=0.75/delta=0.5，适应小语料常见词，不按dev效果选参。新增两个依赖；NumPy2.5.4和其他已有锁定包不升级。
+
+只读集合schema和成功清单精确chunk ID，不scroll未完成点、不获取向量或写Qdrant。构建验证完整ID集合、文档/来源/切分及D3原文UUID5关系，本地JSON保存原文、元数据、Dense清单、规则/词典/依赖与内容指纹；查询重建库词频并核对当前清单。文件拒覆盖，清单/依赖改变应显式重建；不接入上传自动同步或问答路由。无匹配返回空，并列按UUID稳定排序，score不等于概率/置信度。
+
+### 实际自动验证（执行者：Codex）
+
+| 命令/操作 | 结果与边界 |
+| --- | --- |
+| `uv add --cache-dir /tmp/project-copilot-uv-cache 'jieba>=0.42.1,<0.43' 'rank-bm25>=0.2.2,<0.3'` | 安装成功；首次默认缓存/网络受沙箱限制，改用/tmp并经权限审核下载，未读旧项目环境 |
+| `.venv/bin/python -m pytest -q tests/test_bm25.py tests/test_bm25_cli.py tests/test_dense_pipeline.py tests/test_qdrant.py tests/test_documents.py tests/test_chunking_run.py tests/test_eval_comparison.py tests/test_baseline_config.py tests/test_eval_freeze.py tests/test_eval_dataset.py` | **297 passed，12.56秒**；其中D13新增54项核心＋15项CLI，不调用外网模型 |
+| `docker compose --env-file .env.example up -d qdrant`及`curl --noproxy 127.0.0.1 --connect-timeout 2 --max-time 3 --silent --show-error http://127.0.0.1:6433/readyz` | 启动既有容器，readyz返回all shards are ready；Docker socket/本机端口经沙箱权限审核，未改Compose或卷 |
+| `.venv/bin/python scripts/bm25_index.py build --manifest evals/results/dense-v0-20261019-01/index_manifest.json --output data/bm25/d13-v0.json` | 退出0；真实Qdrant的5文档/16片段完整对齐，快照在忽略目录；模型请求/集合写入0 |
+| CLI固定查询`/documents/upload`、`--env-file`、`上传文件不能为空`、`unknownxyz987`，保存到data/auto-d13 | 命中数1/2/3/0，前三者首条来自upload/compose/upload。以--开头的位置参数须放在分隔符`--`之后，首次未分隔被argparse拒绝后已修正；全部查询离线 |
+| 只读重取16片段与快照逐值比较 | 一致，集合仍16点；[验收收据](evidence/D13_BM25_SMOKE.json)保存来源/指纹/词项与分数，不含向量或密钥 |
+
+复审发现BM25L在b=1且含空词项片段时产生0/0；现于构造阶段明确拒绝该组合，默认配置及正常词项的b=1仍可用，回归通过。jieba首次编译曾给出上游正则转义SyntaxWarning，实际导入及本轮测试成功，未修改第三方包。
+
+复用D3稳定片段和D4成功清单契约；原`utils/vdb.py:13`只作稀疏分支参考，不复制全局模型或导入原包，分词/绑定/CLI为新项目自主实现。[BM25库](https://github.com/dorianbrown/rank_bm25)不负责输入预处理，[jieba](https://github.com/fxsjy/jieba)提供搜索分词，文档/查询共用规则。
+
+本日无收费调用、重切分/向量重建/回答生成或保留集评测，未运行RRF/三路效果实验。D8数据及D10/D11/V1归档保持，V1原21源码/19产物SHA均相同；默认750/150与Dense API不变。交接见 [D13报告](reports/DAY_13.md)，D14等待本日A/B完成及用户明确要求。
+
+收尾实际检查：`uv lock --check --offline --cache-dir /tmp/project-copilot-uv-cache`退出0；D8 freeze verify、D10 baseline verify（原私有目录）和D12 chunking_run verify（公开目录）均通过，机器pending快照不改写既有人工完成结论。7份Markdown空白/围栏、51张表列数、195处本地链接/11锚点及固定8节报告通过；计划第10节外不变，旧日志原文完整保留。收据6份源码/依赖SHA一致；`.env`、本地快照与自动输出仍被忽略，git diff --check无输出、暂存区为空，本轮14个文件待用户亲自暂存/提交/推送。只读复审已完成，发现的进度标题和历史段落归属已修正。

@@ -1,6 +1,6 @@
 # Project Copilot
 
-基于RAG与LangGraph的研发知识及工单协作智能体。D1–D12阶段A/B已完成；D12开发提交3bb656f已同步，2026-10-22用户完成学习确认、四项离线手动验证及012/003原文核对，本次收尾文档待用户提交，见 [D12报告](docs/reports/DAY_12.md)。500字符候选有改善也有退化，当前默认仍为750/150。业务Agent按后续计划实现。
+基于RAG与LangGraph的研发知识及工单协作智能体。D1–D12阶段A/B已完成，D12收尾提交b364f0e已同步。D13中文BM25最小检索已实现并完成Codex自动验证，待用户提交推送及学习后手动验证，见 [D13报告](docs/reports/DAY_13.md)。当前默认切分仍为750/150，问答API继续使用Dense；融合与业务Agent按后续计划实现。
 
 协作流程见 [长期协作规则](docs/COLLABORATION_RULES.md)：Codex开发、自动验证、提供报告并指导Git操作；用户亲自提交和推送GitHub，随后通过ChatGPT学习代码/架构，学习后主动要求Codex开始手动测试。以下命令是自助运行参考，Codex仅在用户要求后单步带练。
 
@@ -231,3 +231,23 @@ D9没有模型调用、Qdrant索引或保留集效果实验；D10的真实采集
 [采集器](evals/chunking_run.py)复用30条历史问题向量，单独建立27块候选索引，在同一轮交错查询V0/候选并复用D9评分。[比较器](evals/comparison.py)记录逐题改善、退化、分类Bad Case和成对耗时；完整Prompt/模型合同及32段原文gold映射保留在 [公开无向量归档](evals/results/dense-v1-size500-20261021-01/experiment_config.json)。
 
 2026-10-21授权执行1次Embedding（26条新文本）、60次本地检索，0问题Embedding/聊天调用，两侧错误0。26道可答题6改善/5退化/15不变：证据Recall@1为0.6667→0.7692，@5为1.0000→0.9231；4道无答案另计，未测拒答。012证据完成rank4→1，003却4→6，说明边界更短仍可能掉出top5。2026-10-22用户核对两题原文/排名并完成归档检查、双侧重评分及副本字节变化拒绝，新增模型调用0。默认切分保持750/150，结果与局限见 [V1对照报告](evals/reports/CHUNKING_V1.md)。
+
+## D13：中文BM25最小检索
+
+[词项模块](src/project_copilot/rag/bm25.py)使用jieba搜索分词与rank-bm25的BM25L，统一NFKC/大小写并保留错误码、下划线名称、API路径及命令选项。只读Qdrant成功清单中列出的完整chunk集合，检查原文与稳定ID后保存本地JSON快照；没有重新切分或Embedding。
+
+以下为运行参考；`build`需要现有Qdrant，`tokenize/search`无需启动模型或FastAPI。快照拒绝覆盖，重建应选择新文件名：
+
+```bash
+uv run --frozen python scripts/bm25_index.py tokenize "上传HTTP_422 /documents/upload --env-file"
+uv run --frozen python scripts/bm25_index.py build \
+  --manifest evals/results/dense-v0-20261019-01/index_manifest.json \
+  --output data/bm25/copilot-v0-v1.json
+uv run --frozen python scripts/bm25_index.py search "/documents/upload" \
+  --manifest evals/results/dense-v0-20261019-01/index_manifest.json \
+  --index data/bm25/copilot-v0-v1.json --top-k 3
+```
+
+`--manifest`必须指向当前目标集合的真实成功清单；以上选用16片段的V0评测集合，不是应用默认的PDF样本集合。查询时清单、词典或依赖版本改变会拒绝旧快照；Qdrant后续内容变更需要显式重建，快照不会自动同步。查询词若以`--`开头，应将全部选项写在前面，再用`-- '--env-file'`分隔位置参数。
+
+本日相关297项测试通过；真实V0的5份文档/16片段全部对齐，接口路径、Compose选项、中文问题及未命中四个样例通过，见 [自动验收收据](docs/evidence/D13_BM25_SMOKE.json)。BM25分数不能解释为置信度，也不直接与Dense分数相加；本日不宣称检索提升，D14再做RRF及三路开发集对照。用户学习与手动验证尚未登记完成。

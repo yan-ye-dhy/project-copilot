@@ -1,4 +1,4 @@
-# 检索评测：D9离线评分与D10真实基线
+# 检索评测：离线评分、冻结基线与逐步对照
 
 D9的`run.py`提供固定排名重放、原文证据映射和指标汇总，不连接模型或Qdrant。默认样本明确为synthetic_fixture，数字只验证评测器数学与工程流程。D10新增显式`--live`的`baseline.py`采集器，真实执行后再交D9评分；D8的40题、来源、划分及冻结文件保持原样。
 
@@ -177,3 +177,11 @@ uv run --frozen python -m evals.chunking_run verify \
 | status.json、manifest.json | 原采集状态、实际调用、21份源码哈希/依赖/执行顺序、19份文件指纹；manual_review=pending/accepted=false保留采集快照 |
 
 比较器可记录mixed，防止某项上升掩盖另一项下降；错误转移与无答案单列。2026-10-22用户已亲自verify、双侧重评分、核对012改善/003退化的原文/排名，并验证副本只追加换行仍被拒绝，另确认ChatGPT学习理解；人工记录见报告，不改写机器pending快照。代表案例012完成rank4→1，003完成rank4→6；Recall@5由1降为24/26，当前默认保持750/150。确认范围是两条代表原文映射，全部32段映射的程序检查与此分开。详细数值、人工记录、时间与费用局限见 [真实对照报告](reports/CHUNKING_V1.md)；保留集仍等D17。
+
+## D13：为后续三路对照准备BM25
+
+[词项模块](../src/project_copilot/rag/bm25.py)与 [独立CLI](../scripts/bm25_index.py)用jieba统一中文/技术词，再交rank-bm25的BM25L评分。固定参数1.5/0.75/0.5，无dev调参；与现有750/150的成功清单和原chunk ID完全对应。构建只读get_collection/retrieve，JSON快照及临时输出在忽略目录data/bm25、data/auto-d13；本地查询不需要模型、Qdrant或原问题向量。
+
+快照携带完整成功清单、原文/metadata、分词规则/词典SHA、Unicode/rank-bm25/NumPy版本和内容指纹；加载时核对当前清单，拒绝缺失/陈旧/变更文件。JSON加载重建词频，不保存可执行pickle；清单/存储变化后需要显式新建快照，没有实现自动同步。
+
+[自动收据](../docs/evidence/D13_BM25_SMOKE.json)记录真实V0的5文档/16片段对齐和四条固定查询，仅作最小链路验收。D13不新增完整评测run、不算Recall/MRR收益，也不改D9配置使其冒充BM25评测器。D14再扩展三路采集与RRF，公开各路候选数、最终k、冷构建/查询耗时与Bad Case，沿用D8划分和D10 Prompt冻结，不使用保留集选分词或参数。
