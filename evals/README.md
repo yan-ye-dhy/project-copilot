@@ -187,3 +187,25 @@ uv run --frozen python -m evals.chunking_run verify \
 [自动收据](../docs/evidence/D13_BM25_SMOKE.json)记录真实V0的5文档/16片段对齐和四条固定查询，仅作最小链路验收。D13不新增完整评测run、不算Recall/MRR收益，也不改D9配置使其冒充BM25评测器。D14再扩展三路采集与RRF，公开各路候选数、最终k、冷构建/查询耗时与Bad Case，沿用D8划分和D10 Prompt冻结，不使用保留集选分词或参数。
 
 2026-10-22用户已亲自完成D13的8个手动环节并确认ChatGPT学习理解：独立快照在data/manual-d13，四条查询分别命中1/3/2/0条，清单副本仅变更spec.splitter_version后旧快照按预期拒绝、退出1。Codex只读确认正式清单原字节、快照指纹和原文/metadata保持，新增模型调用0；本次人工记录见 [D13报告](../docs/reports/DAY_13.md)，自动收据不改写，三路效果仍待D14明确开启。
+
+## D14：固定候选的Dense/BM25/Hybrid对照
+
+[hybrid_run.py](hybrid_run.py)提供plan/collect/verify；[配置](configs/hybrid_v2.json)绑定原V0完整合同，固定750/150、每路候选10、输出深度10、最终5和RRF c60。沿用同一个D9评分配置与原文gold映射，算法/预算身份另存experiment_config，不修改旧评测器或拿新Prompt覆盖V0。
+
+```bash
+uv run --frozen python -m evals.hybrid_run plan \
+  --dataset evals/datasets/copilot_v0 \
+  --baseline-dir evals/results/dense-v0-20261019-01 \
+  --baseline-private-dir data/evals/dense-v0-20261019-01 \
+  --config evals/configs/hybrid_v2.json
+
+uv run --frozen python -m evals.hybrid_run verify \
+  --dataset evals/datasets/copilot_v0 \
+  --output-dir evals/results/hybrid-v2-20261022-01
+```
+
+plan完全离线并验证原向量哈希链；collect沿用四项输入并提供全新的`--output-dir`，连接本机Qdrant但不调用模型、不写集合。每题只查一次Dense和一次BM25，保存各路原始score/排序后融合，额外候选并集实际10～14。三路各30题，固定评价k=1/3/5/10；错误留分母，无答案独立，不做拒答评测。
+
+[公开V2归档](results/hybrid-v2-20261022-01/manifest.json)含23封存产物＋manifest：三路完整原文排名/评分、三组比较、candidate_sources中的来源名次/score、case_details中的gold/指标及结果文件引用、历史V0重查、完整父合同/索引/BM25快照和机器状态。原问题向量仍只保存在忽略目录，公开配置以SHA绑定。verify不需要私有向量或当前Prompt生成逻辑；机器pending状态不代表用户已完成人工验收。
+
+证据Recall@5均1.0，MRR@5依次0.8365/0.9327/0.8974；Hybrid的Recall@3为1.0，但BM25的MRR@5更高，详见 [V2实验报告](reports/HYBRID_V2.md)。准备/字典构建时间单列，逐题embedding/rerank为null；Hybrid search为两路共享搜索之和、total再加fusion，属于顺序合计而非独立请求计时。D17再作方案选择，不据这次自建小样本声称普遍提升。用户学习和RRF手算待主动开启。

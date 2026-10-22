@@ -1,6 +1,6 @@
 # Project Copilot
 
-基于RAG与LangGraph的研发知识及工单协作智能体。D1–D13阶段A/B已完成；D13开发提交d4c5bfd已同步，2026-10-22用户完成8个手动验证环节并确认ChatGPT学习理解，本次收尾文档待用户提交，见 [D13报告](docs/reports/DAY_13.md)。当前默认切分仍为750/150，问答API继续使用Dense；融合与业务Agent按后续计划实现。
+基于RAG与LangGraph的研发知识及工单协作智能体。D1–D13阶段A/B已完成，D13收尾ca769dc已同步。D14已实现应用层RRF/Hybrid并完成真实三路开发集对照，待用户提交推送及学习后手动验证，见 [D14报告](docs/reports/DAY_14.md)。当前默认切分仍为750/150，问答API继续使用Dense；后续方案选择与业务Agent按计划推进。
 
 协作流程见 [长期协作规则](docs/COLLABORATION_RULES.md)：Codex开发、自动验证、提供报告并指导Git操作；用户亲自提交和推送GitHub，随后通过ChatGPT学习代码/架构，学习后主动要求Codex开始手动测试。以下命令是自助运行参考，Codex仅在用户要求后单步带练。
 
@@ -251,3 +251,11 @@ uv run --frozen python scripts/bm25_index.py search "/documents/upload" \
 `--manifest`必须指向当前目标集合的真实成功清单；以上选用16片段的V0评测集合，不是应用默认的PDF样本集合。查询时清单、词典或依赖版本改变会拒绝旧快照；Qdrant后续内容变更需要显式重建，快照不会自动同步。查询词若以`--`开头，应将全部选项写在前面，再用`-- '--env-file'`分隔位置参数。
 
 开发期相关297项测试通过，真实V0的5文档/16片段及四条固定查询验证见 [自动验收收据](docs/evidence/D13_BM25_SMOKE.json)。2026-10-22用户亲自完成分词、Qdrant就绪、独立快照构建、路径/中文/选项/无匹配查询及修改清单副本拒绝8个环节，另确认已通过ChatGPT学习、能解释主流程；Codex只读核对结果，执行者分别记录。本轮模型调用0，正式清单/快照保持。BM25分数不是置信度，也不与Dense分数直接相加；固定样例不代表全dev提升，D14仍等待用户明确开启。
+
+## D14：RRF与三路真实对照
+
+[RRF](src/project_copilot/rag/fusion.py)按每路从1开始的排名计算`Σ1/(60+rank)`，同ID去重，原文/元数据冲突拒绝，并列按UUID稳定排序。[Hybrid编排器](src/project_copilot/rag/hybrid.py)绑定同一成功清单，固定两路候选预算；既有Dense/问答逻辑保留，未复制服务端默认融合。
+
+[独立采集器](evals/hybrid_run.py)复用原30个问题向量，读取相同16片段，Dense/BM25各最多10候选、RRF输出深度10，最终证据预算仍5块。每题各检索一次后共享候选，实际30次Qdrant查询、30次BM25查询、30次融合，模型请求及Qdrant写入均0。
+
+真实dev的26可答题中，三路证据Recall@5均1.0，证据MRR@5依次为Dense0.8365、BM250.9327、Hybrid0.8974。Hybrid相对Dense6改善/0退化/20不变，但相对BM252改善/4退化/20不变；4无答案另计，未生成回答。完整逐题排名、候选来源和耗时见 [V2实验报告](evals/reports/HYBRID_V2.md)及 [公开归档](evals/results/hybrid-v2-20261022-01/manifest.json)。Hybrid总耗时为共享分支与融合的顺序合计，不能视为独立端到端实测或据单轮判断泛化/提速。方案选择留D17，学习与手动验证待用户主动开启。

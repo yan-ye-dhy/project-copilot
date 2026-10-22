@@ -1,0 +1,21 @@
+{
+  "state": "recorded",
+  "complete": true,
+  "retrieval_errors": {
+    "dense": 0,
+    "bm25": 0,
+    "hybrid": 0
+  },
+  "reused_query_vectors": 30,
+  "qdrant_queries": 30,
+  "bm25_queries": 30,
+  "fusion_calls": 30,
+  "model_calls": {
+    "embedding": 0,
+    "query_embedding": 0,
+    "chat": 0
+  },
+  "qdrant_writes": 0,
+  "manual_review": "pending",
+  "day14_accepted": false
+}

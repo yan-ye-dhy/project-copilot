@@ -856,3 +856,32 @@ Codex只读取用户产物并核对：原文/metadata与快照片段逐值一致
 本次仅补7份Markdown收尾记录（README、计划第10节、日志、学习/面试笔记、D13报告和evals说明），源代码、依赖、正式清单、自动收据及历史冻结内容保留；收尾提交仍由用户亲自操作。D14须等待用户明确要求。
 
 本轮文档检查通过空白/围栏、52张表列数、197处本地链接/11锚点及固定8节报告；计划第10节外和旧日志/笔记章节保持。D13收据6份源码/依赖、V1原21份源码及19份机器产物SHA均一致；独立只读事实复审通过。git diff --check无输出，暂存区为空，无未忽略新增文件；本次七份收尾Markdown待用户提交推送。
+
+## D14：应用层RRF与真实三路对照（2026-10-22）
+
+**状态：实现与Codex自动验证完成，阶段A待用户提交/推送，阶段B待ChatGPT学习及主动开始手测。** 用户已推送D13收尾 [ca769dc4ea85010e30193c42f5c04991333b5268](https://github.com/yan-ye-dhy/project-copilot/commit/ca769dc4ea85010e30193c42f5c04991333b5268)，开启D14时main/origin/main一致、工作区干净；Codex没有Git写操作。
+
+新建fusion.py的`Σ1/(60+rank)`（排名从1开始），不相加两路原始分数；同路重复只计首次且原名次不压缩，跨路原文/metadata必须一致，并列按UUID。hybrid.py校验同一完整成功清单、各路预算及原文，空路可融合、异常向上抛出。用独立文件扩展，避免改写D10已记录源码哈希的retrieval.py；原问答API和Dense默认、750/150及Prompt/Schema保留，无新增依赖。原Qdrant HYBRID源码和当前SDK融合实现只读参考，新项目融合/编排/实验自主实现；SDK默认及排名起点不能等同本项目c60的1-based约定。
+
+新增hybrid_run.py和固定配置hybrid_v2.json，公开V0归档→私有manifest→原30问题向量逐行绑定文本/合同/维度/有限值；不调用模型或回退重收。冻结原文目录与当前V0完成清单/16个payload逐值相等后，只读复用集合。两路各10候选，实际并集10～14，输出深度10供k=1/3/5/10评分，最终证据预算仍5块。每题交替先执行Dense或BM25，各一次后共享候选融合；候选异常会将Hybrid登记失败，不伪装成正常空路。
+
+### 实际自动验证（执行者：Codex）
+
+| 实际命令/操作 | 结果 |
+| --- | --- |
+| `.venv/bin/python -m pytest -q tests/test_fusion.py tests/test_hybrid.py tests/test_hybrid_run.py tests/test_bm25.py tests/test_bm25_cli.py tests/test_dense_pipeline.py tests/test_qdrant.py tests/test_documents.py tests/test_chunking_run.py tests/test_eval_comparison.py tests/test_baseline_config.py tests/test_eval_run.py tests/test_eval_metrics.py tests/test_eval_freeze.py tests/test_eval_dataset.py` | 465 passed，32.26秒；本日当时106新增，其余为相关回归 |
+| `.venv/bin/python -m pytest -q tests/test_hybrid_run.py -k future_prompt` | 后新增1项通过，30 deselected，2.30秒；模拟将来Prompt变化仍能核验旧归档，实际旧Prompt未改。合计466个不同测试，本日107新增（44融合/32编排/31采集） |
+| `.venv/bin/python -m evals.hybrid_run plan --dataset evals/datasets/copilot_v0 --baseline-dir evals/results/dense-v0-20261019-01 --baseline-private-dir data/evals/dense-v0-20261019-01 --config evals/configs/hybrid_v2.json` | 退出0，5文档/16片段/30原问题向量，预算各10、c60、最终5，模型/集合写入0 |
+| `docker compose --env-file .env.example up -d qdrant` | 已有容器启动成功，复用服务器1.19.2；沙箱无法访问socket/本机端口，按权限审核后访问，不改Compose或持久卷 |
+| `.venv/bin/python -m evals.hybrid_run collect`，沿用plan四项输入并加`--output-dir data/evals/hybrid-v2-20261022-01` | 退出0，实际30次query_points、30次本地BM25、30次融合，三路错误0，Embedding/问题Embedding/Chat及Qdrant写入均0。集合/retrieve/count/info预检读请求另外记录，不把30次检索说成全部HTTP请求数 |
+| `.venv/bin/python -m evals.hybrid_run verify --dataset evals/datasets/copilot_v0 --output-dir data/evals/hybrid-v2-20261022-01` | verified，23封存文件；manual_review=pending/day14_accepted=false保留自动快照，用户尚未学习验收 |
+
+真实dev含26可答题、4无答案。三路证据Recall@5均1.0；证据MRR@5为Dense0.836538、BM250.932692、Hybrid0.897436，Recall@3为0.858974/0.961538/1.0。Hybrid相对Dense6改善/0退化/20不变，相对BM252改善/4退化/20不变；BM25相对Dense7改善/2退化/17不变。012 gold完成名次4/1/3，RRF目标1/64+1/61≈0.03201844低于共识块1/61+1/63≈0.03226646；007为2/4/2。三路4道无答案均有命中，拒答率null，没有回答质量结论；历史V0逐题指标全部一致。
+
+准备852.423ms单列；本轮搜索中位数Dense5.3447ms、BM250.4589ms，融合0.0516ms，Hybrid顺序合计中位数5.8652ms。该合计来自共享候选组件，不是单独执行的Hybrid请求或云端端到端耗时；没有显式预热/重复计时，不能外推统计提速或泛化。
+
+独立只读审查通过：23产物/23源码SHA、V0归档到原向量哈希链、90排名的canonical身份，标准库复算全部RRF及原文连续区间gold指标均一致。文档向量未读取，不能声称历史文档向量字节已核验。公开 [hybrid-v2-20261022-01](../evals/results/hybrid-v2-20261022-01/manifest.json)为本地24文件原字节副本，约3.67MB，不含问题向量、密钥或缓存。verify使用保存的基线合同及指纹，不重新生成当前Prompt。
+
+完整交接见 [D14报告](reports/DAY_14.md)与 [V2报告](../evals/reports/HYBRID_V2.md)。本轮固定一个c/预算组合，未调停用词、查询改写、阈值或保留集，未生成回答；尚不选最终方案或替用户手算。D15只在本日A/B完成且用户明确开启后推进。
+
+收尾检查：公开及私有V2 verify均通过23份封存产物，D8冻结校验、原私有V0的12份文件、公开V1的19份文件均verified；机器pending状态保留。8份Markdown空白/围栏、56张表列数、232处本地链接/11锚点及固定8节报告通过，计划第10节外、历史日志/笔记保持。V2公开/本地24文件逐字节一致，23源码/23产物SHA、V1原21源码/19产物及D13收据6源码/依赖SHA一致；独立只读事实/数学审查通过，修改了易误读为逐题领先的MRR措辞。git diff --check无输出，暂存区为空；本轮39文件待用户亲自提交推送，.env、问题向量及本地结果仍被忽略。

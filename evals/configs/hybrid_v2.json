@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "experiment_id": "hybrid-v2-rrf60",
+  "baseline_configuration_fingerprint": "baseline-config-v1-2e43988981644b482c5917093586b25e406e5158452e84a0478a3326d793bea1",
+  "dataset_fingerprint": "dataset-v1-54806b5174b2f3d2e4bd08b91b57569c5121929731112c3d375d4d42d4306b7e",
+  "dense_candidates": 10,
+  "bm25_candidates": 10,
+  "ranking_depth": 10,
+  "answer_top_k": 5,
+  "rank_constant": 60
+}

@@ -1,0 +1,306 @@
+{
+  "schema_version": 1,
+  "run_id": "hybrid-v2-20261022-01",
+  "mode": "shared_candidates_three_way",
+  "recorded_at": "2026-10-22T11:30:02.150976+00:00",
+  "code": {
+    "commit": "ca769dc4ea85010e30193c42f5c04991333b5268",
+    "dirty": true
+  },
+  "configuration_fingerprint": "hybrid-experiment-v1-5b5039b64d2464e9dfb6e448b54de1c05b61376568f0e83983382c2c0e5a329e",
+  "dataset_fingerprint": "dataset-v1-54806b5174b2f3d2e4bd08b91b57569c5121929731112c3d375d4d42d4306b7e",
+  "source_sha256": {
+    "evals/baseline.py": "0bb94ac7ff73996b322e0d8cb35c87e85955012c9f1085476d01ab2fc9f947d5",
+    "evals/baseline_config.py": "c88969ca0079c045a2ba97be6e875849ec2de852cfbdb3a8a9b25003726cb95d",
+    "evals/cache.py": "7f22c9d5b4b342998b2e6f34183d8884f3eb8765ba47e2d8514c21fb49228d5b",
+    "evals/run.py": "7d940200ceb90383158e13f04df7f3cbc8c921d8604b4de97dc1b325709bb5ae",
+    "evals/metrics.py": "a8ceead5799cb0384deac928a652a082a5a585338b67bbb2f3a93aef98ef979e",
+    "src/project_copilot/config.py": "3e6aff382e956f7b7caa6daf288dc9f4b039debaab163f9ba2ceba7a6c88f922",
+    "src/project_copilot/infrastructure/models.py": "46673765a8437a86cfaaf6bd053cf08601e016e037fd6beb67aaab6449c2d8d9",
+    "src/project_copilot/infrastructure/qdrant.py": "a792d03a8f6558421bb1d7aa89e5e3f28c35878fe54fbc36cf653b3cf94c8d8d",
+    "src/project_copilot/rag/answering.py": "b9304476659edd2ee600f9f8f8c2a442b3dce1053180d19154303319eb9e4d81",
+    "src/project_copilot/rag/ingestion.py": "d9865a7eed93631fc9a9ba94748066170dbc1a76b9f837634dc24a29b0effb7f",
+    "src/project_copilot/rag/retrieval.py": "3164d30cc905b70b00a83db892bfaacd89cd4194880f5454434d79f048e1ed55",
+    "src/project_copilot/rag/loaders.py": "fa6f345c2567da3494186e1ec8760986605e7e9941d098b5d0fff3055fb7fab7",
+    "src/project_copilot/rag/splitters.py": "7571edaa53b2d499fb4a34962efe02d186c512b800de9e0a52b3ab33fbce1aa5",
+    "src/project_copilot/schemas/rag.py": "9fe3a6f37bdb72f5adc3e83303c61d5d2c890f7929bbfcdc1f060caa3eba917c",
+    "src/project_copilot/schemas/documents.py": "1227b04b955bae9b5d670c53c57a8613fa8df9dd6ee028735d33956d0e33516e",
+    "src/project_copilot/schemas/retrieval.py": "49bc98c4282c732f9e8f7a99360d90715fff638997f2c75a7bdbdf4468813eb2",
+    "evals/hybrid_run.py": "98b811be8b022541f437b336fc76e2e608ff774d62ddb1b4f249fbf07e2e2148",
+    "evals/comparison.py": "b55915738115affa3b03bcb8e27d71f832a82077a69f4a853e8d213a0f42fee0",
+    "evals/freeze_dataset.py": "5b961a42eca10cb09293d970244863f98de0c9b4d48e2ae0e0fcd3ce258db2bb",
+    "evals/validate_dataset.py": "4eda09a21add766cc76155c98111d544161ef7cacb6e38d9c16fa9ff02bfbdc1",
+    "src/project_copilot/rag/bm25.py": "487b56bde868e70d72375fcff6474c8ca60170bac1f6b1e4f4099b1c28a7b31d",
+    "src/project_copilot/rag/fusion.py": "2c55019fc427c5fcd9e72741561dbc2a1a019ae295596a247dfb14997b7f92d4",
+    "src/project_copilot/rag/hybrid.py": "c3626e62ab493fb98e6b8219c21d8ad15ada506d34093efbccaaae2ad575c20a"
+  },
+  "runtime": {
+    "python": "3.13.14",
+    "system": "Linux",
+    "machine": "x86_64",
+    "qdrant_server": "1.19.2",
+    "qdrant-client": "1.19.1",
+    "rank-bm25": "0.2.2",
+    "jieba": "0.42.1",
+    "numpy": "2.5.4"
+  },
+  "preparation_ms": 852.4234340000021,
+  "query_order": [
+    {
+      "question_id": "pc-d7-001",
+      "order": [
+        "dense",
+        "bm25"
+      ]
+    },
+    {
+      "question_id": "pc-d7-002",
+      "order": [
+        "bm25",
+        "dense"
+      ]
+    },
+    {
+      "question_id": "pc-d7-003",
+      "order": [
+        "dense",
+        "bm25"
+      ]
+    },
+    {
+      "question_id": "pc-d7-004",
+      "order": [
+        "bm25",
+        "dense"
+      ]
+    },
+    {
+      "question_id": "pc-d7-007",
+      "order": [
+        "dense",
+        "bm25"
+      ]
+    },
+    {
+      "question_id": "pc-d7-009",
+      "order": [
+        "bm25",
+        "dense"
+      ]
+    },
+    {
+      "question_id": "pc-d7-010",
+      "order": [
+        "dense",
+        "bm25"
+      ]
+    },
+    {
+      "question_id": "pc-d7-011",
+      "order": [
+        "bm25",
+        "dense"
+      ]
+    },
+    {
+      "question_id": "pc-d7-012",
+      "order": [
+        "dense",
+        "bm25"
+      ]
+    },
+    {
+      "question_id": "pc-d7-013",
+      "order": [
+        "bm25",
+        "dense"
+      ]
+    },
+    {
+      "question_id": "pc-d7-014",
+      "order": [
+        "dense",
+        "bm25"
+      ]
+    },
+    {
+      "question_id": "pc-d7-015",
+      "order": [
+        "bm25",
+        "dense"
+      ]
+    },
+    {
+      "question_id": "pc-d7-017",
+      "order": [
+        "dense",
+        "bm25"
+      ]
+    },
+    {
+      "question_id": "pc-d7-018",
+      "order": [
+        "bm25",
+        "dense"
+      ]
+    },
+    {
+      "question_id": "pc-d7-020",
+      "order": [
+        "dense",
+        "bm25"
+      ]
+    },
+    {
+      "question_id": "pc-d8-022",
+      "order": [
+        "bm25",
+        "dense"
+      ]
+    },
+    {
+      "question_id": "pc-d8-023",
+      "order": [
+        "dense",
+        "bm25"
+      ]
+    },
+    {
+      "question_id": "pc-d8-024",
+      "order": [
+        "bm25",
+        "dense"
+      ]
+    },
+    {
+      "question_id": "pc-d8-025",
+      "order": [
+        "dense",
+        "bm25"
+      ]
+    },
+    {
+      "question_id": "pc-d8-027",
+      "order": [
+        "bm25",
+        "dense"
+      ]
+    },
+    {
+      "question_id": "pc-d8-028",
+      "order": [
+        "dense",
+        "bm25"
+      ]
+    },
+    {
+      "question_id": "pc-d8-029",
+      "order": [
+        "bm25",
+        "dense"
+      ]
+    },
+    {
+      "question_id": "pc-d8-031",
+      "order": [
+        "dense",
+        "bm25"
+      ]
+    },
+    {
+      "question_id": "pc-d8-032",
+      "order": [
+        "bm25",
+        "dense"
+      ]
+    },
+    {
+      "question_id": "pc-d8-034",
+      "order": [
+        "dense",
+        "bm25"
+      ]
+    },
+    {
+      "question_id": "pc-d8-035",
+      "order": [
+        "bm25",
+        "dense"
+      ]
+    },
+    {
+      "question_id": "pc-d8-036",
+      "order": [
+        "dense",
+        "bm25"
+      ]
+    },
+    {
+      "question_id": "pc-d8-037",
+      "order": [
+        "bm25",
+        "dense"
+      ]
+    },
+    {
+      "question_id": "pc-d8-039",
+      "order": [
+        "dense",
+        "bm25"
+      ]
+    },
+    {
+      "question_id": "pc-d8-040",
+      "order": [
+        "bm25",
+        "dense"
+      ]
+    }
+  ],
+  "status": {
+    "state": "recorded",
+    "complete": true,
+    "retrieval_errors": {
+      "dense": 0,
+      "bm25": 0,
+      "hybrid": 0
+    },
+    "reused_query_vectors": 30,
+    "qdrant_queries": 30,
+    "bm25_queries": 30,
+    "fusion_calls": 30,
+    "model_calls": {
+      "embedding": 0,
+      "query_embedding": 0,
+      "chat": 0
+    },
+    "qdrant_writes": 0,
+    "manual_review": "pending",
+    "day14_accepted": false
+  },
+  "files": {
+    "bm25_index.json": "31ba1dec35a120ec1782dc13bb60c55bb521d5029dae99c16befd693b17e53aa",
+    "bm25_rankings.jsonl": "e70580e72e3d9a62bc94bc032dbb29c64bc7ad14ef9e8ce7d189a062d296169e",
+    "bm25_retrieval/config.json": "66a0f7b01d7c1ab694df58f025f5e24c4ce2c24430c9d68d5beb9b9e46ff2d3a",
+    "bm25_retrieval/retrieval.jsonl": "a239dd9d60140e1fc8999e5b2dc7a78fc5cef60a957ee87de466dc02f2e4e642",
+    "bm25_retrieval/summary.json": "8b62b830e7e8e5e1c95bb08d493879f2201f451ccebdd1dc403019462a83de24",
+    "bm25_vs_hybrid.json": "a8136adf6841300b83f26cf574d5a999e4a8ebd3765486e18785e2865d573261",
+    "candidate_sources.jsonl": "646939b2153cb95978c1b41c9223ab4aaf9e7bced81a34bc9b94a469a3079726",
+    "case_details.jsonl": "0ab1a0e4e4581acd87f4dac20e539cbd682190eda6b41d834d1258c4fe525d40",
+    "dense_rankings.jsonl": "ad0b9578eb3659edb8f0b1a2c791bff2c53f91394add1c7ea66f3dc35347abd0",
+    "dense_retrieval/config.json": "cb13f2104c3078c429f5f615123b67bf399f5d6461ef55eb3629e3c5d9580e8d",
+    "dense_retrieval/retrieval.jsonl": "738ccf3479673ef63674d332c4ee0e31c57f529b459d07712aa748ba8f871fce",
+    "dense_retrieval/summary.json": "562a6401bfd37239681d38b6e81d3be63b7aa4d7b8d623a462cbfe054433b36b",
+    "dense_vs_bm25.json": "7a6597f5ccccdfef892efa879cf56182b2dd963b8e0891b442344753ff16ab9f",
+    "dense_vs_hybrid.json": "81750bcf562f5d709df2f5eb4bfc1c0cd133d7bdd6b5c150a90365ed8403d948",
+    "evaluation_config.json": "dea612eefc693c1f14c4d68810ddc26cebcd2da745ee1752e7bce75f46d70e0f",
+    "experiment_config.json": "76277fa2d90b7bbd3a6123595ee8bd31d789bf90f8aa60c84db9ec54c381de78",
+    "historical_v0_recheck.json": "033cea4794be1835992d20e4e4367dc1ba2d736f61b7a635b8ac1441f35ed91b",
+    "hybrid_rankings.jsonl": "9f28eb6001f1a0d39768da128d552fdb8bc3fa391a4e4cf45592b3c38c1b9096",
+    "hybrid_retrieval/config.json": "be95972d320a4b3067c4825c90b0d6e49dc0ed7443c5ce283ffe28dccd3db90a",
+    "hybrid_retrieval/retrieval.jsonl": "8ffa83eb447455e720ec2b68c2524e6bad8c3ed70778c8a63564ecf5790620cf",
+    "hybrid_retrieval/summary.json": "7470d621623d4d9bcb5589b61056bc8dcfbce86ebae43bf6f5a6f29d792895a1",
+    "index_manifest.json": "f01728b6c36643bab054bdc448f85abd913fa41773d33c3f3a3fdaf50e44198c",
+    "status.json": "03acf76a75544d9056c5be0b21cef1d7ea49fca72b200522a6c582c6278acd63"
+  }
+}
