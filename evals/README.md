@@ -176,4 +176,4 @@ uv run --frozen python -m evals.chunking_run verify \
 | historical_v0_recheck.json | 历史V0与本轮V0的指标复核；它的跨日耗时差不当作受控延迟结果 |
 | status.json、manifest.json | 原采集状态、实际调用、21份源码哈希/依赖/执行顺序、19份文件指纹；manual_review=pending/accepted=false保留采集快照 |
 
-比较器可记录mixed，防止某项上升掩盖另一项下降；错误转移与无答案单列。人工学习/映射复核在用户主动手测后登记，不改写机器pending快照。代表案例012完成rank4→1，003完成rank4→6；Recall@5由1降为24/26，当前默认保持750/150。详细数值、时间与费用局限见 [真实对照报告](reports/CHUNKING_V1.md)；保留集仍等D17。
+比较器可记录mixed，防止某项上升掩盖另一项下降；错误转移与无答案单列。2026-10-22用户已亲自verify、双侧重评分、核对012改善/003退化的原文/排名，并验证副本只追加换行仍被拒绝，另确认ChatGPT学习理解；人工记录见报告，不改写机器pending快照。代表案例012完成rank4→1，003完成rank4→6；Recall@5由1降为24/26，当前默认保持750/150。确认范围是两条代表原文映射，全部32段映射的程序检查与此分开。详细数值、人工记录、时间与费用局限见 [真实对照报告](reports/CHUNKING_V1.md)；保留集仍等D17。

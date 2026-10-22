@@ -773,7 +773,7 @@ DeepSeek八次合计prompt17277/completion687/total17964 tokens（含非法JSON�
 
 ## D12：V0与单因素切分候选的真实对照（2026-10-21）
 
-**当前状态：代码、离线验证与一次授权真实实验完成；阶段A待用户提交/推送，阶段B待ChatGPT学习与主动手动验证。** 只做750→500、overlap150及原分隔符不变的一组候选，未实现D13/BM25或第二轮参数搜索。
+**最终状态：D12阶段A/B均完成。** 开发提交3bb656f已由用户推送；2026-10-22用户完成四项离线手动验证、012/003原文核对并确认ChatGPT学习理解，本次收尾文档待用户提交。下文保留开发期与后续学习验收的实际记录，D13仍待用户明确开启。
 
 新增`evals/chunking_run.py`、`evals/comparison.py`和两份测试，分别负责plan/显式live/verify、离线成对统计；复用D3原文切分、D4清单入库、D9评分和D10缓存/合同。使用独立候选集合pc_eval_dense_v1_size500，原V0必须存在且16点/payload一致，不能自动创建空基线；候选/输出既有则拒绝，不删除数据。业务src、依赖与锁文件不变。数据/原源码/归档→历史30问题向量哈希链、数值/模型合同和32段dev gold完整映射均在请求前核验；新编排与统计为自主实现。
 
@@ -796,3 +796,22 @@ search中位4.380→4.362ms，30对差中位约−0.028ms、p95约+0.702ms，单
 公开`evals/results/dense-v1-size500-20261021-01/`为本地20文件原字节副本（19份机器产物＋manifest），不含问题向量/密钥，约2.94MB；两侧完整排名、评分、32段gold映射及逐题原文均保留。独立只读结果审查通过；人工学习及012/003代表改善/退化的原文映射核验仍待用户主动手测。完整交接见 [D12报告](reports/DAY_12.md)与 [实验报告](../evals/reports/CHUNKING_V1.md)，本轮不进行Git写操作或自动进入D13。
 
 收尾检查通过32个候选文件（6修改/26新增）、4份Python AST、新JSON/JSONL、源码与文档空白；机器清单保留D4无结尾换行的原格式，不改写封存字节。8份Markdown围栏、51张表、190处本地链接/13锚点及固定8项报告通过。V0 12产物、D8冻结10文件、D11候选/快照不变，V1 19产物/21源码哈希与公私20文件字节一致。常见凭据模式检查通过，.env/data/缓存仍被忽略，计划仅第10节变化，业务/依赖无diff；git diff --check通过，暂存区为空，独立只读事实/状态复核通过。
+
+### 用户Git同步、学习与手动验证补记（2026-10-22）
+
+用户亲自提交并推送 [3bb656fd325db3fb0ddc5260c53d27c7fe0a6359](https://github.com/yan-ye-dhy/project-copilot/commit/3bb656fd325db3fb0ddc5260c53d27c7fe0a6359)，`feat(evals): add paired chunking experiment and V1 results`，push显示559190f..3bb656f main→main。Codex只读核实同步；本轮手测开始时再次确认main/origin/main一致、工作区干净，阶段A完成。
+
+用户主动开启D12手动验证，以下由本人执行与反馈，Codex只读核对文件和整理阅读材料，不将333项开发期自动测试登记为用户操作：
+
+| 用户实际操作 | 反馈与Codex核对 |
+| --- | --- |
+| `uv run --frozen python -m evals.chunking_run verify --dataset evals/datasets/copilot_v0 --output-dir evals/results/dense-v1-size500-20261021-01`及退出码 | verified/19文件、退出0；manual_review=pending、day12_accepted=false保留原采集快照 |
+| 分别用归档中baseline/candidate_evaluation_config.json及对应rankings.jsonl执行`uv run --frozen python -m evals.run`，输出data/manual-d12/baseline-01、candidate-01 | 用户反馈0、0；Codex只读比较，两侧逐题除evaluation_ms外完全相同，汇总除run_id外相同，均30题/26可答/4无答案/错误0、评分模型调用0，代码3bb656f/dirty=false |
+| 阅读Codex从封存gold/命中提取的case-review.md，明确回复“012改善、003退化的原文与排名已核对。” | 012 gold`[455,552)`不变、rank4→1；003 gold`[943,1056)`不变、rank4→6，双方实际命中保留完整quote及同一文档版本；两条代表人工核对通过，不外推全部32段 |
+| 复制归档到data/manual-d12/tampered-01，仅在comparison.json末尾追加换行，再verify副本及退出码 | JSON仍合法且解析对象不变，校验按预期拒绝、退出1；Codex核对20文件仅comparison.json多一个LF，正式封存文件未变 |
+
+用户随后明确确认“已学习，能够解释”，涵盖原问题向量复用→两侧检索→离线评分→成对比较，以及MRR上升仍保留750/150的原因。结合已推送开发提交、本人四项验证和代表原文核对，阶段A/B均完成；当前人工结论写在文档，机器pending/accepted=false及其字节哈希保留。
+
+本轮只补8份Markdown（根README、计划第10节、日志、学习/面试笔记、D12报告、evals说明和V1报告），原始排名/合同/状态及D8/D10/D11内容不改。重评分与副本、辅助阅读材料均在被忽略的data，不读取.env、运行collect/服务/Qdrant查询、模型或pytest；新增模型调用0，Git写操作仍由用户亲自完成，D13尚未开启。
+
+本次收尾检查通过8份Markdown空白/围栏、54张表、190处本地链接/13锚点及固定8项报告，计划第10节外不变。V1公私20文件/19产物/21源码SHA、V0公开12产物、D8冻结10文件、D11候选/快照均保持一致；独立只读事实/状态审查通过。git diff --check无输出，暂存区为空，无未忽略新增文件；仅登记012/003代表人工复核，8份收尾文档待用户亲自提交/推送。
