@@ -818,7 +818,7 @@ search中位4.380→4.362ms，30对差中位约−0.028ms、p95约+0.702ms，单
 
 ## D13：中文BM25最小检索（2026-10-22）
 
-**状态：实现与Codex自动验证完成，阶段A待用户提交/推送；阶段B待ChatGPT学习及用户主动开始手动验证。** 用户已推送D12收尾b364f0e，D13开始时main/origin/main一致且工作区干净；本日未执行Git写操作。
+**最终状态：D13阶段A/B均完成。** 用户已推送开发提交d4c5bfd，手动验证前及本次收尾前main/origin/main一致、工作区干净；同日用户完成8个手动环节并确认ChatGPT学习理解，收尾文档待用户提交。下文分别保留开发与人工验证记录，Codex未执行Git写操作，D14等待用户明确开启。
 
 新增`rag/bm25.py`和`bm25_index.py`的tokenize/build/search入口。jieba0.42.1搜索模式关闭HMM，不用停用词/用户词典；NFKC/casefold后中文与技术词分开处理，路径、错误码、下划线及命令选项保留整体。rank-bm250.2.2提供BM25L固定k1=1.5/b=0.75/delta=0.5，适应小语料常见词，不按dev效果选参。新增两个依赖；NumPy2.5.4和其他已有锁定包不升级。
 
@@ -841,4 +841,18 @@ search中位4.380→4.362ms，30对差中位约−0.028ms、p95约+0.702ms，单
 
 本日无收费调用、重切分/向量重建/回答生成或保留集评测，未运行RRF/三路效果实验。D8数据及D10/D11/V1归档保持，V1原21源码/19产物SHA均相同；默认750/150与Dense API不变。交接见 [D13报告](reports/DAY_13.md)，D14等待本日A/B完成及用户明确要求。
 
-收尾实际检查：`uv lock --check --offline --cache-dir /tmp/project-copilot-uv-cache`退出0；D8 freeze verify、D10 baseline verify（原私有目录）和D12 chunking_run verify（公开目录）均通过，机器pending快照不改写既有人工完成结论。7份Markdown空白/围栏、51张表列数、195处本地链接/11锚点及固定8节报告通过；计划第10节外不变，旧日志原文完整保留。收据6份源码/依赖SHA一致；`.env`、本地快照与自动输出仍被忽略，git diff --check无输出、暂存区为空，本轮14个文件待用户亲自暂存/提交/推送。只读复审已完成，发现的进度标题和历史段落归属已修正。
+开发时收尾检查：`uv lock --check --offline --cache-dir /tmp/project-copilot-uv-cache`退出0；D8 freeze verify、D10 baseline verify（原私有目录）和D12 chunking_run verify（公开目录）均通过，机器pending快照不改写既有人工完成结论。7份Markdown空白/围栏、51张表列数、195处本地链接/11锚点及固定8节报告通过；计划第10节外不变，旧日志原文完整保留。收据6份源码/依赖SHA一致；`.env`、本地快照与自动输出仍被忽略，git diff --check无输出、暂存区为空，当时14个文件待用户亲自暂存/提交/推送。只读复审已完成，发现的进度标题和历史段落归属已修正。
+
+### 用户学习与手动验证（2026-10-22）
+
+用户已亲自提交并推送 [d4c5bfd1ab58325dd34db16fe92900f45c9605ef](https://github.com/yan-ye-dhy/project-copilot/commit/d4c5bfd1ab58325dd34db16fe92900f45c9605ef)，输出b364f0e..d4c5bfd main→main；Codex只读核实本地与跟踪分支同指、工作区干净。用户随后主动开始D13手动验证，实际操作及8项结果见 [D13报告](reports/DAY_13.md)第5节。
+
+用户依次完成：①混合中文/技术词tokenize，大小写规范化且embedding-3/4区分，退出0；②启动已有Qdrant并亲自curl readyz，HTTP200；③依据V0正式清单构建data/manual-d13/index.json，5文档/16片段、退出0；④路径查询命中1条上传说明；⑤中文查询命中3条，首条包含空文件提示；⑥用`-- '--env-file'`查询命中2条Compose说明；⑦未知词查询正常返回空、退出0；⑧只修改清单副本切分版本后用旧快照查询，JSON error、退出1。四次查询top_k均3，分别保存search-upload/chinese/compose/miss.json；副本与错误为manifest-changed.json/stale-manifest-error.json，全部在被忽略的手测目录。
+
+Codex只读取用户产物并核对：原文/metadata与快照片段逐值一致，16个ID与成功清单完整对应；快照内容指纹与本次build及原开发收据一致，正式清单字节与已提交版本及原SHA相同，副本唯一语义变化为spec.splitter_version追加-manual-test。用户询问index.json结构时，结合实际文件解释了其保存原文/元数据、规则/参数和指纹，加载时再重建词频等统计。无匹配成功返回空与陈旧清单失败退出分别保留。
+
+用户最终明确答复“已学习，能够解释”，确认已通过ChatGPT理解成功清单→Qdrant片段→统一分词→BM25快照→本地查询及清单变更拒绝原因，故阶段A/B均完成。模型调用和Qdrant写入均0，本轮Codex未代跑用户CLI、服务、pytest或模型；手测没有覆盖全角NFKC、空白问题、全量dev或回答质量，不将原自动用例扩大为本人手测成果。
+
+本次仅补7份Markdown收尾记录（README、计划第10节、日志、学习/面试笔记、D13报告和evals说明），源代码、依赖、正式清单、自动收据及历史冻结内容保留；收尾提交仍由用户亲自操作。D14须等待用户明确要求。
+
+本轮文档检查通过空白/围栏、52张表列数、197处本地链接/11锚点及固定8节报告；计划第10节外和旧日志/笔记章节保持。D13收据6份源码/依赖、V1原21份源码及19份机器产物SHA均一致；独立只读事实复审通过。git diff --check无输出，暂存区为空，无未忽略新增文件；本次七份收尾Markdown待用户提交推送。

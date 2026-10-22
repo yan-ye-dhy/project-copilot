@@ -1,6 +1,6 @@
 # 【Day 13 开发报告】
 
-开发日期：2026-10-22。**D13实现与Codex自动验证完成，阶段A待用户亲自提交/推送；阶段B待ChatGPT学习及用户主动开启手动验证。** 本日只完成中文BM25最小检索，未开启D14，没有模型调用或Qdrant写入，默认切分保持750/150。
+开发与学习/手动验证日期：2026-10-22。**D13阶段A/B均完成**，开发提交d4c5bfd已由用户推送；本人八项手动验证及ChatGPT学习理解均已确认，本次七份收尾文档待用户提交。本日只完成中文BM25最小检索，未开启D14，没有模型调用或Qdrant写入，默认切分保持750/150。
 
 ## 1. 今日开发目标
 
@@ -21,6 +21,8 @@
 
 本地快照`data/bm25/d13-v0.json`及运行输出留在被忽略的data目录，不随本日提交。
 
+本次学习/手动验证收尾只补根README、evals/README、开发计划第10节、开发日志、学习/面试笔记及本报告，共七份Markdown；用户结果留在被忽略的`data/manual-d13/`，业务源码、依赖、自动验收收据和历史产物不改。
+
 ## 3. 核心实现内容
 
 1. `ChineseTokenizer`采用NFKC/casefold规范化，中文使用jieba搜索分词、关闭HMM；技术标识整体保留，包括`embedding-3`、`/documents/upload`、`--env-file`及下划线名称。文档与查询共用规则，记录词典SHA、jieba及Unicode版本。
@@ -38,7 +40,7 @@
 
 ## 5. 自动测试结果
 
-执行者均为Codex，日期2026-10-22，工作目录新项目。以下是开发期自动验证，不代表用户手动测试或ChatGPT学习完成。
+以下首表为2026-10-22开发期自动验证，执行者Codex、工作目录新项目，不代表用户手动测试；同日用户本人的学习后验证单独记录在后表。
 
 | 实际命令/检查 | 实际结果 |
 | --- | --- |
@@ -63,17 +65,37 @@
 
 真实记录见 [D13自动验收](../evidence/D13_BM25_SMOKE.json)。原21份冻结运行源码SHA及V1的19份封存产物未改；没有重新Embedding、生成回答、使用保留集或改动Prompt。四个固定样例只证明词项链路与边界可用，没有全dev的Recall/MRR、三路对照、回答质量或统计提速结论；这些指标本日未采集。
 
-收尾检查通过7份Markdown空白/围栏、51张表格列数、195处本地链接/11锚点和固定8节报告；计划第10节外及历史日志原文保持。锁文件只增加两包，旧包版本不变；收据6份源码/依赖哈希一致，`.env`、快照和自动运行输出均被忽略。`git diff --check`无输出，暂存区为空；本轮14个文件待用户审核提交。独立只读复审发现的进度标题/历史段落归属已修正。
+开发交接时检查通过7份Markdown空白/围栏、51张表格列数、195处本地链接/11锚点和固定8节报告；计划第10节外及历史日志原文保持。锁文件只增加两包，旧包版本不变；收据6份源码/依赖哈希一致，`.env`、快照和自动运行输出均被忽略。当时`git diff --check`无输出、暂存区为空，14个开发文件交用户审核提交；独立只读复审发现的进度标题/历史段落归属已修正。
+
+同日用户主动开启D13手动验证，以下八项由本人操作。Codex只读核对实际输出与本地文件，没有代用户运行功能测试、启动服务、运行pytest或请求模型。
+
+| 执行者与实际操作 | 实际结果 |
+| --- | --- |
+| 用户：tokenize `上传文件 HTTP_422 /documents/upload LOAD_SETTINGS embedding-3 embedding-4 --env-file`并查看退出码 | 退出0、model_calls=0；tokens为上传、文件、http_422、/documents/upload、load_settings、embedding-3、embedding-4、--env-file，技术词整体保留且大小写统一 |
+| 用户：启动既有Docker Qdrant并curl `/readyz` | HTTP200，`all shards are ready`；复用现有集合，没有模型请求 |
+| 用户：build，使用原V0的`index_manifest.json`，`--output data/manual-d13/index.json`，stdout保存至`data/manual-d13/build.json` | 退出0；5文档/16片段；Codex只读核对全部chunk_id及快照指纹，与开发期自动验收记录一致 |
+| 用户：search `/documents/upload`，top_k=3，输出`data/manual-d13/search-upload.json` | 退出0，实际命中1条而非补齐3条；来源upload_troubleshooting.md，原文及metadata与快照一致 |
+| 用户：search `上传文件不能为空`，top_k=3，输出`data/manual-d13/search-chinese.json` | 退出0，tokens为上传/文件/不能/为/空，命中3条；首条为upload_troubleshooting.md且含实际空文件提示，全部命中原文及metadata与快照一致 |
+| 用户：将search全部选项放在`-- '--env-file'`之前，top_k=3，输出`data/manual-d13/search-compose.json` | 退出0，选项名作为完整查询词，命中2条且均来自compose_environment.md；没有被argparse当成脚本选项 |
+| 用户：search `unknownxyz987`，top_k=3，输出`data/manual-d13/search-miss.json` | 退出0、status=ok，hit_count=0、hits=[]；没有返回任意片段凑数 |
+| 用户：复制正式清单到`data/manual-d13/manifest-changed.json`，仅给spec.splitter_version追加`-manual-test`，以副本清单及原快照search `/documents/upload`，stderr保存至`data/manual-d13/stale-manifest-error.json` | 退出1，脱敏JSON错误、model_calls=0；Codex只读确认副本仅该字段变化，正式清单与HEAD及原收据SHA一致，快照仍为原build指纹 |
+
+用户明确确认“已学习，能够解释”，涵盖成功清单→Qdrant片段→统一分词→BM25快照→本地查询的主流程，以及清单变更为何拒绝旧快照。结合已同步开发与八项实际操作，阶段A/B均完成；手动范围不包含全角NFKC或空白问题测试，不把开发期对应自动用例登记为用户操作。
+
+本轮手动验证与收尾没有模型调用、Qdrant写入、RRF、回答生成或全dev/保留集效果评测，仍只证明词项链路及本次边界可用。Codex只读确认D13源码/依赖与自动收据哈希一致，正式清单及快照未改；自动验收收据保留原始执行者、base_commit和dirty状态，不追写成用户验收。本次只更新上述七份Markdown，未重跑pytest或功能验收。
+
+收尾文档检查通过7份Markdown空白/围栏、52张表列数、197处本地链接/11锚点和固定8节报告；计划第10节外、历史日志/笔记章节保持。D13收据6份源码/依赖、V1原21份源码及19份机器产物SHA均一致，独立只读事实复审通过；git diff --check无输出，暂存区为空，无未忽略新增文件。
 
 ## 6. GitHub 提交信息
 
 - 分支main跟踪origin/main；远端`https://github.com/yan-ye-dhy/project-copilot.git`。
 - 开始时本地/跟踪分支一致，工作区干净；起点为用户已推送的D12收尾 [b364f0e9c84f8a745865121c81cfaf1c3c257e73](https://github.com/yan-ye-dhy/project-copilot/commit/b364f0e9c84f8a745865121c81cfaf1c3c257e73)。
-- D13增量**待用户亲自add、commit和push**，尚无本日已同步的GitHub提交链接，不预填commit。Codex没有执行Git写操作；真实验收记录保留base_commit及dirty=true的运行状态。
+- D13开发提交：[d4c5bfd1ab58325dd34db16fe92900f45c9605ef](https://github.com/yan-ye-dhy/project-copilot/commit/d4c5bfd1ab58325dd34db16fe92900f45c9605ef)，已由用户提交并推送；开始手动验证时main/origin/main一致、工作区干净，阶段A完成。
+- 本次七份学习/手动验证收尾文档**待用户亲自add、commit和push**，不预填新commit。Codex没有执行Git写操作；真实验收记录保留原base_commit及dirty=true的运行状态。
 
 ## 7. 后续学习提示
 
-将本日报与实际提交交给ChatGPT，重点学习：
+用户已确认通过ChatGPT学完并能解释主流程；以下保留为结合实际代码与提交复习的重点：
 
 1. build→完成清单→Qdrant精确片段→统一分词→BM25L→JSON快照，以及search→快照校验→问题分词→评分→真实证据的完整调用链。
 2. 中文搜索分词、技术标识边界、NFKC/casefold与HMM关闭的取舍，为什么索引和查询必须采用同一规则。
@@ -83,6 +105,6 @@
 
 ## 8. 下一步计划
 
-当前先由用户亲自提交并推送D13增量，Codex核实后补充实际Git信息；随后用户通过ChatGPT学习，主动要求开始D13手动验证后再进入逐步带练。本次自动验收不登记为用户已完成。
+当前仅指导用户亲自提交并推送七份收尾Markdown，Codex核实后补充实际Git信息。D13阶段A/B均完成，等待用户明确要求才开启D14。
 
-只有D13阶段A/B均完成且用户明确开启D14后，才实现RRF并借已有评测器比较Dense/BM25/Hybrid，保持同切分、最终k与公开候选预算，记录逐题效果和耗时。未自动推进D14，保留35日节奏。
+用户明确开启D14后，再实现RRF并借已有评测器比较Dense/BM25/Hybrid，保持同切分、最终k与公开候选预算，记录逐题效果和耗时。未自动推进D14，保留35日节奏。

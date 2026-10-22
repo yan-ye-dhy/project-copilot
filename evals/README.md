@@ -185,3 +185,5 @@ uv run --frozen python -m evals.chunking_run verify \
 快照携带完整成功清单、原文/metadata、分词规则/词典SHA、Unicode/rank-bm25/NumPy版本和内容指纹；加载时核对当前清单，拒绝缺失/陈旧/变更文件。JSON加载重建词频，不保存可执行pickle；清单/存储变化后需要显式新建快照，没有实现自动同步。
 
 [自动收据](../docs/evidence/D13_BM25_SMOKE.json)记录真实V0的5文档/16片段对齐和四条固定查询，仅作最小链路验收。D13不新增完整评测run、不算Recall/MRR收益，也不改D9配置使其冒充BM25评测器。D14再扩展三路采集与RRF，公开各路候选数、最终k、冷构建/查询耗时与Bad Case，沿用D8划分和D10 Prompt冻结，不使用保留集选分词或参数。
+
+2026-10-22用户已亲自完成D13的8个手动环节并确认ChatGPT学习理解：独立快照在data/manual-d13，四条查询分别命中1/3/2/0条，清单副本仅变更spec.splitter_version后旧快照按预期拒绝、退出1。Codex只读确认正式清单原字节、快照指纹和原文/metadata保持，新增模型调用0；本次人工记录见 [D13报告](../docs/reports/DAY_13.md)，自动收据不改写，三路效果仍待D14明确开启。
