@@ -209,3 +209,22 @@ plan完全离线并验证原向量哈希链；collect沿用四项输入并提供
 [公开V2归档](results/hybrid-v2-20261022-01/manifest.json)含23封存产物＋manifest：三路完整原文排名/评分、三组比较、candidate_sources中的来源名次/score、case_details中的gold/指标及结果文件引用、历史V0重查、完整父合同/索引/BM25快照和机器状态。原问题向量仍只保存在忽略目录，公开配置以SHA绑定。verify不需要私有向量或当前Prompt生成逻辑；机器pending状态不代表用户已完成人工验收。
 
 证据Recall@5均1.0，MRR@5依次0.8365/0.9327/0.8974；Hybrid的Recall@3为1.0，但BM25的MRR@5更高，详见 [V2实验报告](reports/HYBRID_V2.md)。准备/字典构建时间单列，逐题embedding/rerank为null；Hybrid search为两路共享搜索之和、total再加fusion，属于顺序合计而非独立请求计时。2026-10-23用户亲自完成归档verify、三路离线重评分、012计算反馈及副本拒绝，并确认学习理解；90条重评分记录与原结果一致，正式归档及机器pending快照保留。D17再作方案选择，不据这次自建小样本声称普遍提升，D15等待明确开启。
+
+## D15：单题重排适配验收
+
+入口为 [rerank_smoke.py](../scripts/rerank_smoke.py)，使用D14公开归档的固定dev题012及同一10个Hybrid候选；先verify归档，不重新查询Qdrant或问题Embedding。无`--local`时在读取评测输入或加载模型之前退出2；显式启用后只读本地固定快照，评分首/热各一次以区分加载与复用，不将异常重复执行当重试。
+
+```bash
+uv sync --frozen --group rerank-gpu
+uv run --frozen --group rerank-gpu python scripts/rerank_smoke.py --local --device cuda --dtype float16
+```
+
+用户已选择GPU验证并接受额外CUDA依赖与准备时间，现已完成RTX 4060 Laptop上的CUDA float16真实执行。`rerank-gpu`使用官方CUDA 13.0源，与CPU组`rerank`互斥；同一固定模型已缓存，准备方式及CPU运行参考见 [根README](../README.md#d15本地cross-encoder最小重排)。保存10个原分数/名次/原文hash、20个raw logits、每遍选中5块的完整原文和metadata、截断诊断、模型版本/参数和分段耗时；输出不含D16全量指标。
+
+[CPU历史收据](../docs/evidence/D15_RERANK_SMOKE.json)保留原字节，其中另有合成2120→512 tokens与超长query拒绝诊断。[GPU验收收据](../docs/evidence/D15_GPU_RERANK_SMOKE.json)另记实际全部浮点模型参数`cuda:0`/`float16`、Torch 2.14.1+cu130、CUDA编译版本13.0、设备capability、同步计时及当前进程Torch分配器allocated/reserved显存峰值。新增依赖组后的`pyproject.toml`和`uv.lock`使用新的源码SHA，其余25份已登记源码保持；CPU收据继续保留运行当时的历史SHA，不改标为GPU结果。
+
+GPU首/热模型推断1112.377/160.087ms，整个rerank为12007.819/174.468ms；首模型加载10856.167ms，不是冷盘或完整进程启动。每遍分配器峰值allocated/reserved为1166032896/1189085184字节，非整卡峰值；首遍包括模型加载，热遍包括常驻模型基线。GPU新增2次成功评分、20个pair，原CPU另有3次成功评分、21个pair及1次超长query推断前拒绝，合计5次成功评分、41个pair；外部模型API/Qdrant请求均0。GPU选中原候选名次`[3,4,2,1,5]`与CPU相同，首热GPU分数相同，但相对CPU的最大logit差约0.087717。
+
+CPU float32与GPU float16同时改变硬件和精度，首/热两次属于单题观察，不据单次差值宣称单因素加速、P95或生产吞吐。
+
+本轮只验证适配合同，012的gold从3到1不能冒充开发集MRR改善；模型分数不能当置信度。未改D8冻结输入、原V0/V1/V2机器产物或默认750/150和Dense API。D16将使用固定候选作成对实验，仍等待本日A/B完成及用户明确开启。

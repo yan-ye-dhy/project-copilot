@@ -461,7 +461,7 @@ feat(agent): require approval for idempotent ticket creation
 
 这些是建议，不是已存在的历史。原仓库不整理或提交；新项目由用户在Codex指导下亲自提交、推送约定GitHub仓库/分支，失败如实报告，不强推或重写历史。未配置远端时先记录待同步并获取实际地址，不猜测仓库。每个完整模块验收后可交给ChatGPT新开学习窗口，如“Project Copilot · Dense RAG”“Project Copilot · 检索评测与优化”“Project Copilot · LangGraph与工单确认”。
 
-## 10. 当前开发进度：D14阶段A/B完成，待用户开启D15
+## 10. 当前开发进度：D15，本地Rerank最小适配
 
 **D1已完成：** 工程、自动验收、ChatGPT学习和用户手测完成；2026-10-12只读核实用户提交的 `4c04a29` 已同步GitHub，A/B均完成，见 [D1报告](reports/DAY_1.md)。用户已明确开启D2。
 
@@ -518,6 +518,14 @@ D13收尾`ca769dc4ea85010e30193c42f5c04991333b5268`已由用户推送，开始�
 相关465项回归及1项新增历史Prompt验证回归分别通过（共466项、其中107项本日新增）。真实V0同一16片段/30dev题复用原问题向量，完成30次Qdrant检索、30次BM25、30次融合，三路错误0、模型调用/集合写入0；同一候选保存三路排名并复用D9评分。26可答题证据Recall@5均1.0，证据MRR@5为0.8365/0.9327/0.8974，Hybrid对Dense6改善/0退化/20不变，对BM252改善/4退化/20不变；4无答案拒答率未采集。原V0逐题指标不变，公开23产物＋manifest原字节归档。Hybrid耗时是共享分支的顺序合计，非独立请求测速；本轮不更改API默认或使用保留集选参。35日任务表及既有冻结文件保留，D15待本日A/B完成和用户明确开启。见 [D14报告](reports/DAY_14.md)与 [V2报告](../evals/reports/HYBRID_V2.md)。
 
 用户亲自verify公开归档退出0，三路各30题离线重评分均退出0；Codex只读比对90条记录及汇总，评分、合同与原归档一致。012两块RRF练习由用户反馈已计算，标准对照为0.03226646/0.03201844；副本仅追加换行后verify退出1。正式归档、D8冻结数据及源码SHA保持，机器pending快照不改写；没有新检索、模型请求或回答评测，D15仍等待用户明确开启。
+
+### D15实施记录（2026-10-23）
+
+D14收尾`4e3cfbae05150a11f0a2ae17ea6596da06317387`已由用户推送，开启时main/origin/main一致、工作区干净。D15新增独立`rag/rerank.py`、单题CLI及合同测试，相关联合235项通过（本日新增70项）；实现与自动验证完成，阶段A待用户Git同步，阶段B待ChatGPT学习与用户主动手测。默认问答API/750/150与历史冻结源文件保留，35日任务表不改。
+
+使用固定revision的BAAI/bge-reranker-v2-m3，CPU float32/4线程、batch2、输入512 tokens，仅截第二段并拒绝用尽预算的query。CPU/GPU可选依赖组互斥，与项目本地缓存独立；首次非空请求加载，失败不下载/回退。对10候选评分后输出5块，另存raw logit和候选名次，原text/metadata/score保持。
+
+Codex真实验证012的同一10候选首/热两遍，gold由3到1；另有合成2120→512 tokens和超长query推断前拒绝，共21个本地pair，外部模型API/Qdrant请求0。该单题结果不能代替D16开发集对照；CPU阶段已验证，随后按用户选择补充CUDA float16同题20pair验证，实际参数cuda:0/float16、目标仍3到1、热态重排约174.47ms、PyTorch allocated峰值约1.09GiB；当前CUDA环境同一235回归通过。CPU历史证据原字节保留，两阶段共41pair；硬件与精度同时变化，不作单因素性能结论。资源、测试与边界见 [D15报告](reports/DAY_15.md)、[CPU记录](evidence/D15_RERANK_SMOKE.json)和 [GPU记录](evidence/D15_GPU_RERANK_SMOKE.json)。用户学习和手测未开始，D16未开启。
 
 ## 11. 最终验收和可选裁剪
 

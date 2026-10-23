@@ -127,3 +127,13 @@
 3. **有什么没有证明？** 当前是5文档/16片段的自建开发集，BM25的MRR@5实际更高；没有保留集、回答生成或拒答评测。问题向量逐值复用并有SHA链，文档向量没有读取，不能声称已对比其历史字节。Hybrid耗时为共享候选的顺序合计，不是独立请求延迟或统计显著结论。
 
 依据：[RRF](../src/project_copilot/rag/fusion.py)、[编排器](../src/project_copilot/rag/hybrid.py)、[采集器](../evals/hybrid_run.py)、[V2报告](../evals/reports/HYBRID_V2.md)及 [原始贡献](../evals/results/hybrid-v2-20261022-01/candidate_sources.jsonl)。Codex相关465项＋1项新回归通过，真实三路30题错误均0；用户完成归档及重评分操作、反馈012已计算，并确认能够解释主流程。其他案例的自动分析不登记为本人逐条复核，具体范围见D14报告。
+
+## D15：Rerank的作用与代价
+
+用户学习及手测尚待完成；以下回答须结合实际代码与 [CPU历史验收记录](evidence/D15_RERANK_SMOKE.json)。用户已选择GPU验证并接受额外CUDA依赖与准备时间，现已完成CUDA float16真实执行；[GPU验收记录](evidence/D15_GPU_RERANK_SMOKE.json)单独保存，不改写CPU历史数据。
+
+1. **为什么还需要Cross-Encoder？** 向量/词项检索先快速召回，联合query-passage编码可细化这些候选的顺序。本项目固定10候选取5，保留原文与身份；重排不能补漏召回，且增加推断延迟。
+2. **如何避免重排破坏引用？** 返回原RetrievedChunk，原检索score和metadata不变；另外保存candidate_rank与rerank_score。token截断只作用于模型输入，引用仍取完整原片段；失败明确传播，不冒充正常空命中。
+3. **目前证明了什么？** 早期CPU固定版本单题012的gold从3排到1，首/热各10pair与一条真实截断诊断通过，相关合同有离线测试。GPU新增首/热20pair，核对全部浮点模型参数实际为`cuda:0`/`float16`，gold仍3到1，选中原候选名次`[3,4,2,1,5]`与CPU相同；GPU首热分数相同，但相对CPU的最大logit差约0.087717。GPU热推断约160.087ms，每遍Torch分配器allocated峰值约1.09GiB，非整卡显存峰值。CPU float32与GPU float16同时改变硬件和精度，不能把单次差值解释为单因素加速或生产性能。两者均不代表全dev提升或回答质量；raw logits负数不代表请求失败，也不能解释为概率。资源/收益选择留D16–D17。
+
+复现环境要区分互斥的`rerank`（CPU）与`rerank-gpu`（官方CUDA 13.0依赖）组，安装和已缓存模型的运行命令见 [根README](../README.md#d15本地cross-encoder最小重排)。新增GPU组后的依赖SHA属于新执行身份，CPU收据仍保留当时版本与SHA。

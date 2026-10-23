@@ -319,3 +319,17 @@ D10真实采集30题与八类回答：7条结构通过，003缺少JSON字段引�
 5. **保存历史的意义**：公开归档绑定原V0合同、问题向量SHA、23份源码、逐题候选名次/分数和23份机器产物。verify按保存合同及数据指纹验证，不重新生成当前Prompt；新增回归模拟将来Prompt变化仍可核验旧run，实际旧Prompt与结果不改。
 
 本次用户亲自完成公开归档verify、三路离线重评分和副本追加换行后的拒绝；针对012两块RRF练习反馈“已经计算”，未单独贴数值，Codex提供标准值对照并只读核对生成结果。没有登记其他案例逐条人工复核、重新检索或回答质量验收；原机器pending状态保留。现有自编小语料结果不证明泛化，D17再选方案，D15不自动开始。
+
+## D15：先召回，再用Cross-Encoder重排
+
+本日为交给ChatGPT的学习提纲；用户学习与手动验证尚未确认。结合 [D15报告](reports/DAY_15.md)、[适配器](../src/project_copilot/rag/rerank.py)与 [单题入口](../scripts/rerank_smoke.py)阅读。
+
+1. **两阶段数据流**：Dense/BM25/RRF先给候选，Cross-Encoder把query与每段文本成对编码，再对这10块评分取5；不能找回候选之外的证据。Bi-Encoder可预计算文档向量，Cross-Encoder需要在问题到来后联合计算，成本不同。
+2. **三个分数/名次**：原hit.score仍是上游分数，candidate_rank记录RRF原名次，rerank_score是未做sigmoid的raw logit；负数有效，不能当成概率或答案可信度。并列沿用输入名次，不混加两类分数。
+3. **模型输入与返回证据分离**：tokenizer真实token计数，only_second在512预算内保留query并截passage；原文/metadata不修改。超长query不静默截断。真实合成例3800字符对应2120个pair tokens，模型输入512，不能把字符数当token数。
+4. **加载和失败调用链**：构造config/scorer不加载Torch；非空请求→本地固定revision→分批tokenize→inference_mode→单logit/有限值检查→排序。模型缺失、形状或分数非法均抛明确错误，不返回伪造分数/空结果或自动重试。
+5. **如何读本日证据**：早期 [CPU历史收据](evidence/D15_RERANK_SMOKE.json)中，012的gold从3到1仅是单题；CPU首/热推断约9.37/8.13秒，后者不是生产P95。进程首次加载与OS磁盘缓存分开，合成诊断已先运行，不能声称冷盘测速。按用户明确选择完成的 [GPU实测](evidence/D15_GPU_RERANK_SMOKE.json)核对全部浮点模型参数为`cuda:0`/`float16`，首/热推断约1112.377/160.087ms、整个rerank约12007.819/174.468ms，每遍Torch分配器allocated峰值约1.09GiB，非整卡峰值。GPU首热分数相同，选中原候选名次`[3,4,2,1,5]`与CPU相同，但两种精度的最大logit差约0.087717。CPU float32与GPU float16同时改变硬件和精度，不能把单次差值解释为单因素加速。D16仍需固定同一候选/最终k作开发集对照。
+
+环境选择对应互斥可选组：CPU用`rerank`，官方CUDA 13.0依赖用`rerank-gpu`。已缓存同一模型时，GPU参考命令为`uv sync --frozen --group rerank-gpu`及`uv run --frozen --group rerank-gpu python scripts/rerank_smoke.py --local --device cuda --dtype float16`。CPU历史JSON及当时源码SHA保留；当前依赖配置变化后，新执行另记`pyproject.toml`/`uv.lock`的SHA。
+
+成熟Tokenizer/Transformer模型和PyTorch推断为复用能力；新项目独立实现预算、错误、身份保留、诊断与可复现入口。原项目reranker.py只作身份映射/延迟加载参考，没有将其英文FlashRank默认值或整套业务代码搬入新项目。学习后由用户主动开启D15手测，D16不自动推进。

@@ -1,0 +1,583 @@
+{
+  "schema_version": 1,
+  "scope": "D15-local-adapter-smoke-not-D16-evaluation",
+  "recorded_at": "2026-10-23T09:31:23.851659+00:00",
+  "executor": "Codex automatic development validation; user learning/manual tests pending",
+  "code": {
+    "commit": "4e3cfbae05150a11f0a2ae17ea6596da06317387",
+    "dirty": true
+  },
+  "configuration_fingerprint": "rerank-config-v1-b063e00722e4e79261280280e606581b9129bef13569c227e7dcd5e3172d3ad2",
+  "source_sha256": {
+    "evals/baseline.py": "0bb94ac7ff73996b322e0d8cb35c87e85955012c9f1085476d01ab2fc9f947d5",
+    "evals/baseline_config.py": "c88969ca0079c045a2ba97be6e875849ec2de852cfbdb3a8a9b25003726cb95d",
+    "evals/cache.py": "7f22c9d5b4b342998b2e6f34183d8884f3eb8765ba47e2d8514c21fb49228d5b",
+    "evals/run.py": "7d940200ceb90383158e13f04df7f3cbc8c921d8604b4de97dc1b325709bb5ae",
+    "evals/metrics.py": "a8ceead5799cb0384deac928a652a082a5a585338b67bbb2f3a93aef98ef979e",
+    "src/project_copilot/config.py": "3e6aff382e956f7b7caa6daf288dc9f4b039debaab163f9ba2ceba7a6c88f922",
+    "src/project_copilot/infrastructure/models.py": "46673765a8437a86cfaaf6bd053cf08601e016e037fd6beb67aaab6449c2d8d9",
+    "src/project_copilot/infrastructure/qdrant.py": "a792d03a8f6558421bb1d7aa89e5e3f28c35878fe54fbc36cf653b3cf94c8d8d",
+    "src/project_copilot/rag/answering.py": "b9304476659edd2ee600f9f8f8c2a442b3dce1053180d19154303319eb9e4d81",
+    "src/project_copilot/rag/ingestion.py": "d9865a7eed93631fc9a9ba94748066170dbc1a76b9f837634dc24a29b0effb7f",
+    "src/project_copilot/rag/retrieval.py": "3164d30cc905b70b00a83db892bfaacd89cd4194880f5454434d79f048e1ed55",
+    "src/project_copilot/rag/loaders.py": "fa6f345c2567da3494186e1ec8760986605e7e9941d098b5d0fff3055fb7fab7",
+    "src/project_copilot/rag/splitters.py": "7571edaa53b2d499fb4a34962efe02d186c512b800de9e0a52b3ab33fbce1aa5",
+    "src/project_copilot/schemas/rag.py": "9fe3a6f37bdb72f5adc3e83303c61d5d2c890f7929bbfcdc1f060caa3eba917c",
+    "src/project_copilot/schemas/documents.py": "1227b04b955bae9b5d670c53c57a8613fa8df9dd6ee028735d33956d0e33516e",
+    "src/project_copilot/schemas/retrieval.py": "49bc98c4282c732f9e8f7a99360d90715fff638997f2c75a7bdbdf4468813eb2",
+    "evals/hybrid_run.py": "98b811be8b022541f437b336fc76e2e608ff774d62ddb1b4f249fbf07e2e2148",
+    "evals/comparison.py": "b55915738115affa3b03bcb8e27d71f832a82077a69f4a853e8d213a0f42fee0",
+    "evals/freeze_dataset.py": "5b961a42eca10cb09293d970244863f98de0c9b4d48e2ae0e0fcd3ce258db2bb",
+    "evals/validate_dataset.py": "4eda09a21add766cc76155c98111d544161ef7cacb6e38d9c16fa9ff02bfbdc1",
+    "src/project_copilot/rag/bm25.py": "487b56bde868e70d72375fcff6474c8ca60170bac1f6b1e4f4099b1c28a7b31d",
+    "src/project_copilot/rag/fusion.py": "2c55019fc427c5fcd9e72741561dbc2a1a019ae295596a247dfb14997b7f92d4",
+    "src/project_copilot/rag/hybrid.py": "c3626e62ab493fb98e6b8219c21d8ad15ada506d34093efbccaaae2ad575c20a",
+    "src/project_copilot/rag/rerank.py": "53a50d785629ad574119f89c8dfd1d1e1a05910da05a48bfa6fdb004e7252e58",
+    "scripts/rerank_smoke.py": "552c6add432f8b71bb42464828f26d6f8f592a99db129ff7ebfbed7859396844",
+    "pyproject.toml": "c5c1b5cc8e0d51d929b4007795d52e0263fe5ec64b442f5bd84b7ffd1c4b227c",
+    "uv.lock": "2c35c635066b894a68a9f18e6d58e46cfdcd7891ead9d68be4b277b041890b6b"
+  },
+  "runtime": {
+    "python": "3.13.14",
+    "system": "Linux",
+    "machine": "x86_64",
+    "cpu": "13th Gen Intel(R) Core(TM) i5-13500HX",
+    "logical_cpus": 20,
+    "memory_total": "7973540 kB",
+    "gpu_observed": "NVIDIA GeForce RTX 4060 Laptop GPU, 8188 MiB; not used; CUDA execution not validated",
+    "packages": {
+      "torch": "2.14.1+cpu",
+      "transformers": "5.20.2",
+      "huggingface-hub": "2.3.0",
+      "tokenizers": "0.23.3",
+      "safetensors": "0.8.0"
+    },
+    "smoke_peak_rss_kib": 2097024,
+    "smoke_process_wall_seconds": 22.89
+  },
+  "cache_condition": "Project-only ignored models/huggingface cache; files already downloaded. Synthetic probe ran before CLI, OS file cache not cleared. Model load is first in process, not cold disk. Repeated pass explicitly reuses instance.",
+  "model_preparation": {
+    "model": "BAAI/bge-reranker-v2-m3",
+    "revision": "953dc6f6f85a1b2dbfca4c34a2796e7dde08d41e",
+    "prepared_at": "2026-10-23T09:24:53.385611+00:00",
+    "download_and_hash_ms": 158275.34154299792,
+    "files": {
+      "config.json": {
+        "bytes": 795,
+        "sha256": "13dcd6c31d9fec9d1d8e158702072f62d7fa7d312a64b9fe057bec9a08cfe41a"
+      },
+      "model.safetensors": {
+        "bytes": 2271071852,
+        "sha256": "d9e3e081faff1eefb84019509b2f5558fd74c1a05a2c7db22f74174fcedb5286"
+      },
+      "sentencepiece.bpe.model": {
+        "bytes": 5069051,
+        "sha256": "cfc8146abe2a0488e9e2a0c56de7952f7c11ab059eca145a0a727afce0db2865"
+      },
+      "special_tokens_map.json": {
+        "bytes": 964,
+        "sha256": "8c785abebea9ae3257b61681b4e6fd8365ceafde980c21970d001e834cf10835"
+      },
+      "tokenizer.json": {
+        "bytes": 17098273,
+        "sha256": "69564b696052886ed0ac63fa393e928384e0f8caada38c1f4864a9bfbf379c15"
+      },
+      "tokenizer_config.json": {
+        "bytes": 1173,
+        "sha256": "7e4c1cc848840aeccdd763458c18dd525eb0f795c992e00ebe9c28554e7db2d4"
+      }
+    },
+    "external_model_api_calls": 0
+  },
+  "smoke": {
+    "status": "ok",
+    "scope": "D15-single-question-local-smoke; no-dev-metrics-or-answer-evaluation",
+    "question_id": "pc-d7-012",
+    "query": "把同一文件改名再挪到另一个目录，内容没变，还算同一份文档吗？显示名称有什么作用？",
+    "source": {
+      "run_id": "hybrid-v2-20261022-01",
+      "archive_verified": true,
+      "dataset_fingerprint": "dataset-v1-54806b5174b2f3d2e4bd08b91b57569c5121929731112c3d375d4d42d4306b7e",
+      "configuration_fingerprint": "hybrid-experiment-v1-5b5039b64d2464e9dfb6e448b54de1c05b61376568f0e83983382c2c0e5a329e",
+      "archive_manifest_sha256": "0263150ef53e349415c3a4aad68c5bd218c0fa4bfeb194681338d4b7ce4055ab",
+      "hybrid_rankings_sha256": "9f28eb6001f1a0d39768da128d552fdb8bc3fa391a4e4cf45592b3c38c1b9096",
+      "candidate_policy": "pc-d7-012; first-10-archived-hybrid-hits; original-order"
+    },
+    "config": {
+      "model_name": "BAAI/bge-reranker-v2-m3",
+      "revision": "953dc6f6f85a1b2dbfca4c34a2796e7dde08d41e",
+      "device": "cpu",
+      "dtype": "float32",
+      "max_length": 512,
+      "batch_size": 2,
+      "max_candidates": 10,
+      "top_k": 5,
+      "cpu_threads": 4,
+      "local_files_only": true
+    },
+    "truncation_policy": "only_second; full-query-preserved; reject-query-budget-exhausted; original-hit-text-preserved",
+    "score_semantics": "cross-encoder-raw-logit; no-sigmoid; original-score-preserved",
+    "external_model_api_calls": 0,
+    "local_rerank_invocations": 2,
+    "scored_pairs": 20,
+    "qdrant_requests": 0,
+    "model_load_ms": 3580.8351949999633,
+    "timing_policy": "load-separate; first-and-warm-same-10-pairs; model-inference-excludes-tokenization; no-retry",
+    "first_pass": {
+      "scored_candidates": [
+        {
+          "candidate_rank": 1,
+          "chunk_id": "20d1d047-8c07-503d-8453-7927723589ba",
+          "original_score": 0.032266458495966696,
+          "text_sha256": "1d81d2cec890885aa7ee27a3166beb4cbbe083024d39cfa87a4f80f1bf982c67",
+          "raw_logit": -5.4512481689453125,
+          "original_pair_tokens": 430,
+          "input_tokens": 430,
+          "passage_truncated": false
+        },
+        {
+          "candidate_rank": 2,
+          "chunk_id": "c5870fa6-353b-5292-bdf6-a4431d0a40a6",
+          "original_score": 0.03225806451612903,
+          "text_sha256": "d7a7e7c496fc770609924b46586c70c9b6825df488baff7aed4b788cdaa6f95d",
+          "raw_logit": -5.183414459228516,
+          "original_pair_tokens": 436,
+          "input_tokens": 436,
+          "passage_truncated": false
+        },
+        {
+          "candidate_rank": 3,
+          "chunk_id": "17b8925a-2b6a-5793-87ad-1ca2c52f581e",
+          "original_score": 0.032018442622950824,
+          "text_sha256": "4ee55bc672a2cd3cb8e5c980f3b74fe601f744d669f03694c32fc29087f249ab",
+          "raw_logit": -3.111116409301758,
+          "original_pair_tokens": 451,
+          "input_tokens": 451,
+          "passage_truncated": false
+        },
+        {
+          "candidate_rank": 4,
+          "chunk_id": "48ae217d-7647-5925-9b58-ff495844778b",
+          "original_score": 0.03125763125763126,
+          "text_sha256": "64c681a3c20b8abfe1c9b4731143ac2ab07f01bbf0e1314cf3b9b8a8b0428a0b",
+          "raw_logit": -3.7579116821289062,
+          "original_pair_tokens": 462,
+          "input_tokens": 462,
+          "passage_truncated": false
+        },
+        {
+          "candidate_rank": 5,
+          "chunk_id": "b3cd958a-be0d-5eb1-8147-5672057ffa56",
+          "original_score": 0.031009615384615385,
+          "text_sha256": "bc3110174d6747f85e3d1253f521a990eee7bfbe35f5c13df3066a5f1eb8446e",
+          "raw_logit": -6.489745616912842,
+          "original_pair_tokens": 404,
+          "input_tokens": 404,
+          "passage_truncated": false
+        },
+        {
+          "candidate_rank": 6,
+          "chunk_id": "82b26223-62f3-504c-9e37-2417023504e1",
+          "original_score": 0.03007688828584351,
+          "text_sha256": "2ab107bc33b6a1a0323a6f9125df28bd00ae90c72f8c6f0c0ca26403b3883884",
+          "raw_logit": -6.996358394622803,
+          "original_pair_tokens": 440,
+          "input_tokens": 440,
+          "passage_truncated": false
+        },
+        {
+          "candidate_rank": 7,
+          "chunk_id": "5801b1f7-7482-5db1-af20-44b0357a7d94",
+          "original_score": 0.02919863597612958,
+          "text_sha256": "406e8146bff1e886d6a1c72fee8cd5c7bb5792e13c76d7475a92a53d79b39861",
+          "raw_logit": -7.2696685791015625,
+          "original_pair_tokens": 400,
+          "input_tokens": 400,
+          "passage_truncated": false
+        },
+        {
+          "candidate_rank": 8,
+          "chunk_id": "159f5fec-60b5-59b9-b908-bc7be3a96961",
+          "original_score": 0.028991596638655463,
+          "text_sha256": "b33c5ab2c7fbf9c298ec04ba6b4e50d535eacc278efdec46dea83b9b8fd3b857",
+          "raw_logit": -7.504759788513184,
+          "original_pair_tokens": 348,
+          "input_tokens": 348,
+          "passage_truncated": false
+        },
+        {
+          "candidate_rank": 9,
+          "chunk_id": "ecb74e18-60f1-5342-865e-cbd161d7ba15",
+          "original_score": 0.015151515151515152,
+          "text_sha256": "47422ef2620b9612ea0699a11a994e13b5373156daa5c90e6f7a6e6b0f816de8",
+          "raw_logit": -7.384592056274414,
+          "original_pair_tokens": 359,
+          "input_tokens": 359,
+          "passage_truncated": false
+        },
+        {
+          "candidate_rank": 10,
+          "chunk_id": "dab7f42d-d0d9-5882-882c-a33d49e20bcb",
+          "original_score": 0.014925373134328358,
+          "text_sha256": "1fcb1b32489e41f39ed6caf7210a2f86937540aae279fdf7a7cd57c26ab87427",
+          "raw_logit": -7.181216716766357,
+          "original_pair_tokens": 391,
+          "input_tokens": 391,
+          "passage_truncated": false
+        }
+      ],
+      "selected_hits": [
+        {
+          "rerank_rank": 1,
+          "candidate_rank": 3,
+          "rerank_score": -3.111116409301758,
+          "hit": {
+            "text": "# Dense身份与引用排查笔记\n\n资料日期：2026-10-16。适用范围：Project Copilot D3～D6，公开代码快照3f3159965b94655095acca599333e318dc5287b7。本文由Codex从自编样本、源码及实际记录整理，仍待人工核验，不代表已完成人工gold。\n\n## 样本页码与原文\n\n自编sample.pdf共3页，原始页索引为0、1、2；页1为空白。loader保留全部页及原索引，splitter跳过空白文本且不跨页合并，所以默认只产生页0、页2的两个片段。空白页不会使原页2重新编号为页1；TXT和Markdown的page则为null。\n\n第一页片段原文是“Project Copilot page one: local document loading.”。页码0表示PDF第一页，不表示文件缺少第一页。D6用户问“样本文档第一页描述了什么功能？”，真实回答提到本地文档加载，引用来自sample.pdf页0，与该原文一致。\n\n## 文档与片段身份\n\nloader对一次读取的文件字节计算SHA-256，再以内容哈希生成稳定document_id。仅改文件名或物理路径，字节不变时文档身份不变。source_name负责展示来源，不参与文档身份。\n\nchunk_id由文档身份、切分版本、原页索引、片段位置和片段文本哈希共同生成。切分参数或相关实现版本变化，会改变切分指纹并影响片段身份；相同原文出现在不同位置也不会合并为一个片段。D3用户验证了改名后身份稳定，以及将切分参数改为15/3后版本与片段ID变化。\n\n## 成功清单与重复上传",
+            "metadata": {
+              "document_id": "4a53c91e-5675-5e39-8b79-491aa96ea5c7",
+              "content_hash": "e9de4bda8b4a0bb64c97168f37c38ab25d8bf4c49c857fd92004359eb58313c4",
+              "source_name": "dense_identity_and_citations.md",
+              "page": null,
+              "chunk_id": "17b8925a-2b6a-5793-87ad-1ca2c52f581e",
+              "chunk_index": 0,
+              "index_version": "split-v1-bccb93671dcace12f58d366eb4ec6f530be20573f8b948a17484a0a00c989e78"
+            },
+            "score": 0.032018442622950824
+          }
+        },
+        {
+          "rerank_rank": 2,
+          "candidate_rank": 4,
+          "rerank_score": -3.7579116821289062,
+          "hit": {
+            "text": "\n\nchunk_id由文档身份、切分版本、原页索引、片段位置和片段文本哈希共同生成。切分参数或相关实现版本变化，会改变切分指纹并影响片段身份；相同原文出现在不同位置也不会合并为一个片段。D3用户验证了改名后身份稳定，以及将切分参数改为15/3后版本与片段ID变化。\n\n## 成功清单与重复上传\n\n入库依次完成加载、切分、检查清单与集合契约、Embedding、Qdrant upsert，最后写入本地成功清单。清单保存同一集合的模型、维度、切分等配置；不一致时拒绝混用。清单文件用临时写入加原子替换，不能据此声称Qdrant与本地文件具备跨存储事务。\n\nD6重复上传相同sample.pdf后，响应为indexed、2个片段、1167字节，清单仍是一份文档，Qdrant精确点数仍为2。upsert复用稳定片段ID，没有累加成4点。这个结果只说明该样本的身份复用，不等于完整故障恢复验证。\n\n## 引用契约与事实支持\n\n模型只生成status、answer和citation_numbers。后端先解析JSON并用ModelAnswer校验状态、引用是否为空及编号是否重复；回答编排再结合本次上下文检查编号是否越界。随后按编号从本次真实证据构造原文、来源、页码等引用元数据。answered必须有引用，证据不足时引用必须为空。\n\nJSON语法正确、Pydantic校验通过和引用编号有效，均不能自动证明答案得到原文事实支持；仍需人工逐条核对问题、答案与证据。本轮只验证了一个已知事实，不能据此报告完整RAG准确率、Recall或MRR。\n\n## 可追溯来源",
+            "metadata": {
+              "document_id": "4a53c91e-5675-5e39-8b79-491aa96ea5c7",
+              "content_hash": "e9de4bda8b4a0bb64c97168f37c38ab25d8bf4c49c857fd92004359eb58313c4",
+              "source_name": "dense_identity_and_citations.md",
+              "page": null,
+              "chunk_id": "48ae217d-7647-5925-9b58-ff495844778b",
+              "chunk_index": 1,
+              "index_version": "split-v1-bccb93671dcace12f58d366eb4ec6f530be20573f8b948a17484a0a00c989e78"
+            },
+            "score": 0.03125763125763126
+          }
+        },
+        {
+          "rerank_rank": 3,
+          "candidate_rank": 2,
+          "rerank_score": -5.183414459228516,
+          "hit": {
+            "text": "\n\n实现支持.txt、.md、.pdf，并对后缀及基本MIME做匹配检查；实际内容还要经过UTF-8或PDF解析，不能只凭Content-Type判断文件有效。用户把PDF的上传名称改成sample.exe得到415；0字节TXT得到422“上传文件不能为空”。这些拒绝发生在模型请求前。\n\n默认文件额度是5242880字节，即5MiB。D6用户上传5242881字节的TXT得到413“上传文件超过允许的大小”。框架另外限制整个HTTP请求体，默认额度为文件上限加65536字节，即5308416字节，给multipart封装留空间。这两个检查对象不同；该次用户实测证明了文件额度分支，没有单独手测整个请求体上限。\n\n用户在超限上传时先看见100 Continue，再看见413。100是允许继续发送请求体的临时响应，最终拒绝状态仍是413。\n\n## 临时文件与请求关联\n\n服务端将内容复制到随机的project-copilot-upload-前缀临时文件，原文件名仅作来源元数据。finally负责删除临时副本；用户保存在data/manual-d6的输入样本不会因此删除。D6用户在失败后检查/tmp为0；完成真实上传、问答并停止后端后再次检查，残留临时副本数也为0。\n\n响应头X-Run-ID与完成日志关联；上传成功正文也有同一个run_id。trace_exported=false表示没有导出Phoenix Trace。并发忙碌409、整体body超限及上游异常由自动测试覆盖，本轮用户没有手测这些分支。\n\n## 可追溯来源",
+            "metadata": {
+              "document_id": "233ed25d-d962-51e2-9f55-799215258f04",
+              "content_hash": "5b1f0d1b0be2fe57399a20708764877a93fb6ff2dcf924a409cf06b5354c53aa",
+              "source_name": "upload_troubleshooting.md",
+              "page": null,
+              "chunk_id": "c5870fa6-353b-5292-bdf6-a4431d0a40a6",
+              "chunk_index": 1,
+              "index_version": "split-v1-bccb93671dcace12f58d366eb4ec6f530be20573f8b948a17484a0a00c989e78"
+            },
+            "score": 0.03225806451612903
+          }
+        },
+        {
+          "rerank_rank": 4,
+          "candidate_rank": 1,
+          "rerank_score": -5.4512481689453125,
+          "hit": {
+            "text": "# 单文件上传排查笔记\n\n资料日期：2026-10-16。适用范围：Project Copilot D6，FastAPI 0.138.2、Starlette 1.7.0，公开代码快照3f3159965b94655095acca599333e318dc5287b7。本文是Codex整理的来源草稿，待人工核验；下文分清用户实测与实现契约。\n\n## curl文件表单\n\n上传入口是POST /documents/upload，只接受一个名为file的文件字段。正确的表单参数是 `-F 'file=@路径;type=application/pdf'`。大写-F提交multipart表单并自动选择POST；小写-f表示HTTP错误检查，不会创建文件表单。@必须紧接等号，表示读取本地文件；file=/@路径会变成普通字段内容。\n\nD6用户误写小写-f后实际发送GET，得到405及Allow: POST；在引号内给字段名加入换行后，又因缺少有效file上传字段得到422。修正为file=@路径后进入正常的文件校验。Shell续行反斜杠消除换行，不会自动补空格；--show-error后缺少分隔空格会和下一行URL拼成未知选项，该错误发生在发送请求之前。\n\n## 类型、空文件和额度\n\n实现支持.txt、.md、.pdf，并对后缀及基本MIME做匹配检查；实际内容还要经过UTF-8或PDF解析，不能只凭Content-Type判断文件有效。用户把PDF的上传名称改成sample.exe得到415；0字节TXT得到422“上传文件不能为空”。这些拒绝发生在模型请求前。",
+            "metadata": {
+              "document_id": "233ed25d-d962-51e2-9f55-799215258f04",
+              "content_hash": "5b1f0d1b0be2fe57399a20708764877a93fb6ff2dcf924a409cf06b5354c53aa",
+              "source_name": "upload_troubleshooting.md",
+              "page": null,
+              "chunk_id": "20d1d047-8c07-503d-8453-7927723589ba",
+              "chunk_index": 0,
+              "index_version": "split-v1-bccb93671dcace12f58d366eb4ec6f530be20573f8b948a17484a0a00c989e78"
+            },
+            "score": 0.032266458495966696
+          }
+        },
+        {
+          "rerank_rank": 5,
+          "candidate_rank": 5,
+          "rerank_score": -6.489745616912842,
+          "hit": {
+            "text": "# Compose环境与服务边界笔记\n\n资料核对日期：2026-10-16。适用范围：Docker Compose命令行与本项目Qdrant v1.19.2服务，项目快照3f3159965b94655095acca599333e318dc5287b7。Docker资料为核对当日官方文档，项目未记录Compose客户端精确版本。本文是Codex自编中文来源草稿，待人工核验，不是Docker官方文档译文或人工gold。\n\n## 命令行变量文件\n\ndocker compose --env-file .env.example up -d qdrant中的--env-file是Compose命令行选项，不要求YAML存在同名字段。它指定Compose读取的变量文件，供解析${变量名}之类占位符使用；不会仅凭这个选项就把所有变量注入容器。[官方变量替换说明](https://docs.docker.com/compose/how-tos/environment-variables/variable-interpolation/)\n\n## 容器环境变量\n\n服务的environment可以直接声明容器环境变量，也可引用Compose先解析出的值；服务的env_file让Compose从指定文件取得要传给该容器的变量。命令行--env-file与服务env_file属于不同配置层次，不能因名称相似而等同。[官方容器变量说明](https://docs.docker.com/compose/how-tos/environment-variables/set-environment-variables/)\n\n## 当前项目为什么可以省略",
+            "metadata": {
+              "document_id": "41e0a6d7-7148-5641-88e4-1ca3aba61fd1",
+              "content_hash": "430461b2055a55124fb75c340ba1304fa8ef1b3ea4079177e4848546e488c41e",
+              "source_name": "compose_environment.md",
+              "page": null,
+              "chunk_id": "b3cd958a-be0d-5eb1-8147-5672057ffa56",
+              "chunk_index": 0,
+              "index_version": "split-v1-bccb93671dcace12f58d366eb4ec6f530be20573f8b948a17484a0a00c989e78"
+            },
+            "score": 0.031009615384615385
+          }
+        }
+      ],
+      "truncated_pairs": 0,
+      "timings_ms": {
+        "total": 12963.559100997372,
+        "scoring_total": 12963.454985998396,
+        "model_load": 3580.8351949999633,
+        "model_inference": 9370.54585000078
+      }
+    },
+    "warm_repeat": {
+      "scored_candidates": [
+        {
+          "candidate_rank": 1,
+          "chunk_id": "20d1d047-8c07-503d-8453-7927723589ba",
+          "original_score": 0.032266458495966696,
+          "text_sha256": "1d81d2cec890885aa7ee27a3166beb4cbbe083024d39cfa87a4f80f1bf982c67",
+          "raw_logit": -5.4512481689453125,
+          "original_pair_tokens": 430,
+          "input_tokens": 430,
+          "passage_truncated": false
+        },
+        {
+          "candidate_rank": 2,
+          "chunk_id": "c5870fa6-353b-5292-bdf6-a4431d0a40a6",
+          "original_score": 0.03225806451612903,
+          "text_sha256": "d7a7e7c496fc770609924b46586c70c9b6825df488baff7aed4b788cdaa6f95d",
+          "raw_logit": -5.183414459228516,
+          "original_pair_tokens": 436,
+          "input_tokens": 436,
+          "passage_truncated": false
+        },
+        {
+          "candidate_rank": 3,
+          "chunk_id": "17b8925a-2b6a-5793-87ad-1ca2c52f581e",
+          "original_score": 0.032018442622950824,
+          "text_sha256": "4ee55bc672a2cd3cb8e5c980f3b74fe601f744d669f03694c32fc29087f249ab",
+          "raw_logit": -3.111116409301758,
+          "original_pair_tokens": 451,
+          "input_tokens": 451,
+          "passage_truncated": false
+        },
+        {
+          "candidate_rank": 4,
+          "chunk_id": "48ae217d-7647-5925-9b58-ff495844778b",
+          "original_score": 0.03125763125763126,
+          "text_sha256": "64c681a3c20b8abfe1c9b4731143ac2ab07f01bbf0e1314cf3b9b8a8b0428a0b",
+          "raw_logit": -3.7579116821289062,
+          "original_pair_tokens": 462,
+          "input_tokens": 462,
+          "passage_truncated": false
+        },
+        {
+          "candidate_rank": 5,
+          "chunk_id": "b3cd958a-be0d-5eb1-8147-5672057ffa56",
+          "original_score": 0.031009615384615385,
+          "text_sha256": "bc3110174d6747f85e3d1253f521a990eee7bfbe35f5c13df3066a5f1eb8446e",
+          "raw_logit": -6.489745616912842,
+          "original_pair_tokens": 404,
+          "input_tokens": 404,
+          "passage_truncated": false
+        },
+        {
+          "candidate_rank": 6,
+          "chunk_id": "82b26223-62f3-504c-9e37-2417023504e1",
+          "original_score": 0.03007688828584351,
+          "text_sha256": "2ab107bc33b6a1a0323a6f9125df28bd00ae90c72f8c6f0c0ca26403b3883884",
+          "raw_logit": -6.996358394622803,
+          "original_pair_tokens": 440,
+          "input_tokens": 440,
+          "passage_truncated": false
+        },
+        {
+          "candidate_rank": 7,
+          "chunk_id": "5801b1f7-7482-5db1-af20-44b0357a7d94",
+          "original_score": 0.02919863597612958,
+          "text_sha256": "406e8146bff1e886d6a1c72fee8cd5c7bb5792e13c76d7475a92a53d79b39861",
+          "raw_logit": -7.2696685791015625,
+          "original_pair_tokens": 400,
+          "input_tokens": 400,
+          "passage_truncated": false
+        },
+        {
+          "candidate_rank": 8,
+          "chunk_id": "159f5fec-60b5-59b9-b908-bc7be3a96961",
+          "original_score": 0.028991596638655463,
+          "text_sha256": "b33c5ab2c7fbf9c298ec04ba6b4e50d535eacc278efdec46dea83b9b8fd3b857",
+          "raw_logit": -7.504759788513184,
+          "original_pair_tokens": 348,
+          "input_tokens": 348,
+          "passage_truncated": false
+        },
+        {
+          "candidate_rank": 9,
+          "chunk_id": "ecb74e18-60f1-5342-865e-cbd161d7ba15",
+          "original_score": 0.015151515151515152,
+          "text_sha256": "47422ef2620b9612ea0699a11a994e13b5373156daa5c90e6f7a6e6b0f816de8",
+          "raw_logit": -7.384592056274414,
+          "original_pair_tokens": 359,
+          "input_tokens": 359,
+          "passage_truncated": false
+        },
+        {
+          "candidate_rank": 10,
+          "chunk_id": "dab7f42d-d0d9-5882-882c-a33d49e20bcb",
+          "original_score": 0.014925373134328358,
+          "text_sha256": "1fcb1b32489e41f39ed6caf7210a2f86937540aae279fdf7a7cd57c26ab87427",
+          "raw_logit": -7.181216716766357,
+          "original_pair_tokens": 391,
+          "input_tokens": 391,
+          "passage_truncated": false
+        }
+      ],
+      "selected_hits": [
+        {
+          "rerank_rank": 1,
+          "candidate_rank": 3,
+          "rerank_score": -3.111116409301758,
+          "hit": {
+            "text": "# Dense身份与引用排查笔记\n\n资料日期：2026-10-16。适用范围：Project Copilot D3～D6，公开代码快照3f3159965b94655095acca599333e318dc5287b7。本文由Codex从自编样本、源码及实际记录整理，仍待人工核验，不代表已完成人工gold。\n\n## 样本页码与原文\n\n自编sample.pdf共3页，原始页索引为0、1、2；页1为空白。loader保留全部页及原索引，splitter跳过空白文本且不跨页合并，所以默认只产生页0、页2的两个片段。空白页不会使原页2重新编号为页1；TXT和Markdown的page则为null。\n\n第一页片段原文是“Project Copilot page one: local document loading.”。页码0表示PDF第一页，不表示文件缺少第一页。D6用户问“样本文档第一页描述了什么功能？”，真实回答提到本地文档加载，引用来自sample.pdf页0，与该原文一致。\n\n## 文档与片段身份\n\nloader对一次读取的文件字节计算SHA-256，再以内容哈希生成稳定document_id。仅改文件名或物理路径，字节不变时文档身份不变。source_name负责展示来源，不参与文档身份。\n\nchunk_id由文档身份、切分版本、原页索引、片段位置和片段文本哈希共同生成。切分参数或相关实现版本变化，会改变切分指纹并影响片段身份；相同原文出现在不同位置也不会合并为一个片段。D3用户验证了改名后身份稳定，以及将切分参数改为15/3后版本与片段ID变化。\n\n## 成功清单与重复上传",
+            "metadata": {
+              "document_id": "4a53c91e-5675-5e39-8b79-491aa96ea5c7",
+              "content_hash": "e9de4bda8b4a0bb64c97168f37c38ab25d8bf4c49c857fd92004359eb58313c4",
+              "source_name": "dense_identity_and_citations.md",
+              "page": null,
+              "chunk_id": "17b8925a-2b6a-5793-87ad-1ca2c52f581e",
+              "chunk_index": 0,
+              "index_version": "split-v1-bccb93671dcace12f58d366eb4ec6f530be20573f8b948a17484a0a00c989e78"
+            },
+            "score": 0.032018442622950824
+          }
+        },
+        {
+          "rerank_rank": 2,
+          "candidate_rank": 4,
+          "rerank_score": -3.7579116821289062,
+          "hit": {
+            "text": "\n\nchunk_id由文档身份、切分版本、原页索引、片段位置和片段文本哈希共同生成。切分参数或相关实现版本变化，会改变切分指纹并影响片段身份；相同原文出现在不同位置也不会合并为一个片段。D3用户验证了改名后身份稳定，以及将切分参数改为15/3后版本与片段ID变化。\n\n## 成功清单与重复上传\n\n入库依次完成加载、切分、检查清单与集合契约、Embedding、Qdrant upsert，最后写入本地成功清单。清单保存同一集合的模型、维度、切分等配置；不一致时拒绝混用。清单文件用临时写入加原子替换，不能据此声称Qdrant与本地文件具备跨存储事务。\n\nD6重复上传相同sample.pdf后，响应为indexed、2个片段、1167字节，清单仍是一份文档，Qdrant精确点数仍为2。upsert复用稳定片段ID，没有累加成4点。这个结果只说明该样本的身份复用，不等于完整故障恢复验证。\n\n## 引用契约与事实支持\n\n模型只生成status、answer和citation_numbers。后端先解析JSON并用ModelAnswer校验状态、引用是否为空及编号是否重复；回答编排再结合本次上下文检查编号是否越界。随后按编号从本次真实证据构造原文、来源、页码等引用元数据。answered必须有引用，证据不足时引用必须为空。\n\nJSON语法正确、Pydantic校验通过和引用编号有效，均不能自动证明答案得到原文事实支持；仍需人工逐条核对问题、答案与证据。本轮只验证了一个已知事实，不能据此报告完整RAG准确率、Recall或MRR。\n\n## 可追溯来源",
+            "metadata": {
+              "document_id": "4a53c91e-5675-5e39-8b79-491aa96ea5c7",
+              "content_hash": "e9de4bda8b4a0bb64c97168f37c38ab25d8bf4c49c857fd92004359eb58313c4",
+              "source_name": "dense_identity_and_citations.md",
+              "page": null,
+              "chunk_id": "48ae217d-7647-5925-9b58-ff495844778b",
+              "chunk_index": 1,
+              "index_version": "split-v1-bccb93671dcace12f58d366eb4ec6f530be20573f8b948a17484a0a00c989e78"
+            },
+            "score": 0.03125763125763126
+          }
+        },
+        {
+          "rerank_rank": 3,
+          "candidate_rank": 2,
+          "rerank_score": -5.183414459228516,
+          "hit": {
+            "text": "\n\n实现支持.txt、.md、.pdf，并对后缀及基本MIME做匹配检查；实际内容还要经过UTF-8或PDF解析，不能只凭Content-Type判断文件有效。用户把PDF的上传名称改成sample.exe得到415；0字节TXT得到422“上传文件不能为空”。这些拒绝发生在模型请求前。\n\n默认文件额度是5242880字节，即5MiB。D6用户上传5242881字节的TXT得到413“上传文件超过允许的大小”。框架另外限制整个HTTP请求体，默认额度为文件上限加65536字节，即5308416字节，给multipart封装留空间。这两个检查对象不同；该次用户实测证明了文件额度分支，没有单独手测整个请求体上限。\n\n用户在超限上传时先看见100 Continue，再看见413。100是允许继续发送请求体的临时响应，最终拒绝状态仍是413。\n\n## 临时文件与请求关联\n\n服务端将内容复制到随机的project-copilot-upload-前缀临时文件，原文件名仅作来源元数据。finally负责删除临时副本；用户保存在data/manual-d6的输入样本不会因此删除。D6用户在失败后检查/tmp为0；完成真实上传、问答并停止后端后再次检查，残留临时副本数也为0。\n\n响应头X-Run-ID与完成日志关联；上传成功正文也有同一个run_id。trace_exported=false表示没有导出Phoenix Trace。并发忙碌409、整体body超限及上游异常由自动测试覆盖，本轮用户没有手测这些分支。\n\n## 可追溯来源",
+            "metadata": {
+              "document_id": "233ed25d-d962-51e2-9f55-799215258f04",
+              "content_hash": "5b1f0d1b0be2fe57399a20708764877a93fb6ff2dcf924a409cf06b5354c53aa",
+              "source_name": "upload_troubleshooting.md",
+              "page": null,
+              "chunk_id": "c5870fa6-353b-5292-bdf6-a4431d0a40a6",
+              "chunk_index": 1,
+              "index_version": "split-v1-bccb93671dcace12f58d366eb4ec6f530be20573f8b948a17484a0a00c989e78"
+            },
+            "score": 0.03225806451612903
+          }
+        },
+        {
+          "rerank_rank": 4,
+          "candidate_rank": 1,
+          "rerank_score": -5.4512481689453125,
+          "hit": {
+            "text": "# 单文件上传排查笔记\n\n资料日期：2026-10-16。适用范围：Project Copilot D6，FastAPI 0.138.2、Starlette 1.7.0，公开代码快照3f3159965b94655095acca599333e318dc5287b7。本文是Codex整理的来源草稿，待人工核验；下文分清用户实测与实现契约。\n\n## curl文件表单\n\n上传入口是POST /documents/upload，只接受一个名为file的文件字段。正确的表单参数是 `-F 'file=@路径;type=application/pdf'`。大写-F提交multipart表单并自动选择POST；小写-f表示HTTP错误检查，不会创建文件表单。@必须紧接等号，表示读取本地文件；file=/@路径会变成普通字段内容。\n\nD6用户误写小写-f后实际发送GET，得到405及Allow: POST；在引号内给字段名加入换行后，又因缺少有效file上传字段得到422。修正为file=@路径后进入正常的文件校验。Shell续行反斜杠消除换行，不会自动补空格；--show-error后缺少分隔空格会和下一行URL拼成未知选项，该错误发生在发送请求之前。\n\n## 类型、空文件和额度\n\n实现支持.txt、.md、.pdf，并对后缀及基本MIME做匹配检查；实际内容还要经过UTF-8或PDF解析，不能只凭Content-Type判断文件有效。用户把PDF的上传名称改成sample.exe得到415；0字节TXT得到422“上传文件不能为空”。这些拒绝发生在模型请求前。",
+            "metadata": {
+              "document_id": "233ed25d-d962-51e2-9f55-799215258f04",
+              "content_hash": "5b1f0d1b0be2fe57399a20708764877a93fb6ff2dcf924a409cf06b5354c53aa",
+              "source_name": "upload_troubleshooting.md",
+              "page": null,
+              "chunk_id": "20d1d047-8c07-503d-8453-7927723589ba",
+              "chunk_index": 0,
+              "index_version": "split-v1-bccb93671dcace12f58d366eb4ec6f530be20573f8b948a17484a0a00c989e78"
+            },
+            "score": 0.032266458495966696
+          }
+        },
+        {
+          "rerank_rank": 5,
+          "candidate_rank": 5,
+          "rerank_score": -6.489745616912842,
+          "hit": {
+            "text": "# Compose环境与服务边界笔记\n\n资料核对日期：2026-10-16。适用范围：Docker Compose命令行与本项目Qdrant v1.19.2服务，项目快照3f3159965b94655095acca599333e318dc5287b7。Docker资料为核对当日官方文档，项目未记录Compose客户端精确版本。本文是Codex自编中文来源草稿，待人工核验，不是Docker官方文档译文或人工gold。\n\n## 命令行变量文件\n\ndocker compose --env-file .env.example up -d qdrant中的--env-file是Compose命令行选项，不要求YAML存在同名字段。它指定Compose读取的变量文件，供解析${变量名}之类占位符使用；不会仅凭这个选项就把所有变量注入容器。[官方变量替换说明](https://docs.docker.com/compose/how-tos/environment-variables/variable-interpolation/)\n\n## 容器环境变量\n\n服务的environment可以直接声明容器环境变量，也可引用Compose先解析出的值；服务的env_file让Compose从指定文件取得要传给该容器的变量。命令行--env-file与服务env_file属于不同配置层次，不能因名称相似而等同。[官方容器变量说明](https://docs.docker.com/compose/how-tos/environment-variables/set-environment-variables/)\n\n## 当前项目为什么可以省略",
+            "metadata": {
+              "document_id": "41e0a6d7-7148-5641-88e4-1ca3aba61fd1",
+              "content_hash": "430461b2055a55124fb75c340ba1304fa8ef1b3ea4079177e4848546e488c41e",
+              "source_name": "compose_environment.md",
+              "page": null,
+              "chunk_id": "b3cd958a-be0d-5eb1-8147-5672057ffa56",
+              "chunk_index": 0,
+              "index_version": "split-v1-bccb93671dcace12f58d366eb4ec6f530be20573f8b948a17484a0a00c989e78"
+            },
+            "score": 0.031009615384615385
+          }
+        }
+      ],
+      "truncated_pairs": 0,
+      "timings_ms": {
+        "total": 8143.6887989984825,
+        "scoring_total": 8143.571472999611,
+        "model_load": 0.0,
+        "model_inference": 8131.491131996881
+      }
+    }
+  },
+  "synthetic_truncation_probe": {
+    "status": "ok",
+    "kind": "synthetic_truncation_probe",
+    "config": {
+      "model_name": "BAAI/bge-reranker-v2-m3",
+      "revision": "953dc6f6f85a1b2dbfca4c34a2796e7dde08d41e",
+      "device": "cpu",
+      "dtype": "float32",
+      "max_length": 512,
+      "batch_size": 2,
+      "max_candidates": 10,
+      "top_k": 5,
+      "cpu_threads": 4,
+      "local_files_only": true
+    },
+    "pair_count": 1,
+    "score": 4.834563255310059,
+    "diagnostic": {
+      "original_pair_tokens": 2120,
+      "input_tokens": 512,
+      "passage_truncated": true
+    },
+    "original_chars": 3800,
+    "original_text_sha256": "f7902a5be9d50e97c4593d942951a8af10877c14a31129687b401e0f5b5c6e33",
+    "original_text_unchanged": true,
+    "model_load_ms": 11385.796385002322,
+    "inference_ms": 1378.1002600007923,
+    "total_ms": 12767.940722998901,
+    "external_model_api_calls": 0,
+    "oversized_query": {
+      "rejected": true,
+      "message": "查询token加特殊token已用尽max_length，无法保留片段输入",
+      "inference_ms": 0.0
+    },
+    "peak_rss_kib": 1951800
+  },
+  "activity": {
+    "successful_local_score_calls": 3,
+    "scored_query_passage_pairs": 21,
+    "oversized_query_rejected_before_inference": 1,
+    "external_model_api_calls": 0,
+    "qdrant_requests": 0
+  },
+  "limits": [
+    "One archived dev question and one synthetic passage only; no full dev/holdout metrics.",
+    "No answer generation, refusal or citation quality evaluation.",
+    "Raw logits are not confidence or probabilities; negative scores are valid.",
+    "Single process measurements; no GPU test, statistical latency or production throughput claim.",
+    "User ChatGPT learning/manual testing and Git writes remain separate."
+  ]
+}

@@ -1,6 +1,6 @@
 # Project Copilot
 
-基于RAG与LangGraph的研发知识及工单协作智能体。D1–D14阶段A/B已完成，D14开发提交26b2197已同步；2026-10-23用户完成离线手动验证并确认ChatGPT学习理解，本次收尾文档待用户提交，见 [D14报告](docs/reports/DAY_14.md)。当前默认切分仍为750/150，问答API继续使用Dense；下一Day等待用户明确开启。
+基于RAG与LangGraph的研发知识及工单协作智能体。D1–D14阶段A/B已完成，D14收尾4e3cfba已同步。D15新增本地中文Cross-Encoder最小适配，保留早期CPU单题证据；按用户明确偏好安装CUDA依赖并完成GPU float16单题实测。自动验证与交接状态见 [D15报告](docs/reports/DAY_15.md)；阶段A待用户提交推送，阶段B待ChatGPT学习和用户主动手测。默认切分仍750/150，问答API继续使用Dense，D16未开启。
 
 协作流程见 [长期协作规则](docs/COLLABORATION_RULES.md)：Codex开发、自动验证、提供报告并指导Git操作；用户亲自提交和推送GitHub，随后通过ChatGPT学习代码/架构，学习后主动要求Codex开始手动测试。以下命令是自助运行参考，Codex仅在用户要求后单步带练。
 
@@ -259,3 +259,33 @@ uv run --frozen python scripts/bm25_index.py search "/documents/upload" \
 [独立采集器](evals/hybrid_run.py)复用原30个问题向量，读取相同16片段，Dense/BM25各最多10候选、RRF输出深度10，最终证据预算仍5块。每题各检索一次后共享候选，实际30次Qdrant查询、30次BM25查询、30次融合，模型请求及Qdrant写入均0。
 
 真实dev的26可答题中，三路证据Recall@5均1.0，证据MRR@5依次为Dense0.8365、BM250.9327、Hybrid0.8974。Hybrid相对Dense6改善/0退化/20不变，但相对BM252改善/4退化/20不变；4无答案另计，未生成回答。完整逐题排名、候选来源和耗时见 [V2实验报告](evals/reports/HYBRID_V2.md)及 [公开归档](evals/results/hybrid-v2-20261022-01/manifest.json)。Hybrid总耗时为共享分支与融合的顺序合计，不能视为独立端到端实测或据单轮判断泛化/提速。2026-10-23用户完成归档校验、三路离线重评分、012计算反馈及副本变化拒绝，确认学习理解；原归档机器pending状态保留，人工结果另记于D14报告。方案选择留D17，D15等待明确要求。
+
+## D15：本地Cross-Encoder最小重排
+
+[重排适配器](src/project_copilot/rag/rerank.py)只给现有候选评分，默认最多10块、输出5块；另存raw logit和候选原排名，原文、metadata及原检索分数保持。模型首次非空评分才从项目本地缓存加载，缺缓存/加载或评分失败明确报错，不自动下载或回退。没有接入默认问答API。
+
+固定`BAAI/bge-reranker-v2-m3`的revision为`953dc6f6f85a1b2dbfca4c34a2796e7dde08d41e`，共用batch2、512 token输入预算。早期验证使用CPU float32、4线程；用户明确选择后，已在RTX 4060 Laptop GPU上实测CUDA float16，并核对全部浮点模型参数实际为`cuda:0`/`float16`。`only_second`保留完整query，仅截passage；query用尽预算时拒绝。512是项目选择，不是模型最大长度；输出仍为完整原片段。
+
+可选组`rerank`使用PyTorch CPU，`rerank-gpu`使用官方CUDA 13.0源及其CUDA依赖；两组互斥，基础服务不要求安装或加载它们。以下是用户选择的GPU方案自助参考；用户手测仍等主动开启。本机已缓存相同固定模型，无需重新下载权重：
+
+```bash
+uv sync --frozen --group rerank-gpu
+uv run --frozen --group rerank-gpu python scripts/rerank_smoke.py --local --device cuda --dtype float16
+```
+
+新环境尚无固定模型缓存时，先显式准备一次；下载约2.29GB至忽略目录`models/`：
+
+```bash
+uv run --frozen --group rerank-gpu hf download BAAI/bge-reranker-v2-m3 \
+  --revision 953dc6f6f85a1b2dbfca4c34a2796e7dde08d41e \
+  --cache-dir models/huggingface \
+  --include config.json model.safetensors tokenizer.json tokenizer_config.json special_tokens_map.json sentencepiece.bpe.model
+```
+
+推断脚本只读固定本地快照，无`--local`退出2。CPU方案可单独使用`uv sync --frozen --group rerank`及`uv run --frozen --group rerank python scripts/rerank_smoke.py --local`；CPU组不能执行CUDA，不同时安装两组。模型与用法见 [官方模型卡](https://huggingface.co/BAAI/bge-reranker-v2-m3)，源配置见 [uv官方说明](https://docs.astral.sh/uv/guides/integration/pytorch/)。
+
+2026-10-23 Codex早期CPU验证复用D14公开012的10个候选，首/热各评分一次；gold块从候选第3排到第1，两遍分数一致，原文/身份逐值保持。另有合成长文2120→512 tokens诊断和超长query推断前拒绝。共21个本地pair，外部模型API/Qdrant请求0；[CPU历史收据](docs/evidence/D15_RERANK_SMOKE.json)原字节保留，其源码/依赖SHA表示当时身份，新增GPU组后的`pyproject.toml`/`uv.lock`另属当前执行身份。
+
+GPU实测详见 [GPU验收收据](docs/evidence/D15_GPU_RERANK_SMOKE.json)：Torch 2.14.1+cu130、CUDA编译版本13.0，首/热推断约1112.377/160.087ms，首/热整个rerank约12007.819/174.468ms，首次模型加载10856.167ms。每遍Torch分配器峰值allocated为1166032896字节（约1.09GiB）、reserved为1189085184字节，属于当前进程分配器统计，不是整卡显存峰值；首次模型加载也不是冷盘或完整进程启动。
+
+GPU新增首/热20个pair，gold仍从3到1，选中原候选名次均为`[3,4,2,1,5]`；GPU首热分数相同，与CPU float32的最大logit差约0.087717。同一组235项相关离线回归在CPU/CUDA环境均通过，其中70项为D15新增，不将重复执行累加为更多不同用例。CPU float32与GPU float16同时改变硬件和精度，单次耗时差不能归因为单因素加速或生产吞吐；两份单题工程证据均不代表完整dev或回答效果，完整对照仍留D16。

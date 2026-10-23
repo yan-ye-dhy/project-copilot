@@ -930,3 +930,91 @@ echo $?
 本次仅更新8份Markdown（README、计划第10节、日志、学习/面试笔记、D14报告、evals说明和V2实验报告）；原源码、依赖、D8/V0/V1/V2封存文件及35日任务表保留，手测数据仍被忽略。收尾提交与推送由用户操作，D15等待明确要求。
 
 本次收尾检查：8份Markdown空白/围栏、57张表列数、233处本地链接/11锚点及日报固定8节均通过；计划第10节外、D14之前日志/笔记保持。独立只读事实复审通过，手测目录及.env仍被忽略，git diff --check无输出、暂存区为空。以下8份文档待用户亲自提交推送。
+
+## D15：本地Cross-Encoder最小适配（2026-10-23）
+
+以下保留CPU阶段开发快照；用户随后明确选择GPU，安装及真实GPU结果见本节末补记。
+
+**实现、自动验证及真实CPU小样本完成，阶段A待用户Git同步，阶段B待ChatGPT学习与用户主动手测。** 用户已推送D14收尾 [4e3cfbae05150a11f0a2ae17ea6596da06317387](https://github.com/yan-ye-dhy/project-copilot/commit/4e3cfbae05150a11f0a2ae17ea6596da06317387)，开启时main/origin/main一致、工作区干净。所有实现只在新项目，参考旧reranker.py的延迟加载及原文映射，没有调用原包或改变旧环境。
+
+本机核对20逻辑CPU、WSL总内存7973540KiB、GPU为RTX4060 Laptop 8188MiB；沙箱内NVML受限，沙箱外只读取得型号。本轮按已说明的推荐CPU方案完成验证，未登记用户选择GPU，也没有验证CUDA执行。新环境初始没有Torch/Transformers；新增可选rerank依赖组，官方CPU源锁定torch2.14.1+cpu及transformers5.20.2，基础依赖版本保留。uv lock首次因沙箱网络不可达失败，权限审查后成功；uv sync --frozen --group rerank完成安装，CPU wheel约187.2MiB，不拉CUDA运行库。
+
+模型固定为BAAI/bge-reranker-v2-m3，revision为953dc6f6f85a1b2dbfca4c34a2796e7dde08d41e。snapshot_download显式token=False、cache_dir=models/huggingface，allow_patterns仅6份config/tokenizer/safetensors文件，max_workers=2；首次准备含SHA检查约158.275秒。共2293242108字节，其中model.safetensors为2271071852字节，SHA为d9e3e081faff1eefb84019509b2f5558fd74c1a05a2c7db22f74174fcedb5286，与官方pointer一致。权重及准备中间文件只在忽略目录；没有收费API或密钥读取。
+
+新rag/rerank.py把模型输入和返回证据分开，config固定默认CPU float32/4线程、batch2、max_length512、候选10/输出5。LocalCrossEncoder首次非空评分才import并加载本地固定revision，trust_remote_code=False/use_safetensors=True/local_files_only=True；每实例复用模型。Tokenizer仅截第二段，query预算用尽则拒绝，返回原hit/metadata/score不变，另存candidate_rank/raw logit；负logit正常，并列保留候选原序。输入、分数数量/有限值、模型加载及评分异常均明确失败，不自动下载、重试、扩召回或回退原排名。
+
+### 实际自动验证（执行者：Codex）
+
+```bash
+.venv/bin/python -m pytest -q tests/test_rerank.py
+.venv/bin/python -m pytest -q tests/test_rerank_smoke.py
+
+timeout --signal=INT 120s .venv/bin/python -m pytest -q \
+  tests/test_rerank.py tests/test_rerank_smoke.py \
+  tests/test_fusion.py tests/test_hybrid.py tests/test_hybrid_run.py \
+  tests/test_rag_api.py tests/test_rag_pipeline.py tests/test_answering.py tests/test_main.py
+```
+
+新增核心61项、CLI9项分别通过；最终联合235项全部通过、21.49秒，其中70项本日新增，不把重复执行累加成更多不同测试。沙箱内首轮联合在旧test_rag_api首个请求阻塞后Ctrl+C退出130；诊断重跑加faulthandler_timeout=20同处等待，随后停止退出130。栈显示AnyIO线程池已空闲而主asyncio仍等待。沙箱外单独旧用例1 passed/0.84秒，随后同一联合集合235 passed；未修改旧API或测试来绕过沙箱问题，没有未解决的测试失败。
+
+离线测试覆盖惰性加载、严格参数/候选预算、负分/并列、原文身份与score保留、token截断诊断、空候选、模型/分数异常无回退，以及CLI保护、陈旧归档、缺缓存、安全错误和真实脚本路径执行。测试中的fake scorer与下述真实模型执行分别记录。
+
+真实CLI命令为：
+
+```bash
+HF_HOME=/home/yanye/project-copilot/models/hf-home \
+HF_HUB_OFFLINE=1 HF_HUB_DISABLE_TELEMETRY=1 HF_HUB_DISABLE_PROGRESS_BARS=1 \
+TOKENIZERS_PARALLELISM=false \
+/usr/bin/time -f 'peak_rss_kib=%M\nwall_seconds=%e' \
+  -o data/auto-d15/smoke-resources.txt \
+  .venv/bin/python scripts/rerank_smoke.py --local > data/auto-d15/smoke.json
+```
+
+退出0：脚本先验证公开D14归档，固定012及其原Hybrid前10块，首次与热态各评分一次、各输出5块，共20pair。两遍10个logit完全一致，目标17b8925a...由候选第3排到第1，raw logit=-3.1111164；首/热模型推断分别9370.546/8131.491ms，首次模型加载3580.835ms，首/热整个rerank分别12963.559/8143.689ms。10块都未触发512截断；两次选中片段的原文、全部metadata及原score与归档逐值一致，全部20条输入ID/score/hash核对通过。
+
+CLI前另独立调用同一适配器做1条合成中文passage诊断：3800字符、pair原长2120 tokens，实际输入512、passage_truncated=true，调用方文本SHA不变；随后用超长query调用，推断前拒绝，inference_ms=0。该进程首次加载11385.796ms，推断1378.100ms。两次调用属于不同进程，CLI前OS文件缓存已有热度，不能把3.58秒写成冷盘启动；预下载时间单列。CLI进程peak RSS为2097024KiB、总墙时22.89秒，GPU只核对型号未使用；没有并发运行模型或生产吞吐结论。
+
+本轮总计3次成功本地评分、21个query-passage pair，另1次超长query在推断前拒绝；外部Embedding/Chat/Rerank API与Qdrant请求均0。公开 [D15验收记录](evidence/D15_RERANK_SMOKE.json)含模型6文件hash、27份源码/依赖SHA、运行配置/硬件、全部10候选分数与两遍5块完整原文、合成诊断和边界。原D14的23源码/23产物SHA保持；没有将本次单题结果登记为完整dev/保留集/回答效果，未开始D16或用户手测。
+
+本次仅新增独立适配器、验证入口、测试和报告，更新可选依赖及必要文档；默认Dense问答、750/150、D8冻结数据和V0/V1/V2归档保留。用户亲自完成Git提交推送后交ChatGPT学习，再主动返回开始手测；阶段A/B完成后仍须明确要求才开启D16。
+
+本轮收尾：7份Markdown围栏/空白、52张表列数、231处本地链接/12锚点及固定8节报告通过；uv lock --check --offline通过，既有依赖版本保留。D8的9输入、V0的12产物、V1的19产物、V2的23产物及本次27源码/依赖SHA核对保持；计划第10节外和早先日志/笔记原文保留。独立只读审查通过，git diff --check无输出，暂存区为空；14份新增/修改文件待用户亲自提交推送，模型缓存/本地中间文件/.env继续忽略。
+
+### D15按用户明确选择补充GPU验证（2026-10-23）
+
+用户明确答复“使用GPU验证，接受额外CUDA依赖与准备时间”，故继续本日GPU准备与验证，不改变既有CPU测量或开启D16。当前GPU路径已实测完成，阶段A待用户Git同步、阶段B待学习与主动手测。
+
+CPU的rerank组保留，新增互斥的rerank-gpu组，两个Torch来源分别绑定官方CPU与cu130索引。驱动610.62满足官方CUDA13.x兼容要求；安装前观测8188MiB总显存、6325MiB可用。以下真实执行完成：
+
+```bash
+uv lock --cache-dir /tmp/pc-d15-uv
+uv sync --frozen --group rerank-gpu --cache-dir /tmp/pc-d15-uv
+```
+
+锁文件解析105包；CUDA wheel及运行库准备约7分22秒，安装Torch2.14.1+cu130、CUDA13.0构建依赖与Triton等，未改系统驱动。显式同时选择rerank与rerank-gpu的dry-run按预期退出2，提示依赖组冲突；基础组默认不拉CPU/GPU重排运行库。已有模型文件复用，无第二次权重下载。
+
+GPU验收仍调用已有run_smoke，core与CLI未改。开发期临时wrapper在每遍前同步CUDA并重置allocator峰值，完成后同步；遍历所有浮点参数，实际验证cuda:0和float16。完整wrapper源码及SHA保存在 [GPU记录](evidence/D15_GPU_RERANK_SMOKE.json)的instrumentation中，不增加业务模块。实际运行命令：
+
+```bash
+HF_HOME=/home/yanye/project-copilot/models/hf-home \
+HF_HUB_OFFLINE=1 HF_HUB_DISABLE_TELEMETRY=1 HF_HUB_DISABLE_PROGRESS_BARS=1 \
+TOKENIZERS_PARALLELISM=false \
+TRITON_CACHE_DIR=/home/yanye/project-copilot/models/triton \
+TORCHINDUCTOR_CACHE_DIR=/home/yanye/project-copilot/models/torchinductor \
+CUDA_CACHE_PATH=/home/yanye/project-copilot/models/cuda-cache \
+.venv/bin/python /tmp/pc-d15-gpu-validation-20261023.py
+```
+
+退出0，实际设备RTX4060 Laptop、compute capability8.9、Torch2.14.1+cu130、CUDA编译版本13.0。相同012题及相同10候选首/热各一次，20pair；目标gold由3到1，GPU raw logit=-3.109375。首/热全部分数一致，选中原名次均[3,4,2,1,5]且与CPU相同；对原score、原文hash和每遍选中片段完整metadata逐值核对通过。CPU/GPU最大logit差0.087717，硬件与精度同时变化，不把该差异写成纯硬件单因素对照。
+
+首次模型加载10856.167ms，首遍模型推断1112.377ms、整个rerank12007.819ms；同实例热重复模型推断160.087ms、整个rerank174.468ms、模型加载0。Torch已预导入、CUDA context已初始化、权重和OS文件缓存非冷盘；该first/warm记录不代表完整进程冷启动或生产吞吐。
+
+每遍PyTorch allocator最大allocated为1166032896字节（约1.09GiB）、reserved1189085184字节；首遍包含加载权重，热遍包含常驻模型基线，不是全卡峰值或全部CUDA context开销。验收进程host peak RSS4593236KiB（约4.38GiB）另列，不与显存混用。
+
+CUDA环境重新执行同一9文件联合pytest，沙箱外235 passed、22.16秒；与CPU环境21.49秒是同一235个用例的两次执行，其中70项本日新增，不累加为470不同用例。未改旧API或测试；真实GPU模型调用与fake测试分别记录。
+
+新增GPU验证2次成功评分、20pair；加原CPU阶段为5次成功评分、41pair，另1次CPU超长query推断前拒绝。外部模型API及Qdrant请求仍0；未另跑GPU float32、全量dev、保留集或回答评测，D16未开始。
+
+CPU旧证据SHA保持7040b1cc02099e0c083a1da588d8fa528ce24d5bd65d0bd7258165aa6f1b2ff6，保留其当时CPU依赖hash。新GPU证据登记当前27源码/依赖SHA；相对CPU仅pyproject.toml和uv.lock变化，其余25份源码相同。新配置指纹为rerank-config-v1-263ecd9b1bbc4a7665f6277ec68344cee99569bea3956fe82cfc7b31f50c457c，CPU阶段指纹与数据不改写。当前共15份新增/修改文件待用户审核提交，模型缓存和本地验收中间文件不入Git。
+
+GPU补充收尾检查：7份Markdown围栏/空白、53张表列数、241处本地链接/13锚点及日报固定8节通过；当前27源码/依赖SHA匹配，CPU历史证据原字节保留，其余25份代码来源保持。D8/V0/V1/V2分别9/12/19/23份封存文件SHA核对一致，计划第10节外、既有基础依赖版本与早先笔记/日志保持。uv lock --check --offline和独立只读事实审查通过，git diff --check无输出，暂存区为空；当前15个新增/修改文件待用户亲自提交推送，模型及CUDA编译缓存、本地中间文件和.env仍被忽略。

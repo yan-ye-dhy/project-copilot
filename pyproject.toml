@@ -21,6 +21,27 @@ dependencies = [
 
 [dependency-groups]
 dev = ["pytest>=8.4,<9.0"]
+rerank = ["torch==2.14.1", "transformers==5.20.2"]
+rerank-gpu = ["torch==2.14.1", "transformers==5.20.2"]
+
+[tool.uv]
+conflicts = [[{ group = "rerank" }, { group = "rerank-gpu" }]]
+
+[tool.uv.sources]
+torch = [
+    { index = "pytorch-cpu", group = "rerank" },
+    { index = "pytorch-cu130", group = "rerank-gpu" },
+]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[[tool.uv.index]]
+name = "pytorch-cu130"
+url = "https://download.pytorch.org/whl/cu130"
+explicit = true
 
 [build-system]
 requires = ["uv_build>=0.11.0,<0.12.0"]
