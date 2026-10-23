@@ -1,6 +1,6 @@
 # Project Copilot
 
-基于RAG与LangGraph的研发知识及工单协作智能体。D1–D13阶段A/B已完成，D13收尾ca769dc已同步。D14已实现应用层RRF/Hybrid并完成真实三路开发集对照，待用户提交推送及学习后手动验证，见 [D14报告](docs/reports/DAY_14.md)。当前默认切分仍为750/150，问答API继续使用Dense；后续方案选择与业务Agent按计划推进。
+基于RAG与LangGraph的研发知识及工单协作智能体。D1–D14阶段A/B已完成，D14开发提交26b2197已同步；2026-10-23用户完成离线手动验证并确认ChatGPT学习理解，本次收尾文档待用户提交，见 [D14报告](docs/reports/DAY_14.md)。当前默认切分仍为750/150，问答API继续使用Dense；下一Day等待用户明确开启。
 
 协作流程见 [长期协作规则](docs/COLLABORATION_RULES.md)：Codex开发、自动验证、提供报告并指导Git操作；用户亲自提交和推送GitHub，随后通过ChatGPT学习代码/架构，学习后主动要求Codex开始手动测试。以下命令是自助运行参考，Codex仅在用户要求后单步带练。
 
@@ -258,4 +258,4 @@ uv run --frozen python scripts/bm25_index.py search "/documents/upload" \
 
 [独立采集器](evals/hybrid_run.py)复用原30个问题向量，读取相同16片段，Dense/BM25各最多10候选、RRF输出深度10，最终证据预算仍5块。每题各检索一次后共享候选，实际30次Qdrant查询、30次BM25查询、30次融合，模型请求及Qdrant写入均0。
 
-真实dev的26可答题中，三路证据Recall@5均1.0，证据MRR@5依次为Dense0.8365、BM250.9327、Hybrid0.8974。Hybrid相对Dense6改善/0退化/20不变，但相对BM252改善/4退化/20不变；4无答案另计，未生成回答。完整逐题排名、候选来源和耗时见 [V2实验报告](evals/reports/HYBRID_V2.md)及 [公开归档](evals/results/hybrid-v2-20261022-01/manifest.json)。Hybrid总耗时为共享分支与融合的顺序合计，不能视为独立端到端实测或据单轮判断泛化/提速。方案选择留D17，学习与手动验证待用户主动开启。
+真实dev的26可答题中，三路证据Recall@5均1.0，证据MRR@5依次为Dense0.8365、BM250.9327、Hybrid0.8974。Hybrid相对Dense6改善/0退化/20不变，但相对BM252改善/4退化/20不变；4无答案另计，未生成回答。完整逐题排名、候选来源和耗时见 [V2实验报告](evals/reports/HYBRID_V2.md)及 [公开归档](evals/results/hybrid-v2-20261022-01/manifest.json)。Hybrid总耗时为共享分支与融合的顺序合计，不能视为独立端到端实测或据单轮判断泛化/提速。2026-10-23用户完成归档校验、三路离线重评分、012计算反馈及副本变化拒绝，确认学习理解；原归档机器pending状态保留，人工结果另记于D14报告。方案选择留D17，D15等待明确要求。

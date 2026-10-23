@@ -208,4 +208,4 @@ plan完全离线并验证原向量哈希链；collect沿用四项输入并提供
 
 [公开V2归档](results/hybrid-v2-20261022-01/manifest.json)含23封存产物＋manifest：三路完整原文排名/评分、三组比较、candidate_sources中的来源名次/score、case_details中的gold/指标及结果文件引用、历史V0重查、完整父合同/索引/BM25快照和机器状态。原问题向量仍只保存在忽略目录，公开配置以SHA绑定。verify不需要私有向量或当前Prompt生成逻辑；机器pending状态不代表用户已完成人工验收。
 
-证据Recall@5均1.0，MRR@5依次0.8365/0.9327/0.8974；Hybrid的Recall@3为1.0，但BM25的MRR@5更高，详见 [V2实验报告](reports/HYBRID_V2.md)。准备/字典构建时间单列，逐题embedding/rerank为null；Hybrid search为两路共享搜索之和、total再加fusion，属于顺序合计而非独立请求计时。D17再作方案选择，不据这次自建小样本声称普遍提升。用户学习和RRF手算待主动开启。
+证据Recall@5均1.0，MRR@5依次0.8365/0.9327/0.8974；Hybrid的Recall@3为1.0，但BM25的MRR@5更高，详见 [V2实验报告](reports/HYBRID_V2.md)。准备/字典构建时间单列，逐题embedding/rerank为null；Hybrid search为两路共享搜索之和、total再加fusion，属于顺序合计而非独立请求计时。2026-10-23用户亲自完成归档verify、三路离线重评分、012计算反馈及副本拒绝，并确认学习理解；90条重评分记录与原结果一致，正式归档及机器pending快照保留。D17再作方案选择，不据这次自建小样本声称普遍提升，D15等待明确开启。

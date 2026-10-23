@@ -1,6 +1,6 @@
 # 【Day 14 开发报告】
 
-开发与自动验证日期：2026-10-22。**D14功能实现和自动验证完成，阶段A待用户亲自提交并推送；阶段B待ChatGPT学习及用户主动开启手动验证。** 本日实现应用层RRF并比较Dense/BM25/Hybrid，保留750/150和现有Dense问答默认路由，未开启D15。
+开发与自动验证日期：2026-10-22；学习与手动验证补记：2026-10-23。**D14开发提交26b2197已由用户推送，用户已完成离线手动验证并确认ChatGPT学习理解，阶段A/B均完成；本次收尾文档待用户提交。** 本日实现应用层RRF并比较Dense/BM25/Hybrid，保留750/150和现有Dense问答默认路由，未开启D15。
 
 ## 1. 今日开发目标
 
@@ -78,13 +78,27 @@ RRF与编排为新项目自主实现，沿用D3/D4身份契约、D13分词/快�
 
 真实服务为Qdrant 1.19.2、SDK 1.19.1；沿用jieba 0.42.1、rank-bm25 0.2.2、NumPy 2.5.4。预加载/离线准备约852.423ms单列；Hybrid耗时是同题两路search加fusion的顺序组合，非独立端到端请求，未计云端Embedding。详见[效果与耗时口径](../../evals/reports/HYBRID_V2.md)。4道无答案三路均有非空命中，未生成回答，拒答正确率为null；没有保留集调参、人工复核或泛化提升结论。
 
-独立只读审查用标准库重算全部30题RRF、90条排名的原文连续区间gold覆盖及指标，均与产物一致。公开24文件与本地原字节一致；D14的23份源码/23份产物、V1原21份源码/19份产物以及D13收据6份源码/依赖SHA保持。8份Markdown的空白/围栏、56张表列数、232处本地链接/11锚点及固定8节报告检查通过，计划第10节外和历史日志/笔记保留；git diff --check无输出、暂存区为空，本轮39个文件待用户审核提交。
+开发期检查快照：独立只读审查用标准库重算全部30题RRF、90条排名的原文连续区间gold覆盖及指标，均与产物一致。公开24文件与本地原字节一致；D14的23份源码/23份产物、V1原21份源码/19份产物以及D13收据6份源码/依赖SHA保持。8份Markdown的空白/围栏、56张表列数、232处本地链接/11锚点及固定8节报告检查通过，计划第10节外和历史日志/笔记保留；git diff --check无输出、暂存区为空，本轮39个文件待用户审核提交。
+
+### 学习后手动验证（2026-10-23）
+
+以下命令由用户在项目根目录亲自执行，Codex只读核对产物；开发期自动验证不计为用户操作。完整循环命令见 [开发日志](../DEVELOPMENT_LOG.md)。
+
+| 用户实际操作 | 结果及Codex只读核对 |
+| --- | --- |
+| `uv run --frozen python -m evals.hybrid_run verify --dataset evals/datasets/copilot_v0 --output-dir evals/results/hybrid-v2-20261022-01` | verified、23份产物、退出0；机器manual_review=pending/day14_accepted=false是采集时快照，原样保留 |
+| 依次对dense/bm25/hybrid执行`uv run --frozen python -m evals.run`，同一数据集/evaluation_config、各自rankings，分别输出到`data/manual-d14/<branch>-replay` | 三路退出码均0；各30题、26可答/4无答案、检索错误0。Codex核对90条记录，除本地evaluation_ms外逐题相同；summary除run_id外相同，输入SHA、评分合同及问题顺序相同，model_calls=0 |
+| 012两块RRF练习：名次1/3与4/1，分别算`1/61+1/63`和`1/64+1/61` | 用户反馈“已经计算”，未单独贴出数值；Codex提供0.03226646/0.03201844作为标准对照。目标gold块的Dense/BM25/Hybrid名次4/1/3保持，不登记其他案例的逐条人工原文复核 |
+| `shutil.copytree`建立`data/manual-d14/tampered`，仅给其中`hybrid_retrieval/summary.json`追加LF，再对该副本执行同一verify | JSON error、退出1，符合预期；Codex核对仅此文件2029→2030字节，严格等于原文追加一个换行，JSON对象未变。正式24文件与HEAD相同，23产物/23源码SHA及D8冻结9文件SHA保持 |
+
+用户最终选择“已学习，能够解释”，确认已通过ChatGPT理解Dense/BM25候选→RRF→离线评分，以及候选预算、RRF分数和答案可信度的区别，阶段B据此完成。此次只验证已有排名的重评分和封存边界，没有重采检索、执行RRF函数、模型请求、回答/拒答质量评测或服务启停；实际检索耗时仍来自原采集快照。手测目录被Git忽略，原D8/V0/V1/V2与源码保留。
 
 ## 6. GitHub 提交信息
 
 - 分支main跟踪origin/main；远端`https://github.com/yan-ye-dhy/project-copilot.git`。
 - 起点为用户已推送的D13收尾 [ca769dc4ea85010e30193c42f5c04991333b5268](https://github.com/yan-ye-dhy/project-copilot/commit/ca769dc4ea85010e30193c42f5c04991333b5268)，任务开始时本地/跟踪分支一致、工作区干净。
-- 本日改动**待用户亲自add、commit、push**；暂无D14已同步提交链接，阶段A尚待Git交接完成。Codex未执行Git写操作。
+- 用户已亲自提交并推送D14开发 [26b219711c8d02f28b504840e5a5f1906865827c](https://github.com/yan-ye-dhy/project-copilot/commit/26b219711c8d02f28b504840e5a5f1906865827c)，说明为`feat(rag): add RRF hybrid retrieval and V2 evaluation`；只读核对main与origin/main均指向该提交，阶段A完成。Codex未执行Git写操作。
+- 2026-10-23本次仅补8份Markdown学习/手测收尾记录，仍待用户亲自add、commit、push；未预填本次收尾提交ID或同步状态。
 - 运行归档保留实际base_commit及dirty=true，因为采集发生在D14新增文件尚未提交时；23份源码SHA用于对应实际运行内容，不追填未来提交ID。
 
 ## 7. 后续学习提示
@@ -97,6 +111,6 @@ RRF与编排为新项目自主实现，沿用D3/D4身份契约、D13分词/快�
 
 ## 8. 下一步计划
 
-先指导用户审核并亲自提交推送本日文件，核实后补充实际Git信息；再由ChatGPT结合代码与提交讲解。等待用户主动发送“开始D14手动验证”后，再分步验证封存、三路重评分、实际候选/RRF及副本拒绝；此时不提前登记本人手算或案例核对完成。
+本日开发、Git同步、ChatGPT学习和离线手动验证均已完成，先指导用户审核并亲自提交、推送本次收尾文档。原机器pending快照与运行身份保留，人工完成状态另记于此，不因此重写归档。
 
-D14阶段A/B都完成后，仍等待用户明确开启D15，再进行Rerank最小适配。本日不加载Reranker、不调第二组RRF参数、不修改默认问答方案，35日节奏不变。
+D14阶段A/B均已完成，仍等待用户明确开启D15，再进行Rerank最小适配。本次不加载Reranker、不调第二组RRF参数、不修改默认问答方案，35日节奏不变。

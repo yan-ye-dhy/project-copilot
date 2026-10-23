@@ -859,7 +859,7 @@ Codex只读取用户产物并核对：原文/metadata与快照片段逐值一致
 
 ## D14：应用层RRF与真实三路对照（2026-10-22）
 
-**状态：实现与Codex自动验证完成，阶段A待用户提交/推送，阶段B待ChatGPT学习及主动开始手测。** 用户已推送D13收尾 [ca769dc4ea85010e30193c42f5c04991333b5268](https://github.com/yan-ye-dhy/project-copilot/commit/ca769dc4ea85010e30193c42f5c04991333b5268)，开启D14时main/origin/main一致、工作区干净；Codex没有Git写操作。
+**开发期状态快照（2026-10-22）：实现与Codex自动验证完成，阶段A待用户提交/推送，阶段B待ChatGPT学习及主动开始手测。** 用户已推送D13收尾 [ca769dc4ea85010e30193c42f5c04991333b5268](https://github.com/yan-ye-dhy/project-copilot/commit/ca769dc4ea85010e30193c42f5c04991333b5268)，开启D14时main/origin/main一致、工作区干净；Codex没有Git写操作。后续同步及人工完成情况见本节末补记。
 
 新建fusion.py的`Σ1/(60+rank)`（排名从1开始），不相加两路原始分数；同路重复只计首次且原名次不压缩，跨路原文/metadata必须一致，并列按UUID。hybrid.py校验同一完整成功清单、各路预算及原文，空路可融合、异常向上抛出。用独立文件扩展，避免改写D10已记录源码哈希的retrieval.py；原问答API和Dense默认、750/150及Prompt/Schema保留，无新增依赖。原Qdrant HYBRID源码和当前SDK融合实现只读参考，新项目融合/编排/实验自主实现；SDK默认及排名起点不能等同本项目c60的1-based约定。
 
@@ -885,3 +885,48 @@ Codex只读取用户产物并核对：原文/metadata与快照片段逐值一致
 完整交接见 [D14报告](reports/DAY_14.md)与 [V2报告](../evals/reports/HYBRID_V2.md)。本轮固定一个c/预算组合，未调停用词、查询改写、阈值或保留集，未生成回答；尚不选最终方案或替用户手算。D15只在本日A/B完成且用户明确开启后推进。
 
 收尾检查：公开及私有V2 verify均通过23份封存产物，D8冻结校验、原私有V0的12份文件、公开V1的19份文件均verified；机器pending状态保留。8份Markdown空白/围栏、56张表列数、232处本地链接/11锚点及固定8节报告通过，计划第10节外、历史日志/笔记保持。V2公开/本地24文件逐字节一致，23源码/23产物SHA、V1原21源码/19产物及D13收据6源码/依赖SHA一致；独立只读事实/数学审查通过，修改了易误读为逐题领先的MRR措辞。git diff --check无输出，暂存区为空；本轮39文件待用户亲自提交推送，.env、问题向量及本地结果仍被忽略。
+
+### D14用户Git同步与学习后验证补记（2026-10-23）
+
+**当前状态：阶段A/B均完成，本次收尾文档待用户提交，D15未开启。** 用户已亲自提交并推送 [26b219711c8d02f28b504840e5a5f1906865827c](https://github.com/yan-ye-dhy/project-copilot/commit/26b219711c8d02f28b504840e5a5f1906865827c)，说明为`feat(rag): add RRF hybrid retrieval and V2 evaluation`。Codex只读核实main与origin/main相同，手测开始时工作区干净；没有Git写操作。
+
+用户主动开启D14手动验证后，亲自运行以下离线命令。无需启动Qdrant或FastAPI，没有模型调用或重新采集排名：
+
+```bash
+uv run --frozen python -m evals.hybrid_run verify \
+  --dataset evals/datasets/copilot_v0 \
+  --output-dir evals/results/hybrid-v2-20261022-01
+
+mkdir -p data/manual-d14
+for branch in dense bm25 hybrid; do
+  uv run --frozen python -m evals.run \
+    --dataset evals/datasets/copilot_v0 \
+    --config evals/results/hybrid-v2-20261022-01/evaluation_config.json \
+    --rankings "evals/results/hybrid-v2-20261022-01/${branch}_rankings.jsonl" \
+    --output-dir "data/manual-d14/${branch}-replay" \
+    > "data/manual-d14/${branch}-console.json"
+  echo "$branch 退出码：$?"
+done
+```
+
+归档verify返回verified、files23、退出0；用户反馈三路退出码均0。Codex直接只读检查生成的console、config、retrieval和summary：每路30题、26可答/4无答案、检索错误0；90条记录除本地evaluation_ms外逐值一致，summary除run_id外一致，输入SHA、评分合同、有效问题顺序及原文身份相同，model_calls均0。Recall@5均1.0，MRR@5仍为0.836538/0.932692/0.897436，重评分没有重新测检索耗时。
+
+针对012两块，用户收到按名次1/3与4/1计算`1/61+1/63`、`1/64+1/61`的练习，反馈“已经计算”，未另贴计算值；Codex提供A≈0.03226646、B≈0.03201844作为标准对照，解释gold块4/1/3及融合不保证最优。未将此反馈扩写为其他案例逐条人工原文核对、全量gold复核或实际执行RRF函数。
+
+随后用户用`shutil.copytree`复制完整归档到`data/manual-d14/tampered`，仅将副本`hybrid_retrieval/summary.json`写为原字节加`b"\n"`，再执行：
+
+```bash
+uv run --frozen python -m evals.hybrid_run verify \
+  --dataset evals/datasets/copilot_v0 \
+  --output-dir data/manual-d14/tampered
+
+echo $?
+```
+
+用户返回JSON error、退出1，符合预期。Codex只读核对两个目录各24文件、无缺增，唯一差异为副本汇总2029→2030字节，严格等于追加一个LF，JSON解析对象相同。正式24文件与HEAD逐字节一致，23封存产物/23源码SHA全部匹配；D8冻结9输入SHA及连同manifest共10文件的已提交字节保持。机器manual_review=pending/day14_accepted=false和base_commit/dirty=true保留原采集身份，人工完成记录不回写机器归档。
+
+用户最终明确选择“已学习，能够解释”，确认已通过ChatGPT理解候选→RRF融合→离线评分及候选预算、融合分数、答案可信度的区别，阶段B据此完成。用户亲自运行手测，Codex仅读取产物/核对；本轮没有重采检索、RRF函数执行、服务启动、pytest、收费模型或回答/拒答验收。
+
+本次仅更新8份Markdown（README、计划第10节、日志、学习/面试笔记、D14报告、evals说明和V2实验报告）；原源码、依赖、D8/V0/V1/V2封存文件及35日任务表保留，手测数据仍被忽略。收尾提交与推送由用户操作，D15等待明确要求。
+
+本次收尾检查：8份Markdown空白/围栏、57张表列数、233处本地链接/11锚点及日报固定8节均通过；计划第10节外、D14之前日志/笔记保持。独立只读事实复审通过，手测目录及.env仍被忽略，git diff --check无输出、暂存区为空。以下8份文档待用户亲自提交推送。

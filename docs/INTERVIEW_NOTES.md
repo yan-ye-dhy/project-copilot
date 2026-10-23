@@ -120,10 +120,10 @@
 
 ## D14：RRF为何需要对照实验
 
-用户学习与手动验证尚未确认，以下为结合实际源码复习的回答思路。
+2026-10-23用户已确认ChatGPT学习理解并完成离线手动验证，以下为结合实际源码复习的回答思路。
 
 1. **为什么不能相加Dense与BM25分数？** 两路尺度、分布不同，本项目按名次RRF，1-based/c60写入合同；去重、身份一致性和稳定并列是工程规则。原项目服务端Hybrid可参考，但安装SDK的默认常数和排名起点不同，不能把服务默认等同于项目实现。
 2. **怎样证明融合有效而不是增加候选凑结果？** 明确10＋10候选、深度10、最终5块；相同语料/切分/原问题向量/Prompt，保存每题两路原始排名及RRF贡献，复用D9证据指标。失败题保留分母，无答案单列。Hybrid对Dense6改善/0退化，同时对BM252改善/4退化，不能只展示MRR比Dense高。
 3. **有什么没有证明？** 当前是5文档/16片段的自建开发集，BM25的MRR@5实际更高；没有保留集、回答生成或拒答评测。问题向量逐值复用并有SHA链，文档向量没有读取，不能声称已对比其历史字节。Hybrid耗时为共享候选的顺序合计，不是独立请求延迟或统计显著结论。
 
-依据：[RRF](../src/project_copilot/rag/fusion.py)、[编排器](../src/project_copilot/rag/hybrid.py)、[采集器](../evals/hybrid_run.py)、[V2报告](../evals/reports/HYBRID_V2.md)及 [原始贡献](../evals/results/hybrid-v2-20261022-01/candidate_sources.jsonl)。Codex相关465项＋1项新回归通过，真实三路30题错误均0；用户本人理解与手算仍待主动学习验收。
+依据：[RRF](../src/project_copilot/rag/fusion.py)、[编排器](../src/project_copilot/rag/hybrid.py)、[采集器](../evals/hybrid_run.py)、[V2报告](../evals/reports/HYBRID_V2.md)及 [原始贡献](../evals/results/hybrid-v2-20261022-01/candidate_sources.jsonl)。Codex相关465项＋1项新回归通过，真实三路30题错误均0；用户完成归档及重评分操作、反馈012已计算，并确认能够解释主流程。其他案例的自动分析不登记为本人逐条复核，具体范围见D14报告。
