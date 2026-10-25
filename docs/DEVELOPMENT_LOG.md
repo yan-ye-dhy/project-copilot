@@ -1018,3 +1018,79 @@ CUDA环境重新执行同一9文件联合pytest，沙箱外235 passed、22.16秒
 CPU旧证据SHA保持7040b1cc02099e0c083a1da588d8fa528ce24d5bd65d0bd7258165aa6f1b2ff6，保留其当时CPU依赖hash。新GPU证据登记当前27源码/依赖SHA；相对CPU仅pyproject.toml和uv.lock变化，其余25份源码相同。新配置指纹为rerank-config-v1-263ecd9b1bbc4a7665f6277ec68344cee99569bea3956fe82cfc7b31f50c457c，CPU阶段指纹与数据不改写。当前共15份新增/修改文件待用户审核提交，模型缓存和本地验收中间文件不入Git。
 
 GPU补充收尾检查：7份Markdown围栏/空白、53张表列数、241处本地链接/13锚点及日报固定8节通过；当前27源码/依赖SHA匹配，CPU历史证据原字节保留，其余25份代码来源保持。D8/V0/V1/V2分别9/12/19/23份封存文件SHA核对一致，计划第10节外、既有基础依赖版本与早先笔记/日志保持。uv lock --check --offline和独立只读事实审查通过，git diff --check无输出，暂存区为空；当前15个新增/修改文件待用户亲自提交推送，模型及CUDA编译缓存、本地中间文件和.env仍被忽略。
+
+### D15用户Git同步、学习与手动验证补记（2026-10-25）
+
+**当前状态：D15阶段A/B均完成，本次7份收尾文档待用户提交，D16未开启。** 用户已亲自提交并推送 [9c332a57bf86053063080d6c802332372b7bb185](https://github.com/yan-ye-dhy/project-copilot/commit/9c332a57bf86053063080d6c802332372b7bb185)，说明为`feat(rag): add local BGE reranking and GPU validation`。Codex只读核实main与origin/main相同，手测开始时工作区干净；未执行Git写操作。
+
+用户主动要求开始D15手动测试，随后本人按GPU方案完成五个环节。无需Qdrant/FastAPI服务或外部模型API；开发期自动验证保持单独记录。
+
+第一步验证默认门禁，实际命令与结果：
+
+```bash
+uv run --frozen --group rerank-gpu python scripts/rerank_smoke.py
+echo $?
+```
+
+未加--local时提示未加载模型或读取评测输入，退出2。第二步由用户核对运行时并真实执行CUDA小张量加法：
+
+```bash
+uv run --frozen --group rerank-gpu python - <<'PY'
+import torch
+
+print("PyTorch：", torch.__version__)
+print("CUDA编译版本：", torch.version.cuda)
+available = torch.cuda.is_available()
+print("CUDA可用：", available)
+
+if not available:
+    raise SystemExit("CUDA不可用，请先保留输出并反馈")
+
+print("GPU：", torch.cuda.get_device_name(0))
+tensor = torch.tensor([1.0], device="cuda")
+print("张量设备：", tensor.device)
+print("计算结果：", (tensor + 1).item())
+PY
+
+echo $?
+```
+
+用户反馈Torch2.14.1+cu130、CUDA编译版本13.0、available=True、RTX4060 Laptop、张量cuda:0、结果2.0，退出0；此步没有加载重排模型。第三步本人执行真实GPU单题重排：
+
+```bash
+mkdir -p data/manual-d15
+
+HF_HUB_OFFLINE=1 HF_HUB_DISABLE_PROGRESS_BARS=1 \
+  uv run --frozen --group rerank-gpu python scripts/rerank_smoke.py \
+  --local --device cuda --dtype float16 \
+  > data/manual-d15/smoke-gpu.json
+
+echo $?
+```
+
+用户反馈退出0。Codex只读取结果：来源D14先verified，同一012题及原序10候选，首/热各10pair、各选5块；新增2次本地评分、20pair，外部API/Qdrant请求0。20条输入的chunk ID、原score和文本SHA，以及10条选中完整hit（text、全部metadata、原score）均与原归档逐值相同。首/热分数与选中顺序一致，原候选名次[3,4,2,1,5]，均未截断。
+
+本轮用户实际首模型加载11500.209ms，首遍模型推断926.304ms、重排总计12446.690ms；热重复模型加载0、推断146.443ms、重排总计158.899ms。没有以旧自动测量替代这些值，也不把单次热态耗时解释为生产P95。
+
+第四步用户亲自查看smoke-gpu.json的first_pass.selected_hits第一项，反馈“已看到”：candidate_rank=3、rerank_rank=1、原hit.score约0.03201844、新rerank_score=-3.109375；来源dense_identity_and_citations.md，chunk ID为17b8925a-2b6a-5793-87ad-1ca2c52f581e，原文包含改名/移动不改变内容身份的说明。未要求重复手算，未扩大为其他案例或全量gold人工复核。
+
+第五步使用不存在的专用测试缓存路径，实际执行：
+
+```bash
+HF_HUB_OFFLINE=1 \
+  uv run --frozen --group rerank-gpu python scripts/rerank_smoke.py \
+  --local --device cuda --dtype float16 \
+  --cache-dir data/manual-d15/missing-model-cache \
+  2> data/manual-d15/missing-cache-error.json
+
+echo $?
+cat data/manual-d15/missing-cache-error.json
+```
+
+用户反馈退出1，JSON error为“本地模型快照缺失；请先准备冻结revision对应缓存，本脚本不自动下载”。Codex只读确认错误文件一致、测试缓存路径仍不存在；该分支在创建LocalCrossEncoder前结束，没有替用户重跑或下载。
+
+用户最终明确选择“已学习，能够解释”，确认已通过ChatGPT理解候选→query/passage成对输入→logit→排序→完整原文/metadata返回及截断不修改返回原文的原因，阶段B据此完成。本人手测没有长文截断/超长query、CPU推断、逐模型参数device/dtype或显存插桩、全dev/保留集或回答质量验证；开发期的合成截断与GPU wrapper仍属Codex自动证据，本次CLI只输出请求配置和实际评分结果，不冒称额外输出了显存或参数检查。
+
+本次仅补7份Markdown（README、计划第10节、日志、学习/面试笔记、D15报告和evals说明）。CPU/GPU正式证据与已提交字节相同，GPU27份源码/依赖SHA匹配；D8/V0/V1/V2的9/12/19/23份封存输入/产物及清单保持。源代码、依赖、模型缓存和35日任务表不变，手测JSON仍在忽略目录。收尾Git操作由用户亲自完成，D16等待明确要求。
+
+本次收尾检查：7份Markdown围栏/空白、54张表列数、242处本地链接/13锚点及日报固定8节通过，计划第10节外、D15之前笔记和既有日志原文保持。独立只读事实审查通过，正式证据及旧冻结内容保留；手测数据、模型缓存和.env仍被忽略。git diff --check无输出、暂存区为空，7份文档待用户亲自提交推送；本次Codex没有代跑手测CLI、模型、pytest或服务。

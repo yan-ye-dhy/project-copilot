@@ -1,6 +1,6 @@
 # Project Copilot
 
-基于RAG与LangGraph的研发知识及工单协作智能体。D1–D14阶段A/B已完成，D14收尾4e3cfba已同步。D15新增本地中文Cross-Encoder最小适配，保留早期CPU单题证据；按用户明确偏好安装CUDA依赖并完成GPU float16单题实测。自动验证与交接状态见 [D15报告](docs/reports/DAY_15.md)；阶段A待用户提交推送，阶段B待ChatGPT学习和用户主动手测。默认切分仍750/150，问答API继续使用Dense，D16未开启。
+基于RAG与LangGraph的研发知识及工单协作智能体。D1–D15阶段A/B已完成，D15开发提交9c332a5已同步；2026-10-25用户完成GPU手测并确认ChatGPT学习理解，本次收尾文档待用户提交，见 [D15报告](docs/reports/DAY_15.md)。默认切分仍750/150，问答API继续使用Dense，D16等待用户明确开启。
 
 协作流程见 [长期协作规则](docs/COLLABORATION_RULES.md)：Codex开发、自动验证、提供报告并指导Git操作；用户亲自提交和推送GitHub，随后通过ChatGPT学习代码/架构，学习后主动要求Codex开始手动测试。以下命令是自助运行参考，Codex仅在用户要求后单步带练。
 
@@ -266,7 +266,7 @@ uv run --frozen python scripts/bm25_index.py search "/documents/upload" \
 
 固定`BAAI/bge-reranker-v2-m3`的revision为`953dc6f6f85a1b2dbfca4c34a2796e7dde08d41e`，共用batch2、512 token输入预算。早期验证使用CPU float32、4线程；用户明确选择后，已在RTX 4060 Laptop GPU上实测CUDA float16，并核对全部浮点模型参数实际为`cuda:0`/`float16`。`only_second`保留完整query，仅截passage；query用尽预算时拒绝。512是项目选择，不是模型最大长度；输出仍为完整原片段。
 
-可选组`rerank`使用PyTorch CPU，`rerank-gpu`使用官方CUDA 13.0源及其CUDA依赖；两组互斥，基础服务不要求安装或加载它们。以下是用户选择的GPU方案自助参考；用户手测仍等主动开启。本机已缓存相同固定模型，无需重新下载权重：
+可选组`rerank`使用PyTorch CPU，`rerank-gpu`使用官方CUDA 13.0源及其CUDA依赖；两组互斥，基础服务不要求安装或加载它们。以下保留GPU方案自助参考；用户已于2026-10-25完成手测，实际范围见D15报告。本机已缓存相同固定模型，无需重新下载权重：
 
 ```bash
 uv sync --frozen --group rerank-gpu
@@ -289,3 +289,5 @@ uv run --frozen --group rerank-gpu hf download BAAI/bge-reranker-v2-m3 \
 GPU实测详见 [GPU验收收据](docs/evidence/D15_GPU_RERANK_SMOKE.json)：Torch 2.14.1+cu130、CUDA编译版本13.0，首/热推断约1112.377/160.087ms，首/热整个rerank约12007.819/174.468ms，首次模型加载10856.167ms。每遍Torch分配器峰值allocated为1166032896字节（约1.09GiB）、reserved为1189085184字节，属于当前进程分配器统计，不是整卡显存峰值；首次模型加载也不是冷盘或完整进程启动。
 
 GPU新增首/热20个pair，gold仍从3到1，选中原候选名次均为`[3,4,2,1,5]`；GPU首热分数相同，与CPU float32的最大logit差约0.087717。同一组235项相关离线回归在CPU/CUDA环境均通过，其中70项为D15新增，不将重复执行累加为更多不同用例。CPU float32与GPU float16同时改变硬件和精度，单次耗时差不能归因为单因素加速或生产吞吐；两份单题工程证据均不代表完整dev或回答效果，完整对照仍留D16。
+
+2026-10-25用户亲自完成默认门禁、CUDA小张量计算、GPU单题首/热重排、片段身份/分数观察和缺缓存拒绝五个环节，并确认学习理解。手测新增20个本地pair，首模型加载约11.50秒、热态重排约158.90ms，原文/metadata/原score逐值保持；没有新增外部模型API或Qdrant请求。此次结果与开发期自动测量分别记录，未增加长文截断、显存插桩或全量效果手测，D16未开启。

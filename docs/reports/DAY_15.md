@@ -1,6 +1,6 @@
 # 【Day 15 开发报告】
 
-开发与Codex自动验证日期：2026-10-23。**本地Rerank最小适配、CPU及用户指定的GPU真实验证、相关联合回归完成；阶段A待用户提交/推送，阶段B待ChatGPT学习及用户主动开始手动测试。** 本日保持现有Dense问答默认与750/150切分，D16完整效果实验尚未开始。
+开发与Codex自动验证日期：2026-10-23；学习与用户手动验证补记：2026-10-25。**D15开发提交9c332a5已由用户推送，用户已完成五个GPU手测环节并确认ChatGPT学习理解，阶段A/B均完成；本次收尾文档待用户提交。** 本日保持现有Dense问答默认与750/150切分，D16完整效果实验尚未开始。
 
 ## 1. 今日开发目标
 
@@ -77,11 +77,27 @@ GPU新增2次成功本地评分、20个pair；与前述CPU阶段合计**5次、4
 
 CPU证据SHA仍为`7040b1cc02099e0c083a1da588d8fa528ce24d5bd65d0bd7258165aa6f1b2ff6`；GPU证据另记当前27份源码/依赖SHA。相对CPU阶段仅`pyproject.toml`、`uv.lock`有新身份，其余25份注册源码保持；旧CPU依赖hash表示历史执行，不回填为当前CUDA依赖。验证细节见[GPU证据](../evidence/D15_GPU_RERANK_SMOKE.json)。
 
+### 学习后用户手动验证（2026-10-25）
+
+以下由用户在项目根目录亲自执行，Codex只读核对保存结果；开发期自动测量保持原样，不登记为用户操作。完整命令见 [开发日志](../DEVELOPMENT_LOG.md)。
+
+| 用户实际操作 | 实际结果与核对 |
+| --- | --- |
+| `uv run --frozen --group rerank-gpu python scripts/rerank_smoke.py`，未加`--local` | 参数保护按预期退出2，提示未加载模型或读取评测输入 |
+| 通过同一依赖组检查Torch/CUDA，再在`device="cuda"`上创建小张量并加1 | Torch2.14.1+cu130、CUDA编译版本13.0、available=True、RTX4060 Laptop；张量cuda:0、结果2.0、退出0，不加载重排模型 |
+| `HF_HUB_OFFLINE=1 HF_HUB_DISABLE_PROGRESS_BARS=1 uv run --frozen --group rerank-gpu python scripts/rerank_smoke.py --local --device cuda --dtype float16`，输出到`data/manual-d15/smoke-gpu.json` | 退出0，D14来源先verified；首/热各10对、各选5块，新增2次本地评分/20pair，外部API/Qdrant均0。Codex核对20条输入的ID/原分数/文本SHA和10条选中完整hit，与原归档逐值一致 |
+| 在`first_pass.selected_hits`观察第一块，用户反馈“已看到” | 目标17b8925a...原名次3→新名次1、来源dense_identity_and_citations.md；原RRF score约0.03201844保留，新logit=-3.109375，原文包含改名不改变内容身份的说明 |
+| 指定不存在的`--cache-dir data/manual-d15/missing-model-cache`，错误写入`missing-cache-error.json` | 退出1，固定JSON error提示缺少本地快照、不自动下载；Codex只读核对错误文件和测试路径仍不存在，此时未创建模型评分器 |
+
+本次首模型加载11500.209ms，首遍模型推断926.304ms、整个重排12446.690ms；热重复模型加载0、推断146.443ms、整个重排158.899ms。两遍分数与选中名次`[3,4,2,1,5]`完全一致，均未触发截断；耗时是本轮用户实际结果，不覆盖10月23日开发期记录，也不推导生产P95。
+
+用户最终选择“已学习，能够解释”，确认已通过ChatGPT理解候选→query/passage成对输入→logit→排序→完整原文与metadata返回，以及截断不修改返回原文的原因，阶段B据此完成。本人手测没有CPU推断、长文截断/超长query、逐模型参数device/dtype或显存插桩、全dev/保留集及回答评测；这些开发期记录和未测范围分别保留。CLI记录请求的cuda/float16配置，实际CUDA小张量就绪由用户另测，不能把自动wrapper的显存/逐参数检查改记为本轮用户CLI输出。
+
 ## 6. GitHub 提交信息
 
-- 约定分支main、远端`https://github.com/yan-ye-dhy/project-copilot.git`；本日尚无Git写操作。
+- 约定分支main、远端`https://github.com/yan-ye-dhy/project-copilot.git`。用户已亲自提交并推送 [9c332a57bf86053063080d6c802332372b7bb185](https://github.com/yan-ye-dhy/project-copilot/commit/9c332a57bf86053063080d6c802332372b7bb185)，说明为`feat(rag): add local BGE reranking and GPU validation`；只读核对main/origin/main同指该提交，阶段A完成。Codex未执行Git写操作。
 - 运行证据记录base commit为`4e3cfbae05150a11f0a2ae17ea6596da06317387`、`dirty=true`，对应开发期未提交内容；两份证据各自的27份源码/依赖SHA用于追溯对应CPU/GPU实际运行，不追填未来commit。
-- 本日最终验证与diff审核已完成，由用户亲自add、commit、push；**待用户提交/推送，暂无本日已同步的GitHub提交链接**。
+- 2026-10-25本次只补7份Markdown学习/手测记录，仍待用户亲自add、commit、push；未预填收尾提交ID或推送状态。
 
 ## 7. 后续学习提示
 
@@ -93,6 +109,6 @@ CPU证据SHA仍为`7040b1cc02099e0c083a1da588d8fa528ce24d5bd65d0bd7258165aa6f1b2
 
 ## 8. 下一步计划
 
-最终diff/文档检查已完成，接下来指导用户审核并亲自提交、推送本日改动；随后交ChatGPT学习。等待用户主动要求开始D15手动测试，再按协作规则逐步验证，不以Codex自动验证代替用户操作。
+开发、Git同步、ChatGPT学习和用户手动验证均已完成，接下来指导用户审核并亲自提交、推送本次7份收尾文档。原CPU/GPU自动证据、运行身份及源码保持，不为更新人工状态回写归档。
 
-D15阶段A/B完成后，仍等待用户明确开启D16，再基于相同Hybrid候选和固定最终k开展V3效果对照。本日不跑完整dev、不用保留集选参，也不切换默认问答方案。
+D15阶段A/B均已完成，仍等待用户明确开启D16，再基于相同Hybrid候选和固定最终k开展V3效果对照。本日不跑完整dev、不用保留集选参，也不切换默认问答方案。

@@ -322,7 +322,7 @@ D10真实采集30题与八类回答：7条结构通过，003缺少JSON字段引�
 
 ## D15：先召回，再用Cross-Encoder重排
 
-本日为交给ChatGPT的学习提纲；用户学习与手动验证尚未确认。结合 [D15报告](reports/DAY_15.md)、[适配器](../src/project_copilot/rag/rerank.py)与 [单题入口](../scripts/rerank_smoke.py)阅读。
+2026-10-25用户已确认通过ChatGPT学习、能够解释候选→成对输入→logit→排序→原文/metadata返回，以及输入截断不修改返回原文的原因；五个手测环节完成。以下保留复习提纲。结合 [D15报告](reports/DAY_15.md)、[适配器](../src/project_copilot/rag/rerank.py)与 [单题入口](../scripts/rerank_smoke.py)阅读。
 
 1. **两阶段数据流**：Dense/BM25/RRF先给候选，Cross-Encoder把query与每段文本成对编码，再对这10块评分取5；不能找回候选之外的证据。Bi-Encoder可预计算文档向量，Cross-Encoder需要在问题到来后联合计算，成本不同。
 2. **三个分数/名次**：原hit.score仍是上游分数，candidate_rank记录RRF原名次，rerank_score是未做sigmoid的raw logit；负数有效，不能当成概率或答案可信度。并列沿用输入名次，不混加两类分数。
@@ -332,4 +332,4 @@ D10真实采集30题与八类回答：7条结构通过，003缺少JSON字段引�
 
 环境选择对应互斥可选组：CPU用`rerank`，官方CUDA 13.0依赖用`rerank-gpu`。已缓存同一模型时，GPU参考命令为`uv sync --frozen --group rerank-gpu`及`uv run --frozen --group rerank-gpu python scripts/rerank_smoke.py --local --device cuda --dtype float16`。CPU历史JSON及当时源码SHA保留；当前依赖配置变化后，新执行另记`pyproject.toml`/`uv.lock`的SHA。
 
-成熟Tokenizer/Transformer模型和PyTorch推断为复用能力；新项目独立实现预算、错误、身份保留、诊断与可复现入口。原项目reranker.py只作身份映射/延迟加载参考，没有将其英文FlashRank默认值或整套业务代码搬入新项目。学习后由用户主动开启D15手测，D16不自动推进。
+成熟Tokenizer/Transformer模型和PyTorch推断为复用能力；新项目独立实现预算、错误、身份保留、诊断与可复现入口。原项目reranker.py只作身份映射/延迟加载参考，没有将其英文FlashRank默认值或整套业务代码搬入新项目。用户已完成GPU就绪、真实重排与身份观察及缺缓存拒绝；实际手测10候选均未截断，长文截断/逐参数设备与显存插桩仍属于开发期Codex验证，不扩大为本人手测。D16不自动推进。
