@@ -1094,3 +1094,76 @@ cat data/manual-d15/missing-cache-error.json
 本次仅补7份Markdown（README、计划第10节、日志、学习/面试笔记、D15报告和evals说明）。CPU/GPU正式证据与已提交字节相同，GPU27份源码/依赖SHA匹配；D8/V0/V1/V2的9/12/19/23份封存输入/产物及清单保持。源代码、依赖、模型缓存和35日任务表不变，手测JSON仍在忽略目录。收尾Git操作由用户亲自完成，D16等待明确要求。
 
 本次收尾检查：7份Markdown围栏/空白、54张表列数、242处本地链接/13锚点及日报固定8节通过，计划第10节外、D15之前笔记和既有日志原文保持。独立只读事实审查通过，正式证据及旧冻结内容保留；手测数据、模型缓存和.env仍被忽略。git diff --check无输出、暂存区为空，7份文档待用户亲自提交推送；本次Codex没有代跑手测CLI、模型、pytest或服务。
+
+## D16：固定候选的GPU重排对照（2026-10-25）
+
+**实现、必要自动验证与真实GPU采集完成；阶段A待用户提交/推送，阶段B待ChatGPT学习及用户主动手测。** 用户已推送D15收尾 [e6cc917b5505357317ff5506cfa7e1735e9f6c31](https://github.com/yan-ye-dhy/project-copilot/commit/e6cc917b5505357317ff5506cfa7e1735e9f6c31)，开启时main/origin/main一致、工作区干净。用户要求常规选择直接采用推荐方案，必须人工确认才暂停；本轮采用既有本地CUDA方案，无外部收费调用或新模型下载，Git写操作仍由用户本人执行。
+
+新增独立evals/rerank_run.py、固定rerank_v3.json和test_rerank_run.py，不修改D15核心重排器、旧评测器或业务API，也不新增依赖。先校验D8冻结、父V2 manifest固定SHA、同一30dev题与每题同序10候选及原文/metadata、父23份及D15GPU来源源码/依赖，再一次性校验本地6份模型文件SHA。模型仍为BGE v2-m3固定953dc6f6f85a1b2dbfca4c34a2796e7dde08d41e，CUDA float16、batch2、输入512 tokens；排名深度10供k=1/3/5/10评分，最终上下文合同独立固定5块，没有回答生成。
+
+第一次首题pc-d7-001的10pair作独立warmup，加载与首推断不进质量分母或30题暖态统计；随后原序001/002为smoke，包含在30题中，不额外重复。预热或前两题失败立即停止并保留partial，无封存成功；后续失败空排名保留完整分母，不回退原序。尝试调用/输入pair与完整有限分数成功返回单独计数，detail.score_succeeded与其后的诊断错误分别保留。
+
+### 实际自动验证（执行者：Codex）
+
+新测试最终60 passed、5.14秒；fake PairScorer与真实GPU结果分别记录。覆盖同候选、原分数/身份、预热及预算、失败分母、公开重评分、父来源/配置漂移、重封后指标不自洽、缺失/额外文件、未来Prompt/模型默认独立及CLI显式门禁。首轮两个测试预期不符已修正（collect门禁为exit1、安装包METADATA属正常只读依赖），最终不累计中间运行结果。
+
+本轮实际命令：
+
+```bash
+HF_HUB_OFFLINE=1 .venv/bin/python -m evals.rerank_run plan \
+  --dataset evals/datasets/copilot_v0 \
+  --hybrid-dir evals/results/hybrid-v2-20261022-01 \
+  --config evals/configs/rerank_v3.json > data/auto-d16/plan.json
+
+HF_HOME=/home/yanye/project-copilot/models/hf-home \
+HF_HUB_OFFLINE=1 HF_HUB_DISABLE_TELEMETRY=1 HF_HUB_DISABLE_PROGRESS_BARS=1 \
+TOKENIZERS_PARALLELISM=false \
+TRITON_CACHE_DIR=/home/yanye/project-copilot/models/triton \
+TORCHINDUCTOR_CACHE_DIR=/home/yanye/project-copilot/models/torchinductor \
+CUDA_CACHE_PATH=/home/yanye/project-copilot/models/cuda-cache \
+/usr/bin/time -f 'peak_rss_kib=%M\nwall_seconds=%e' \
+  -o data/auto-d16/resources.txt \
+  .venv/bin/python -m evals.rerank_run collect \
+  --dataset evals/datasets/copilot_v0 \
+  --hybrid-dir evals/results/hybrid-v2-20261022-01 \
+  --config evals/configs/rerank_v3.json \
+  --output-dir data/evals/rerank-v3-20261025-01 --local \
+  > data/auto-d16/collect.json
+
+.venv/bin/python -m evals.rerank_run verify \
+  --dataset evals/datasets/copilot_v0 \
+  --output-dir data/evals/rerank-v3-20261025-01
+
+.venv/bin/python -m evals.rerank_run verify \
+  --dataset evals/datasets/copilot_v0 \
+  --output-dir evals/results/rerank-v3-20261025-01
+
+timeout --signal=INT 120s .venv/bin/python -m pytest -q \
+  tests/test_rerank_run.py tests/test_rerank.py tests/test_rerank_smoke.py \
+  tests/test_eval_comparison.py tests/test_eval_run.py tests/test_eval_metrics.py \
+  tests/test_hybrid_run.py tests/test_rag_api.py tests/test_main.py
+```
+
+plan实际退出0，申明30题、26可答/4无答案、31调用/310pair预算；导入运行器后sys.modules中的Torch/Transformers均未加载。真实collect退出0，31次评分/310pair全部成功，重排错误0，API及Qdrant请求0，没有重试、下载或读取.env。运行时Torch2.14.1+cu130、Transformers5.20.2、CUDA编译版本13.0、RTX4060 Laptop/compute capability8.9；首次GPU空闲显存约6541MiB，模型实际31份观测全部cuda:0/torch.float16。
+
+两份verify均退出0、verified、19份封存产物；公开目录为私有目录20份文件原字节副本，共3725251字节，不含权重/向量/密钥。verify仅使用公开归档和冻结数据，验证SHA、同候选全排列/logit排序、最终5块并重算gold指标/汇总/成对结果；不重跑GPU、私有缓存或当前Prompt。GPU观测由真实collect逐参数校验、独立审查逐条核对；机器manual_review=pending/day16_accepted=false保留，未替用户验收。
+
+联合9文件实际266 passed、25.09秒，含60项本日新增，不重复累加为326项。ASGI相关离线测试使用沙箱外执行，fake服务不调用真实模型或数据库。无未解决的自动测试失败。
+
+### 真实效果、退化和计时边界
+
+26可答题证据MRR@5由0.8974358974升至0.9711538462，证据Recall@5和@10保持1.0；Recall@3由1.0降到0.9358974359，@3全部gold覆盖题率由26/26降至24/26。逐题按所有公开指标及k判断4改善、2退化、20指标不变，4无答案独立。改善为003、012、024、040；退化为007、034，均保留原文与分数，不据此直接更换默认方案。
+
+007空TXT上传问题的真实422/请求前拒绝gold原rank2降至4，前排出现向量配置/凭据等其他相关术语片段。可观察到具体上传拒绝证据被排后，不能仅凭logit证明模型为何如此打分。034跨段题中Compose证据仍rank1，启动命令和lifespan两段从rank3退至4，证据完成名次[1,3,3]→[1,4,4]；首gold的MRR保持1但@3缺两段，说明单看MRR会漏掉多证据退化。完整案例在 [V3报告](../evals/reports/RERANK_V3.md)及逐题归档。
+
+主30题的rerank组件中位数161.644ms、p95 169.081ms；每题含tokenize/排序及诊断，单独模型推断另列score_details。warmup总11733.402ms、模型加载10330.751ms、首次模型推断1368.537ms，不进入主统计，主30模型加载均0。warmup10pair与主300pair均无截断，主输入168–494 tokens；只说明这批样本未触发512上限。
+
+基线rankings按原字节保留D14历史timings；本轮V3只测rerank，embedding/search/fusion/端到端total均null。score_details.timings_ms.total是局部重排总计，不能与rankings里的端到端total混同。所有paired_timings共同样本均0，不能将旧V2约5.865ms历史total与新组件相减称请求增量延迟或端到端提速。
+
+本次进程wall28.56秒、host peak RSS4583248KiB约4.37GiB，准备/权重哈希/加载/写盘不都属于逐题时延。GPU allocator最大allocated1167455232/reserved1189085184字节（约1.09GiB allocated），包括常驻模型，非全卡峰值；CUDA context已先初始化，OS缓存未清，不称冷盘或生产吞吐。4道无答案两侧都有非空命中，refusal_accuracy仍null；没有回答/拒答/引用质量结论。
+
+独立标准库审查重算60份排名×4k×5指标共1200个值、完成名次、汇总/分类/Bad Cases，均与产物一致；同一原10候选全字段全排列、原RRF分数保留、logit稳定排序及top5均符合。20份公开/私有文件、19份封存产物、28份源码/配置/依赖及6份模型文件hash保持；31份GPU观测与全部成对计时边界已核对。D8/V0/V1/V2/D15证据、源代码与依赖保留，默认仍Dense及750/150。
+
+完整交接见 [D16报告](reports/DAY_16.md)、[实验报告](../evals/reports/RERANK_V3.md)与 [公开manifest](../evals/results/rerank-v3-20261025-01/manifest.json)。本轮保留一组配置，没有用保留集/额外参数搜索选优；D17最终选择及冻结仍等待本日A/B完成与用户明确开启。用户未主动开启本日手测，自动结果不登记为本人学习或案例复盘。
+
+收尾检查：31份交付文件范围符合本日清单；8份Markdown的围栏/空白、56张表、273处本地链接及14个锚点、日报固定8节均通过。计划第10节之外及既有日志/笔记原文保持；19份新产物、28份运行源码/配置/依赖SHA和20份公开/私有归档字节再次一致。独立只读文档审查无剩余问题，运行参考中的输出目录已改为可直接使用的新目录示例。git diff --check通过，暂存区为空；Git提交与推送仍交用户执行，不因此开启手测或D17。

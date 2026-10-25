@@ -1,0 +1,15 @@
+{
+  "state": "recorded",
+  "complete": true,
+  "question_count": 30,
+  "retrieval_errors": 0,
+  "local_score_calls": 31,
+  "attempted_pairs": 310,
+  "successful_score_calls": 31,
+  "scored_pairs": 310,
+  "model_api_calls": 0,
+  "qdrant_requests": 0,
+  "pair_count_semantics": "scored=complete-finite-score-returns; attempted=input-pairs; failed-partial-batches-unknown",
+  "manual_review": "pending",
+  "day16_accepted": false
+}

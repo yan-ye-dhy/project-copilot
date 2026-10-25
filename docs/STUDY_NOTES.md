@@ -333,3 +333,15 @@ D10真实采集30题与八类回答：7条结构通过，003缺少JSON字段引�
 环境选择对应互斥可选组：CPU用`rerank`，官方CUDA 13.0依赖用`rerank-gpu`。已缓存同一模型时，GPU参考命令为`uv sync --frozen --group rerank-gpu`及`uv run --frozen --group rerank-gpu python scripts/rerank_smoke.py --local --device cuda --dtype float16`。CPU历史JSON及当时源码SHA保留；当前依赖配置变化后，新执行另记`pyproject.toml`/`uv.lock`的SHA。
 
 成熟Tokenizer/Transformer模型和PyTorch推断为复用能力；新项目独立实现预算、错误、身份保留、诊断与可复现入口。原项目reranker.py只作身份映射/延迟加载参考，没有将其英文FlashRank默认值或整套业务代码搬入新项目。用户已完成GPU就绪、真实重排与身份观察及缺缓存拒绝；实际手测10候选均未截断，长文截断/逐参数设备与显存插桩仍属于开发期Codex验证，不扩大为本人手测。D16不自动推进。
+
+## D16：固定候选与重排对照
+
+以下为交给ChatGPT的学习提纲，用户学习与手动验证尚未确认；结合 [D16报告](reports/DAY_16.md)、[运行器](../evals/rerank_run.py)与 [V3结果](../evals/reports/RERANK_V3.md)阅读。
+
+1. **执行链**：冻结数据与V2父SHA→候选/源码合同检查→本地权重预检→独立warmup→原序前两题smoke→完整30题→D9评分→D12成对比较→封存/离线verify。warmup不进入质量分母和30题暖态耗时；smoke包含在30题中，没有另跑一份。
+2. **三个预算**：每题同10候选、保存完整10名、最终上下文仍取5块。Reranker的top_k=10在此用于保存排名深度，answer_top_k=5是独立回答合同；本轮没有生成答案。只改顺序时，全部候选深度的证据覆盖不能增加。
+3. **MRR不能独自说明全部证据**：007从2退到4，034的三段证据[1,3,3]退为[1,4,4]；后者首条证据始终在1，MRR不变，但@3只覆盖一段。整体MRR@5提高同时Recall@3下降，最终@5召回不变，需按固定指标和k一起读。
+4. **时间来源**：baseline_rankings按字节保留D14历史时间；V3只有rerank本轮新测，其他阶段与端到端total为null。score_details里的total是本次重排组件总计，不等于完整RAG请求；paired_timings共同样本均0，不能把不同来源的数字相减称提速。
+5. **失败和溯源**：尝试次数/输入pair与完整有限分数成功返回分别计数；前两题失败停止，后续失败保留30题和可答分母。原RRF分数与新logit分别存放，失败不回退。verify不加载模型，重算原文gold、指标和对照；实际GPU设备/精度由采集检查并在独立审查中逐项核对。
+
+本轮固定一组模型/精度/预算，没有按保留集或开发集结果追加调参。后续手动验证可分析007退化或034多证据案例，等待用户主动开始，不将Codex程序分析登记为本人复盘；D17选择与最终冻结另行明确开启。

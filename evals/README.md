@@ -230,3 +230,32 @@ CPU float32与GPU float16同时改变硬件和精度，首/热两次属于单题
 本轮只验证适配合同，012的gold从3到1不能冒充开发集MRR改善；模型分数不能当置信度。未改D8冻结输入、原V0/V1/V2机器产物或默认750/150和Dense API。D15阶段A/B已完成，D16仍等待用户明确开启，再使用固定候选作成对实验。
 
 2026-10-25用户亲自通过五个手测环节并确认ChatGPT学习：GPU命令结果保存在忽略目录data/manual-d15/smoke-gpu.json，首/热各10pair、各选5块，首模型加载11500.209ms、热态重排158.899ms；缺缓存错误保存在missing-cache-error.json，退出1且未生成测试缓存。Codex只读核对原文、全部metadata、原score与输入SHA一致，正式CPU/GPU证据及旧冻结内容保持。手测两遍截断均0，没有另测参数设备/显存；真实GPU配置执行、CUDA小张量与开发期插桩分别记录。完整手测范围见D15报告，记录提交仍由用户完成。
+
+## D16：固定候选的V3重排对照
+
+[rerank_run.py](rerank_run.py)复用D14同一30题、每题10个原Hybrid候选及D15固定BGE版本。先校验D8冻结、父manifest SHA、原文身份和已有源码，再读取本地已缓存权重。候选/保存排名深度10，最终上下文5块；运行器保留原hit.score作为RRF分数，排序所用raw logit单列于score_details，不将两类分数混加。
+
+```bash
+uv run --frozen --group rerank-gpu python -m evals.rerank_run plan \
+  --dataset evals/datasets/copilot_v0 \
+  --hybrid-dir evals/results/hybrid-v2-20261022-01 \
+  --config evals/configs/rerank_v3.json
+
+HF_HUB_OFFLINE=1 uv run --frozen --group rerank-gpu python -m evals.rerank_run collect \
+  --dataset evals/datasets/copilot_v0 \
+  --hybrid-dir evals/results/hybrid-v2-20261022-01 \
+  --config evals/configs/rerank_v3.json \
+  --output-dir data/evals/rerank-v3-local-01 --local
+
+uv run --frozen --group rerank-gpu python -m evals.rerank_run verify \
+  --dataset evals/datasets/copilot_v0 \
+  --output-dir evals/results/rerank-v3-20261025-01
+```
+
+以上为运行参考，开发期已完成真实采集，学习后用户手测仍等主动开启。collect的示例输出目录须尚不存在；重复实验请换新目录。plan/verify离线，不导入Torch/Transformers或加载模型；collect必须显式--local，只用本地快照，缓存缺失不下载、不回退。独立一次warmup（首题10pair）不进入评分/时延统计，前两道原序dev为smoke并包含在完整30题中。无异常时31次成功评分、310pair；遇异常分别记录尝试和完成计数，前两题失败不封存，后续失败保留分母。
+
+[公开归档](results/rerank-v3-20261025-01/manifest.json)共20文件，19份产物由manifest登记SHA：保存父manifest/状态、两套排名及评分、原候选/logit/token/GPU观测、warmup、配置/模型来源/runtime、逐题原文gold与比较。两套文件使用同一evaluation_config；4无答案的Recall/MRR为null，拒答率未采集。默认配置、D8/V0/V1/V2/D15封存内容保持。
+
+基线timings来自D14历史快照；本轮candidate仅timings_ms.rerank新测，embedding/search/fusion/total记null。score_details.timings_ms.total表示重排组件本身，包含tokenize/排序与诊断，不是端到端RAG耗时；因此所有阶段paired_timings共同样本数为0。GPU单进程一次预热后的30题中位数/p95不当作生产SLA。
+
+本次证据MRR@5为0.897436→0.971154，Recall@5均1，但Recall@3为1→0.935897；4改善、2退化、20指标不变，4无答案另列。程序可追溯分析见 [V3报告](reports/RERANK_V3.md)，其中007的2→4及034多证据3→4需保留；本日不据这些结果自动修改最终默认或提前运行D17保留集。

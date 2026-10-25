@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "experiment_id": "rerank-v3-bge-v2-m3",
+  "parent_run_id": "hybrid-v2-20261022-01",
+  "parent_manifest_sha256": "0263150ef53e349415c3a4aad68c5bd218c0fa4bfeb194681338d4b7ce4055ab",
+  "parent_configuration_fingerprint": "hybrid-experiment-v1-5b5039b64d2464e9dfb6e448b54de1c05b61376568f0e83983382c2c0e5a329e",
+  "dataset_fingerprint": "dataset-v1-54806b5174b2f3d2e4bd08b91b57569c5121929731112c3d375d4d42d4306b7e",
+  "candidate_branch": "hybrid",
+  "ranking_depth": 10,
+  "answer_top_k": 5,
+  "warmup_calls": 1,
+  "smoke_questions": 2,
+  "rerank": {
+    "model_name": "BAAI/bge-reranker-v2-m3",
+    "revision": "953dc6f6f85a1b2dbfca4c34a2796e7dde08d41e",
+    "device": "cuda",
+    "dtype": "float16",
+    "max_length": 512,
+    "batch_size": 2,
+    "max_candidates": 10,
+    "top_k": 10,
+    "cpu_threads": 4,
+    "local_files_only": true
+  }
+}

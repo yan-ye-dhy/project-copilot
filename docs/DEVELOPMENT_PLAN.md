@@ -461,7 +461,7 @@ feat(agent): require approval for idempotent ticket creation
 
 这些是建议，不是已存在的历史。原仓库不整理或提交；新项目由用户在Codex指导下亲自提交、推送约定GitHub仓库/分支，失败如实报告，不强推或重写历史。未配置远端时先记录待同步并获取实际地址，不猜测仓库。每个完整模块验收后可交给ChatGPT新开学习窗口，如“Project Copilot · Dense RAG”“Project Copilot · 检索评测与优化”“Project Copilot · LangGraph与工单确认”。
 
-## 10. 当前开发进度：D15阶段A/B完成，待用户开启D16
+## 10. 当前开发进度：D16，固定候选V3重排对照
 
 **D1已完成：** 工程、自动验收、ChatGPT学习和用户手测完成；2026-10-12只读核实用户提交的 `4c04a29` 已同步GitHub，A/B均完成，见 [D1报告](reports/DAY_1.md)。用户已明确开启D2。
 
@@ -526,6 +526,16 @@ D14收尾`4e3cfbae05150a11f0a2ae17ea6596da06317387`已由用户推送，开启�
 使用固定revision的BAAI/bge-reranker-v2-m3，CPU float32/4线程、batch2、输入512 tokens，仅截第二段并拒绝用尽预算的query。CPU/GPU可选依赖组互斥，与项目本地缓存独立；首次非空请求加载，失败不下载/回退。对10候选评分后输出5块，另存raw logit和候选名次，原text/metadata/score保持。
 
 Codex真实验证012的同一10候选首/热两遍，gold由3到1；另有合成2120→512 tokens和超长query推断前拒绝，共21个本地pair，外部模型API/Qdrant请求0。该单题结果不能代替D16开发集对照；CPU阶段已验证，随后按用户选择补充CUDA float16同题20pair验证，实际参数cuda:0/float16、目标仍3到1、热态重排约174.47ms、PyTorch allocated峰值约1.09GiB；当前CUDA环境同一235回归通过。CPU历史证据原字节保留，两阶段共41pair；硬件与精度同时变化，不作单因素性能结论。资源、测试与边界见 [D15报告](reports/DAY_15.md)、[CPU记录](evidence/D15_RERANK_SMOKE.json)和 [GPU记录](evidence/D15_GPU_RERANK_SMOKE.json)。2026-10-25用户亲自完成门禁/CUDA就绪/真实GPU重排/身份观察/缺缓存拒绝五个环节，新增20个本地pair，热态重排约158.90ms；Codex只读核对产物及原归档，用户确认已通过ChatGPT理解主链和截断保留原文。实际手测两遍截断计数均0，不将开发期长文/参数设备/显存插桩登记为用户操作；D16仍等待明确要求。
+
+### D16实施记录（2026-10-25）
+
+用户已推送D15收尾`e6cc917b5505357317ff5506cfa7e1735e9f6c31`，开启时main/origin/main一致、工作区干净。按用户最新要求，常规实现选择自主采用推荐方案：复用固定V2原候选、D15模型与CUDA float16，在独立运行器/配置/测试中完成V3对照，无新增依赖或旧业务源码修改；阶段A待用户提交推送，阶段B待ChatGPT学习与主动手测。
+
+固定30dev题每题同10候选，完整排名深度10与最终上下文5块分别记录。一次首题warmup不进评分/暖态统计，原序前两题smoke包含在30题中；实际31次评分/310pair全成功，错误0，外部模型API及Qdrant请求0，不生成回答。最终联合266项通过（本日新增60项）；公开19产物＋manifest保留父合同、原文/logit/时延/模型及GPU证据，原D8/V0/V1/V2/D15封存文件保留。
+
+26可答题的证据MRR@5从0.897436到0.971154，Recall@5/10均1.0，但Recall@3从1.0降至0.935897；逐题4改善/2退化/20指标不变，4无答案独立。007 gold排名2→4，034证据完成排名[1,3,3]→[1,4,4]；不能只展示MRR或宣称补回候选外证据。主30题仅新测rerank，中位数161.644ms/p95 169.081ms，其他阶段及端到端total为null，原V2时间只是历史快照。
+
+运行与边界见 [D16报告](reports/DAY_16.md)、[V3报告](../evals/reports/RERANK_V3.md)和 [公开归档](../evals/results/rerank-v3-20261025-01/manifest.json)。本次未调第二组参数、未用保留集或修改默认750/150与Dense问答API。D16学习及手动案例复核尚待用户完成，D17不自动开启，35日任务表不变。
 
 ## 11. 最终验收和可选裁剪
 

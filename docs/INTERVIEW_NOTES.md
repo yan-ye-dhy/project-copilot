@@ -139,3 +139,11 @@
 复现环境要区分互斥的`rerank`（CPU）与`rerank-gpu`（官方CUDA 13.0依赖）组，安装和已缓存模型的运行命令见 [根README](../README.md#d15本地cross-encoder最小重排)。新增GPU组后的依赖SHA属于新执行身份，CPU收据仍保留当时版本与SHA。
 
 用户手测另有20个GPU pair：gold由3排到1，已观察原RRF score与独立负logit、来源及原文；Codex逐值核对20条输入与10条选中记录，身份保留。缺缓存在模型加载前退出1。本次未手测开发期长文截断、显存峰值、CPU或全dev效果；答辩时区分本人操作与自动证据。
+
+## D16：如何解释一次有改善也有退化的实验
+
+用户学习与手动验证尚待完成。依据 [V3报告](../evals/reports/RERANK_V3.md)、[实验合同](../evals/results/rerank-v3-20261025-01/experiment_config.json)及 [逐题原文](../evals/results/rerank-v3-20261025-01/case_details.jsonl)。
+
+1. **怎样证明改变的是排序？** 固定30dev题、每题同10个Hybrid候选及其原文/metadata/RRF分数，固定750/150、模型revision与最终5块，只新增本地cross-encoder重排；保存原序、新名次和独立logit，候选深度10覆盖守恒。
+2. **为什么MRR提升仍不能说全面变好？** MRR@5从0.897436到0.971154，但007的gold从2到4，034的另外两段从3到4，Recall@3降至0.935897；Recall@5维持1。034首条证据一直在1，单看MRR会漏掉跨段支持退化。4无答案没有回答/拒答评测，不把有命中当可回答。
+3. **效果收益怎样与成本比较？** 本轮GPU暖态重排中位数161.644ms/p95 169.081ms，加载与warmup另计；没有新检索或端到端请求测量，不能直接与历史V2 total相减。模型API费用0仍有本地GPU/加载开销；是否采用及保留集检验留D17，当前API仍用原Dense默认。
