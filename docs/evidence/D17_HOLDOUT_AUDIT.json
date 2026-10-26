@@ -1,0 +1,24 @@
+{
+  "date": "2026-10-26",
+  "executed_by": "Codex",
+  "verification_kind": "independent-original-text-interval-metrics-and-cached-vector-check",
+  "run_id": "final-holdout-20261026-01",
+  "manifest_sha256": "c490f65054c693f8920d496cc06b1de8db718d053463a696b83e5afbd9d7afc6",
+  "public_files": 24,
+  "public_bytes": 2037047,
+  "sealed_payloads": 23,
+  "source_sha256_checks": 11,
+  "independently_recomputed_metric_values": 800,
+  "cached_vectors_equal": 10,
+  "cache_stats": {
+    "hit_texts": 10,
+    "miss_texts": 0,
+    "api_calls": 0
+  },
+  "gpu_observations_checked": 11,
+  "selection_commit": "e676d5021d84d0bcaa7eeb700287833d844e703a",
+  "selection_matches_pre_holdout_commit": true,
+  "new_embedding_api_calls": 0,
+  "new_gpu_scores": 0,
+  "user_learning_or_manual_completion_claimed": false
+}

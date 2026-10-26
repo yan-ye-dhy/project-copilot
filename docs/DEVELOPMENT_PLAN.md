@@ -461,7 +461,7 @@ feat(agent): require approval for idempotent ticket creation
 
 这些是建议，不是已存在的历史。原仓库不整理或提交；新项目由用户在Codex指导下亲自提交、推送约定GitHub仓库/分支，失败如实报告，不强推或重写历史。未配置远端时先记录待同步并获取实际地址，不猜测仓库。每个完整模块验收后可交给ChatGPT新开学习窗口，如“Project Copilot · Dense RAG”“Project Copilot · 检索评测与优化”“Project Copilot · LangGraph与工单确认”。
 
-## 10. 当前开发进度：D16学习与本次委托验证完成，待用户开启D17
+## 10. 当前开发进度：D17实现及保留集自动验收完成，待学习与手动验证
 
 **D1已完成：** 工程、自动验收、ChatGPT学习和用户手测完成；2026-10-12只读核实用户提交的 `4c04a29` 已同步GitHub，A/B均完成，见 [D1报告](reports/DAY_1.md)。用户已明确开启D2。
 
@@ -542,6 +542,14 @@ Codex真实验证012的同一10候选首/热两遍，gold由3到1；另有合成
 开发提交[10951130c26d0a85a8a8e6f2ed53fdbbc746bbde](https://github.com/yan-ye-dhy/project-copilot/commit/10951130c26d0a85a8a8e6f2ed53fdbbc746bbde)已由用户推送，阶段A完成。用户确认已通过ChatGPT学习、能够解释主流程，并明确授权Codex直接操作本轮验证及Git提交推送；本次阶段B按“用户已学习＋授权代操作验证”完成记录，不写成用户亲自运行命令，也不改变以后默认协作规则。
 
 Codex执行plan、公开verify、两侧各30题重放，以及无--local、配置漂移、篡改副本三项预期失败检查，退出码均符合预期；两侧60条评分与成对比较一致，原候选/分数/metadata保持，012改善和007/034退化原文与排名已由Codex核对。新增GPU评分、模型API及Qdrant请求均0；本次未重跑pytest，原开发期266项测试记录保持。证据见[委托验证收据](evidence/D16_DELEGATED_VERIFICATION_20261026.json)。D8及V0/V1/V2/V3/D15原字节保持，机器manual_review=pending/day16_accepted=false仍是采集时快照；本次验收另行记载。D17不自动开启，35日任务表不变。
+
+### D17实施记录（2026-10-26）
+
+用户明确开启D17并授权Codex完成本次GitHub提交，起点为已同步的D16收尾b3f4fcf、干净main。先依原30dev题重评分V0/V1/V2/V3及BM25，固定final k=5并保留覆盖/排序/资源和退化限制，选定750/150的Hybrid＋BGE Rerank；冻结配置及运行器先提交推送[e676d5021d84d0bcaa7eeb700287833d844e703a](https://github.com/yan-ye-dhy/project-copilot/commit/e676d5021d84d0bcaa7eeb700287833d844e703a)，再运行保留集。规则写于已有dev实验之后、holdout之前，不声称开发实验前预注册。
+
+用户单独批准本轮最多1次10问题Embedding、10次本地Dense查询及110对GPU评分；实际全部成功且无重试。原10holdout为9可答/1无答案，Recall@5两侧1.0，MRR@5由0.944444到1.0，1改善/8指标不变/1无答案；033的两段完成名次[3,2]→[2,1]。未因保留集结果修改参数、Prompt或重新选择。275项相关回归通过，含27项新增；私有/公开verify和独立800指标/10缓存向量审计通过。正式运行code为e676d50、dirty=false，公开23产物＋manifest保存完整结果，模型usage/实付未采集记null。
+
+本次只冻结实验配置；当前HTTP问答API仍Dense/750/150，不声称优化路径已上线。新增代码仅为选型与保留集编排/验证，旧业务及旧评测器、D8/V0/V1/V2/V3/D15/D16归档保留。报告见[D17日报](reports/DAY_17.md)、[选型](../evals/reports/FINAL_SELECTION.md)及[保留集结果](../evals/reports/FINAL_HOLDOUT.md)。本轮为Codex开发期自动验收，未确认用户D17学习或手测完成；Git收尾按本次授权执行，D18不自动开启，35日任务表不变。
 
 ## 11. 最终验收和可选裁剪
 

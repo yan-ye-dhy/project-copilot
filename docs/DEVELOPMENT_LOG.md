@@ -1188,3 +1188,63 @@ Codex实际在新项目根目录执行7条CLI，输出保存在忽略目录data/
 检查前后186份既有源码/依赖/测试/评测及证据文件SHA保持，D8、V0/V1/V2/V3和D15原字节不改写。新收据单独记录本次授权及执行者，原机器manual_review=pending/day16_accepted=false仍是历史快照。仅更新8份Markdown与1份验证收据，不实现功能、不读取真实.env；按用户明确授权完成本次Git提交和推送，结果在会话补全。D17未开始。
 
 本次收尾检查：8份Markdown的围栏/空白、58张表、280处本地链接及14个锚点、日报固定8节通过，计划第10节外和既有日志原文保持。最终范围为8份Markdown＋1份独立验证收据；除两份有意更新的evals说明/报告外，原受检文件184份及28份运行源码SHA、V3的19份封存产物保持。Git提交前再次检查diff与新JSON格式，不增加业务代码或依赖改动。
+
+## D17：最终方案冻结与保留集自动验收（2026-10-26）
+
+用户明确开启D17并授权Codex完成本次GitHub提交，起点为已同步D16收尾b3f4fcf、干净main。D16学习和委托验证状态按原记录保留，不把上日代操作授权扩为D17用户学习/手测完成。本日仅选择并验证最终检索方案，不新增算法或开始D18。
+
+### 开发集选择与采集前冻结
+
+新增evals/final_selection.py、evals/holdout.py、tests/test_final_holdout.py、evals/configs/final_v1.json及evals/reports/FINAL_SELECTION.md。旧业务、旧评测器及依赖不改。对V0/V1/V2/V3与BM25的原30dev题重算gold指标，以固定top5的覆盖/全部证据覆盖/MRR和V3已测组件资源预算选择Hybrid＋BGE Rerank，保留V1覆盖损失与V3 @3退化；规则于已有dev实验之后、holdout之前书面化，不冒称开发实验前预注册。
+
+配置指纹final-selection-v1-d77720ad02c9ac3caa83b3fa6981c6d197b1c7238d220cf64cca3dd5ced2f450。先提交并推送[e676d5021d84d0bcaa7eeb700287833d844e703a](https://github.com/yan-ye-dhy/project-copilot/commit/e676d5021d84d0bcaa7eeb700287833d844e703a)，随后才执行真实holdout；manifest记录该commit、dirty=false，配置与该提交原字节一致。
+
+### 自动测试与真实命令（执行者：Codex）
+
+新增用例使用内存Qdrant、fake向量及PairScorer，禁止网络、真实.env及Torch；覆盖冻结、重封后改参、同一向量、原候选/分数、失败尝试计数和完整分母、人工状态、闭集SHA及语义篡改。最终相关7文件275 passed、21.42秒，包含27项D17新增；首轮24项及中间重复回归不累加为更多不同用例。
+
+```bash
+HF_HUB_OFFLINE=1 .venv/bin/python -m pytest -q \
+  tests/test_final_holdout.py tests/test_rerank_run.py tests/test_eval_metrics.py \
+  tests/test_eval_comparison.py tests/test_fusion.py tests/test_bm25.py tests/test_hybrid.py
+
+HF_HUB_OFFLINE=1 .venv/bin/python -m evals.final_selection freeze \
+  --dataset evals/datasets/copilot_v0 --config evals/configs/final_v1.json
+HF_HUB_OFFLINE=1 .venv/bin/python -m evals.final_selection verify \
+  --dataset evals/datasets/copilot_v0 --config evals/configs/final_v1.json
+HF_HUB_OFFLINE=1 .venv/bin/python -m evals.holdout plan \
+  --dataset evals/datasets/copilot_v0 --config evals/configs/final_v1.json
+
+HF_HOME=/home/yanye/project-copilot/models/hf-home \
+HF_HUB_OFFLINE=1 HF_HUB_DISABLE_TELEMETRY=1 HF_HUB_DISABLE_PROGRESS_BARS=1 \
+TOKENIZERS_PARALLELISM=false \
+TRITON_CACHE_DIR=/home/yanye/project-copilot/models/triton \
+TORCHINDUCTOR_CACHE_DIR=/home/yanye/project-copilot/models/torchinductor \
+CUDA_CACHE_PATH=/home/yanye/project-copilot/models/cuda-cache \
+/usr/bin/time -f 'peak_rss_kib=%M\nwall_seconds=%e' -o data/auto-d17/resources.txt \
+.venv/bin/python -m evals.holdout collect \
+  --dataset evals/datasets/copilot_v0 --config evals/configs/final_v1.json \
+  --output-dir data/evals/final-holdout-20261026-01 --live \
+  > data/auto-d17/collect.json
+
+HF_HUB_OFFLINE=1 .venv/bin/python -m evals.holdout verify \
+  --dataset evals/datasets/copilot_v0 --output-dir data/evals/final-holdout-20261026-01
+HF_HUB_OFFLINE=1 .venv/bin/python -m evals.holdout verify \
+  --dataset evals/datasets/copilot_v0 --output-dir evals/results/final-holdout-20261026-01
+```
+
+所有实际CLI退出0。用户明确批准最多1次Embedding、10次本地Dense及110对GPU；实际Embedding一批10文本/1189 UTF-8字节，cache hit0/miss10/api1，约1008.739ms；10次Dense、10次BM25、10次RRF及11次GPU110pair（开发题001独立warmup10pair＋保留集100pair）均成功，Chat0，未重索引、下载或自动重试。价格已于10月26日核对[智谱官方Embedding-3文档](https://docs.bigmodel.cn/cn/guide/models/embedding/embedding-3)：0.5元/百万tokens，授权前以3万tokens预算¥0.015；usage/实付未采集记null，不用字节数冒充token数或账单。
+
+### 结果、资源与证据边界
+
+保留集原10题/8类，9可答/1无答案；两侧检索错误0，证据Recall@5均1，MRR@5为0.944444→1.000000；1改善、8指标不变，1无答案独立，未因结果改选。改善033两条gold首次覆盖[3,2]→[2,1]，首条MRR=1仍需第二块补齐；005两条gold两侧同rank1；038实际HNSW参数无证据，两侧都非空，拒答率仍null，本轮无回答生成或引用支持判断。
+
+GPU为RTX4060 Laptop，Torch2.14.1+cu130/CUDA13.0、Transformers5.20.2；11次实际观察均cuda:0/float16，110对模型输入294～487 tokens且截断0，不因此新增长文截断验收。warmup总11873.864ms/加载10312.918ms/推断1521.046ms不进保留集统计。热态Final rerank中位数164.558ms、样本p95375.744ms；共享候选组件和中位数202.743ms、p951202.886ms，不含整批Embedding或LLM；Dense查询中位数37.660ms、p95672.216ms。没有独立线上请求或Dense预热，10样本p95等于最大值，不声称生产P95、端到端SLA或一般提速。
+
+模型最大allocated/reserved1167384064/1189085184字节，含常驻模型且非全卡显存；采集进程wall28.74秒、peak RSS4528648KiB。问题向量为本日同一批新向量，文档向量沿用原V0；记录日期/合同/向量SHA，不能保证云端别名权重永久不变。
+
+公开final-holdout-20261026-01目录24文件/2037047字节，与私有原字节一致，manifest封存23产物及11份执行源码/依赖SHA。私有/公开verify均verified，人工manual_review=pending/day17_accepted=false保持。独立标准库原文区间审查重算4路40条记录×4k×5指标共800值并验证汇总；10个问题缓存向量SHA逐值一致，hit10/miss0/API0，11份GPU观测及采集前配置Git字节均匹配，见[D17审计](evidence/D17_HOLDOUT_AUDIT.json)。审计未新增模型调用或评分。
+
+完整交接见[D17日报](reports/DAY_17.md)、[采集前选型](../evals/reports/FINAL_SELECTION.md)和[最终保留集报告](../evals/reports/FINAL_HOLDOUT.md)。当前API仍Dense/750/150，冻结实验不冒充已经部署。D17学习及用户主动手动验证尚待完成；本次Git收尾按用户明确授权提交推送，真实ID/结果会话补全，不自动进入D18或用保留集继续选参。
+
+D17收尾检查：本次结果提交共33文件，连同采集前5文件共38份交付；8份收尾Markdown的围栏/空白、55张表、303处本地链接及15个锚点、2段新bash示例语法及日报固定8节均通过。计划第10节外和既有日志原文保持，业务源码/依赖、原D8和V0/V1/V2/V3/D15/D16封存内容不变；采集后未修改已提交的选型、运行器或测试源码。23份新产物SHA、11份执行源码SHA及公开/私有24文件再次一致，真实.env、模型缓存、向量缓存与本地运行输出仍被忽略。Git收尾仅提交已审核结果和文档，不开始D17用户手测或D18开发。

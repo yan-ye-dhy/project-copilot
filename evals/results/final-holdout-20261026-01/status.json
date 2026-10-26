@@ -1,0 +1,14 @@
+{
+  "state": "recorded",
+  "complete": true,
+  "questions": 10,
+  "embedding_api_calls": 1,
+  "dense_queries": 10,
+  "local_score_calls": 11,
+  "attempted_pairs": 110,
+  "successful_score_calls": 11,
+  "scored_pairs": 110,
+  "chat_calls": 0,
+  "manual_review": "pending",
+  "day17_accepted": false
+}

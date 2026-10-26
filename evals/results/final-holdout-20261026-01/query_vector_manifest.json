@@ -1,0 +1,52 @@
+[
+  {
+    "question_id": "pc-d7-005",
+    "query_sha256": "99c624ed70167e99f250c3b81015d9d60df7941c7c041eb935bf7240947aa705",
+    "vector_sha256": "6cf37367dcf2022efb347d5993dab543180c18db48dbf17c9e087781f5f92092"
+  },
+  {
+    "question_id": "pc-d7-006",
+    "query_sha256": "9683216469994fdbd7106ab479764f0215b49be9328b8103640f516517d5170d",
+    "vector_sha256": "ca759f31502da3e963eb5cd5bfce4680f9b89bb3776674ee78055130dbab60a8"
+  },
+  {
+    "question_id": "pc-d7-008",
+    "query_sha256": "e3629987871a6f4c9acdc0284af055e36b8bb55f809107cf85935fe44f568e6e",
+    "vector_sha256": "5f37df705aa519ee64d09751113e1f580a051f834305b6ca425b8b6bfc727fbe"
+  },
+  {
+    "question_id": "pc-d7-016",
+    "query_sha256": "af63b5811a893a25f7de4382d63be339c3f713fb87b66b99aed4da767e05d75f",
+    "vector_sha256": "dfbc665e994a7b1a80fa37dec2cbf272e46cd25da83e0e2d3e143f85db58a4fe"
+  },
+  {
+    "question_id": "pc-d7-019",
+    "query_sha256": "4362e924365486eea90b48e390e8eaae492185fc54908e5a19087fe6d2b8e795",
+    "vector_sha256": "eabaf8f5757e8cdf9948b2541f4f5be2eb6629ff234659df35e60e6a21d5bc8a"
+  },
+  {
+    "question_id": "pc-d8-021",
+    "query_sha256": "f3016850e7fd3ccb42e54e9243df4bfca27fa66bfee610e355d9a3fa055cd44a",
+    "vector_sha256": "daaf9bfa16ea28d59ca9108fef89d9f64f51ff4f1e84895ce5e477ae032ee4e2"
+  },
+  {
+    "question_id": "pc-d8-026",
+    "query_sha256": "a2ebf5cf07e4ad877bb6ad6bed640fe5cebfaa2d9390efbac751ea424da39305",
+    "vector_sha256": "d1c97dadbc6101825f8ddab96e77737a96754e709673a69ef8548292feb3b351"
+  },
+  {
+    "question_id": "pc-d8-030",
+    "query_sha256": "6ca3b847bed2dcb58b5d65dd75b9fb1e84deb9760a27b5f456113738fca26ac7",
+    "vector_sha256": "a909f468a719cedfe3247959affa4aec265fbda6541a3610043a00950f134b56"
+  },
+  {
+    "question_id": "pc-d8-033",
+    "query_sha256": "a3cb662d37229443e5195fa563c3587b30ddb5c9dc3638bf1a4a5dd05185849d",
+    "vector_sha256": "9f410e690ab211a99bbd4ad393272991bff04b95bc2a8feb528fedfd9353e945"
+  },
+  {
+    "question_id": "pc-d8-038",
+    "query_sha256": "213702c7c6c5f933b92452bb7e598075600fee5edfb1c3a81f9af2dc675babbb",
+    "vector_sha256": "7d75e1dd84fc06bf239aeb0d594431d29b1c7230853493015bf250db9f6383a2"
+  }
+]

@@ -1,6 +1,6 @@
 # Project Copilot
 
-基于RAG与LangGraph的研发知识及工单协作智能体。D1–D15阶段A/B已完成，D16开发提交1095113已同步。2026-10-26用户确认已学习并能解释主流程，明确委托Codex代执行本次验证及Git提交；学习与本次委托验证已完成，实际执行者分别记录，见 [D16报告](docs/reports/DAY_16.md)。默认切分仍750/150，问答API继续使用Dense，D17未开启。
+基于RAG与LangGraph的研发知识及工单协作智能体。D1–D16已按各日实际学习/验证记录收尾。D17已依开发集冻结Hybrid＋BGE Rerank最终实验配置，并完成10题保留集自动验收；本次Git由Codex按用户明确授权提交推送，阶段B待ChatGPT学习及用户主动手动验证，见 [D17报告](docs/reports/DAY_17.md)。当前问答API仍使用Dense和750/150，D18未开启。
 
 协作流程见 [长期协作规则](docs/COLLABORATION_RULES.md)：Codex开发、自动验证、提供报告并指导Git操作；用户亲自提交和推送GitHub，随后通过ChatGPT学习代码/架构，学习后主动要求Codex开始手动测试。以下命令是自助运行参考，Codex仅在用户要求后单步带练。
 
@@ -299,3 +299,11 @@ GPU新增首/热20个pair，gold仍从3到1，选中原候选名次均为`[3,4,2
 26可答题的证据MRR@5由0.897436升至0.971154，Recall@5保持1.0；Recall@3却由1.0降至0.935897。逐题为4改善、2退化、20指标不变，4无答案另列。007的gold排名2→4，034的多段证据完成排名[1,3,3]→[1,4,4]，保留退化而不直接切换默认方案。该结果没有回答质量或候选外召回结论。
 
 30题暖态本地重排中位数161.644ms、p95 169.081ms；本轮仅测重排组件，旧V2检索时间是历史快照，未组合成端到端耗时。配置、全部原始分数/原文、模型与GPU证据及逐题差异见 [V3报告](evals/reports/RERANK_V3.md)和 [20文件公开归档](evals/results/rerank-v3-20261025-01/manifest.json)，命令见 [评测说明](evals/README.md#d16固定候选的v3重排对照)。2026-10-26学习已由用户确认；本次按用户明确授权由Codex完成离线验证，见 [委托验证收据](docs/evidence/D16_DELEGATED_VERIFICATION_20261026.json)。不登记为用户亲自终端操作，D17仍等待明确开启。
+
+## D17：最终配置冻结与保留集验收
+
+[开发集选型](evals/reports/FINAL_SELECTION.md)及[最终配置](evals/configs/final_v1.json)先提交推送e676d50，再运行保留集`final-holdout-20261026-01`，不根据保留结果改选。原V0与最终Hybrid＋BGE方案使用同一文档索引、同一问题向量及最终5块；本次不生成回答，也不切换HTTP API默认路由。
+
+9道可答题的证据Recall@5均1，MRR@5由0.944444升至1；1改善、8指标不变，另有1无答案。033两段证据从[3,2]提前为[2,1]，MRR=1仍不意味着第一块支持完整答案。实际Embedding API1、Dense查询10、GPU11次110pair（含开发题预热）；本轮后不再选参，旧开发集退化案例保持。
+
+完整指标、分类、成本和时延边界见 [保留集报告](evals/reports/FINAL_HOLDOUT.md)，[公开归档](evals/results/final-holdout-20261026-01/manifest.json)包含24文件；[独立核对](docs/evidence/D17_HOLDOUT_AUDIT.json)重算800个指标并核对10个缓存向量，无新增模型调用。运行器/命令见 [评测说明](evals/README.md#d17最终方案与保留集)。

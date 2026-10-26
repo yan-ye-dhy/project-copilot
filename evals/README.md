@@ -261,3 +261,25 @@ uv run --frozen --group rerank-gpu python -m evals.rerank_run verify \
 本次证据MRR@5为0.897436→0.971154，Recall@5均1，但Recall@3为1→0.935897；4改善、2退化、20指标不变，4无答案另列。程序可追溯分析见 [V3报告](reports/RERANK_V3.md)，其中007的2→4及034多证据3→4需保留；本日不据这些结果自动修改最终默认或提前运行D17保留集。
 
 本次委托验证收据见 [D16_DELEGATED_VERIFICATION_20261026.json](../docs/evidence/D16_DELEGATED_VERIFICATION_20261026.json)：plan/verify及两侧重放成功，缺--local/配置漂移/篡改副本按预期拒绝，原封存文件保持；新增模型与GPU评分均0。学习由用户确认，本轮操作由Codex执行，不登记为用户亲手运行；D17等待明确开启。
+
+## D17：最终方案与保留集
+
+[final_selection.py](final_selection.py)核对五路dev原文指标，写入不可覆盖的[final_v1.json](configs/final_v1.json)；[采集前报告](reports/FINAL_SELECTION.md)说明固定top5的选择和资源限制。该配置已在e676d50先提交推送，真实保留集运行随后使用clean commit，不根据保留集重选方案。
+
+```bash
+uv run --frozen --group rerank-gpu python -m evals.final_selection verify \
+  --dataset evals/datasets/copilot_v0 --config evals/configs/final_v1.json
+
+uv run --frozen --group rerank-gpu python -m evals.holdout plan \
+  --dataset evals/datasets/copilot_v0 --config evals/configs/final_v1.json
+
+uv run --frozen --group rerank-gpu python -m evals.holdout verify \
+  --dataset evals/datasets/copilot_v0 \
+  --output-dir evals/results/final-holdout-20261026-01
+```
+
+plan/verify不导入Torch、加载模型或读取.env。真实collect必须--live，按费用规则另有明确授权；本轮已采集一次，学习核对以离线verify为主，不因查看结果自动重新收费运行。运行器不覆盖已有目录、不改原D8数据/历史档案，前两题执行失败停止，后续失败保留分母，无回退或重试。
+
+公开[24文件归档](results/final-holdout-20261026-01/manifest.json)保存V0/Final和中间BM25/Hybrid候选、raw logit、全部metadata、10题指标/分类、原文案例、Embedding批次/向量SHA、GPU观察、warmup/runtime/status；私有缓存向量不发布。9可答/1无答案，证据Recall@5两侧1，MRR@5由0.944444到1；拒答/回答质量未评，不改Prompt，不改当前Dense问答API。
+
+组件计时、单轮小样本和云端Embedding别名限制详见[保留集报告](reports/FINAL_HOLDOUT.md)，[独立审计](../docs/evidence/D17_HOLDOUT_AUDIT.json)核对800指标/10缓存向量。D17新增27项离线用例；7文件相关回归275项通过。本轮Codex自动验收不登记为用户学习或手测完成，D18等待明确开启。

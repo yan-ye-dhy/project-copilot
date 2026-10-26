@@ -1,0 +1,64 @@
+{
+  "format_version": 1,
+  "spec": {
+    "collection_name": "pc_eval_dense_v0",
+    "embedding_model": "embedding-3",
+    "dimensions": 2048,
+    "vector_name": "dense",
+    "distance": "Cosine",
+    "splitter_version": "split-v1-bccb93671dcace12f58d366eb4ec6f530be20573f8b948a17484a0a00c989e78"
+  },
+  "documents": [
+    {
+      "document_id": "123afbc0-2f62-5d8f-b651-f43f2b446d6c",
+      "content_hash": "f678b895529d45ee44bde0cd13756ce3aa4e58d9d30eabe82c81117c2d7d43cc",
+      "source_name": "startup_and_config.md",
+      "chunk_ids": [
+        "159f5fec-60b5-59b9-b908-bc7be3a96961",
+        "4716aa06-e7fc-5d81-9ee2-dcb3077e64e2",
+        "645d4bd6-4cf8-57f5-b5a2-cf4d63fcf289"
+      ]
+    },
+    {
+      "document_id": "233ed25d-d962-51e2-9f55-799215258f04",
+      "content_hash": "5b1f0d1b0be2fe57399a20708764877a93fb6ff2dcf924a409cf06b5354c53aa",
+      "source_name": "upload_troubleshooting.md",
+      "chunk_ids": [
+        "20d1d047-8c07-503d-8453-7927723589ba",
+        "c5870fa6-353b-5292-bdf6-a4431d0a40a6",
+        "dab7f42d-d0d9-5882-882c-a33d49e20bcb"
+      ]
+    },
+    {
+      "document_id": "4a53c91e-5675-5e39-8b79-491aa96ea5c7",
+      "content_hash": "e9de4bda8b4a0bb64c97168f37c38ab25d8bf4c49c857fd92004359eb58313c4",
+      "source_name": "dense_identity_and_citations.md",
+      "chunk_ids": [
+        "17b8925a-2b6a-5793-87ad-1ca2c52f581e",
+        "48ae217d-7647-5925-9b58-ff495844778b",
+        "d11de3dd-6ba1-51cb-8a19-07e2dff1a1e3",
+        "c8fc6894-35bd-53d1-8079-14f2d9f016bc"
+      ]
+    },
+    {
+      "document_id": "41e0a6d7-7148-5641-88e4-1ca3aba61fd1",
+      "content_hash": "430461b2055a55124fb75c340ba1304fa8ef1b3ea4079177e4848546e488c41e",
+      "source_name": "compose_environment.md",
+      "chunk_ids": [
+        "b3cd958a-be0d-5eb1-8147-5672057ffa56",
+        "ecb74e18-60f1-5342-865e-cbd161d7ba15",
+        "25793e76-4c8e-56a1-874f-e9de1c92c043"
+      ]
+    },
+    {
+      "document_id": "2eab042a-28ae-5128-9c40-2e1601ce649f",
+      "content_hash": "f1c5612bed353a4e65692ca921fd10b9aba2de4971dff5aeb97bea3477f76289",
+      "source_name": "qdrant_vector_contract.md",
+      "chunk_ids": [
+        "82b26223-62f3-504c-9e37-2417023504e1",
+        "5801b1f7-7482-5db1-af20-44b0357a7d94",
+        "af583723-bfea-5469-9ea2-304dcd417507"
+      ]
+    }
+  ]
+}

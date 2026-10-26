@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "run_id": "final-holdout-20261026-01",
+  "split": "holdout",
+  "recorded_at": "2026-10-26T02:43:18.705558+00:00",
+  "code": {
+    "commit": "e676d5021d84d0bcaa7eeb700287833d844e703a",
+    "dirty": false
+  },
+  "selection_sha256": "6cbadaf800fea29312eb4bf06774ebc0bcb54b3476ae1dae4b4f172da1edacff",
+  "status": {
+    "state": "recorded",
+    "complete": true,
+    "questions": 10,
+    "embedding_api_calls": 1,
+    "dense_queries": 10,
+    "local_score_calls": 11,
+    "attempted_pairs": 110,
+    "successful_score_calls": 11,
+    "scored_pairs": 110,
+    "chat_calls": 0,
+    "manual_review": "pending",
+    "day17_accepted": false
+  },
+  "source_sha256": {
+    "evals/final_selection.py": "6f912258eca881be83ef98fa6c739a27492a8bf28433d995d69f6adceee2dd46",
+    "evals/holdout.py": "6afba575b75df9a5b9ceface0d3edd9052388a98468e4679f4e7768ac2cb2857",
+    "evals/metrics.py": "a8ceead5799cb0384deac928a652a082a5a585338b67bbb2f3a93aef98ef979e",
+    "evals/rerank_run.py": "071fa826c29e88c644083fd935a62063177f717bd0401db842f98ee8e6d91f94",
+    "evals/cache.py": "7f22c9d5b4b342998b2e6f34183d8884f3eb8765ba47e2d8514c21fb49228d5b",
+    "src/project_copilot/rag/bm25.py": "487b56bde868e70d72375fcff6474c8ca60170bac1f6b1e4f4099b1c28a7b31d",
+    "src/project_copilot/rag/fusion.py": "2c55019fc427c5fcd9e72741561dbc2a1a019ae295596a247dfb14997b7f92d4",
+    "src/project_copilot/rag/rerank.py": "53a50d785629ad574119f89c8dfd1d1e1a05910da05a48bfa6fdb004e7252e58",
+    "src/project_copilot/infrastructure/qdrant.py": "a792d03a8f6558421bb1d7aa89e5e3f28c35878fe54fbc36cf653b3cf94c8d8d",
+    "pyproject.toml": "1836c5709f93a9e8132c870516ad0b21b41f46a461ec342fe9cf929f84f87604",
+    "uv.lock": "78566b7df31921945713f0a08087b73691b24f170f668f48f5a3ae6db52a746d"
+  },
+  "files": {
+    "embedding_batch.json": "acf5f86e2e5efae885d51622f5ca700dd26e823222e181ebdfca86ad58a49ce8",
+    "index_manifest.json": "f01728b6c36643bab054bdc448f85abd913fa41773d33c3f3a3fdaf50e44198c",
+    "selection.json": "6cbadaf800fea29312eb4bf06774ebc0bcb54b3476ae1dae4b4f172da1edacff",
+    "baseline_scored.jsonl": "d614aa00afb15498331094daa77d500ac26821d9dc90490d2ce985a6f22a7863",
+    "bm25_index.json": "31ba1dec35a120ec1782dc13bb60c55bb521d5029dae99c16befd693b17e53aa",
+    "query_vector_manifest.json": "f093a655c5e5322ebdfa610cbfb8543aad6e2640eae43597f3e95d2bd850b23b",
+    "baseline_rankings.jsonl": "4a6bf730ca016ff5f6bc4f6e9fe2628d044fda6c829801a7d60a0e27e568bcf9",
+    "bm25_rankings.jsonl": "daf651ba8506a1cecc00b70b9d900db9992bada3f4bb2afa7aeb967b2318026d",
+    "runtime.json": "907663d1d89858947aee97b111eda6f7fb5addffcb8b0e9c22bd91d4a2b5b02f",
+    "bm25_scored.jsonl": "f1f5f440f6668a65a4c2fbb11030c034386f6b52ba1900417bafbc83dbdfd976",
+    "final_scored.jsonl": "55f5d14aa7d01e486ec7b9a974aeb63f758e104fae4dbc7a42eba013d5e26eeb",
+    "final_summary.json": "f56a686079c8a463a0ae6f29e3457fa1a97c863fc670c96df84f9bcd78642f9f",
+    "bm25_summary.json": "23fe4d73197367eca7b3bb8a2b6b9239df37f8b04bf2a08731e0ed51ac880ec2",
+    "score_details.jsonl": "a6f3f124436550a613082e8012dab6cb1c117027ad287fe1d701bdb1e253447f",
+    "final_rankings.jsonl": "3b61ef8403e3a01f925b9ec13123c38d49efe0dd3a1fdcb5650c9fc955053381",
+    "baseline_summary.json": "02ef7e83aa0236486fe12ac86645810f40af976858dbbca7dc88ac45e79eb4cd",
+    "hybrid_scored.jsonl": "2477ce4b67b813d5e463adfd6db7a111033d23ea2ffb5072b4dfc004cda45dfc",
+    "comparison.json": "b6b4071381a1183049e47c9fef4e93331741c710aa4b3f9c7ace4c526ab6174a",
+    "hybrid_summary.json": "0eb94ec42b0f5b15fbedd0e21ddd4cb257620d8d35cc01920037828ada6493e9",
+    "hybrid_rankings.jsonl": "3c78e995574c481f6b1af7b6995333a11b11dfe6e9942f7e7834c21c7381e54b",
+    "case_details.jsonl": "e32c79bb056c1e1ee73c4037b25e57282177c197633bc0cbce8754ef272145cf",
+    "status.json": "a2fc9e17f0c7e155551e7098cb404344858bf1dcdd42f4798c9b24efbb905447",
+    "warmup.json": "52e3d725681beb88301343b8c0314e6fad2948a6b34d4392f89b08519ad7cca3"
+  }
+}

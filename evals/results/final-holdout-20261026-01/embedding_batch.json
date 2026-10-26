@@ -1,0 +1,16 @@
+{
+  "texts": 10,
+  "utf8_bytes": 1189,
+  "elapsed_ms": 1008.7386839995816,
+  "cache_delta": {
+    "hit_texts": 0,
+    "miss_texts": 10,
+    "api_calls": 1
+  },
+  "usage": null,
+  "billed_cost": null,
+  "max_budget_tokens": 30000,
+  "estimated_max_cny": 0.015,
+  "price_checked_on": "2026-10-26",
+  "price_source": "https://docs.bigmodel.cn/cn/guide/models/embedding/embedding-3"
+}
