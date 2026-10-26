@@ -118,14 +118,14 @@ def no_network_or_dotenv(monkeypatch):
 
 
 @pytest.fixture
-def case(tmp_path):
+def case(tmp_path, bind_current_sources):
     dataset = tmp_path / "dataset"
     copytree(PROJECT_ROOT / "evals/datasets/copilot_v0", dataset)
     public = tmp_path / "public" / RUN_ID
     copytree(PROJECT_ROOT / "evals/results" / RUN_ID, public)
     private = tmp_path / "private" / RUN_ID
     private.mkdir(parents=True)
-    receipt = read_json(public / "run_manifest.json")
+    receipt = bind_current_sources(read_json(public / "run_manifest.json"))
     for name in receipt["files"]:
         if (public / name).is_file():
             target = private / name

@@ -285,3 +285,11 @@ plan/verify不导入Torch、加载模型或读取.env。真实collect必须--liv
 组件计时、单轮小样本和云端Embedding别名限制详见[保留集报告](reports/FINAL_HOLDOUT.md)，[独立审计](../docs/evidence/D17_HOLDOUT_AUDIT.json)核对800指标/10缓存向量。D17新增27项离线用例；7文件相关回归275项通过。开发期自动验收与本次委托验证分别记录；2026-10-26用户确认学习理解，另明确授权Codex完成离线验证及Git提交，D18等待明确开启。
 
 D17本次[委托验证收据](../docs/evidence/D17_DELEGATED_VERIFICATION_20261026.json)记录3项成功CLI、6项预期拒绝、两侧20条评分重放、033/005/038证据及10个缓存向量核对；新增Embedding/Chat/Qdrant/GPU调用均0，原配置/封存保持。阶段B按本次明确授权的代操作方式完成，不将程序操作写成用户亲手运行，长期默认分工保持。
+
+## D18：源码演进与历史回归边界
+
+D18只修改业务入库及存储核验，原V0/V1/V2/V3/D17数据、配置、Prompt和结果不变。公开verify重放原排名/原文gold仍通过；旧采集器中已设置的源码漂移门禁继续生效，不能用新源码冒用旧执行身份。重新采集必须形成独立版本和run，不能因为已见保留集而继续用它选择参数。
+
+原采集器单测使用临时副本、合成问题向量/fake scorer；`tests/conftest.py`仅给这些合成凭据绑定当前源码，生产源码门禁和真实归档不改，源码漂移拒绝测试继续运行。本轮完整离线1069项通过、1项真实HTTP默认跳过；该HTTP项另行通过。D18[真实本地恢复脚本](../scripts/ingestion_recovery_smoke.py)及[收据](../docs/evidence/D18_RECOVERY_SMOKE.json)使用独立随机测试集合、合成二维向量，不代表语义效果；[保护审查](../docs/evidence/D18_STORAGE_AUDIT.json)确认原3个集合及点数保持、V1/V2/V3/D17 verify通过，模型API0。
+
+重复内容现在先只读核验再复用，首次成功source_name不因改名重传而变化；新内容即使同名也有新身份。失败点不进入完成清单，BM25须在新成功后显式重建，不能把旧快照与新清单混用。当前API仍Dense/750/150，D18学习与用户手动验证另行记录。

@@ -461,7 +461,7 @@ feat(agent): require approval for idempotent ticket creation
 
 这些是建议，不是已存在的历史。原仓库不整理或提交；新项目由用户在Codex指导下亲自提交、推送约定GitHub仓库/分支，失败如实报告，不强推或重写历史。未配置远端时先记录待同步并获取实际地址，不猜测仓库。每个完整模块验收后可交给ChatGPT新开学习窗口，如“Project Copilot · Dense RAG”“Project Copilot · 检索评测与优化”“Project Copilot · LangGraph与工单确认”。
 
-## 10. 当前开发进度：D17学习与本次委托验证完成，待用户开启D18
+## 10. 当前开发进度：D18入库恢复实现与自动验收完成，待学习与手动验证
 
 **D1已完成：** 工程、自动验收、ChatGPT学习和用户手测完成；2026-10-12只读核实用户提交的 `4c04a29` 已同步GitHub，A/B均完成，见 [D1报告](reports/DAY_1.md)。用户已明确开启D2。
 
@@ -556,6 +556,14 @@ Codex执行plan、公开verify、两侧各30题重放，以及无--local、配�
 开发及保留集结果[efa46fa401811a8b121295651f5a9d12164af788](https://github.com/yan-ye-dhy/project-copilot/commit/efa46fa401811a8b121295651f5a9d12164af788)已同步main，阶段A完成。用户主动要求Codex直接验证并提交，且确认已通过ChatGPT学习、能够解释选型冻结→共享向量→比较→归档校验主流程；本次阶段B以“学习确认＋明确委托代操作验证”完成记录，不登记为用户亲自终端操作，也不更改长期默认协作方式。
 
 Codex执行9条CLI：最终配置verify、保留集plan及公开verify退出0；覆盖冻结、缺--live、重封后改参、归档字节变化、重封后改指标及缺题6项均预期退出1。两侧20条保留集评分、汇总及比较与原归档一致，10题原融合候选/metadata/原score保持、logit稳定排序及前5块符合；033改善、005不变和038无答案原文由Codex核对，10缓存向量SHA一致且hit10/miss0/API0。新增模型API/Qdrant/GPU评分均0，不重跑原275项测试；201份受检非Markdown文件SHA保持。收据见[D17委托验证](evidence/D17_DELEGATED_VERIFICATION_20261026.json)。配置、开发/保留归档及原机器pending/day17_accepted=false采集快照保持；本次结果另行记载，D18不自动开启，35日任务表不变。
+
+### D18实施记录（2026-10-26）
+
+用户明确开启D18并要求同步GitHub，起点为已同步18e5990、干净main。新增片段只读核验，已完成文档回读后复用原完成记录，跳过Embedding请求、upsert和清单改写；同内容改名保持首次成功来源，同名异内容按content hash形成独立身份。新写入readback通过后才登记成功，部分失败或清单保存失败不发布证据，显式同ID重试覆盖残留点。
+
+完整离线1069 passed、1项真实HTTP默认跳过，包含22项D18新增；跳过项单独启用后1 passed。真实Qdrant＋合成二维向量的8阶段验收通过，点数[1,2,4,4,5,7,7,7]对应完成文档[1,1,2,2,3,3,4,4]，测试集合已清理，原3集合/点数不变，真实模型API0。HTTP故障测试覆盖502/503后重试200及临时清理；旧BM25快照在新成功后拒绝混用。V1/V2/V3/D17公开verify各通过，原冻结配置/数据/归档保持；仅临时合成单测凭据绑定当前源码，正式旧采集源码门禁继续保留，不冒用历史结果为D18新效果。
+
+记录见[D18日报](reports/DAY_18.md)、[真实恢复](evidence/D18_RECOVERY_SMOKE.json)及[保护审查](evidence/D18_STORAGE_AUDIT.json)。本日不新增算法、运行时向量缓存、跨进程锁或跨库事务，不改Prompt/最终选型或使用保留集调参。Git本次按授权由Codex提交推送；用户D18学习和手动验证尚待完成，D19不自动开启，35日任务表不变。
 
 ## 11. 最终验收和可选裁剪
 

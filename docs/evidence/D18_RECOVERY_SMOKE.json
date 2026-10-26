@@ -1,0 +1,120 @@
+{
+  "status": "ok",
+  "mode": "local-qdrant-synthetic-vectors",
+  "model_api_calls": 0,
+  "transport": "qdrant-http",
+  "synthetic_dimensions": 2,
+  "collection": "pc_d18_recovery_65fcd0c62ffa4ee3abbb03dc1ed0f6b6",
+  "events": [
+    {
+      "name": "first_completed",
+      "registered_documents": 1,
+      "points": 1,
+      "visible_document_ids": [
+        "ac78f428-523f-5f4f-b8f0-265c7ca4a929"
+      ],
+      "synthetic_embedding_batches": 1,
+      "manifest_sha256": "0049b0632b99dda5a59722c821c62796151c75d40bceb4d8f75fcecf19579e8c"
+    },
+    {
+      "name": "partial_write_not_published",
+      "registered_documents": 1,
+      "points": 2,
+      "visible_document_ids": [
+        "ac78f428-523f-5f4f-b8f0-265c7ca4a929"
+      ],
+      "synthetic_embedding_batches": 2,
+      "manifest_sha256": "0049b0632b99dda5a59722c821c62796151c75d40bceb4d8f75fcecf19579e8c"
+    },
+    {
+      "name": "partial_retry_same_ids",
+      "registered_documents": 2,
+      "points": 4,
+      "visible_document_ids": [
+        "7a19916a-8935-527d-ae2f-6ff484f1a89a",
+        "ac78f428-523f-5f4f-b8f0-265c7ca4a929"
+      ],
+      "synthetic_embedding_batches": 3,
+      "manifest_sha256": "ab54f6ee7d4a77779aa3bfaa5b055e2c6a2f6144852a28da2438e9ab0238452d"
+    },
+    {
+      "name": "duplicate_skips_embedding_and_write",
+      "registered_documents": 2,
+      "points": 4,
+      "visible_document_ids": [
+        "7a19916a-8935-527d-ae2f-6ff484f1a89a",
+        "ac78f428-523f-5f4f-b8f0-265c7ca4a929"
+      ],
+      "synthetic_embedding_batches": 3,
+      "manifest_sha256": "ab54f6ee7d4a77779aa3bfaa5b055e2c6a2f6144852a28da2438e9ab0238452d"
+    },
+    {
+      "name": "same_name_new_content_is_separate",
+      "registered_documents": 3,
+      "points": 5,
+      "visible_document_ids": [
+        "3a04afef-0848-50f0-80e3-b41cb2476f00",
+        "7a19916a-8935-527d-ae2f-6ff484f1a89a",
+        "ac78f428-523f-5f4f-b8f0-265c7ca4a929"
+      ],
+      "synthetic_embedding_batches": 4,
+      "manifest_sha256": "8c88ccb62df5a9211d434c3bc6609ec942bba9348b9bf84fc0eb93d4ecc246ab"
+    },
+    {
+      "name": "manifest_failure_not_published",
+      "registered_documents": 3,
+      "points": 7,
+      "visible_document_ids": [
+        "3a04afef-0848-50f0-80e3-b41cb2476f00",
+        "7a19916a-8935-527d-ae2f-6ff484f1a89a",
+        "ac78f428-523f-5f4f-b8f0-265c7ca4a929"
+      ],
+      "synthetic_embedding_batches": 5,
+      "manifest_sha256": "8c88ccb62df5a9211d434c3bc6609ec942bba9348b9bf84fc0eb93d4ecc246ab"
+    },
+    {
+      "name": "manifest_retry_same_point_count",
+      "registered_documents": 4,
+      "points": 7,
+      "visible_document_ids": [
+        "3a04afef-0848-50f0-80e3-b41cb2476f00",
+        "7a19916a-8935-527d-ae2f-6ff484f1a89a",
+        "ac78f428-523f-5f4f-b8f0-265c7ca4a929",
+        "ca7b4ec1-ee70-5363-9a9c-f430f2898e89"
+      ],
+      "synthetic_embedding_batches": 6,
+      "manifest_sha256": "13eb5d492877391a9e34b0b814092e0fcf0f45c2ad44564f3d0afc2397308db7"
+    },
+    {
+      "name": "final_duplicate_is_read_only",
+      "registered_documents": 4,
+      "points": 7,
+      "visible_document_ids": [
+        "3a04afef-0848-50f0-80e3-b41cb2476f00",
+        "7a19916a-8935-527d-ae2f-6ff484f1a89a",
+        "ac78f428-523f-5f4f-b8f0-265c7ca4a929",
+        "ca7b4ec1-ee70-5363-9a9c-f430f2898e89"
+      ],
+      "synthetic_embedding_batches": 6,
+      "manifest_sha256": "13eb5d492877391a9e34b0b814092e0fcf0f45c2ad44564f3d0afc2397308db7"
+    }
+  ],
+  "test_collection_deleted": true,
+  "semantic_quality_measured": false,
+  "qdrant_version": "1.19.2",
+  "qdrant_client_version": "1.19.1",
+  "code": {
+    "commit": "18e5990bce87d2c98740d06a42941742cdd1d439",
+    "dirty": true
+  },
+  "stale_bm25_rejected": true,
+  "synthetic_embedding_batches": 6,
+  "failed_document_excluded_from_dense_and_bm25": true,
+  "source_sha256": {
+    "src/project_copilot/rag/ingestion.py": "fe3d186c14fbaf3eca579d6c2eeba8cedd30b2e49096e0c4b0b837f294ce3306",
+    "src/project_copilot/infrastructure/qdrant.py": "d7cfa7a8b48db0d6a04336a569f8858d3b73db2d0815841e82796f3fca708c0d",
+    "src/project_copilot/api/documents.py": "a34176787698c621373998bccc835285c71af854c473792e92057ef82ca55e9d",
+    "scripts/ingestion_recovery_smoke.py": "2ec6e911c971892399e7b32af00554c5d57650bd6c2555d8c0c90b7c81870aea"
+  },
+  "elapsed_ms": 3368.833307999921
+}

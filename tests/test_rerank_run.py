@@ -80,12 +80,22 @@ def no_network_dotenv_or_real_model(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.fixture
-def case(tmp_path: Path) -> dict:
+def case(tmp_path: Path, monkeypatch, bind_current_sources) -> dict:
     dataset, parent = tmp_path / "dataset", tmp_path / PARENT_RUN
     copytree(PROJECT_ROOT / "evals/datasets/copilot_v0", dataset)
     copytree(PROJECT_ROOT / "evals/results" / PARENT_RUN, parent)
+    # 本文件使用fake scorer；只给临时父凭据绑定当前源码，不改正式V2/GPU证据。
+    write_json(parent / "manifest.json", bind_current_sources(read_json(parent / "manifest.json")))
+    parent_sha = digest(parent / "manifest.json")
+    monkeypatch.setattr(rerank_run, "PARENT_SHA256", parent_sha)
+    evidence = tmp_path / "gpu-provenance.json"
+    write_json(evidence, bind_current_sources(read_json(PROJECT_ROOT / rerank_run.GPU_EVIDENCE)))
+    monkeypatch.setattr(rerank_run, "GPU_EVIDENCE", str(evidence))
+    monkeypatch.setattr(rerank_run, "GPU_EVIDENCE_SHA256", digest(evidence))
     config = tmp_path / "rerank.json"
-    config.write_bytes((PROJECT_ROOT / "evals/configs/rerank_v3.json").read_bytes())
+    descriptor = read_json(PROJECT_ROOT / "evals/configs/rerank_v3.json")
+    descriptor["parent_manifest_sha256"] = parent_sha
+    write_json(config, descriptor)
     return {"dataset": dataset, "parent": parent, "config": config,
             "output": tmp_path / "rerank-v3-test"}
 

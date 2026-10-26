@@ -73,6 +73,10 @@ class FakeStore:
         for chunk in chunks:
             self.points[str(chunk.metadata.chunk_id)] = chunk
 
+    def verify_chunks(self, chunks, *, dense_index_version: str) -> None:
+        assert dense_index_version
+        assert all(self.points.get(str(c.metadata.chunk_id)) == c for c in chunks)
+
     def query(self, vector, *, document_ids, dense_index_version: str, limit: int = 5):
         assert len(vector) == self.dimensions
         assert len(set(document_ids)) == 5

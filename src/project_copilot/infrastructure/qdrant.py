@@ -146,6 +146,50 @@ class DenseQdrantStore:
         if getattr(result, "status", None) != models.UpdateStatus.COMPLETED:
             raise QdrantResponseError("Qdrant尚未确认片段写入完成")
 
+    def verify_chunks(
+        self, chunks: Sequence[DocumentChunk], *, dense_index_version: str,
+    ) -> None:
+        """只读核对精确ID和完整payload；不取向量，不补写缺片或自动重试。"""
+        self._validate_version(dense_index_version)
+        if (
+            not isinstance(chunks, Sequence) or isinstance(chunks, (str, bytes))
+            or any(not isinstance(chunk, DocumentChunk) for chunk in chunks)
+        ):
+            raise QdrantConfigError("待核验片段不符合文档契约")
+        expected = {str(chunk.metadata.chunk_id): chunk for chunk in chunks}
+        if len(expected) != len(chunks):
+            raise QdrantConfigError("待核验片段包含重复标识")
+        ids = list(expected)
+        for start in range(0, len(ids), 64):
+            requested = set(ids[start:start + 64])
+            try:
+                records = self._client.retrieve(
+                    collection_name=self.collection_name, ids=list(requested),
+                    with_payload=True, with_vectors=False,
+                )
+            except _REQUEST_ERRORS:
+                raise QdrantRequestError("无法核验Qdrant已写入片段") from None
+            except ValidationError:
+                raise QdrantResponseError("Qdrant片段核验响应无法解析") from None
+            seen = set()
+            try:
+                if not isinstance(records, list):
+                    raise QdrantResponseError("Qdrant片段核验响应必须为列表")
+                for record in records:
+                    key, payload = str(record.id), record.payload
+                    if key not in requested or key in seen or not isinstance(payload, dict):
+                        raise QdrantResponseError("Qdrant片段核验包含未知、重复标识或非法payload")
+                    if set(payload) != {"text", "metadata", "dense_index_version"}:
+                        raise QdrantResponseError("Qdrant片段payload字段不完整")
+                    actual = DocumentChunk.model_validate({"text": payload["text"], "metadata": payload["metadata"]})
+                    if actual != expected[key] or payload["dense_index_version"] != dense_index_version:
+                        raise QdrantResponseError("Qdrant片段原文、来源或索引版本与入库内容不一致")
+                    seen.add(key)
+            except (ValidationError, AttributeError, TypeError):
+                raise QdrantResponseError("Qdrant片段核验响应不符合契约") from None
+            if seen != requested:
+                raise QdrantResponseError("Qdrant片段不完整，本次不登记或复用入库成功")
+
     def query(
         self,
         vector: list[float],

@@ -1274,3 +1274,68 @@ Codex核对033两段gold原文及首次覆盖名次[3,2]→[2,1]、005两条均r
 验证执行前后201份受检非Markdown源码/依赖/测试/评测及既有证据SHA保持，选型配置与采集前e676d50提交原字节一致；原开发和保留集归档、机器pending/day17_accepted=false快照及旧审计均不改写。新建独立委托验证收据并更新8份关联Markdown；本次Git提交推送按用户当前授权由Codex执行，真实提交信息会话补全。D18未开始。
 
 本次收尾检查：8份Markdown的围栏/空白、57张表、310处本地链接及15个锚点、日报固定8节通过；计划第10节外和既有日志原文保持。最终范围为8份Markdown＋1份验证收据，201份受检非Markdown文件、11份执行源码及23份保留集产物SHA保持。git diff --check及新JSON格式检查通过；仅按本轮授权提交推送记录，不改业务代码、依赖或冻结实验，不开始D18。
+
+## D18：入库恢复与幂等重传（2026-10-26）
+
+用户明确开启D18并要求同步GitHub，起点为已同步[18e5990bce87d2c98740d06a42941742cdd1d439](https://github.com/yan-ye-dhy/project-copilot/commit/18e5990bce87d2c98740d06a42941742cdd1d439)、干净main。D17学习及委托验证按既有记录保留；本次只做D18实现和开发期自动验收，不登记用户D18学习/手测完成，不自动进入D19。没有收费模型调用或新依赖。
+
+### 实现与边界
+
+DenseQdrantStore新增verify_chunks，每批最多64个精确ID、with_vectors=False，验证唯一/完整ID、原文、全部metadata及Dense版本。IngestionService对已完成文档先核对content hash/chunk IDs，按首次成功来源名回读并复用，不再请求Embedding、写向量或重写清单；新文档upsert completed后仍回读，通过后才原子登记。相同名称但不同内容按稳定内容身份独立保留。回读错误/部分失败不发布成功，未登记残留点被Dense和BM25完成清单隔离，修复后显式同ID重试，不自动重试或删除旧数据。
+
+D6 API的错误映射、临时副本finally清理及同进程锁继续复用，生产API代码无须改字段。新增HTTP故障测试实际覆盖502/503后重试200、成功后改名重传和临时文件零残留。保证仍是单进程顺序入库，不是跨存储事务或跨进程锁；已完成记录缺片会明确报错，不偷偷重新收费Embedding。普通API不新增运行时向量缓存，未完成文档的显式重试仍可能重复请求Embedding。
+
+同内容改名保留首次成功source_name是本日明确行为变化，两个原测试预期相应更新。三个使用临时副本/fake向量或评分的旧采集器单测，经tests/conftest.py只给合成凭据绑定当前源码；正式V0/V1/V2/V3/D17档案不改，不放宽生产源码门禁。原漂移拒绝用例保留，新增用例还直接验证正式D16采集入口拒绝当前改变的源码。FakeStore补齐只读核验协议；没有用旧模型结果冒充D18新测语义效果。
+
+### 自动测试（执行者：Codex）
+
+本日新增tests/test_ingestion_recovery.py共22项，使用内存Qdrant、合成二维向量和网络/真实.env/模型导入门禁；覆盖原文/来源/版本/缺失/重复/未知ID/非法类型回读、跨64片段分批、同名异内容、部分写入/清单失败重试、原证据隔离、旧BM25快照及上传清理。首轮跨64样例只有55片段，改用更小的测试切分单元后覆盖目标分支，最终无未解决失败，不累加重复测试次数。
+
+```bash
+PROJECT_COPILOT_RUN_QDRANT_INTEGRATION=0 HF_HUB_OFFLINE=1 \
+  timeout --signal=INT 180s .venv/bin/python -m pytest -q
+```
+
+完整离线回归1069 passed、1 skipped，67.13秒；包含22项D18新增。唯一跳过项是默认显式启用的真实HTTP集成，另以如下命令通过1 passed、0.96秒；不是用跳过代替验收，也不把重复用例累加。
+
+```bash
+PROJECT_COPILOT_RUN_QDRANT_INTEGRATION=1 \
+PROJECT_COPILOT_QDRANT_URL=http://127.0.0.1:6433 HF_HUB_OFFLINE=1 \
+  .venv/bin/python -m pytest -q tests/test_qdrant_integration.py
+```
+
+两组测试均沙箱外运行以支持既有ASGI线程池系统原语；前者没有外部服务/模型请求，后者只访问真实本地Qdrant随机隔离集合，合成二维向量、结束清理该集合，不读取真实.env或调用模型。
+
+### 真实恢复验收
+
+新增scripts/ingestion_recovery_smoke.py，显式--local、输出目录拒绝覆盖；真实本地Qdrant配合代码生成的[1,0]二维向量，用随机pc_d18_recovery_集合，主动注入写首片后中断和清单保存前中断。脚本只清理本次自己创建的测试集合，异常也保留局部report，不重试、不读取.env、不初始化模型客户端。
+
+```bash
+.venv/bin/python scripts/ingestion_recovery_smoke.py --local \
+  --output-dir data/auto-d18/recovery-01 > data/auto-d18/recovery-console.json
+```
+
+实际退出0，Qdrant1.19.2、SDK1.19.1，8阶段点数[1,2,4,4,5,7,7,7]、完成文档[1,1,2,2,3,3,4,4]、累计合成向量批次[1,2,3,3,4,5,6,6]。失败时Dense/BM25只暴露旧成功文档；新成功后旧BM25快照被拒绝，需显式重建。两次成功重传跳过Embedding请求/写入，前后点数和批次数保持。真实清单故障注入于保存前；原子replace失败和上传临时清理由离线/ASGI测试覆盖，未扩大为用户手动操作。
+
+同脚本不加--local而提供新output-dir，实际退出2、目录未创建，门禁输出另存data/auto-d18/gate.json。正式恢复report原字节复制到[D18_RECOVERY_SMOKE.json](evidence/D18_RECOVERY_SMOKE.json)，保存base 18e5990/dirty=true及4份实际运行源码SHA；不追填未来commit，不称合成向量为真实语义效果。新增真实Embedding/Chat调用及模型费用均0，合成向量批次6不等于6次外部API。
+
+### 历史归档和存储保护
+
+分别实际执行以下4条只读命令，均退出0、verified，不启动模型或新检索：
+
+```bash
+HF_HUB_OFFLINE=1 .venv/bin/python -m evals.chunking_run verify \
+  --dataset evals/datasets/copilot_v0 --output-dir evals/results/dense-v1-size500-20261021-01
+HF_HUB_OFFLINE=1 .venv/bin/python -m evals.hybrid_run verify \
+  --dataset evals/datasets/copilot_v0 --output-dir evals/results/hybrid-v2-20261022-01
+HF_HUB_OFFLINE=1 .venv/bin/python -m evals.rerank_run verify \
+  --dataset evals/datasets/copilot_v0 --output-dir evals/results/rerank-v3-20261025-01
+HF_HUB_OFFLINE=1 .venv/bin/python -m evals.holdout verify \
+  --dataset evals/datasets/copilot_v0 --output-dir evals/results/final-holdout-20261026-01
+```
+
+[存储保护审计](evidence/D18_STORAGE_AUDIT.json)确认测试前后原3集合及点数相同：pc_eval_dense_v0=16、pc_eval_dense_v1_size500=27、pc_knowledge_dense_v0=2；D18随机测试集合已删除。原D8、V0/V1/V2/V3/D17配置/结果及D15/D16/D17证据不改。历史源码SHA仍指向原采集版本，当前业务源码已变化属新执行身份，不重签旧档案或利用保留集调参。
+
+完整交接见[D18日报](reports/DAY_18.md)，整体实现/测试/证据及关联文档共20文件；API响应结构、依赖、默认750/150和Dense问答保持。本次Git按用户当前授权审核、提交并推送，真实ID/结果在会话补全；阶段B待学习后用户主动验证，D19不自动开始。
+
+D18收尾检查：20文件范围符合交付清单；7份Markdown的围栏/空白、54张表、318处本地链接、15个锚点及5段相关bash示例语法、日报固定8节均通过。新Python语法和所有新文件空白检查通过；计划第10节外与既有日志保持，正式旧配置/数据/归档和API/Prompt/依赖不改，4份真实恢复执行源码SHA与收据仍匹配，收据为本地report原字节副本。向量/模型缓存、真实.env和本地输出继续被忽略；Git收尾按用户授权执行，D18学习/手测及D19开发均不自动登记或启动。

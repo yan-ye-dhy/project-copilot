@@ -126,8 +126,22 @@ class IngestionService:
         previous = self.manifest.load()
         # 先验证存储契约，避免集合不兼容时仍产生Embedding费用。
         self.store.ensure_collection()
+        completed = next((item for item in previous.documents if item.document_id == document.document_id), None)
+        if completed is not None:
+            if completed.content_hash != document.content_hash or completed.chunk_ids != tuple(
+                chunk.metadata.chunk_id for chunk in chunks
+            ):
+                raise ManifestError("已完成文档的内容或片段身份与当前切分不一致")
+            # 同内容改名不创建别名或改写已有证据；复用第一次完成时的来源名。
+            canonical = [chunk.model_copy(update={"metadata": chunk.metadata.model_copy(
+                update={"source_name": completed.source_name},
+            )}) for chunk in chunks]
+            self.store.verify_chunks(canonical, dense_index_version=self.manifest.spec.index_version)
+            return completed
         vectors = self.embeddings.embed_documents([chunk.text for chunk in chunks])
         self.store.upsert(chunks, vectors, dense_index_version=self.manifest.spec.index_version)
+        # completed响应后仍回读精确片段；失败点可残留，但未登记文档不能进入检索清单。
+        self.store.verify_chunks(chunks, dense_index_version=self.manifest.spec.index_version)
         completed = CompletedDocument(
             document_id=document.document_id, content_hash=document.content_hash,
             source_name=document.source_name,

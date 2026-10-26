@@ -1,6 +1,6 @@
 # Project Copilot
 
-基于RAG与LangGraph的研发知识及工单协作智能体。D1–D16已按各日实际学习/验证记录收尾。D17已冻结Hybrid＋BGE Rerank实验配置并完成10题保留集验收，开发结果efa46fa已同步；2026-10-26用户确认学习理解，本次明确委托Codex完成离线验证及Git提交，阶段B按本轮授权方式完成，见 [D17报告](docs/reports/DAY_17.md)。当前问答API仍使用Dense和750/150，D18未开启。
+基于RAG与LangGraph的研发知识及工单协作智能体。D1–D17已按各日实际学习/验证记录收尾。D18已完成入库幂等重传、写后回读与失败恢复验证，本次按用户授权提交推送GitHub；阶段B待ChatGPT学习及用户主动手动验证，见[D18报告](docs/reports/DAY_18.md)。当前问答API仍Dense/750/150，D19未开启。
 
 协作流程见 [长期协作规则](docs/COLLABORATION_RULES.md)：Codex开发、自动验证、提供报告并指导Git操作；用户亲自提交和推送GitHub，随后通过ChatGPT学习代码/架构，学习后主动要求Codex开始手动测试。以下命令是自助运行参考，Codex仅在用户要求后单步带练。
 
@@ -309,3 +309,18 @@ GPU新增首/热20个pair，gold仍从3到1，选中原候选名次均为`[3,4,2
 完整指标、分类、成本和时延边界见 [保留集报告](evals/reports/FINAL_HOLDOUT.md)，[公开归档](evals/results/final-holdout-20261026-01/manifest.json)包含24文件；[独立核对](docs/evidence/D17_HOLDOUT_AUDIT.json)重算800个指标并核对10个缓存向量，无新增模型调用。运行器/命令见 [评测说明](evals/README.md#d17最终方案与保留集)。
 
 2026-10-26用户确认已学习并能解释D17主流程，本次委托Codex完成9条CLI验证、两侧20条评分重放、033/005/038原文核对及10个缓存向量检查，新增模型/API/GPU评分均0，见 [委托验证收据](docs/evidence/D17_DELEGATED_VERIFICATION_20261026.json)。实际执行者分别记录，D18仍等待明确开启。
+
+## D18：入库失败恢复与幂等重传
+
+已完成文档重传会先只读核对原片段，再复用原完成记录，不再发Embedding请求或重写向量/清单；同内容改名保留首次成功来源名，同名不同内容仍是独立文档。新写入回读精确ID、原文/metadata和索引版本通过后才登记成功；失败残留点不进入Dense/BM25可检索清单，显式同ID重试不增加重复点。
+
+本地验收参考（不读.env，不调用模型）：
+
+```bash
+uv run --frozen python scripts/ingestion_recovery_smoke.py --local \
+  --output-dir data/manual-d18/recovery-01
+```
+
+先启动现有Qdrant容器，输出目录必须尚不存在。脚本使用合成二维向量和自己新建的随机pc_d18_recovery_集合，主动触发部分写入/清单保存前失败、显式重试、重传及同名异内容，最后清理该测试集合；实际结果写report.json。默认不加--local退出2。
+
+开发期完整离线1069项通过，默认跳过的1项真实HTTP集成另行通过；真实存储8阶段显示点数[1,2,4,4,5,7,7,7]、完成文档[1,1,2,2,3,3,4,4]，模型API0。证据见[恢复收据](docs/evidence/D18_RECOVERY_SMOKE.json)和[存储保护/历史回归](docs/evidence/D18_STORAGE_AUDIT.json)。合成向量仅验证工程边界，旧D17配置/结果不改；详细行为与学习交接见[D18报告](docs/reports/DAY_18.md)。

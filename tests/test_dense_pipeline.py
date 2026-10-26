@@ -66,7 +66,7 @@ def test_file_ingestion_roundtrip_preserves_d3_identity_and_repeat_upsert(pipeli
     assert completed.chunk_ids == tuple(chunk.metadata.chunk_id for chunk in expected)
     assert manifest.load().documents == (completed,)
     assert store._client.count(store.collection_name, exact=True).count == len(expected)
-    assert embeddings.documents == [[chunk.text for chunk in expected]] * 2
+    assert embeddings.documents == [[chunk.text for chunk in expected]]
 
     hits = DenseRetriever(embeddings, store, manifest, top_k=20).search("查找文档来源")
     assert {hit.metadata.chunk_id for hit in hits} == set(completed.chunk_ids)

@@ -198,6 +198,7 @@ def test_same_bytes_original_path_and_random_upload_path_keep_document_and_chunk
         assert uploaded.document_id == first.document_id
         assert uploaded.content_hash == first.content_hash
         assert uploaded.chunk_ids == first.chunk_ids
-        assert uploaded.source_name == "用户原始名称.md"
+        assert uploaded.source_name == first.source_name
+        assert len(embeddings.documents) == 1
         assert store._client.count(store.collection_name, exact=True).count == len(first.chunk_ids)
         assert manifest.load().documents == (uploaded,)

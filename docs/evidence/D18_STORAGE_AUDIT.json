@@ -1,0 +1,66 @@
+{
+  "date": "2026-10-26",
+  "executed_by": "Codex",
+  "existing_collections_before": {
+    "pc_eval_dense_v0": 16,
+    "pc_eval_dense_v1_size500": 27,
+    "pc_knowledge_dense_v0": 2
+  },
+  "existing_collections_after": {
+    "pc_eval_dense_v0": 16,
+    "pc_eval_dense_v1_size500": 27,
+    "pc_knowledge_dense_v0": 2
+  },
+  "existing_collection_counts_unchanged": true,
+  "recovery_report_sha256": "b0e915eb3e2c7ded9001f7c09fb25cf0ea7b94912c4a83585209b5648e058691",
+  "recovery_report_original_bytes_equal": true,
+  "new_test_collection_deleted": true,
+  "synthetic_vectors_only": true,
+  "model_api_calls": 0,
+  "semantic_quality_measured": false,
+  "source_sha256_checks": 4,
+  "historical_verifications": {
+    "v1": {
+      "status": "ok",
+      "state": "verified",
+      "run_id": "dense-v1-size500-20261021-01",
+      "files": 19,
+      "manual_review": "pending",
+      "day12_accepted": false
+    },
+    "v2": {
+      "status": "ok",
+      "state": "verified",
+      "run_id": "hybrid-v2-20261022-01",
+      "files": 23,
+      "manual_review": "pending",
+      "day14_accepted": false
+    },
+    "v3": {
+      "status": "ok",
+      "state": "verified",
+      "run_id": "rerank-v3-20261025-01",
+      "files": 19,
+      "manual_review": "pending",
+      "day16_accepted": false,
+      "model_loaded": false
+    },
+    "final": {
+      "status": "ok",
+      "state": "verified",
+      "run_id": "final-holdout-20261026-01",
+      "files": 23,
+      "split": "holdout",
+      "model_loaded": false,
+      "manual_review": "pending",
+      "day17_accepted": false,
+      "selection_fingerprint": "final-selection-v1-d77720ad02c9ac3caa83b3fa6981c6d197b1c7238d220cf64cca3dd5ced2f450"
+    }
+  },
+  "notes": [
+    "Historical collection guards still reject changed runtime sources.",
+    "Only temporary synthetic unit-test provenance is rebound to current source; production archives stay read-only.",
+    "Old metrics replay verifies old results, not a new D18 held-out tuning run.",
+    "D18 user learning and manual verification not confirmed."
+  ]
+}
