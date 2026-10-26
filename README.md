@@ -1,6 +1,6 @@
 # Project Copilot
 
-基于RAG与LangGraph的研发知识及工单协作智能体。D1–D17已按各日实际学习/验证记录收尾。D18已完成入库幂等重传、写后回读与失败恢复验证，本次按用户授权提交推送GitHub；阶段B待ChatGPT学习及用户主动手动验证，见[D18报告](docs/reports/DAY_18.md)。当前问答API仍Dense/750/150，D19未开启。
+基于RAG与LangGraph的研发知识及工单协作智能体。D1–D18已按各日实际学习/验证记录收尾。D18入库幂等重传、写后回读与失败恢复已实现，用户确认学习完成，本次授权Codex代操作验证通过，见[D18报告](docs/reports/DAY_18.md)。当前问答API仍Dense/750/150，D19未开启。
 
 协作流程见 [长期协作规则](docs/COLLABORATION_RULES.md)：Codex开发、自动验证、提供报告并指导Git操作；用户亲自提交和推送GitHub，随后通过ChatGPT学习代码/架构，学习后主动要求Codex开始手动测试。以下命令是自助运行参考，Codex仅在用户要求后单步带练。
 
@@ -324,3 +324,5 @@ uv run --frozen python scripts/ingestion_recovery_smoke.py --local \
 先启动现有Qdrant容器，输出目录必须尚不存在。脚本使用合成二维向量和自己新建的随机pc_d18_recovery_集合，主动触发部分写入/清单保存前失败、显式重试、重传及同名异内容，最后清理该测试集合；实际结果写report.json。默认不加--local退出2。
 
 开发期完整离线1069项通过，默认跳过的1项真实HTTP集成另行通过；真实存储8阶段显示点数[1,2,4,4,5,7,7,7]、完成文档[1,1,2,2,3,3,4,4]，模型API0。证据见[恢复收据](docs/evidence/D18_RECOVERY_SMOKE.json)和[存储保护/历史回归](docs/evidence/D18_STORAGE_AUDIT.json)。合成向量仅验证工程边界，旧D17配置/结果不改；详细行为与学习交接见[D18报告](docs/reports/DAY_18.md)。
+
+2026-10-26按用户本次授权，Codex另行完成代操作验证：真实Qdrant恢复8阶段、上传失败/重试的2项ASGI测试、缺--local及输出防覆盖门禁、4份历史归档verify均符合预期。原3个集合及点数保持，测试集合已删除，新增模型API调用0；见[委托验证收据](docs/evidence/D18_DELEGATED_VERIFICATION_20261026.json)。用户另行确认已通过ChatGPT学习、能够解释主流程，阶段A/B均完成；本次不重复运行完整1069项测试，也不登记为用户亲自终端操作。

@@ -1,0 +1,353 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-26",
+  "day": 18,
+  "initiated_by": "user",
+  "executed_by": "Codex, explicitly delegated by user for this session",
+  "learning": {
+    "confirmed_by": "user",
+    "completed": true,
+    "status": "User explicitly confirmed ChatGPT learning and ability to explain the upload, manifest, reuse/new ingestion, readback and failure-retry flow."
+  },
+  "personal_terminal_execution": false,
+  "stage_b": "completed: user-confirmed learning plus explicitly delegated verification; actual executor Codex",
+  "base_commit": "077e3f8c850e0d02cd79bca52a149157163f0919",
+  "commands": [
+    {
+      "name": "local-gate",
+      "command": [
+        ".venv/bin/python",
+        "scripts/ingestion_recovery_smoke.py",
+        "--output-dir",
+        "data/manual-d18/verification-20261026-01/must-not-exist"
+      ],
+      "exit_code": 2,
+      "expected_exit_code": 2
+    },
+    {
+      "name": "real-recovery",
+      "command": [
+        ".venv/bin/python",
+        "scripts/ingestion_recovery_smoke.py",
+        "--local",
+        "--output-dir",
+        "data/manual-d18/verification-20261026-01/recovery"
+      ],
+      "exit_code": 0,
+      "expected_exit_code": 0
+    },
+    {
+      "name": "overwrite-gate",
+      "command": [
+        ".venv/bin/python",
+        "scripts/ingestion_recovery_smoke.py",
+        "--local",
+        "--output-dir",
+        "data/manual-d18/verification-20261026-01/recovery"
+      ],
+      "exit_code": 1,
+      "expected_exit_code": 1
+    },
+    {
+      "name": "upload-http-scenarios",
+      "command": [
+        ".venv/bin/python",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_ingestion_recovery.py::test_upload_failure_retry_and_duplicate_preserve_temporary_cleanup"
+      ],
+      "exit_code": 0,
+      "expected_exit_code": 0
+    },
+    {
+      "name": "v1-verify",
+      "command": [
+        ".venv/bin/python",
+        "-m",
+        "evals.chunking_run",
+        "verify",
+        "--dataset",
+        "evals/datasets/copilot_v0",
+        "--output-dir",
+        "evals/results/dense-v1-size500-20261021-01"
+      ],
+      "exit_code": 0,
+      "expected_exit_code": 0
+    },
+    {
+      "name": "v2-verify",
+      "command": [
+        ".venv/bin/python",
+        "-m",
+        "evals.hybrid_run",
+        "verify",
+        "--dataset",
+        "evals/datasets/copilot_v0",
+        "--output-dir",
+        "evals/results/hybrid-v2-20261022-01"
+      ],
+      "exit_code": 0,
+      "expected_exit_code": 0
+    },
+    {
+      "name": "v3-verify",
+      "command": [
+        ".venv/bin/python",
+        "-m",
+        "evals.rerank_run",
+        "verify",
+        "--dataset",
+        "evals/datasets/copilot_v0",
+        "--output-dir",
+        "evals/results/rerank-v3-20261025-01"
+      ],
+      "exit_code": 0,
+      "expected_exit_code": 0
+    },
+    {
+      "name": "final-verify",
+      "command": [
+        ".venv/bin/python",
+        "-m",
+        "evals.holdout",
+        "verify",
+        "--dataset",
+        "evals/datasets/copilot_v0",
+        "--output-dir",
+        "evals/results/final-holdout-20261026-01"
+      ],
+      "exit_code": 0,
+      "expected_exit_code": 0
+    }
+  ],
+  "command_checks": {
+    "total": 8,
+    "expected_rejections": 2
+  },
+  "real_storage_recovery": {
+    "status": "ok",
+    "mode": "local-qdrant-synthetic-vectors",
+    "model_api_calls": 0,
+    "transport": "qdrant-http",
+    "synthetic_dimensions": 2,
+    "collection": "pc_d18_recovery_eec7debc861a4763ae6ee592828aa505",
+    "events": [
+      {
+        "name": "first_completed",
+        "registered_documents": 1,
+        "points": 1,
+        "visible_document_ids": [
+          "ac78f428-523f-5f4f-b8f0-265c7ca4a929"
+        ],
+        "synthetic_embedding_batches": 1,
+        "manifest_sha256": "435014efadfa6149253a2ac438cc184c50a155f8f930d7ec8ca2547896b96088"
+      },
+      {
+        "name": "partial_write_not_published",
+        "registered_documents": 1,
+        "points": 2,
+        "visible_document_ids": [
+          "ac78f428-523f-5f4f-b8f0-265c7ca4a929"
+        ],
+        "synthetic_embedding_batches": 2,
+        "manifest_sha256": "435014efadfa6149253a2ac438cc184c50a155f8f930d7ec8ca2547896b96088"
+      },
+      {
+        "name": "partial_retry_same_ids",
+        "registered_documents": 2,
+        "points": 4,
+        "visible_document_ids": [
+          "7a19916a-8935-527d-ae2f-6ff484f1a89a",
+          "ac78f428-523f-5f4f-b8f0-265c7ca4a929"
+        ],
+        "synthetic_embedding_batches": 3,
+        "manifest_sha256": "62bbdef8fb348c0315b8bcfc91f20a0bbe5c997d999e0ea7326e4d56be88aefa"
+      },
+      {
+        "name": "duplicate_skips_embedding_and_write",
+        "registered_documents": 2,
+        "points": 4,
+        "visible_document_ids": [
+          "7a19916a-8935-527d-ae2f-6ff484f1a89a",
+          "ac78f428-523f-5f4f-b8f0-265c7ca4a929"
+        ],
+        "synthetic_embedding_batches": 3,
+        "manifest_sha256": "62bbdef8fb348c0315b8bcfc91f20a0bbe5c997d999e0ea7326e4d56be88aefa"
+      },
+      {
+        "name": "same_name_new_content_is_separate",
+        "registered_documents": 3,
+        "points": 5,
+        "visible_document_ids": [
+          "3a04afef-0848-50f0-80e3-b41cb2476f00",
+          "7a19916a-8935-527d-ae2f-6ff484f1a89a",
+          "ac78f428-523f-5f4f-b8f0-265c7ca4a929"
+        ],
+        "synthetic_embedding_batches": 4,
+        "manifest_sha256": "bb6c62fe3a72e8d5386018421437149f117eeb641e478f8355db5bf4eddbd609"
+      },
+      {
+        "name": "manifest_failure_not_published",
+        "registered_documents": 3,
+        "points": 7,
+        "visible_document_ids": [
+          "3a04afef-0848-50f0-80e3-b41cb2476f00",
+          "7a19916a-8935-527d-ae2f-6ff484f1a89a",
+          "ac78f428-523f-5f4f-b8f0-265c7ca4a929"
+        ],
+        "synthetic_embedding_batches": 5,
+        "manifest_sha256": "bb6c62fe3a72e8d5386018421437149f117eeb641e478f8355db5bf4eddbd609"
+      },
+      {
+        "name": "manifest_retry_same_point_count",
+        "registered_documents": 4,
+        "points": 7,
+        "visible_document_ids": [
+          "3a04afef-0848-50f0-80e3-b41cb2476f00",
+          "7a19916a-8935-527d-ae2f-6ff484f1a89a",
+          "ac78f428-523f-5f4f-b8f0-265c7ca4a929",
+          "ca7b4ec1-ee70-5363-9a9c-f430f2898e89"
+        ],
+        "synthetic_embedding_batches": 6,
+        "manifest_sha256": "de3b1b2d36c66ed750db0bf4c56ea82be9a72ca0690c9f0501aa66231229349e"
+      },
+      {
+        "name": "final_duplicate_is_read_only",
+        "registered_documents": 4,
+        "points": 7,
+        "visible_document_ids": [
+          "3a04afef-0848-50f0-80e3-b41cb2476f00",
+          "7a19916a-8935-527d-ae2f-6ff484f1a89a",
+          "ac78f428-523f-5f4f-b8f0-265c7ca4a929",
+          "ca7b4ec1-ee70-5363-9a9c-f430f2898e89"
+        ],
+        "synthetic_embedding_batches": 6,
+        "manifest_sha256": "de3b1b2d36c66ed750db0bf4c56ea82be9a72ca0690c9f0501aa66231229349e"
+      }
+    ],
+    "test_collection_deleted": true,
+    "semantic_quality_measured": false,
+    "qdrant_version": "1.19.2",
+    "qdrant_client_version": "1.19.1",
+    "code": {
+      "commit": "077e3f8c850e0d02cd79bca52a149157163f0919",
+      "dirty": false
+    },
+    "stale_bm25_rejected": true,
+    "synthetic_embedding_batches": 6,
+    "failed_document_excluded_from_dense_and_bm25": true,
+    "source_sha256": {
+      "src/project_copilot/rag/ingestion.py": "fe3d186c14fbaf3eca579d6c2eeba8cedd30b2e49096e0c4b0b837f294ce3306",
+      "src/project_copilot/infrastructure/qdrant.py": "d7cfa7a8b48db0d6a04336a569f8858d3b73db2d0815841e82796f3fca708c0d",
+      "src/project_copilot/api/documents.py": "a34176787698c621373998bccc835285c71af854c473792e92057ef82ca55e9d",
+      "scripts/ingestion_recovery_smoke.py": "2ec6e911c971892399e7b32af00554c5d57650bd6c2555d8c0c90b7c81870aea"
+    },
+    "elapsed_ms": 3651.0663850003766
+  },
+  "real_storage_report_sha256": "9ebd8cf926aeb6e53510a838ba5b3e526c853a3515c7e307da32467c4143f95f",
+  "api_scenarios": {
+    "executor": "Codex",
+    "transport": "ASGITransport with in-memory Qdrant and synthetic vectors",
+    "pytest_cases_passed": 2,
+    "failure_status_codes": [
+      502,
+      503
+    ],
+    "retry_status_code": 200,
+    "duplicate_status_code": 200,
+    "upload_and_manifest_temporary_files_remaining": 0,
+    "note": "Assertions verify both paths; manifest error is injected before record, not a new physical-disk-failure test."
+  },
+  "existing_collections_before": {
+    "pc_eval_dense_v0": 16,
+    "pc_eval_dense_v1_size500": 27,
+    "pc_knowledge_dense_v0": 2
+  },
+  "existing_collections_after": {
+    "pc_eval_dense_v0": 16,
+    "pc_eval_dense_v1_size500": 27,
+    "pc_knowledge_dense_v0": 2
+  },
+  "existing_collection_counts_unchanged": true,
+  "historical_verifications": {
+    "v1": {
+      "status": "ok",
+      "state": "verified",
+      "run_id": "dense-v1-size500-20261021-01",
+      "files": 19,
+      "manual_review": "pending",
+      "day12_accepted": false
+    },
+    "v2": {
+      "status": "ok",
+      "state": "verified",
+      "run_id": "hybrid-v2-20261022-01",
+      "files": 23,
+      "manual_review": "pending",
+      "day14_accepted": false
+    },
+    "v3": {
+      "status": "ok",
+      "state": "verified",
+      "run_id": "rerank-v3-20261025-01",
+      "files": 19,
+      "manual_review": "pending",
+      "day16_accepted": false,
+      "model_loaded": false
+    },
+    "final": {
+      "status": "ok",
+      "state": "verified",
+      "run_id": "final-holdout-20261026-01",
+      "files": 23,
+      "split": "holdout",
+      "model_loaded": false,
+      "manual_review": "pending",
+      "day17_accepted": false,
+      "selection_fingerprint": "final-selection-v1-d77720ad02c9ac3caa83b3fa6981c6d197b1c7238d220cf64cca3dd5ced2f450"
+    }
+  },
+  "preserved_non_markdown_files": 213,
+  "new_calls": {
+    "model_api": 0,
+    "gpu_score": 0,
+    "qdrant_http_requests": null,
+    "application_collection_writes": 0
+  },
+  "local_evidence_directory": "data/manual-d18/verification-20261026-01",
+  "local_artifact_sha256": {
+    "real-recovery.stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "local-gate.stdout.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "final-verify.stdout.txt": "15d2df9053ebae61a8d880795fb299725da49a0c2bc745edbfc7cb0157c27b81",
+    "commands.json": "e7d8137d824992dbac8c50ab2375643153ab6a190a67ee41297c0699e56c3c0c",
+    "real-recovery.stdout.txt": "6f321d8ecce54bedc81ce9c3b565bd4f08abb7ae58f208ed2932c8f533d06f0a",
+    "v2-verify.stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "preserved-inputs.json": "3847ad60afc903b21cbbe46bdd42129178ebc74f3147dba89878a74ee523925c",
+    "v2-verify.stdout.txt": "954ae0611c19f1d671a0a1f0808d72b4a136753bcf3e4ba33b4b411162d66c67",
+    "v1-verify.stdout.txt": "09c609bfa3375b0081a07820e61bfaef8bc0e8f98fa831ce4bd59f756a57c410",
+    "v3-verify.stdout.txt": "28156cc2ecb9dd099202fbf6f5511a383521ebb14b6772cb086003003c3a7d2f",
+    "upload-http-scenarios.stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "upload-http-scenarios.stdout.txt": "e4c352829b707e689f65650c11a635ec3143af66beebca040d4671c7f74bd243",
+    "local-gate.stderr.txt": "5df35fc49ad1eb559d4cde7127222520a5d4cd0288cb9dbc2b0ebf58abbfd3ce",
+    "final-verify.stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "v3-verify.stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "overwrite-gate.stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "collections-after.json": "d3ae6931583b93d4e18518ba549acdcfe21c7ac3dda18dba9855d6897e7c7f4a",
+    "overwrite-gate.stdout.txt": "c4d78b4afc25b43d99744a0d6a1432a5d5b736725713e3f382f2cd2ec15a2749",
+    "collections-before.json": "d3ae6931583b93d4e18518ba549acdcfe21c7ac3dda18dba9855d6897e7c7f4a",
+    "v1-verify.stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "recovery/same.txt": "ae9133640547446d7bfd0027d37b1e6aeca64be0fb48d9f7dfa7ca10509b2ef7",
+    "recovery/manifest-failure.txt": "f7afed7c19d7c2110067f12fd05aa25cfd72ed61c9e65afa91c20d166cb67c4b",
+    "recovery/first.txt": "956752f93d8ba5f3d42590fa535a2a184e8760fda9507a80bf6fe02a8a7e2d8f",
+    "recovery/report.json": "9ebd8cf926aeb6e53510a838ba5b3e526c853a3515c7e307da32467c4143f95f",
+    "recovery/manifests/pc_d18_recovery_eec7debc861a4763ae6ee592828aa505.json": "de3b1b2d36c66ed750db0bf4c56ea82be9a72ca0690c9f0501aa66231229349e"
+  },
+  "notes": [
+    "Real Qdrant requests target a new owned test collection, which was deleted; exact HTTP request count was not collected.",
+    "Six synthetic-vector batches belong to the real-storage script; ASGI test doubles are separate and no model APIs are called.",
+    "Original 1069-test development run and existing receipts are retained; only two targeted API cases are rerun here.",
+    "User explicitly confirmed learning completion separately; all terminal verification was executed by Codex under this session delegation.",
+    "No source, dependency, frozen data or historical archive changes; D19 not started."
+  ]
+}

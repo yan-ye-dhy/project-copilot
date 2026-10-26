@@ -362,7 +362,7 @@ D17本次委托验证已完成：9条CLI均符合预期，20条评分及成对�
 
 ## D18：成功清单与可重试入库
 
-D18用户学习/手动验证尚未确认。交给ChatGPT结合[报告](reports/DAY_18.md)、[入库服务](../src/project_copilot/rag/ingestion.py)、[存储核验](../src/project_copilot/infrastructure/qdrant.py)及[恢复脚本](../scripts/ingestion_recovery_smoke.py)阅读。
+D18用户已确认通过ChatGPT学习、能够解释主流程，本次授权Codex代操作验证也已完成，阶段A/B均完成。复习结合[报告](reports/DAY_18.md)、[入库服务](../src/project_copilot/rag/ingestion.py)、[存储核验](../src/project_copilot/infrastructure/qdrant.py)及[恢复脚本](../scripts/ingestion_recovery_smoke.py)。
 
 1. **完整调用链**：API校验/临时保存→load/split→读完成清单和核验集合→已完成则readback并复用→新文档才Embedding/upsert→readback全部片段→原子record→返回。失败向上传播，finally清理临时副本并释放进程内锁。
 2. **ID与名称**：文件名不参与文档/片段身份；同内容改名返回首次成功来源名，避免改写已有引用。相同文件名但不同bytes产生不同content hash/document_id与chunks，共同保留，不扩展为版本管理。
@@ -370,4 +370,4 @@ D18用户学习/手动验证尚未确认。交给ChatGPT结合[报告](reports/D
 4. **三种保证的区别**：upsert wait=True的completed、回读精确payload、原子替换JSON分别保证不同层面；都不等于跨存储事务。回读不取向量、不证明语义质量；已登记文档缺片会报错，不自动收费重建。HTTP锁只限单进程，不承诺多worker/CLI并发安全。
 5. **实验身份**：D18源码变化后，真实旧采集器应拒绝冒用旧源码SHA；离线单测可构建绑定当前源码的临时合成凭据，不能修改真实旧结果。V1/V2/V3/D17原结果的verify仍通过，不意味着D18重新测得相同真实模型效果。
 
-开发期自动验证由Codex执行；真实Qdrant也使用合成二维向量，API故障与临时清理另有ASGI测试，不将其写成用户本人已操作或真实Embedding效果。学习后可先看report.json中点数/清单变化，再主动开启D18手动带练；D19另行明确开启。
+开发期自动验证与本次授权的代操作均由Codex执行；真实Qdrant使用合成二维向量，API故障与临时清理另有ASGI测试，不将其写成用户本人已操作或真实Embedding效果。本次再次观察到失败时点数增加但完成文档不变，显式重试后才发布，成功重传的点数和合成向量批次保持；详见[委托验证收据](evidence/D18_DELEGATED_VERIFICATION_20261026.json)。用户总体学习确认单独记录，D19另行明确开启。

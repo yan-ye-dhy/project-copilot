@@ -1339,3 +1339,30 @@ HF_HUB_OFFLINE=1 .venv/bin/python -m evals.holdout verify \
 完整交接见[D18日报](reports/DAY_18.md)，整体实现/测试/证据及关联文档共20文件；API响应结构、依赖、默认750/150和Dense问答保持。本次Git按用户当前授权审核、提交并推送，真实ID/结果在会话补全；阶段B待学习后用户主动验证，D19不自动开始。
 
 D18收尾检查：20文件范围符合交付清单；7份Markdown的围栏/空白、54张表、318处本地链接、15个锚点及5段相关bash示例语法、日报固定8节均通过。新Python语法和所有新文件空白检查通过；计划第10节外与既有日志保持，正式旧配置/数据/归档和API/Prompt/依赖不改，4份真实恢复执行源码SHA与收据仍匹配，收据为本地report原字节副本。向量/模型缓存、真实.env和本地输出继续被忽略；Git收尾按用户授权执行，D18学习/手测及D19开发均不自动登记或启动。
+
+## D18：学习确认与本次委托验证（2026-10-26）
+
+开发提交[077e3f8c850e0d02cd79bca52a149157163f0919](https://github.com/yan-ye-dhy/project-copilot/commit/077e3f8c850e0d02cd79bca52a149157163f0919)已同步main，阶段A完成；本次开始时main/origin/main一致、工作区干净。用户主动要求直接完成手动验证并提交GitHub，另行确认已通过ChatGPT学习并能够解释上传→完成清单→重复复用/新入库→回读→失败重试。本次阶段B以“用户学习确认＋明确委托代操作验证”完成，实际执行者为Codex，不登记为用户本人亲自终端操作，长期默认协作方式不变。
+
+先启动现有Qdrant，保存原3集合及精确点数和213份受检非Markdown源码/依赖/测试/评测/既有收据的SHA。Codex执行下列8条CLI，退出码全部符合预期；完整参数、输出SHA及恢复报告见[D18委托验证收据](evidence/D18_DELEGATED_VERIFICATION_20261026.json)，本地输出保存在忽略目录`data/manual-d18/verification-20261026-01/`。
+
+| 本轮CLI | 结果 |
+| --- | --- |
+| `ingestion_recovery_smoke.py --output-dir .../must-not-exist`，不加--local | 预期退出2，输出目录未创建，不创建客户端 |
+| `ingestion_recovery_smoke.py --local --output-dir .../recovery` | 退出0，真实Qdrant＋合成二维向量，8阶段通过，测试集合删除确认 |
+| 再次使用相同recovery输出目录 | 预期退出1，拒绝覆盖，不创建客户端或集合 |
+| `.venv/bin/python -m pytest -q tests/test_ingestion_recovery.py::test_upload_failure_retry_and_duplicate_preserve_temporary_cleanup` | 2 passed，1.09秒，ASGITransport＋内存Qdrant＋合成向量 |
+| `evals.chunking_run verify`，原V1公开归档 | 退出0，verified |
+| `evals.hybrid_run verify`，原V2公开归档 | 退出0，verified |
+| `evals.rerank_run verify`，原V3公开归档 | 退出0，verified |
+| `evals.holdout verify`，原D17公开归档 | 退出0，verified |
+
+本轮真实恢复从干净077e3f8执行，8阶段点数[1,2,4,4,5,7,7,7]、完成文档[1,1,2,2,3,3,4,4]、累计合成向量批次[1,2,3,3,4,5,6,6]。部分写入及清单保存前故障不发布新文档；显式重试后成功登记，两次成功重传不再产生合成向量批次或写入。旧BM25快照按清单变化拒绝混用，失败文档不进入Dense/BM25可见集合。仅本次新建随机测试集合被清理，原集合点数保持pc_eval_dense_v0=16、pc_eval_dense_v1_size500=27、pc_knowledge_dense_v0=2。
+
+两项ASGI用例分别观察部分写入502、清单保存前失败503，显式重试200，改名重传200且不新增点或合成向量批次；失败/成功后上传临时文件和清单临时文件均零残留。本轮不是Uvicorn真实端口测试，清单故障在record前注入；物理replace失败原开发测试记录保持，不声称本轮重新执行。真实脚本6批合成向量不代表整个ASGI测试的批次数，更不是外部模型请求。
+
+新增真实Embedding/Chat模型API与GPU评分均0，没有模型下载；确有本地Qdrant HTTP请求，精确请求次数未采集。原3集合及点数、213份受检非Markdown文件SHA和4份实际执行源码SHA均保持，4份历史公开verify通过；原开发/冻结归档及旧收据不改，不重新测量或宣称语义效果。本轮只重跑上述2项针对性测试，不累加或重跑完整1069项开发测试。
+
+本次范围为7份关联Markdown和1份独立验证收据，Git操作按用户当前明确授权由Codex执行，真实提交ID与推送结果在会话补全。D18阶段A/B均完成，D19仍需用户明确开启。
+
+本次收尾检查：7份Markdown的围栏、空白、56张表、326处本地链接及15个锚点、日报固定8节通过；计划第10节外及既有日志原文保持。新增JSON语法、独立文件空白、敏感凭据模式及忽略规则检查通过；213份受检非Markdown文件、4份真实执行源码和本地输出SHA再次匹配。提交范围仅为上述8文件，不改业务源码、依赖或冻结归档。

@@ -158,7 +158,7 @@
 
 ## D18：如何解释可重试入库的完成边界
 
-本节待用户学习，依据[D18报告](reports/DAY_18.md)、[真实恢复收据](evidence/D18_RECOVERY_SMOKE.json)和[存储核验源码](../src/project_copilot/infrastructure/qdrant.py)。
+用户已确认通过ChatGPT学习并能够解释D18主流程；本次授权Codex代操作验证也已通过，见[委托验证收据](evidence/D18_DELEGATED_VERIFICATION_20261026.json)。复习依据为[D18报告](reports/DAY_18.md)、[真实恢复收据](evidence/D18_RECOVERY_SMOKE.json)和[存储核验源码](../src/project_copilot/infrastructure/qdrant.py)，学习确认与实际测试执行者分别记录。
 
 1. **为什么有向量点还不能检索？** 部分upsert或清单保存前失败都可能留下点；完成清单未登记该document_id时，Dense过滤和BM25构建排除它。脚本点数2/完成1、点数7/完成3是实际证据；不是靠删除旧数据回滚。
 2. **幂等是否表示不会再次收费？** 已完成重传只读验证并复用，不发Embedding请求；未完成失败后的显式重试可能重新Embedding。稳定ID保证upsert覆盖，不等同于请求只执行一次或跨存储事务。本日合成向量测试不产生模型费用，也未加入运行时向量缓存。
