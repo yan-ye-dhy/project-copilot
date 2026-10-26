@@ -1,6 +1,6 @@
 # Project Copilot
 
-基于RAG与LangGraph的研发知识及工单协作智能体。D1–D18已按各日实际学习/验证记录收尾；D19实现、离线回归及授权的真实Prompt对照已完成，学习与学习后手动验证尚待完成，见[D19报告](docs/reports/DAY_19.md)。当前问答API仍Dense/750/150，默认Prompt保持rag-answer-v1，Few-shot候选仅用于实验。
+基于RAG与LangGraph的研发知识及工单协作智能体。D1–D19已按各日实际学习/验证记录收尾；D19用户学习已确认，本次授权Codex代操作验证通过，阶段A/B均完成，见[D19报告](docs/reports/DAY_19.md)。当前问答API仍Dense/750/150，默认Prompt保持rag-answer-v1，Few-shot候选仅用于实验。
 
 协作流程见 [长期协作规则](docs/COLLABORATION_RULES.md)：Codex开发、自动验证、提供报告并指导Git操作；用户亲自提交和推送GitHub，随后通过ChatGPT学习代码/架构，学习后主动要求Codex开始手动测试。以下命令是自助运行参考，Codex仅在用户要求后单步带练。
 
@@ -341,6 +341,8 @@ uv run --frozen python -m evals.prompt_reliability offline --output-dir data/man
 uv run --frozen python -m evals.prompt_reliability verify --output-dir data/manual-d19/offline-01
 ```
 
-offline使用明确注入的固定响应，仅验证管线，不能用其“通过率”说明Prompt效果。真实对照使用collect并显式加--live，需遵守费用约定；最多8次DeepSeek请求、无Embedding/Qdrant或自动重试，上游失败即停止，原始回答和失败项保留。当前实测范围与限制见[实验报告](evals/reports/PROMPT_RELIABILITY_D19.md)；学习与用户手动验证尚未登记，D20不自动开启。
+offline使用明确注入的固定响应，仅验证管线，不能用其“通过率”说明Prompt效果。真实对照使用collect并显式加--live，需遵守费用约定；最多8次DeepSeek请求、无Embedding/Qdrant或自动重试，上游失败即停止，原始回答和失败项保留。当前实测范围与限制见[实验报告](evals/reports/PROMPT_RELIABILITY_D19.md)；本次委托验证另行记录，D20不自动开启。
 
-本轮经用户单独授权，实际8次DeepSeek生成完成；两版各4个非空场景的结构/状态/口号检查通过，空证据各1条由后端确定拒答。该小样本未显示候选更好，保留默认v1；人工事实复核仍待用户，Codex原文核对另行记录。最终完整离线1105项通过、1项真实Qdrant默认跳过，冻结数据/配置/历史结果保持，见[真实对照审计](docs/evidence/D19_PROMPT_LIVE_AUDIT.json)。
+本轮经用户单独授权，实际8次DeepSeek生成完成；两版各4个非空场景的结构/状态/口号检查通过，空证据各1条由后端确定拒答。该小样本未显示候选更好，保留默认v1；本次受托原文复核由Codex执行，原人工标注快照保持。最终完整离线1105项通过、1项真实Qdrant默认跳过，冻结数据/配置/历史结果保持，见[真实对照审计](docs/evidence/D19_PROMPT_LIVE_AUDIT.json)。
+
+2026-10-26用户授权Codex直接验证并提交：两份归档重放、5项拒绝门禁及临时Uvicorn的12次真实本地HTTP检查通过，原回答/引用与原文核对一致，详见[委托验证收据](docs/evidence/D19_DELEGATED_VERIFICATION_20261026.json)。HTTP重放已保存回答与受控错误，新增模型API/Embedding/Qdrant调用0；233份受检非Markdown文件保持。用户另行确认ChatGPT学习完成，操作执行者为Codex，不登记为用户亲自终端操作。

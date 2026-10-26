@@ -374,7 +374,7 @@ D18用户已确认通过ChatGPT学习、能够解释主流程，本次授权Code
 
 ## D19：回答契约、Prompt对照与事实边界
 
-待用户通过ChatGPT学习，交接见[D19日报](reports/DAY_19.md)、[回答服务](../src/project_copilot/rag/answering.py)、[独立对照运行器](../evals/prompt_reliability.py)及[实验报告](../evals/reports/PROMPT_RELIABILITY_D19.md)。
+用户已确认通过ChatGPT学习并能解释主流程，本次授权Codex代操作验证也已完成，阶段A/B均完成；复习见[D19日报](reports/DAY_19.md)、[回答服务](../src/project_copilot/rag/answering.py)、[独立对照运行器](../evals/prompt_reliability.py)及[实验报告](../evals/reports/PROMPT_RELIABILITY_D19.md)。
 
 1. **执行链**：固定证据/检索结果→整块预算与去重→空结果直接拒答，否则System/User消息→DeepSeek JSON文本→JSON严格解析→ModelAnswer→上下文编号检查→从后端片段生成Citation。三类失败只在后端分类，对外错误脱敏，不自动修复或重试模型输出。
 2. **相关不等于充分**：弱证据即使与问题共享关键词，也可能没有时限、密码等所需事实。Pydantic能验类型与编号，无法判断“24小时恢复”是否受支持；回归特意保留合法结构的无依据回答能够通过本地Schema这一局限。
@@ -382,4 +382,6 @@ D18用户已确认通过ChatGPT学习、能够解释主流程，本次授权Code
 4. **注入边界**：文档里的System声明、输出口号和伪引用只是User数据；严格编号、无工具的聊天适配及后端权限共同限定行为，不能说System提示词消除了注入。口号检查包含JSON反转义后的答案，也只是小型攻击探针。
 5. **证据与记录**：offline是假响应贯通测试，live才观察真实模型；逐题保存消息、原始JSON、错误、实际模型、usage及耗时。对照的状态/口号检查不等于人工事实支持评测，更不是Recall/MRR提升；用户学习及手测需另行完成。
 
-本轮真实对照已按单独授权完成8次生成；baseline/fewshot各4个非空场景均通过本次合同、状态和口号探针，另各1条空证据由后端拒答。候选多724输入tokens，小样本检查未变，不应据耗时或措辞变化宣称候选改善，默认v1保持。见[原始真实回答](../evals/results/d19-prompt-20261026-01/answers.jsonl)及[独立审计](evidence/D19_PROMPT_LIVE_AUDIT.json)；Codex原文审查不代替用户学习及人工支持复核。
+本轮真实对照已按单独授权完成8次生成；baseline/fewshot各4个非空场景均通过本次合同、状态和口号探针，另各1条空证据由后端拒答。候选多724输入tokens，小样本检查未变，不应据耗时或措辞变化宣称候选改善，默认v1保持。见[原始真实回答](../evals/results/d19-prompt-20261026-01/answers.jsonl)及[独立审计](evidence/D19_PROMPT_LIVE_AUDIT.json)；受托复核执行者和用户学习确认分别记录，原人工标注快照保持。
+
+本次[委托验证](evidence/D19_DELEGATED_VERIFICATION_20261026.json)重放两版原回答并核对原文，另用真实本地HTTP观察空白问题422、坏JSON/Schema/编号及上游失败502、配置失败503。12个run_id均与日志一致；空证据不调用重放聊天对象，失败不重试，响应和日志均未泄露注入的私密错误标记。无新增真实模型请求，原人工pending快照保持；操作执行者与学习确认分别记录，D20另行开启。

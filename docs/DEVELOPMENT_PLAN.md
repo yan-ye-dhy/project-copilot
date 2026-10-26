@@ -461,7 +461,7 @@ feat(agent): require approval for idempotent ticket creation
 
 这些是建议，不是已存在的历史。原仓库不整理或提交；新项目由用户在Codex指导下亲自提交、推送约定GitHub仓库/分支，失败如实报告，不强推或重写历史。未配置远端时先记录待同步并获取实际地址，不猜测仓库。每个完整模块验收后可交给ChatGPT新开学习窗口，如“Project Copilot · Dense RAG”“Project Copilot · 检索评测与优化”“Project Copilot · LangGraph与工单确认”。
 
-## 10. 当前开发进度：D19实现与自动验收完成，待学习与手动验证
+## 10. 当前开发进度：D19阶段A/B均完成，D20待用户明确开启
 
 **D1已完成：** 工程、自动验收、ChatGPT学习和用户手测完成；2026-10-12只读核实用户提交的 `4c04a29` 已同步GitHub，A/B均完成，见 [D1报告](reports/DAY_1.md)。用户已明确开启D2。
 
@@ -578,6 +578,12 @@ Codex执行9条CLI：最终配置verify、保留集plan及公开verify退出0；
 独立新编5场景对照冻结v1和一个Few-shot候选，只改变System模板，固定证据、模型及生成合同。最终1105项离线通过、1项真实Qdrant默认跳过（含36项新增），独立离线归档verify通过，218份受保护非Markdown文件保持；离线注入响应只作管线验收，不推断Prompt效果。
 
 用户按8.3节单独同意最多8次真实生成后，从干净代码提交03c2691执行，实际8次DeepSeek＋两侧各1条后端空证据拒答，五对状态/口号检查均不变；无Embedding/Qdrant/GPU或自动重试。候选输入多724 tokens，未见本样本更好，保留默认v1，不把编号正确冒充事实支持。私有/公开4产物逐字一致并verify通过，见[真实审计](evidence/D19_PROMPT_LIVE_AUDIT.json)。原冻结结果与Prompt身份不改，用户学习/手测尚未确认，35日任务表保持，D20不自动开启；Git同步真实结果在会话补全。
+
+### D19学习确认与本次委托验证（2026-10-26）
+
+代码及真实对照收尾[9eea85bd41e97a2735b04ab903cc10c99b62b46e](https://github.com/yan-ye-dhy/project-copilot/commit/9eea85bd41e97a2735b04ab903cc10c99b62b46e)已同步main，阶段A完成。用户主动要求直接手动验证并提交GitHub，另行确认已通过ChatGPT学习，能解释证据筛选→消息构造→JSON/Schema/编号→真实引用，以及编号有效不等于事实正确。本次阶段B以“用户学习确认＋明确委托代操作验证”完成，操作执行者为Codex，不登记用户亲自终端操作，长期默认分工不变。
+
+本轮9条命令退出码均符合预期：plan、两份归档verify、5项门禁以及1次临时HTTP探针。真实本地Uvicorn共12次HTTP，200×6、422×1、502×4、503×1，run_id与日志对应、服务资源关闭及脱敏通过；HTTP使用已保存回答和故障注入，新增模型/Embedding/Qdrant/GPU调用0。Codex复核10条原回答、4条有效答案的引用/事实与原文一致，未新增用户人工支持标签；233份受检非Markdown文件保持，原机器pending快照不改。见[独立委托收据](evidence/D19_DELEGATED_VERIFICATION_20261026.json)，D20仍待用户明确开启，35日安排不变。
 
 ## 11. 最终验收和可选裁剪
 

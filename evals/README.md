@@ -311,3 +311,5 @@ collect需显式--live并先取得本轮费用授权，最多8次DeepSeek调用�
 offline为固定响应的管线检查，假调用与真实API分别计数；live也不自动将状态/编号有效当作事实支持，人工支持率未采集记null。候选不推广至API，不改冻结检索配置，不把Prompt实验解释成Recall/MRR变化。旧归档保持旧源码身份；新回答源码的效果与D10/D17历史归属分开。
 
 本轮授权的[真实归档](results/d19-prompt-20261026-01/manifest.json)从干净03c2691执行：8次DeepSeek、0次Embedding/Qdrant/GPU、0次重试，5对中4对为模型输出、1对为后端空证据。两侧各5条合同/状态/口号检查通过（含1条后端结果），候选无本样本优势，默认v1保持。逐题消息、原输出、usage和错误原样保存；[真实审计](../docs/evidence/D19_PROMPT_LIVE_AUDIT.json)记录Codex原文核对和独立费用估算，原离线审计中的待授权字段作为当时快照保留。私有/公开verify均通过；人工支持率、用户学习及手测不自动填完成。
+
+2026-10-26本次[委托验证](../docs/evidence/D19_DELEGATED_VERIFICATION_20261026.json)由Codex执行：两份归档重放和5项拒绝门禁符合预期，真实本地HTTP重放/故障注入12项通过；新增模型/Embedding/Qdrant/GPU调用0。10条原回答及来源由Codex复核，原机器human_review/pending与语义准确率字段不改。233份受检非Markdown文件保持，用户另行确认学习完成，阶段A/B均完成，D20未开启。

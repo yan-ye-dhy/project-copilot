@@ -1,6 +1,6 @@
 # 【Day 19 开发报告】
 
-日期：2026-10-26。**D19实现、离线回归及8次单独授权的真实Prompt对照已完成。** Git按用户本次授权由Codex审核、提交推送，真实结果在会话补全。学习和学习后手动验证尚未确认，D20未开始。
+日期：2026-10-26。**D19阶段A/B均完成：开发与Git同步完成，用户确认ChatGPT学习完成，本次明确授权的Codex代操作验证通过。** 本次验证记录按授权由Codex审核、提交推送，真实结果在会话补全，D20未开始。
 
 ## 1. 今日开发目标
 
@@ -21,6 +21,8 @@
 - [Prompt实验报告](../../evals/reports/PROMPT_RELIABILITY_D19.md)及本日报。
 - [自动审计](../evidence/D19_RELIABILITY_AUDIT.json)与[离线运行归档](../../evals/results/d19-offline-20261026-01/manifest.json)：只记录实际离线结果与执行版本，原4份产物逐字复制，不包含真实密钥/向量缓存。
 - [真实对照审计](../evidence/D19_PROMPT_LIVE_AUDIT.json)与[真实运行归档](../../evals/results/d19-prompt-20261026-01/manifest.json)：单独授权后8次生成的原始消息/回答、usage、独立版本和Codex原文核对；学习/人工状态不自动改写。
+
+本次委托验证仅更新8份关联Markdown并新增[独立验证收据](../evidence/D19_DELEGATED_VERIFICATION_20261026.json)，不改业务/测试源码、依赖、旧审计或冻结产物。
 
 ## 3. 核心实现内容
 
@@ -46,12 +48,32 @@
 
 V0私有完整基线verify、V0公开12份产物字节及V1/V2/V3/D17公开verify通过，原Prompt和Schema指纹保持。第一次误将V0公开精简快照作为完整verify目录，缺manifest返回1；改用原private路径后verified，未修改工具或重签归档。
 
+### 本次委托验证（2026-10-26）
+
+用户主动要求直接手动验证并提交，本次由Codex代操作，不登记为用户本人亲自终端操作，长期默认分工不变。开发两笔提交已同步，开始时main/origin/main在9eea85b、工作区干净。用户另行确认已通过ChatGPT学习，能解释证据筛选、消息构造、JSON/Schema/编号及引用主链，以及编号有效不等于事实正确；本次阶段B按“学习确认＋明确委托代操作验证”完成。
+
+| 本轮命令或检查 | 实际结果 |
+| --- | --- |
+| prompt_reliability plan | 退出0；原合同保持，无客户端/模型请求 |
+| 原live/offline归档verify（2条） | 均退出0、verified；重解析10＋10条原记录，不新生成 |
+| collect缺--live | 预期退出2，输出目录未创建 |
+| offline指向已存在的原归档目录 | 预期退出1，拒绝覆盖，原文件保持 |
+| 仅追加换行的副本verify | 预期退出1，拒绝字节变化 |
+| 副本虚改汇总后重封SHA | 预期退出1，不能只改封印就伪造指标 |
+| 副本修改Prompt后重封SHA | 预期退出1，不能沿用旧实验身份 |
+| 忽略目录中的http_probe.py | 退出0，临时真实Uvicorn共12次HTTP：200×6、422×1、502×4、503×1，服务关闭 |
+
+共9条命令，含5项预期拒绝；完整命令、输出SHA、HTTP响应与run_id见[独立收据](../evidence/D19_DELEGATED_VERIFICATION_20261026.json)，本地输出位于`data/manual-d19/verification-20261026-01/`。HTTP使用已保存的baseline模型输出、固定证据与错误注入，非新增在线生成：五个正常问答结果与原baseline逐字段一致；空证据不调用重放聊天对象，422不创建服务，502/503均脱敏、服务finally关闭，12个run_id与日志一致。
+
+Codex逐条核对原10条回答及4条有效答案的原文/引用一致；这属于助手受托复核，原机读人工pending与语义准确率不改写，不新增用户本人事实标签。233份受检非Markdown文件及原归档保持，本轮新增模型/Embedding/Qdrant/GPU调用0；真实HTTP12次、重放/故障聊天对象8次另计。未重跑开发期1105项pytest，不重复统计为本次测试。
+
 ## 6. GitHub 提交信息
 
 - 起点：[c6355934a79d85463eb46c7085638f337933e086](https://github.com/yan-ye-dhy/project-copilot/commit/c6355934a79d85463eb46c7085638f337933e086)，main与origin/main同步、工作区干净。
 - 用户明确要求开启D19并提交GitHub，本次由Codex审核、提交和推送至现有origin/main；真实提交ID/推送结果在会话补全，不预填未来commit。
 - 代码与离线证据已形成[03c269128562aa581b249eb115cfdf964708a33d](https://github.com/yan-ye-dhy/project-copilot/commit/03c269128562aa581b249eb115cfdf964708a33d)本地提交，真实对照从该干净版本执行；首次push因自动审批服务用量上限未执行，实际同步状态以会话核实为准。
 - 新实验记录实际base commit、dirty状态及执行源码SHA；不追填未来提交身份，不修改D10/D17历史收据。
+- 代码与结果两笔提交均已同步main，收尾为[9eea85bd41e97a2735b04ab903cc10c99b62b46e](https://github.com/yan-ye-dhy/project-copilot/commit/9eea85bd41e97a2735b04ab903cc10c99b62b46e)，本次从该版本代执行验证；验证记录的真实提交信息在会话补全。
 
 ## 7. 后续学习提示
 
@@ -63,4 +85,4 @@ V0私有完整基线verify、V0公开12份产物字节及V1/V2/V3/D17公开verif
 
 ## 8. 下一步计划
 
-本次开发自动验收与真实Prompt对照已完成，完成授权Git同步后交ChatGPT学习。学习后由用户主动开启D19手动验证，核对原文支持与错误流程；本次不自动登记阶段B。D20需用户另行明确开启，按计划进入PostgreSQL工单基础，不自动推进。
+本次开发、真实Prompt对照、授权代操作验证及用户学习确认均完成，提交推送验证记录。D20需用户另行明确开启，按计划进入PostgreSQL工单基础，不自动推进。
