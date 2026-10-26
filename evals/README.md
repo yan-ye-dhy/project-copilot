@@ -252,10 +252,12 @@ uv run --frozen --group rerank-gpu python -m evals.rerank_run verify \
   --output-dir evals/results/rerank-v3-20261025-01
 ```
 
-以上为运行参考，开发期已完成真实采集，学习后用户手测仍等主动开启。collect的示例输出目录须尚不存在；重复实验请换新目录。plan/verify离线，不导入Torch/Transformers或加载模型；collect必须显式--local，只用本地快照，缓存缺失不下载、不回退。独立一次warmup（首题10pair）不进入评分/时延统计，前两道原序dev为smoke并包含在完整30题中。无异常时31次成功评分、310pair；遇异常分别记录尝试和完成计数，前两题失败不封存，后续失败保留分母。
+以上为运行参考，开发期已完成真实采集；2026-10-26用户确认已学习，并明确委托Codex完成本次离线验证及Git提交推送，实际执行者分别记录。collect的示例输出目录须尚不存在；重复实验请换新目录。plan/verify离线，不导入Torch/Transformers或加载模型；collect必须显式--local，只用本地快照，缓存缺失不下载、不回退。独立一次warmup（首题10pair）不进入评分/时延统计，前两道原序dev为smoke并包含在完整30题中。无异常时31次成功评分、310pair；遇异常分别记录尝试和完成计数，前两题失败不封存，后续失败保留分母。
 
 [公开归档](results/rerank-v3-20261025-01/manifest.json)共20文件，19份产物由manifest登记SHA：保存父manifest/状态、两套排名及评分、原候选/logit/token/GPU观测、warmup、配置/模型来源/runtime、逐题原文gold与比较。两套文件使用同一evaluation_config；4无答案的Recall/MRR为null，拒答率未采集。默认配置、D8/V0/V1/V2/D15封存内容保持。
 
 基线timings来自D14历史快照；本轮candidate仅timings_ms.rerank新测，embedding/search/fusion/total记null。score_details.timings_ms.total表示重排组件本身，包含tokenize/排序与诊断，不是端到端RAG耗时；因此所有阶段paired_timings共同样本数为0。GPU单进程一次预热后的30题中位数/p95不当作生产SLA。
 
 本次证据MRR@5为0.897436→0.971154，Recall@5均1，但Recall@3为1→0.935897；4改善、2退化、20指标不变，4无答案另列。程序可追溯分析见 [V3报告](reports/RERANK_V3.md)，其中007的2→4及034多证据3→4需保留；本日不据这些结果自动修改最终默认或提前运行D17保留集。
+
+本次委托验证收据见 [D16_DELEGATED_VERIFICATION_20261026.json](../docs/evidence/D16_DELEGATED_VERIFICATION_20261026.json)：plan/verify及两侧重放成功，缺--local/配置漂移/篡改副本按预期拒绝，原封存文件保持；新增模型与GPU评分均0。学习由用户确认，本轮操作由Codex执行，不登记为用户亲手运行；D17等待明确开启。

@@ -1,0 +1,386 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-26",
+  "day": 16,
+  "initiated_by": "user",
+  "executed_by": "Codex, explicitly delegated by user for this session",
+  "learning": {
+    "confirmed_by": "user",
+    "completed": true,
+    "can_explain_main_flow": true
+  },
+  "personal_terminal_execution": false,
+  "stage_b": "learning confirmed; verification completed with explicit delegation for this session",
+  "base_commit": "10951130c26d0a85a8a8e6f2ed53fdbbc746bbde",
+  "archive": "evals/results/rerank-v3-20261025-01",
+  "archive_manifest_sha256": "10175bced755a788749435bed8c03cb503eaea06282a41a4239c9f7fcb0218fb",
+  "commands": [
+    {
+      "name": "plan",
+      "command": [
+        ".venv/bin/python",
+        "-m",
+        "evals.rerank_run",
+        "plan",
+        "--dataset",
+        "evals/datasets/copilot_v0",
+        "--hybrid-dir",
+        "evals/results/hybrid-v2-20261022-01",
+        "--config",
+        "evals/configs/rerank_v3.json"
+      ],
+      "exit_code": 0,
+      "expected_exit_code": 0
+    },
+    {
+      "name": "verify",
+      "command": [
+        ".venv/bin/python",
+        "-m",
+        "evals.rerank_run",
+        "verify",
+        "--dataset",
+        "evals/datasets/copilot_v0",
+        "--output-dir",
+        "evals/results/rerank-v3-20261025-01"
+      ],
+      "exit_code": 0,
+      "expected_exit_code": 0
+    },
+    {
+      "name": "baseline-replay",
+      "command": [
+        ".venv/bin/python",
+        "-m",
+        "evals.run",
+        "--dataset",
+        "evals/datasets/copilot_v0",
+        "--config",
+        "evals/results/rerank-v3-20261025-01/evaluation_config.json",
+        "--rankings",
+        "evals/results/rerank-v3-20261025-01/baseline_rankings.jsonl",
+        "--output-dir",
+        "data/manual-d16/verification-20261026-01/baseline-01"
+      ],
+      "exit_code": 0,
+      "expected_exit_code": 0
+    },
+    {
+      "name": "rerank-replay",
+      "command": [
+        ".venv/bin/python",
+        "-m",
+        "evals.run",
+        "--dataset",
+        "evals/datasets/copilot_v0",
+        "--config",
+        "evals/results/rerank-v3-20261025-01/evaluation_config.json",
+        "--rankings",
+        "evals/results/rerank-v3-20261025-01/rerank_rankings.jsonl",
+        "--output-dir",
+        "data/manual-d16/verification-20261026-01/rerank-01"
+      ],
+      "exit_code": 0,
+      "expected_exit_code": 0
+    },
+    {
+      "name": "collect-gate",
+      "command": [
+        ".venv/bin/python",
+        "-m",
+        "evals.rerank_run",
+        "collect",
+        "--dataset",
+        "evals/datasets/copilot_v0",
+        "--hybrid-dir",
+        "evals/results/hybrid-v2-20261022-01",
+        "--config",
+        "evals/configs/rerank_v3.json",
+        "--output-dir",
+        "data/manual-d16/verification-20261026-01/must-not-exist"
+      ],
+      "exit_code": 1,
+      "expected_exit_code": 1
+    },
+    {
+      "name": "changed-config",
+      "command": [
+        ".venv/bin/python",
+        "-m",
+        "evals.rerank_run",
+        "plan",
+        "--dataset",
+        "evals/datasets/copilot_v0",
+        "--hybrid-dir",
+        "evals/results/hybrid-v2-20261022-01",
+        "--config",
+        "data/manual-d16/verification-20261026-01/changed-config.json"
+      ],
+      "exit_code": 1,
+      "expected_exit_code": 1
+    },
+    {
+      "name": "tampered-archive",
+      "command": [
+        ".venv/bin/python",
+        "-m",
+        "evals.rerank_run",
+        "verify",
+        "--dataset",
+        "evals/datasets/copilot_v0",
+        "--output-dir",
+        "data/manual-d16/verification-20261026-01/tampered"
+      ],
+      "exit_code": 1,
+      "expected_exit_code": 1
+    }
+  ],
+  "checks": {
+    "archive_verified": true,
+    "sealed_files": 19,
+    "original_tracked_files_unchanged": 186,
+    "replay_rows_equal": 60,
+    "same_ten_candidates_per_question": 30,
+    "full_hit_fields_preserved": true,
+    "stable_logit_order_and_top_five": true,
+    "comparison_equal": true,
+    "unanswerable_separate": 4,
+    "timing_scope_correct": true,
+    "tampered_copy_rejected": true,
+    "changed_config_rejected": true,
+    "collect_without_local_rejected": true
+  },
+  "new_calls": {
+    "model_api": 0,
+    "qdrant": 0,
+    "gpu_score": 0,
+    "pairs_scored": 0
+  },
+  "results": {
+    "answerable": 26,
+    "unanswerable": 4,
+    "outcomes": {
+      "same": 20,
+      "improved": 4,
+      "regressed": 2,
+      "unanswerable": 4
+    },
+    "baseline_at_k": {
+      "1": {
+        "document_recall": 0.8461538461538461,
+        "document_mrr": 0.8846153846153846,
+        "evidence_recall": 0.7628205128205128,
+        "evidence_mrr": 0.8076923076923077,
+        "all_evidence_covered": 0.7307692307692307
+      },
+      "3": {
+        "document_recall": 1.0,
+        "document_mrr": 0.9358974358974359,
+        "evidence_recall": 1.0,
+        "evidence_mrr": 0.8974358974358975,
+        "all_evidence_covered": 1.0
+      },
+      "5": {
+        "document_recall": 1.0,
+        "document_mrr": 0.9358974358974359,
+        "evidence_recall": 1.0,
+        "evidence_mrr": 0.8974358974358975,
+        "all_evidence_covered": 1.0
+      },
+      "10": {
+        "document_recall": 1.0,
+        "document_mrr": 0.9358974358974359,
+        "evidence_recall": 1.0,
+        "evidence_mrr": 0.8974358974358975,
+        "all_evidence_covered": 1.0
+      }
+    },
+    "rerank_at_k": {
+      "1": {
+        "document_recall": 0.9230769230769231,
+        "document_mrr": 0.9615384615384616,
+        "evidence_recall": 0.9166666666666666,
+        "evidence_mrr": 0.9615384615384616,
+        "all_evidence_covered": 0.8846153846153846
+      },
+      "3": {
+        "document_recall": 0.9423076923076923,
+        "document_mrr": 0.9615384615384616,
+        "evidence_recall": 0.9358974358974359,
+        "evidence_mrr": 0.9615384615384616,
+        "all_evidence_covered": 0.9230769230769231
+      },
+      "5": {
+        "document_recall": 1.0,
+        "document_mrr": 0.9711538461538461,
+        "evidence_recall": 1.0,
+        "evidence_mrr": 0.9711538461538461,
+        "all_evidence_covered": 1.0
+      },
+      "10": {
+        "document_recall": 1.0,
+        "document_mrr": 0.9711538461538461,
+        "evidence_recall": 1.0,
+        "evidence_mrr": 0.9711538461538461,
+        "all_evidence_covered": 1.0
+      }
+    }
+  },
+  "case_review_executed_by": "Codex; not a new user per-case human review",
+  "case_review": [
+    {
+      "question_id": "pc-d7-012",
+      "query": "把同一文件改名再挪到另一个目录，内容没变，还算同一份文档吗？显示名称有什么作用？",
+      "gold": [
+        {
+          "evidence_id": "pc-d7-012-e1",
+          "source": "evals/datasets/copilot_v0/corpus/dense_identity_and_citations.md",
+          "start_char": 455,
+          "end_char": 552,
+          "quote": "loader对一次读取的文件字节计算SHA-256，再以内容哈希生成稳定document_id。仅改文件名或物理路径，字节不变时文档身份不变。source_name负责展示来源，不参与文档身份。"
+        }
+      ],
+      "baseline_completion_ranks": [
+        3
+      ],
+      "rerank_completion_ranks": [
+        1
+      ],
+      "baseline_at_3": {
+        "document_recall": 1.0,
+        "document_mrr": 0.3333333333333333,
+        "evidence_recall": 1.0,
+        "evidence_mrr": 0.3333333333333333,
+        "all_evidence_covered": true
+      },
+      "rerank_at_3": {
+        "document_recall": 1.0,
+        "document_mrr": 1.0,
+        "evidence_recall": 1.0,
+        "evidence_mrr": 1.0,
+        "all_evidence_covered": true
+      }
+    },
+    {
+      "question_id": "pc-d7-007",
+      "query": "我传了一个完全没内容的TXT，服务会拿它去计算向量吗？会返回什么？",
+      "gold": [
+        {
+          "evidence_id": "pc-d7-007-e1",
+          "source": "evals/datasets/copilot_v0/corpus/upload_troubleshooting.md",
+          "start_char": 542,
+          "end_char": 684,
+          "quote": "实现支持.txt、.md、.pdf，并对后缀及基本MIME做匹配检查；实际内容还要经过UTF-8或PDF解析，不能只凭Content-Type判断文件有效。用户把PDF的上传名称改成sample.exe得到415；0字节TXT得到422“上传文件不能为空”。这些拒绝发生在模型请求前。"
+        }
+      ],
+      "baseline_completion_ranks": [
+        2
+      ],
+      "rerank_completion_ranks": [
+        4
+      ],
+      "baseline_at_3": {
+        "document_recall": 1.0,
+        "document_mrr": 0.5,
+        "evidence_recall": 1.0,
+        "evidence_mrr": 0.5,
+        "all_evidence_covered": true
+      },
+      "rerank_at_3": {
+        "document_recall": 0.0,
+        "document_mrr": 0.0,
+        "evidence_recall": 0.0,
+        "evidence_mrr": 0.0,
+        "all_evidence_covered": false
+      }
+    },
+    {
+      "question_id": "pc-d8-034",
+      "query": "只执行docker compose up -d qdrant为什么不会同时启动项目/health？应另外怎样启动项目API，配置又在启动的哪个阶段保存？",
+      "gold": [
+        {
+          "evidence_id": "pc-d8-034-e1",
+          "source": "evals/datasets/copilot_v0/corpus/compose_environment.md",
+          "start_char": 925,
+          "end_char": 1015,
+          "quote": "这不影响宿主机运行的Python应用：应用仍由自己的Settings读取本项目配置。FastAPI没有被该Compose文件定义成容器，不能把容器启动误解为同时启动了本项目API。"
+        },
+        {
+          "evidence_id": "pc-d8-034-e2",
+          "source": "evals/datasets/copilot_v0/corpus/startup_and_config.md",
+          "start_char": 163,
+          "end_char": 343,
+          "quote": "在项目根目录执行 `uv run --frozen uvicorn project_copilot.main:app --host 127.0.0.1 --port 8002`。uv使用项目环境和锁定依赖，Uvicorn导入main模块并取得app；模块末尾的create_app构建应用、注册路由和中间件。构建应用时不连接模型、Qdrant或Phoenix。"
+        },
+        {
+          "evidence_id": "pc-d8-034-e3",
+          "source": "evals/datasets/copilot_v0/corpus/startup_and_config.md",
+          "start_char": 345,
+          "end_char": 485,
+          "quote": "进入lifespan启动阶段后，load_settings读取本项目配置，结果保存到application.state.settings。启动成功才开始处理请求；关闭时执行lifespan的finally并记录停止日志。用户D1真实操作已观察到启动完成及Ctrl+C后的正常关闭。"
+        }
+      ],
+      "baseline_completion_ranks": [
+        1,
+        3,
+        3
+      ],
+      "rerank_completion_ranks": [
+        1,
+        4,
+        4
+      ],
+      "baseline_at_3": {
+        "document_recall": 1.0,
+        "document_mrr": 1.0,
+        "evidence_recall": 1.0,
+        "evidence_mrr": 1.0,
+        "all_evidence_covered": true
+      },
+      "rerank_at_3": {
+        "document_recall": 0.5,
+        "document_mrr": 1.0,
+        "evidence_recall": 0.3333333333333333,
+        "evidence_mrr": 1.0,
+        "all_evidence_covered": false
+      }
+    }
+  ],
+  "frozen_status_preserved": {
+    "manual_review": "pending",
+    "day16_accepted": false
+  },
+  "notes": [
+    "Existing GPU scores were replayed, not generated again.",
+    "No pytest rerun; this session verifies real saved rankings and negative CLI paths.",
+    "No new user gold-label confirmation or personal terminal action is claimed.",
+    "D17 not started."
+  ],
+  "local_evidence_directory": "data/manual-d16/verification-20261026-01",
+  "local_artifact_sha256": {
+    "commands.json": "7ad3be9f8311fd573e7682f4d60ab09b0aa795e5840de434b7f0cf54da9f93d5",
+    "changed-config.stdout.json": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "plan.stderr.json": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "plan.stdout.json": "5ed460b4453bb37112b0e5fed3172d5239fc0e7253235f445d5a35900aff785c",
+    "changed-config.json": "208a0e4e1bd4eeab9a228a2c6d48fd1bc1a50cc44b8df39ddd48183a7d810aaf",
+    "preserved-inputs.json": "a434a19c85dbc4887c080f4b6a953b0ec0cdcdf5f1a392d967556e6b3e6daceb",
+    "verify.stderr.json": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "verify.stdout.json": "28156cc2ecb9dd099202fbf6f5511a383521ebb14b6772cb086003003c3a7d2f",
+    "baseline-replay.stdout.json": "434680c788ed3cebd4bd14e78f50b24ed6a18ba41080c2e4461d43d111136da6",
+    "collect-gate.stderr.json": "29f321917643128d152824c8d30cb7dba4b8fe90559357f1684178529da306c3",
+    "rerank-replay.stderr.json": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "rerank-replay.stdout.json": "97eb78114d8043c719e8243e25e3a387f90bfe591e6436907f65ecd818c6233c",
+    "tampered-archive.stdout.json": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "changed-config.stderr.json": "72c7587cbca31efe1ca1cd0d7555192aa46d16aa7fcbf7a06f9c2ad62b38d60f",
+    "baseline-replay.stderr.json": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "tampered-archive.stderr.json": "72c7587cbca31efe1ca1cd0d7555192aa46d16aa7fcbf7a06f9c2ad62b38d60f",
+    "comparison.json": "ebccd46c42fc8b06bf7f09a4711defd70d3f98390c8ec651c6f878a79aa118b7",
+    "collect-gate.stdout.json": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "rerank-01/config.json": "e22119cfbb3da82f2eec4e0adea4e6092a367a60b46cd091a8a20cd281bfe837",
+    "rerank-01/summary.json": "9c847692b32cdb0819afc6a1a01e5963cdb650ceb5ed29ce9962bc8416f46ba8",
+    "rerank-01/retrieval.jsonl": "9326af10b8ceb1378af7213e248b389dfd3305900fcae095395c88611e9dfd21",
+    "baseline-01/config.json": "14fee58d70ddc2720a8c0790d9c32888af214768327aff95b51cb737bca4d45b",
+    "baseline-01/summary.json": "53aa8775e671af36278cb637f17db27efe535b8deec4580408384f75244c1f2d",
+    "baseline-01/retrieval.jsonl": "7f2116365d2dc0c51ea878519c39dc9fa6d720cb6b45ef6e003543c5ad200298"
+  }
+}

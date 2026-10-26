@@ -142,7 +142,7 @@
 
 ## D16：如何解释一次有改善也有退化的实验
 
-用户学习与手动验证尚待完成。依据 [V3报告](../evals/reports/RERANK_V3.md)、[实验合同](../evals/results/rerank-v3-20261025-01/experiment_config.json)及 [逐题原文](../evals/results/rerank-v3-20261025-01/case_details.jsonl)。
+2026-10-26用户确认学习理解，本次验证委托Codex执行；原文与排名核对不写成用户亲自操作。依据 [V3报告](../evals/reports/RERANK_V3.md)、[实验合同](../evals/results/rerank-v3-20261025-01/experiment_config.json)及 [逐题原文](../evals/results/rerank-v3-20261025-01/case_details.jsonl)。
 
 1. **怎样证明改变的是排序？** 固定30dev题、每题同10个Hybrid候选及其原文/metadata/RRF分数，固定750/150、模型revision与最终5块，只新增本地cross-encoder重排；保存原序、新名次和独立logit，候选深度10覆盖守恒。
 2. **为什么MRR提升仍不能说全面变好？** MRR@5从0.897436到0.971154，但007的gold从2到4，034的另外两段从3到4，Recall@3降至0.935897；Recall@5维持1。034首条证据一直在1，单看MRR会漏掉跨段支持退化。4无答案没有回答/拒答评测，不把有命中当可回答。

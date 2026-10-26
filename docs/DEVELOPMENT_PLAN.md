@@ -461,7 +461,7 @@ feat(agent): require approval for idempotent ticket creation
 
 这些是建议，不是已存在的历史。原仓库不整理或提交；新项目由用户在Codex指导下亲自提交、推送约定GitHub仓库/分支，失败如实报告，不强推或重写历史。未配置远端时先记录待同步并获取实际地址，不猜测仓库。每个完整模块验收后可交给ChatGPT新开学习窗口，如“Project Copilot · Dense RAG”“Project Copilot · 检索评测与优化”“Project Copilot · LangGraph与工单确认”。
 
-## 10. 当前开发进度：D16，固定候选V3重排对照
+## 10. 当前开发进度：D16学习与本次委托验证完成，待用户开启D17
 
 **D1已完成：** 工程、自动验收、ChatGPT学习和用户手测完成；2026-10-12只读核实用户提交的 `4c04a29` 已同步GitHub，A/B均完成，见 [D1报告](reports/DAY_1.md)。用户已明确开启D2。
 
@@ -536,6 +536,12 @@ Codex真实验证012的同一10候选首/热两遍，gold由3到1；另有合成
 26可答题的证据MRR@5从0.897436到0.971154，Recall@5/10均1.0，但Recall@3从1.0降至0.935897；逐题4改善/2退化/20指标不变，4无答案独立。007 gold排名2→4，034证据完成排名[1,3,3]→[1,4,4]；不能只展示MRR或宣称补回候选外证据。主30题仅新测rerank，中位数161.644ms/p95 169.081ms，其他阶段及端到端total为null，原V2时间只是历史快照。
 
 运行与边界见 [D16报告](reports/DAY_16.md)、[V3报告](../evals/reports/RERANK_V3.md)和 [公开归档](../evals/results/rerank-v3-20261025-01/manifest.json)。本次未调第二组参数、未用保留集或修改默认750/150与Dense问答API。D16学习及手动案例复核尚待用户完成，D17不自动开启，35日任务表不变。
+
+### D16本次委托验证收尾（2026-10-26）
+
+开发提交[10951130c26d0a85a8a8e6f2ed53fdbbc746bbde](https://github.com/yan-ye-dhy/project-copilot/commit/10951130c26d0a85a8a8e6f2ed53fdbbc746bbde)已由用户推送，阶段A完成。用户确认已通过ChatGPT学习、能够解释主流程，并明确授权Codex直接操作本轮验证及Git提交推送；本次阶段B按“用户已学习＋授权代操作验证”完成记录，不写成用户亲自运行命令，也不改变以后默认协作规则。
+
+Codex执行plan、公开verify、两侧各30题重放，以及无--local、配置漂移、篡改副本三项预期失败检查，退出码均符合预期；两侧60条评分与成对比较一致，原候选/分数/metadata保持，012改善和007/034退化原文与排名已由Codex核对。新增GPU评分、模型API及Qdrant请求均0；本次未重跑pytest，原开发期266项测试记录保持。证据见[委托验证收据](evidence/D16_DELEGATED_VERIFICATION_20261026.json)。D8及V0/V1/V2/V3/D15原字节保持，机器manual_review=pending/day16_accepted=false仍是采集时快照；本次验收另行记载。D17不自动开启，35日任务表不变。
 
 ## 11. 最终验收和可选裁剪
 

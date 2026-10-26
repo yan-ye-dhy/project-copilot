@@ -1167,3 +1167,24 @@ plan实际退出0，申明30题、26可答/4无答案、31调用/310pair预算�
 完整交接见 [D16报告](reports/DAY_16.md)、[实验报告](../evals/reports/RERANK_V3.md)与 [公开manifest](../evals/results/rerank-v3-20261025-01/manifest.json)。本轮保留一组配置，没有用保留集/额外参数搜索选优；D17最终选择及冻结仍等待本日A/B完成与用户明确开启。用户未主动开启本日手测，自动结果不登记为本人学习或案例复盘。
 
 收尾检查：31份交付文件范围符合本日清单；8份Markdown的围栏/空白、56张表、273处本地链接及14个锚点、日报固定8节均通过。计划第10节之外及既有日志/笔记原文保持；19份新产物、28份运行源码/配置/依赖SHA和20份公开/私有归档字节再次一致。独立只读文档审查无剩余问题，运行参考中的输出目录已改为可直接使用的新目录示例。git diff --check通过，暂存区为空；Git提交与推送仍交用户执行，不因此开启手测或D17。
+
+## D16：学习确认与本次委托验证（2026-10-26）
+
+D16开发提交[10951130c26d0a85a8a8e6f2ed53fdbbc746bbde](https://github.com/yan-ye-dhy/project-copilot/commit/10951130c26d0a85a8a8e6f2ed53fdbbc746bbde)已由用户推送，阶段A完成；本次开始时main/origin/main一致、工作区干净。用户主动开启D16验证，并明确要求Codex直接执行及提交GitHub；随后确认已通过ChatGPT学习、能够解释主流程。本次阶段B以“学习已确认＋用户授权代操作验证”完成记录，命令实际执行者为Codex，不新增用户亲自终端操作或逐案例人工gold复核声明。仅本轮例外，不修改长期协作规则。
+
+Codex实际在新项目根目录执行7条CLI，输出保存在忽略目录data/manual-d16/verification-20261026-01，完整命令/退出码/输出SHA及核对结果另存[委托验证收据](evidence/D16_DELEGATED_VERIFICATION_20261026.json)：
+
+| 命令或检查 | 实际结果 |
+| --- | --- |
+| evals.rerank_run plan，原冻结配置 | 退出0，30题/26可答/4无答案；31次310pair为计划预算，未启动模型 |
+| evals.rerank_run verify，公开V3归档 | 退出0，verified、19产物、model_loaded=false；原人工状态快照保持 |
+| evals.run，baseline与rerank各重放30题 | 各退出0；60条记录除本次evaluation_ms外一致，summary除run_id外一致；重新生成的comparison逐值相等 |
+| collect不加--local | 预期退出1，采集目录未创建 |
+| 配置副本max_candidates改为9再plan | 预期退出1，不读取模型 |
+| 归档副本comparison的题数改为29再verify | 预期退出1，原归档不变 |
+
+30题的同一10候选全字段及原RRF分数逐值保持，独立logit稳定排序及最终5块符合；完整深度证据Recall守恒，4无答案仍单列，所有paired_timings样本0。Codex另核对012改善3→1、007退化2→4，以及034的三段[1,3,3]→[1,4,4]与冻结语料字符区间原文；034在@3的首条MRR仍1而证据Recall仅1/3，保留退化。新增模型API、Qdrant及GPU评分均0，未重新采集模型分数、下载模型或重跑pytest；开发期266项测试不与本轮7条CLI叠加计数。
+
+检查前后186份既有源码/依赖/测试/评测及证据文件SHA保持，D8、V0/V1/V2/V3和D15原字节不改写。新收据单独记录本次授权及执行者，原机器manual_review=pending/day16_accepted=false仍是历史快照。仅更新8份Markdown与1份验证收据，不实现功能、不读取真实.env；按用户明确授权完成本次Git提交和推送，结果在会话补全。D17未开始。
+
+本次收尾检查：8份Markdown的围栏/空白、58张表、280处本地链接及14个锚点、日报固定8节通过，计划第10节外和既有日志原文保持。最终范围为8份Markdown＋1份独立验证收据；除两份有意更新的evals说明/报告外，原受检文件184份及28份运行源码SHA、V3的19份封存产物保持。Git提交前再次检查diff与新JSON格式，不增加业务代码或依赖改动。
