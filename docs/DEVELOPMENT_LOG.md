@@ -1248,3 +1248,29 @@ GPU为RTX4060 Laptop，Torch2.14.1+cu130/CUDA13.0、Transformers5.20.2；11次�
 完整交接见[D17日报](reports/DAY_17.md)、[采集前选型](../evals/reports/FINAL_SELECTION.md)和[最终保留集报告](../evals/reports/FINAL_HOLDOUT.md)。当前API仍Dense/750/150，冻结实验不冒充已经部署。D17学习及用户主动手动验证尚待完成；本次Git收尾按用户明确授权提交推送，真实ID/结果会话补全，不自动进入D18或用保留集继续选参。
 
 D17收尾检查：本次结果提交共33文件，连同采集前5文件共38份交付；8份收尾Markdown的围栏/空白、55张表、303处本地链接及15个锚点、2段新bash示例语法及日报固定8节均通过。计划第10节外和既有日志原文保持，业务源码/依赖、原D8和V0/V1/V2/V3/D15/D16封存内容不变；采集后未修改已提交的选型、运行器或测试源码。23份新产物SHA、11份执行源码SHA及公开/私有24文件再次一致，真实.env、模型缓存、向量缓存与本地运行输出仍被忽略。Git收尾仅提交已审核结果和文档，不开始D17用户手测或D18开发。
+
+## D17：学习确认与本次委托验证（2026-10-26）
+
+开发与真实保留集结果[efa46fa401811a8b121295651f5a9d12164af788](https://github.com/yan-ye-dhy/project-copilot/commit/efa46fa401811a8b121295651f5a9d12164af788)已推送，阶段A完成；本次开始时main/origin/main一致、工作区干净。用户主动要求直接完成验证并提交，另明确确认已通过ChatGPT学习并能解释D17主流程。本次阶段B以学习确认＋明确授权代操作方式完成记录，实际执行者为Codex，不新增用户亲自终端操作或逐题人工gold复核声明；长期默认协作分工不变。
+
+Codex实际执行下列9条CLI，全部退出码符合预期，输出保存在忽略目录data/manual-d17/verification-20261026-01；完整命令、退出码/输出SHA及案例见[D17委托验证收据](evidence/D17_DELEGATED_VERIFICATION_20261026.json)。
+
+| CLI或检查 | 结果 |
+| --- | --- |
+| final_selection verify，原冻结配置 | 退出0，指纹保持 |
+| holdout plan | 退出0，最多1次Embedding、28000 UTF-8字节及110pair仅为计划预算，本轮未采集 |
+| holdout verify，原公开归档 | 退出0，verified/23产物，不加载模型 |
+| final_selection freeze，目标为已有配置 | 预期退出1，原配置原字节不变 |
+| collect不加--live | 预期退出1，未创建采集目录或客户端 |
+| 选型副本top5改3并重新计算指纹后verify | 预期退出1，不能只重封配置就改选 |
+| 归档副本只给comparison追加换行后verify | 预期退出1，即使JSON语义不变仍拒绝字节变化 |
+| 归档副本MRR@5改0.99并重封文件SHA后verify | 预期退出1，指标必须与排名/原文gold一致 |
+| 归档副本少一条Final排名并重封后verify | 预期退出1，不能缩小10题分母 |
+
+此外，使用既有holdout.score_rows/compare_rows重放两侧20条评分和汇总/比较，逐值相等；保存至本地baseline-scored/final-scored及summary/comparison文件，实际文件名与SHA见收据。10题原Hybrid候选与重排结果全字段同集合、原RRF score保持、logit稳定排序及前5块符合；1改善/8指标不变/1无答案、分批Embedding计时不均摊的口径保持。
+
+Codex核对033两段gold原文及首次覆盖名次[3,2]→[2,1]、005两条均rank1、038无gold且指标null。仅用户总体学习已确认，这三条的原文复核执行者仍为Codex。10条已保存问题向量命中缓存且逐值指纹一致，hit10/miss0/API0；没有实际新增Embedding/Chat、Qdrant或GPU评分，没有重跑pytest，不把本轮9条CLI叠加为开发期275项测试。
+
+验证执行前后201份受检非Markdown源码/依赖/测试/评测及既有证据SHA保持，选型配置与采集前e676d50提交原字节一致；原开发和保留集归档、机器pending/day17_accepted=false快照及旧审计均不改写。新建独立委托验证收据并更新8份关联Markdown；本次Git提交推送按用户当前授权由Codex执行，真实提交信息会话补全。D18未开始。
+
+本次收尾检查：8份Markdown的围栏/空白、57张表、310处本地链接及15个锚点、日报固定8节通过；计划第10节外和既有日志原文保持。最终范围为8份Markdown＋1份验证收据，201份受检非Markdown文件、11份执行源码及23份保留集产物SHA保持。git diff --check及新JSON格式检查通过；仅按本轮授权提交推送记录，不改业务代码、依赖或冻结实验，不开始D18。

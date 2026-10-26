@@ -1,6 +1,6 @@
 # Project Copilot
 
-基于RAG与LangGraph的研发知识及工单协作智能体。D1–D16已按各日实际学习/验证记录收尾。D17已依开发集冻结Hybrid＋BGE Rerank最终实验配置，并完成10题保留集自动验收；本次Git由Codex按用户明确授权提交推送，阶段B待ChatGPT学习及用户主动手动验证，见 [D17报告](docs/reports/DAY_17.md)。当前问答API仍使用Dense和750/150，D18未开启。
+基于RAG与LangGraph的研发知识及工单协作智能体。D1–D16已按各日实际学习/验证记录收尾。D17已冻结Hybrid＋BGE Rerank实验配置并完成10题保留集验收，开发结果efa46fa已同步；2026-10-26用户确认学习理解，本次明确委托Codex完成离线验证及Git提交，阶段B按本轮授权方式完成，见 [D17报告](docs/reports/DAY_17.md)。当前问答API仍使用Dense和750/150，D18未开启。
 
 协作流程见 [长期协作规则](docs/COLLABORATION_RULES.md)：Codex开发、自动验证、提供报告并指导Git操作；用户亲自提交和推送GitHub，随后通过ChatGPT学习代码/架构，学习后主动要求Codex开始手动测试。以下命令是自助运行参考，Codex仅在用户要求后单步带练。
 
@@ -307,3 +307,5 @@ GPU新增首/热20个pair，gold仍从3到1，选中原候选名次均为`[3,4,2
 9道可答题的证据Recall@5均1，MRR@5由0.944444升至1；1改善、8指标不变，另有1无答案。033两段证据从[3,2]提前为[2,1]，MRR=1仍不意味着第一块支持完整答案。实际Embedding API1、Dense查询10、GPU11次110pair（含开发题预热）；本轮后不再选参，旧开发集退化案例保持。
 
 完整指标、分类、成本和时延边界见 [保留集报告](evals/reports/FINAL_HOLDOUT.md)，[公开归档](evals/results/final-holdout-20261026-01/manifest.json)包含24文件；[独立核对](docs/evidence/D17_HOLDOUT_AUDIT.json)重算800个指标并核对10个缓存向量，无新增模型调用。运行器/命令见 [评测说明](evals/README.md#d17最终方案与保留集)。
+
+2026-10-26用户确认已学习并能解释D17主流程，本次委托Codex完成9条CLI验证、两侧20条评分重放、033/005/038原文核对及10个缓存向量检查，新增模型/API/GPU评分均0，见 [委托验证收据](docs/evidence/D17_DELEGATED_VERIFICATION_20261026.json)。实际执行者分别记录，D18仍等待明确开启。

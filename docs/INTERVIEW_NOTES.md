@@ -150,7 +150,7 @@
 
 ## D17：如何讲清完整检索优化实验
 
-用户D17学习及手动验证尚未确认。依据[采集前选型](../evals/reports/FINAL_SELECTION.md)、[保留集结果](../evals/reports/FINAL_HOLDOUT.md)和[冻结配置](../evals/configs/final_v1.json)。
+2026-10-26用户确认D17学习理解，本次验证委托Codex完成；终端操作和逐题核对不写成用户亲自执行。依据[采集前选型](../evals/reports/FINAL_SELECTION.md)、[保留集结果](../evals/reports/FINAL_HOLDOUT.md)和[冻结配置](../evals/configs/final_v1.json)。
 
 1. **为什么没有直接选每项最高的方案？** 最终上下文固定5块，先保覆盖再比较排序；500切分丢gold，Hybrid补足互补，V3在相同top5覆盖下MRR最高且本机组件成本可接受。仍公开@3退化和模型资源代价；规则写于dev之后、holdout之前，不能声称全程预注册。
 2. **怎样证明没有看保留集选参？** e676d50先提交并推送完整配置、算法预算、Prompt/Schema与dev来源SHA；随后真实holdout运行记录该commit、dirty=false，配置原字节未变。9可答题MRR@5从0.944444到1、Recall@5同为1是一次小样本验收，不能推导通用显著提升或回答准确率。

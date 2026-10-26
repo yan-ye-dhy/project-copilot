@@ -1,0 +1,351 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-26",
+  "day": 17,
+  "initiated_by": "user",
+  "executed_by": "Codex, explicitly delegated by user for this session",
+  "learning": {
+    "confirmed_by": "user",
+    "completed": true,
+    "can_explain_main_flow": true
+  },
+  "personal_terminal_execution": false,
+  "stage_b": "learning confirmed; verification completed with explicit delegation for this session",
+  "base_commit": "efa46fa401811a8b121295651f5a9d12164af788",
+  "archive": "evals/results/final-holdout-20261026-01",
+  "archive_manifest_sha256": "c490f65054c693f8920d496cc06b1de8db718d053463a696b83e5afbd9d7afc6",
+  "selection_fingerprint": "final-selection-v1-d77720ad02c9ac3caa83b3fa6981c6d197b1c7238d220cf64cca3dd5ced2f450",
+  "selection_matches_pre_holdout_git_commit": true,
+  "commands": [
+    {
+      "name": "selection-verify",
+      "command": [
+        ".venv/bin/python",
+        "-m",
+        "evals.final_selection",
+        "verify",
+        "--dataset",
+        "evals/datasets/copilot_v0",
+        "--config",
+        "evals/configs/final_v1.json"
+      ],
+      "exit_code": 0,
+      "expected_exit_code": 0
+    },
+    {
+      "name": "holdout-plan",
+      "command": [
+        ".venv/bin/python",
+        "-m",
+        "evals.holdout",
+        "plan",
+        "--dataset",
+        "evals/datasets/copilot_v0",
+        "--config",
+        "evals/configs/final_v1.json"
+      ],
+      "exit_code": 0,
+      "expected_exit_code": 0
+    },
+    {
+      "name": "archive-verify",
+      "command": [
+        ".venv/bin/python",
+        "-m",
+        "evals.holdout",
+        "verify",
+        "--dataset",
+        "evals/datasets/copilot_v0",
+        "--output-dir",
+        "evals/results/final-holdout-20261026-01"
+      ],
+      "exit_code": 0,
+      "expected_exit_code": 0
+    },
+    {
+      "name": "freeze-overwrite-gate",
+      "command": [
+        ".venv/bin/python",
+        "-m",
+        "evals.final_selection",
+        "freeze",
+        "--dataset",
+        "evals/datasets/copilot_v0",
+        "--config",
+        "evals/configs/final_v1.json"
+      ],
+      "exit_code": 1,
+      "expected_exit_code": 1
+    },
+    {
+      "name": "collect-live-gate",
+      "command": [
+        ".venv/bin/python",
+        "-m",
+        "evals.holdout",
+        "collect",
+        "--dataset",
+        "evals/datasets/copilot_v0",
+        "--config",
+        "evals/configs/final_v1.json",
+        "--output-dir",
+        "data/manual-d17/verification-20261026-01/must-not-exist"
+      ],
+      "exit_code": 1,
+      "expected_exit_code": 1
+    },
+    {
+      "name": "resealed-selection-change",
+      "command": [
+        ".venv/bin/python",
+        "-m",
+        "evals.final_selection",
+        "verify",
+        "--dataset",
+        "evals/datasets/copilot_v0",
+        "--config",
+        "data/manual-d17/verification-20261026-01/changed-selection.json"
+      ],
+      "exit_code": 1,
+      "expected_exit_code": 1
+    },
+    {
+      "name": "byte-change",
+      "command": [
+        ".venv/bin/python",
+        "-m",
+        "evals.holdout",
+        "verify",
+        "--dataset",
+        "evals/datasets/copilot_v0",
+        "--output-dir",
+        "data/manual-d17/verification-20261026-01/byte-change"
+      ],
+      "exit_code": 1,
+      "expected_exit_code": 1
+    },
+    {
+      "name": "resealed-metrics",
+      "command": [
+        ".venv/bin/python",
+        "-m",
+        "evals.holdout",
+        "verify",
+        "--dataset",
+        "evals/datasets/copilot_v0",
+        "--output-dir",
+        "data/manual-d17/verification-20261026-01/resealed-metrics"
+      ],
+      "exit_code": 1,
+      "expected_exit_code": 1
+    },
+    {
+      "name": "resealed-missing-question",
+      "command": [
+        ".venv/bin/python",
+        "-m",
+        "evals.holdout",
+        "verify",
+        "--dataset",
+        "evals/datasets/copilot_v0",
+        "--output-dir",
+        "data/manual-d17/verification-20261026-01/resealed-missing-question"
+      ],
+      "exit_code": 1,
+      "expected_exit_code": 1
+    }
+  ],
+  "checks": {
+    "commands_expected": 9,
+    "expected_rejections": 6,
+    "scored_rows_equal": 20,
+    "comparison_equal": true,
+    "preserved_tracked_non_markdown_files": 201,
+    "fixed_ten_candidates_and_top_five_questions": 10,
+    "original_fields_and_scores_preserved": true,
+    "cached_vectors_equal": 10,
+    "no_answer_separate": 1,
+    "embedding_batch_not_split_into_per_query_timings": true
+  },
+  "cache_stats": {
+    "hit_texts": 10,
+    "miss_texts": 0,
+    "api_calls": 0
+  },
+  "results": {
+    "answerable": 9,
+    "unanswerable": 1,
+    "outcomes": {
+      "same": 8,
+      "improved": 1,
+      "unanswerable": 1
+    },
+    "baseline_at_5": {
+      "document_recall": 1.0,
+      "document_mrr": 0.9444444444444444,
+      "evidence_recall": 1.0,
+      "evidence_mrr": 0.9444444444444444,
+      "all_evidence_covered": 1.0
+    },
+    "final_at_5": {
+      "document_recall": 1.0,
+      "document_mrr": 1.0,
+      "evidence_recall": 1.0,
+      "evidence_mrr": 1.0,
+      "all_evidence_covered": 1.0
+    }
+  },
+  "case_review_executed_by": "Codex; not new per-case user human-gold confirmation",
+  "case_review": [
+    {
+      "question_id": "pc-d8-033",
+      "query": "我先看到应用/health返回200，再看到Qdrant的/readyz返回all shards are ready，就准备宣称模型密钥有效、RAG回答正确。这两项检查分别覆盖什么，为什么仍不足以得出这个结论？",
+      "gold": [
+        {
+          "evidence_id": "pc-d8-033-e1",
+          "source": "evals/datasets/copilot_v0/corpus/startup_and_config.md",
+          "start_char": 798,
+          "end_char": 927,
+          "quote": "GET /health从app.state.settings读取服务名和环境，返回status、service、environment。D1默认响应为HTTP200、status为ok。这个接口没有探测模型API或向量库，因此健康接口成功不证明外部依赖可用。"
+        },
+        {
+          "evidence_id": "pc-d8-033-e2",
+          "source": "evals/datasets/copilot_v0/corpus/compose_environment.md",
+          "start_char": 1314,
+          "end_char": 1551,
+          "quote": "D6用户看到容器Up后，访问127.0.0.1:6433/readyz得到HTTP200及all shards are ready。该端口的readyz、collections和points/count均由Qdrant服务提供，不需要在本项目FastAPI里重写。项目API另由Uvicorn监听127.0.0.1:8002，提供health、documents/upload和rag/ask。Qdrant就绪只表示该存储服务的就绪检查成功，不能证明模型密钥或回答内容正确。"
+        }
+      ],
+      "baseline_completion_ranks": [
+        3,
+        2
+      ],
+      "final_completion_ranks": [
+        2,
+        1
+      ],
+      "baseline_at_1": {
+        "document_recall": 0.0,
+        "document_mrr": 0.0,
+        "evidence_recall": 0.0,
+        "evidence_mrr": 0.0,
+        "all_evidence_covered": false
+      },
+      "final_at_1": {
+        "document_recall": 0.5,
+        "document_mrr": 1.0,
+        "evidence_recall": 0.5,
+        "evidence_mrr": 1.0,
+        "all_evidence_covered": false
+      }
+    },
+    {
+      "question_id": "pc-d7-005",
+      "query": "要正确上传一个本地文档，应请求哪个方法和路径、使用哪个文件字段，并选择哪些后缀？",
+      "gold": [
+        {
+          "evidence_id": "pc-d7-005-e1",
+          "source": "evals/datasets/copilot_v0/corpus/upload_troubleshooting.md",
+          "start_char": 183,
+          "end_char": 361,
+          "quote": "上传入口是POST /documents/upload，只接受一个名为file的文件字段。正确的表单参数是 `-F 'file=@路径;type=application/pdf'`。大写-F提交multipart表单并自动选择POST；小写-f表示HTTP错误检查，不会创建文件表单。@必须紧接等号，表示读取本地文件；file=/@路径会变成普通字段内容。"
+        },
+        {
+          "evidence_id": "pc-d7-005-e2",
+          "source": "evals/datasets/copilot_v0/corpus/upload_troubleshooting.md",
+          "start_char": 542,
+          "end_char": 684,
+          "quote": "实现支持.txt、.md、.pdf，并对后缀及基本MIME做匹配检查；实际内容还要经过UTF-8或PDF解析，不能只凭Content-Type判断文件有效。用户把PDF的上传名称改成sample.exe得到415；0字节TXT得到422“上传文件不能为空”。这些拒绝发生在模型请求前。"
+        }
+      ],
+      "baseline_completion_ranks": [
+        1,
+        1
+      ],
+      "final_completion_ranks": [
+        1,
+        1
+      ],
+      "baseline_at_1": {
+        "document_recall": 1.0,
+        "document_mrr": 1.0,
+        "evidence_recall": 1.0,
+        "evidence_mrr": 1.0,
+        "all_evidence_covered": true
+      },
+      "final_at_1": {
+        "document_recall": 1.0,
+        "document_mrr": 1.0,
+        "evidence_recall": 1.0,
+        "evidence_mrr": 1.0,
+        "all_evidence_covered": true
+      }
+    },
+    {
+      "question_id": "pc-d8-038",
+      "query": "pc_knowledge_dense_v0集合实际使用的HNSW m和ef_construct数值分别是多少？",
+      "gold": [],
+      "baseline_completion_ranks": [],
+      "final_completion_ranks": [],
+      "baseline_at_1": {
+        "document_recall": null,
+        "document_mrr": null,
+        "evidence_recall": null,
+        "evidence_mrr": null,
+        "all_evidence_covered": null
+      },
+      "final_at_1": {
+        "document_recall": null,
+        "document_mrr": null,
+        "evidence_recall": null,
+        "evidence_mrr": null,
+        "all_evidence_covered": null
+      }
+    }
+  ],
+  "new_calls": {
+    "model_api": 0,
+    "qdrant": 0,
+    "gpu_score": 0,
+    "pairs_scored": 0
+  },
+  "frozen_status_preserved": {
+    "manual_review": "pending",
+    "day17_accepted": false
+  },
+  "local_evidence_directory": "data/manual-d17/verification-20261026-01",
+  "local_artifact_sha256": {
+    "holdout-plan.stderr.json": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "baseline-scored.jsonl": "d614aa00afb15498331094daa77d500ac26821d9dc90490d2ce985a6f22a7863",
+    "changed-selection.json": "d729e3ce230b0d3979ba7a25d92ac76ef91dcc92e2f18f188bc9d43b1d1bb99d",
+    "freeze-overwrite-gate.stderr.json": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "commands.json": "fba53d4407765f893b095edec68f791aaf761cd089f553e53381d7cbd441400b",
+    "preserved-inputs.json": "f54c30eb6a5ab727e9b13e31ea7d863eb327d4f93af7d9271a5beebeae7b561c",
+    "selection-verify.stderr.json": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "freeze-overwrite-gate.stdout.json": "e30a5fbb6a3dac24fb4509d672078df6c32824f789c62bf5f602b8187bab040f",
+    "resealed-metrics.stderr.json": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "resealed-selection-change.stderr.json": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "archive-verify.stderr.json": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "final-summary.json": "f56a686079c8a463a0ae6f29e3457fa1a97c863fc670c96df84f9bcd78642f9f",
+    "selection-verify.stdout.json": "4d20734ee6b255b26a2d6acd621dd4ec3c8706c13f11449c2a2e4530923617ee",
+    "baseline-summary.json": "02ef7e83aa0236486fe12ac86645810f40af976858dbbca7dc88ac45e79eb4cd",
+    "collect-live-gate.stdout.json": "5790029b1d4cc9335853b9bf83fbebdeb6468e5c78a494982e375f85aa22b0c9",
+    "final-scored.jsonl": "55f5d14aa7d01e486ec7b9a974aeb63f758e104fae4dbc7a42eba013d5e26eeb",
+    "resealed-missing-question.stdout.json": "20559b763667f0a6991eef19c0e45566c56e5d6f248b0e57e7529f55dd5daf75",
+    "byte-change.stderr.json": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "byte-change.stdout.json": "20559b763667f0a6991eef19c0e45566c56e5d6f248b0e57e7529f55dd5daf75",
+    "holdout-plan.stdout.json": "9be790eeb3a2bb8a39ff5037c686d76a4ddd886ba297b60acb97f4e5ee4857b3",
+    "resealed-selection-change.stdout.json": "e30a5fbb6a3dac24fb4509d672078df6c32824f789c62bf5f602b8187bab040f",
+    "comparison.json": "b6b4071381a1183049e47c9fef4e93331741c710aa4b3f9c7ace4c526ab6174a",
+    "archive-verify.stdout.json": "15d2df9053ebae61a8d880795fb299725da49a0c2bc745edbfc7cb0157c27b81",
+    "resealed-metrics.stdout.json": "20559b763667f0a6991eef19c0e45566c56e5d6f248b0e57e7529f55dd5daf75",
+    "resealed-missing-question.stderr.json": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "collect-live-gate.stderr.json": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "notes": [
+    "Saved holdout rankings were replayed; no new prediction, selection or parameter tuning.",
+    "No pytest rerun for this verification-only session; original 275-test record is retained.",
+    "No actual new user terminal actions or per-case gold confirmations are claimed.",
+    "D18 not started."
+  ]
+}

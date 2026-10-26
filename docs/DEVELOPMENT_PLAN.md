@@ -461,7 +461,7 @@ feat(agent): require approval for idempotent ticket creation
 
 这些是建议，不是已存在的历史。原仓库不整理或提交；新项目由用户在Codex指导下亲自提交、推送约定GitHub仓库/分支，失败如实报告，不强推或重写历史。未配置远端时先记录待同步并获取实际地址，不猜测仓库。每个完整模块验收后可交给ChatGPT新开学习窗口，如“Project Copilot · Dense RAG”“Project Copilot · 检索评测与优化”“Project Copilot · LangGraph与工单确认”。
 
-## 10. 当前开发进度：D17实现及保留集自动验收完成，待学习与手动验证
+## 10. 当前开发进度：D17学习与本次委托验证完成，待用户开启D18
 
 **D1已完成：** 工程、自动验收、ChatGPT学习和用户手测完成；2026-10-12只读核实用户提交的 `4c04a29` 已同步GitHub，A/B均完成，见 [D1报告](reports/DAY_1.md)。用户已明确开启D2。
 
@@ -550,6 +550,12 @@ Codex执行plan、公开verify、两侧各30题重放，以及无--local、配�
 用户单独批准本轮最多1次10问题Embedding、10次本地Dense查询及110对GPU评分；实际全部成功且无重试。原10holdout为9可答/1无答案，Recall@5两侧1.0，MRR@5由0.944444到1.0，1改善/8指标不变/1无答案；033的两段完成名次[3,2]→[2,1]。未因保留集结果修改参数、Prompt或重新选择。275项相关回归通过，含27项新增；私有/公开verify和独立800指标/10缓存向量审计通过。正式运行code为e676d50、dirty=false，公开23产物＋manifest保存完整结果，模型usage/实付未采集记null。
 
 本次只冻结实验配置；当前HTTP问答API仍Dense/750/150，不声称优化路径已上线。新增代码仅为选型与保留集编排/验证，旧业务及旧评测器、D8/V0/V1/V2/V3/D15/D16归档保留。报告见[D17日报](reports/DAY_17.md)、[选型](../evals/reports/FINAL_SELECTION.md)及[保留集结果](../evals/reports/FINAL_HOLDOUT.md)。本轮为Codex开发期自动验收，未确认用户D17学习或手测完成；Git收尾按本次授权执行，D18不自动开启，35日任务表不变。
+
+### D17学习与本次委托验证收尾（2026-10-26）
+
+开发及保留集结果[efa46fa401811a8b121295651f5a9d12164af788](https://github.com/yan-ye-dhy/project-copilot/commit/efa46fa401811a8b121295651f5a9d12164af788)已同步main，阶段A完成。用户主动要求Codex直接验证并提交，且确认已通过ChatGPT学习、能够解释选型冻结→共享向量→比较→归档校验主流程；本次阶段B以“学习确认＋明确委托代操作验证”完成记录，不登记为用户亲自终端操作，也不更改长期默认协作方式。
+
+Codex执行9条CLI：最终配置verify、保留集plan及公开verify退出0；覆盖冻结、缺--live、重封后改参、归档字节变化、重封后改指标及缺题6项均预期退出1。两侧20条保留集评分、汇总及比较与原归档一致，10题原融合候选/metadata/原score保持、logit稳定排序及前5块符合；033改善、005不变和038无答案原文由Codex核对，10缓存向量SHA一致且hit10/miss0/API0。新增模型API/Qdrant/GPU评分均0，不重跑原275项测试；201份受检非Markdown文件SHA保持。收据见[D17委托验证](evidence/D17_DELEGATED_VERIFICATION_20261026.json)。配置、开发/保留归档及原机器pending/day17_accepted=false采集快照保持；本次结果另行记载，D18不自动开启，35日任务表不变。
 
 ## 11. 最终验收和可选裁剪
 

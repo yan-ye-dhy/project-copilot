@@ -282,4 +282,6 @@ plan/verify不导入Torch、加载模型或读取.env。真实collect必须--liv
 
 公开[24文件归档](results/final-holdout-20261026-01/manifest.json)保存V0/Final和中间BM25/Hybrid候选、raw logit、全部metadata、10题指标/分类、原文案例、Embedding批次/向量SHA、GPU观察、warmup/runtime/status；私有缓存向量不发布。9可答/1无答案，证据Recall@5两侧1，MRR@5由0.944444到1；拒答/回答质量未评，不改Prompt，不改当前Dense问答API。
 
-组件计时、单轮小样本和云端Embedding别名限制详见[保留集报告](reports/FINAL_HOLDOUT.md)，[独立审计](../docs/evidence/D17_HOLDOUT_AUDIT.json)核对800指标/10缓存向量。D17新增27项离线用例；7文件相关回归275项通过。本轮Codex自动验收不登记为用户学习或手测完成，D18等待明确开启。
+组件计时、单轮小样本和云端Embedding别名限制详见[保留集报告](reports/FINAL_HOLDOUT.md)，[独立审计](../docs/evidence/D17_HOLDOUT_AUDIT.json)核对800指标/10缓存向量。D17新增27项离线用例；7文件相关回归275项通过。开发期自动验收与本次委托验证分别记录；2026-10-26用户确认学习理解，另明确授权Codex完成离线验证及Git提交，D18等待明确开启。
+
+D17本次[委托验证收据](../docs/evidence/D17_DELEGATED_VERIFICATION_20261026.json)记录3项成功CLI、6项预期拒绝、两侧20条评分重放、033/005/038证据及10个缓存向量核对；新增Embedding/Chat/Qdrant/GPU调用均0，原配置/封存保持。阶段B按本次明确授权的代操作方式完成，不将程序操作写成用户亲手运行，长期默认分工保持。
