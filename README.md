@@ -1,6 +1,6 @@
 # Project Copilot
 
-基于RAG与LangGraph的研发知识及工单协作智能体。D1–D18已按各日实际学习/验证记录收尾；D19代码及离线验收已完成，真实Prompt对照待本轮费用授权，见[D19报告](docs/reports/DAY_19.md)。当前问答API仍Dense/750/150，默认Prompt保持rag-answer-v1，Few-shot候选仅用于实验。
+基于RAG与LangGraph的研发知识及工单协作智能体。D1–D18已按各日实际学习/验证记录收尾；D19实现、离线回归及授权的真实Prompt对照已完成，学习与学习后手动验证尚待完成，见[D19报告](docs/reports/DAY_19.md)。当前问答API仍Dense/750/150，默认Prompt保持rag-answer-v1，Few-shot候选仅用于实验。
 
 协作流程见 [长期协作规则](docs/COLLABORATION_RULES.md)：Codex开发、自动验证、提供报告并指导Git操作；用户亲自提交和推送GitHub，随后通过ChatGPT学习代码/架构，学习后主动要求Codex开始手动测试。以下命令是自助运行参考，Codex仅在用户要求后单步带练。
 
@@ -342,3 +342,5 @@ uv run --frozen python -m evals.prompt_reliability verify --output-dir data/manu
 ```
 
 offline使用明确注入的固定响应，仅验证管线，不能用其“通过率”说明Prompt效果。真实对照使用collect并显式加--live，需遵守费用约定；最多8次DeepSeek请求、无Embedding/Qdrant或自动重试，上游失败即停止，原始回答和失败项保留。当前实测范围与限制见[实验报告](evals/reports/PROMPT_RELIABILITY_D19.md)；学习与用户手动验证尚未登记，D20不自动开启。
+
+本轮经用户单独授权，实际8次DeepSeek生成完成；两版各4个非空场景的结构/状态/口号检查通过，空证据各1条由后端确定拒答。该小样本未显示候选更好，保留默认v1；人工事实复核仍待用户，Codex原文核对另行记录。最终完整离线1105项通过、1项真实Qdrant默认跳过，冻结数据/配置/历史结果保持，见[真实对照审计](docs/evidence/D19_PROMPT_LIVE_AUDIT.json)。

@@ -461,7 +461,7 @@ feat(agent): require approval for idempotent ticket creation
 
 这些是建议，不是已存在的历史。原仓库不整理或提交；新项目由用户在Codex指导下亲自提交、推送约定GitHub仓库/分支，失败如实报告，不强推或重写历史。未配置远端时先记录待同步并获取实际地址，不猜测仓库。每个完整模块验收后可交给ChatGPT新开学习窗口，如“Project Copilot · Dense RAG”“Project Copilot · 检索评测与优化”“Project Copilot · LangGraph与工单确认”。
 
-## 10. 当前开发进度：D19代码及离线验收完成，真实Prompt对照待费用授权
+## 10. 当前开发进度：D19实现与自动验收完成，待学习与手动验证
 
 **D1已完成：** 工程、自动验收、ChatGPT学习和用户手测完成；2026-10-12只读核实用户提交的 `4c04a29` 已同步GitHub，A/B均完成，见 [D1报告](reports/DAY_1.md)。用户已明确开启D2。
 
@@ -575,7 +575,9 @@ Codex执行9条CLI：最终配置verify、保留集plan及公开verify退出0；
 
 用户明确开启D19并授权本次提交GitHub，起点为已同步c635593、干净main。保留D10的System/User模板、Schema、指纹与默认Dense/750/150；只添加后端显式实验模板选项和JSON/Schema/编号三类错误标记。新增回答可靠性、ASGI错误/资源关闭和独立Prompt运行器回归，覆盖中文page=null、无/弱证据、文档伪角色指令、非法JSON/Schema/错引用；不以引用有效冒充事实支持。
 
-独立新编5场景对照冻结v1和一个Few-shot候选，只改变System模板，固定证据、模型及生成合同。最终1105项离线通过、1项真实Qdrant默认跳过（含36项新增），独立离线归档verify通过，218份受保护非Markdown文件保持；离线注入响应只作管线验收，不推断Prompt效果。真实最多8次DeepSeek请求按8.3节另行确认，目前尚未执行；不重新索引、不调用Embedding/Qdrant、不自动重试或用保留集选择提示词，不上线候选。开发/收费调用/学习手测的实际完成情况见[D19日报](reports/DAY_19.md)和[实验报告](../evals/reports/PROMPT_RELIABILITY_D19.md)，原冻结归档及35日任务表保持，D20不自动开启。
+独立新编5场景对照冻结v1和一个Few-shot候选，只改变System模板，固定证据、模型及生成合同。最终1105项离线通过、1项真实Qdrant默认跳过（含36项新增），独立离线归档verify通过，218份受保护非Markdown文件保持；离线注入响应只作管线验收，不推断Prompt效果。
+
+用户按8.3节单独同意最多8次真实生成后，从干净代码提交03c2691执行，实际8次DeepSeek＋两侧各1条后端空证据拒答，五对状态/口号检查均不变；无Embedding/Qdrant/GPU或自动重试。候选输入多724 tokens，未见本样本更好，保留默认v1，不把编号正确冒充事实支持。私有/公开4产物逐字一致并verify通过，见[真实审计](evidence/D19_PROMPT_LIVE_AUDIT.json)。原冻结结果与Prompt身份不改，用户学习/手测尚未确认，35日任务表保持，D20不自动开启；Git同步真实结果在会话补全。
 
 ## 11. 最终验收和可选裁剪
 

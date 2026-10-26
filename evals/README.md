@@ -309,3 +309,5 @@ uv run --frozen python -m evals.prompt_reliability verify --output-dir data/manu
 collect需显式--live并先取得本轮费用授权，最多8次DeepSeek调用，无Embedding/Qdrant或自动重试；上游失败立即停止并封存partial，不缩小题目范围冒充完整。输出目录拒绝覆盖；config记录两版模板、相同User/Schema/生成合同、固定输入、源码SHA、commit/dirty、依赖和模式。answers逐题记录实际消息、原始回答、错误、后端结果及usage；summary记录成对状态/口号探针，manifest保护3份产物字节。verify检查SHA、输入合同、题目顺序/完整性、重解析原回答与重算汇总，不请求模型。
 
 offline为固定响应的管线检查，假调用与真实API分别计数；live也不自动将状态/编号有效当作事实支持，人工支持率未采集记null。候选不推广至API，不改冻结检索配置，不把Prompt实验解释成Recall/MRR变化。旧归档保持旧源码身份；新回答源码的效果与D10/D17历史归属分开。
+
+本轮授权的[真实归档](results/d19-prompt-20261026-01/manifest.json)从干净03c2691执行：8次DeepSeek、0次Embedding/Qdrant/GPU、0次重试，5对中4对为模型输出、1对为后端空证据。两侧各5条合同/状态/口号检查通过（含1条后端结果），候选无本样本优势，默认v1保持。逐题消息、原输出、usage和错误原样保存；[真实审计](../docs/evidence/D19_PROMPT_LIVE_AUDIT.json)记录Codex原文核对和独立费用估算，原离线审计中的待授权字段作为当时快照保留。私有/公开verify均通过；人工支持率、用户学习及手测不自动填完成。
