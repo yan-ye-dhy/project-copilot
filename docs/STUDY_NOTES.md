@@ -385,3 +385,43 @@ D18用户已确认通过ChatGPT学习、能够解释主流程，本次授权Code
 本轮真实对照已按单独授权完成8次生成；baseline/fewshot各4个非空场景均通过本次合同、状态和口号探针，另各1条空证据由后端拒答。候选多724输入tokens，小样本检查未变，不应据耗时或措辞变化宣称候选改善，默认v1保持。见[原始真实回答](../evals/results/d19-prompt-20261026-01/answers.jsonl)及[独立审计](evidence/D19_PROMPT_LIVE_AUDIT.json)；受托复核执行者和用户学习确认分别记录，原人工标注快照保持。
 
 本次[委托验证](evidence/D19_DELEGATED_VERIFICATION_20261026.json)重放两版原回答并核对原文，另用真实本地HTTP观察空白问题422、坏JSON/Schema/编号及上游失败502、配置失败503。12个run_id均与日志一致；空证据不调用重放聊天对象，失败不重试，响应和日志均未泄露注入的私密错误标记。无新增真实模型请求，原人工pending快照保持；操作执行者与学习确认分别记录，D20另行开启。
+
+## D20整合批次：PostgreSQL工单后端（原D20–D23）
+
+本批次代码和自动验收已完成，用户系统学习与[三个手动验证](D20_MANUAL_VERIFICATION.md)尚未确认。主入口为[D20日报](reports/DAY_20.md)，交ChatGPT做一次加长版讲解，不再按原四天重复教学/手测。
+
+### 1. Engine、连接池、Connection与Session
+
+[main.py](../src/project_copilot/main.py)在lifespan取得配置并构造[Database](../src/project_copilot/db/session.py)。Engine持有连接池/驱动配置，构造时不联网；真正查询/flush才从池中借连接。Session是本次业务的ORM状态与事务上下文，不是全局缓存、也不跨请求共享。每次`Database.transaction()`创建Session并begin，正常退出commit，异常退出rollback，再关闭Session；应用关闭才dispose池。Session设置close_resets_only=False帮助发现已关闭对象被误用，expire_on_commit=False使已取得字段不因提交后失效触发隐式查询。
+
+配置连接串为SecretStr，错误不输出DSN/SQL参数。无URL时工单503、health/RAG不依赖PG；配置了但连接失败，Engine仍可创建、工单实际查询时503。需理解“进程健康”与“数据库业务可用”的区别，结合实际[生命周期测试](../tests/test_database.py)及[连接故障测试](../tests/test_ticket_api.py)，不能用健康200代替PG验收。
+
+### 2. 三种模型各负其责
+
+| 层 | 实际文件 | 作用 |
+| --- | --- | --- |
+| API Schema | [schemas/tickets.py](../src/project_copilot/schemas/tickets.py) | 校验title/description、拒绝客户端指定id/status/时间；响应以TicketRead组织字段 |
+| ORM映射 | [db/models.py](../src/project_copilot/db/models.py) | Ticket实例/属性与tickets表映射，SQLAlchemy构建参数化SQL；构造实例不等于数据库已有记录 |
+| 物理结构 | [0001迁移](../migrations/versions/0001_create_tickets.py) | PG执行的UUID/时区时间默认、NOT NULL、长度/空白/状态CHECK及索引；绕过API的写入仍受约束 |
+
+新建Ticket时id/时间/status在Python对象中尚未取得；flush执行INSERT RETURNING后才取得PG实际生成的值。显式迁移与应用启动分开：空库upgrade、重复upgrade及模型漂移检查均有真实测试。对比[Alembic官方教程](https://alembic.sqlalchemy.org/en/latest/tutorial.html)，重点理解版本记录与DDL，不把create_all当成版本迁移。
+
+### 3. 一张工单的完整调用链
+
+`POST /tickets`→FastAPI校验TicketCreate并解析依赖→[ticket_service](../src/project_copilot/api/tickets.py)开启独立Session/事务→[TicketService.create](../src/project_copilot/services/tickets.py)执行add/flush→PG生成UUID、open、created_at/updated_at→构造TicketRead→路由返回→function作用域依赖提交并关闭→发送201。参数解析与依赖创建由FastAPI调度，非法请求可能已取得一个未连接Session，但不会调用业务写入。
+
+flush只是把SQL送进当前事务，拿到ID不表示其他连接可见；commit才确认本次事务。Service不私自commit，使多个操作能共用一个边界。本批次用真实PG延迟约束让flush成功而COMMIT失败，验证客户端得到503、旧记录仍只有1条。[FastAPI function作用域](https://fastapi.tiangolo.com/tutorial/dependencies/dependencies-with-yield/)保证依赖退出在响应发出前，不让成功响应先于提交。
+
+### 4. 正常、业务失败、数据库失败如何结束
+
+普通成功在事务退出时commit；Service中途异常、约束失败或提交失败向上传播，事务回滚并关闭Session。404是业务不存在，422是输入校验，SQLAlchemy错误映射503并只记类型；未知业务异常沿已有统一500/run_id路径返回脱敏信息。[受控回滚函数](../src/project_copilot/services/ticket_checks.py)先真实flush取得探针ID，再抛错，外层回滚后用新Session查证不存在；不借生产HTTP参数开启故障，不删除原工单。
+
+学习时结合[test_ticket_api.py](../tests/test_ticket_api.py)区分“两个flush后业务失败”“flush成功、commit才失败”“连接失败”；观察pool.checkedout=0和新的连接查证，而非只看HTTP状态。异常回滚并不撤销已经提交的独立事务；本批次也没有Agent确认、幂等键或跨库事务。
+
+### 5. 查询、持久化与验证边界
+
+列表按status和title/description字面词项筛选，q由绑定参数传给转义的ILIKE；%/_不成为任意通配符，中文保持原输入，limit/offset有界。没有查到只说明当前筛选/分页范围，不声称所有工单不存在。
+
+[真实验收脚本](../scripts/postgres_smoke.py)在独立测试集群创建空随机库，运行迁移、真实Uvicorn HTTP和回滚，再结束首个API进程、启动不同PID并查同一工单，最后只清理自己的测试库。记录见[原始收据](evidence/D20_POSTGRES_SMOKE.json)；它证明PG存储跨API进程存在，不扩大成PG崩溃恢复或容灾。本地/Mock与36项真实PG测试分别记录，不用SQLite替代。
+
+交ChatGPT时，先讲一张工单的完整链，再定位三层模型和事务失败分支；用户理解后只做[三个高价值手动验证](D20_MANUAL_VERIFICATION.md)。D24等待本批次学习与手测完成后用户明确开启。

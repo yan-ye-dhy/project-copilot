@@ -173,3 +173,13 @@
 3. **如何防Prompt Injection？** 检索文本放User数据，不接受文档伪角色/工具指令；后端限定工具权限和输出引用。测试覆盖纯注入、事实混合注入及转义口号，但探针通过不代表普遍安全；Pydantic不是语义裁判。
 
 本轮实际8次真实生成中，两版各4个非空场景均符合合同、预期状态与口号探针；两侧另各1条空证据为后端行为。候选输入1297→2021 tokens而这组检查没有改善，因此维持v1；该结论仅限[本次小样本](../evals/reports/PROMPT_RELIABILITY_D19.md)，不代表普遍语义等效或安全。本次受托原文核对执行者为Codex，用户总体学习已确认，不新增用户本人事实标签。
+
+## D20整合批次：真实工单后端的设计与证据
+
+待用户学习，结合[D20报告](reports/DAY_20.md)、[PG原始收据](evidence/D20_POSTGRES_SMOKE.json)与[真实数据库测试](../tests/test_ticket_database.py)，回答应能指到实际源码和用例。
+
+1. **为什么Engine共享而Session不能全局共享？** Engine/池由lifespan创建并dispose；请求各自持有Session/事务，结束归还连接。Session包含ORM对象和未提交状态；跨请求共享会混淆事务和异常。`Database.transaction`及生命周期测试验证正常/异常关闭，缺配置不拖垮独立RAG/health。
+2. **拿到工单ID为什么还可能创建失败？** UUID由PG INSERT RETURNING取回，但flush尚未commit。Service只flush，外层边界统一提交；真实延迟约束测试在commit阶段失败仍返回503而非提前201。function作用域依赖是响应时序的一部分，不是单纯代码风格。
+3. **Pydantic与ORM、迁移是否重复？** 传输Schema约束输入及字段权限；ORM映射实例；迁移在PG落下物理约束和版本。绕过API的直接SQL也要被长度、空白、状态及非空限制拒绝；空库升级/重复升级/无模型漂移均有真实PG验证。API中id/status/时间不由客户端或LLM决定。
+4. **如何证明回滚与持久化真实发生？** flush后抛错再用新Session确认零残留，成功工单保持；提交失败验证计数不增加；关闭首API进程后另一个PID查同ID/时间。证据不是Mock commit次数或HTTP200，测试只清理刚创建的随机库、不触原业务卷。
+5. **查询与错误怎么控制？** SQLAlchemy绑定参数，ILIKE自动转义字面%/_，status/limit/offset校验；404/422/503与未知500按责任区分，日志不打印SQL参数/凭据并保留run_id。本批次尚无状态更新、幂等键或Agent确认，不能借本批次宣称解决并发重复创建。

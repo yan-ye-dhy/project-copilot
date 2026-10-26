@@ -8,5 +8,40 @@ services:
     volumes:
       - qdrant_data:/qdrant/storage
 
+  postgres:
+    image: postgres:17.11-bookworm
+    environment:
+      POSTGRES_USER: project_copilot
+      POSTGRES_PASSWORD: ${PROJECT_COPILOT_POSTGRES_PASSWORD:-local-dev-only}
+      POSTGRES_DB: project_copilot
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U project_copilot -d project_copilot"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+
+  postgres-test:
+    image: postgres:17.11-bookworm
+    profiles: ["test"]
+    environment:
+      POSTGRES_USER: project_copilot_test
+      POSTGRES_PASSWORD: local-test-only
+      POSTGRES_DB: project_copilot_test
+    ports:
+      - "127.0.0.1:5434:5432"
+    # Separate disposable cluster, never the application's named volume.
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U project_copilot_test -d project_copilot_test"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+
 volumes:
   qdrant_data:
+  postgres_data:

@@ -1426,3 +1426,33 @@ HTTP内重放/错误聊天对象共8次，非外部模型请求；本轮新增�
 233份受检非Markdown文件及真实运行源码SHA保持；不修改业务/测试源码、依赖、冻结数据、原机器产物或旧审计，不重跑已通过的1105项开发测试，不做新的模型效果/检索质量测量。本次只更新8份关联Markdown并新增独立收据，按用户当前明确授权提交推送；真实Git信息在会话补全。D19阶段A/B均完成，D20仍需用户另行明确开启。
 
 本次收尾检查：9文件范围正确，8份Markdown的围栏/空白、57张表、367处本地链接、16个锚点、49段bash语法与日报固定8节通过；计划第10节外和既有日志保持。新JSON语法及独立空白、敏感凭据模式、私密输出忽略规则检查通过；233份受检非Markdown、8份执行源码/依赖与全部本地证据SHA匹配。Git仅提交文档与独立收据，默认v1、原数据/配置/归档及历史pending快照不改。
+
+## D20整合批次：PostgreSQL工单后端（覆盖原D20–D23，2026-10-26开始）
+
+用户明确授权合并原四项任务，一次实现、自动验收、整理文档并由Codex创建一条提交推送GitHub。起点为main/origin/main一致的30fc9a86a388d6d79d36ae3119dada6ce6528873、工作区干净；D19阶段A/B已完成，无未解决前置。只在project-copilot工作，原参考项目只读。当前31个主任务批次＋原D35弹性，共32；D24–D34编号及任务保留，不登记后续完成，不将四阶段学习压缩进150分钟。
+
+内部按A/B/C/D先测再继续。A新增可选且脱敏的PostgreSQL连接配置、lifespan共享Engine与独立Session事务上下文，本地连接/生命周期及原main测试14项通过；真实SELECT 1验证PG17.11可连接，连接池checkedout从1归零。B新增Ticket ORM、独立Pydantic请求/响应契约及Alembic显式迁移，本地初版21项、真实空库迁移/约束11项通过，重复upgrade不清空表、Alembic.check无模型漂移。后续补齐制表/换行空白约束、revision模板与NUL/非法UTF-8输入防线，均纳入最终联合回归。
+
+C新增TicketService和POST /tickets、GET /tickets、GET /tickets/{UUID}，状态/字面关键词筛选、有界分页、真实PG生成的ID/open/时间。相关阶段20项通过。D补业务失败、flush/COMMIT失败、连接异常与资源释放，阶段API22项通过。Service只flush/read，提交由function作用域依赖在响应发送前完成；真实PG延迟唯一约束在flush成功后令COMMIT失败，HTTP返回503且保留原成功记录，不提前发送201。业务先后两次flush后受控异常，新Session确认零行；正常/异常请求后池checkedout均0。测试里没有SQLite替代。
+
+Docker最初I/O错误，用户开启Windows Docker Desktop与WSL集成后恢复；只创建本项目postgres-test实例，镜像postgres:17.11-bookworm、实测PostgreSQL17.11、loopback5434、独立tmpfs。应用postgres为5433与专属命名卷，未用作自动测试目标。每个真实用例严格检查测试角色/库名/地址，创建随机pc_test_d20_库并只清理自己刚创建的库；没有删除已有表、业务库或持久卷，没有执行迁移降级。
+
+最终实际命令及日志SHA见[批次审计](evidence/D20_BATCH_AUDIT.json)，阶段数量有重叠、不累加：
+
+```bash
+PROJECT_COPILOT_RUN_POSTGRES_INTEGRATION=1 HF_HUB_OFFLINE=1 .venv/bin/python -m pytest -q \
+  tests/test_database.py tests/test_ticket_schemas.py tests/test_ticket_database.py \
+  tests/test_ticket_service.py tests/test_ticket_api.py tests/test_ticket_cli.py
+PROJECT_COPILOT_RUN_POSTGRES_INTEGRATION=1 PROJECT_COPILOT_RUN_QDRANT_INTEGRATION=0 \
+  HF_HUB_OFFLINE=1 timeout --signal=INT 240s .venv/bin/python -m pytest -q
+HF_HUB_OFFLINE=1 .venv/bin/python -m scripts.postgres_smoke --local \
+  --output-dir data/auto-d20/pg-smoke-accepted
+```
+
+最终新增联合87 passed（5.81秒），其中36项真实PG、51项本地对象/编译/Mock；完整1192 passed、1 skipped、0 failed（74.28秒）。唯一跳过为原有Qdrant显式启用集成，本批次未启用，不计通过。迁移模板另在临时副本实际生成后续revision验证，不创建未来业务表。首次smoke发现Alembic一致性提示混入JSON stdout，捕获该提示并保留异常后重测；最终源码补齐输入防线后重新执行accepted smoke，不复用旧源码收据。锁文件离线一致性检查通过。
+
+最终[PG原始收据](evidence/D20_POSTGRES_SMOKE.json)记录8次真实Uvicorn HTTP、两个不同API PID、PG生成UUID/时区时间与独立数据库查询逐项一致。先INSERT/flush再受控抛错的探针不存在残留，已提交行仍1条；停止第一API进程并启动另一进程后，同一ID及时间继续存在。CLI upgrade两次/check/rollback-check另在自己的独立真实PG库实际执行，均退出0。自己的API进程、Session及随机库清理完成；仅验证API进程重启，不扩张为PG崩溃/故障转移或跨主机恢复。新增付费模型、Embedding、Qdrant调用均0。
+
+本批次新增/修改的代码、配置、迁移、测试、原始收据与八项报告见[D20报告](reports/DAY_20.md)。227份原受保护非Markdown文件及旧冻结结果保持原字节，原D18/D19报告不改。用户系统学习与手动验证尚未确认，只交付[创建/查询、受控失败回滚、API重启持久化三个项目](D20_MANUAL_VERIFICATION.md)的准确命令、预期和限定ID清理方式，未自动开始带练。按当前授权审核相关文件后用一条提交同步origin/main，真实Git结果在最终会话填写；等待用户学习和明确要求，不开启D24。
+
+最终交付检查通过：40文件范围、23份Python语法树、9份Markdown的53张表/369处本地链接/15个锚点/46段bash语法、固定八项日报和仅三项手测；26份执行源码/依赖SHA及16份最终smoke源码SHA匹配，227份原受保护文件保持，原锁定包不变，D24–D34原表格行保持，旧日志仅追加。私密文件与数据受忽略规则保护，凭据模式、Git diff及新文件独立空白检查通过。提交前再次只读核对远端main仍为30fc9a8，无分歧；按授权只暂存本批次40文件，不包含.env或运行数据。

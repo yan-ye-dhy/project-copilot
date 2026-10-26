@@ -1,0 +1,167 @@
+{
+  "status": "ok",
+  "executor": "Codex/CLI user",
+  "mode": "real-postgresql-and-loopback-http",
+  "code": {
+    "commit": "30fc9a86a388d6d79d36ae3119dada6ce6528873",
+    "dirty": true
+  },
+  "source_sha256": {
+    "src/project_copilot/config.py": "70d5ce2cf353f50e46b247595e5c0905a289fbe8d84d588bbeac735d0ec705e0",
+    "src/project_copilot/main.py": "c1500951889f74ad87b441c80e416573d38617824a5df09b520793141ed79cdc",
+    "src/project_copilot/db/session.py": "c6ee3d19e1828057ff71fec8a0593832c9fcd46acc921c4047ae12fa513216c9",
+    "src/project_copilot/db/models.py": "dfadac2802d5a8e95a9c0874b442c876ff0e63feef847e6be5f96e0f649bbdcd",
+    "src/project_copilot/db/migrations.py": "a3638e49348428efd59013045280f5dfff87c228f813a5b716d696ee72bfbdfc",
+    "src/project_copilot/schemas/tickets.py": "65bb7ba135a8971e8d129d50469a4baab822b346d38a116ce74d824668ccdf5b",
+    "src/project_copilot/services/tickets.py": "afa1b7b8284aac2ab7008a319fcff99def7ba8ca9494176150a53b3f3424fa55",
+    "src/project_copilot/services/ticket_checks.py": "dea277a131aa95887d2edaa13f62b2ec5caae41757625676aee2078421b9ffc6",
+    "src/project_copilot/api/tickets.py": "65ebda1f35c1fc4142c3b0e37bea2d199c17c866ef876cf209107a14752ab8f5",
+    "migrations/env.py": "553c8161ef21e25ff098791bf2a0e6b2a3c21ecfbb3563cb8fb5cd6b6e7da0d7",
+    "migrations/versions/0001_create_tickets.py": "22a72e8360ecb220d79d83bf0b42c52b596be04ff99cd9e0b870ef6994c0004b",
+    "alembic.ini": "e7955a0ffb9c32a9c5067d7885ee9197328f17a4a12fb4a5bb556c2b85763aa2",
+    "scripts/postgres_support.py": "32adaf7ae142b8383ac88594f64d6cb4ec376f953b6b294c2a5c512cadbf9a38",
+    "scripts/ticket_db.py": "d7833451414d7ea572e32962e607e97e9a7710b7bf5dc6b917014766a9dd4757",
+    "scripts/postgres_smoke.py": "4311f3dfc346af6646d9a06300fe4ee0ae5f04186217321025e283775f854a4f",
+    "uv.lock": "e2ac7f317330a88361a72e057869f68200cfe48d5e2f2d4c685b5c81fe115178"
+  },
+  "dependencies": {
+    "sqlalchemy": "2.0.55",
+    "psycopg": "3.3.6",
+    "alembic": "1.20.1",
+    "fastapi": "0.138.2"
+  },
+  "model_api_calls": 0,
+  "qdrant_calls": 0,
+  "http": [
+    {
+      "name": "first-health",
+      "status": 200,
+      "run_id": "f59e1e45-bc65-49c7-9e82-0678c9ba3657",
+      "body": {
+        "status": "ok",
+        "service": "Project Copilot",
+        "environment": "test"
+      }
+    },
+    {
+      "name": "create",
+      "status": 201,
+      "run_id": "b8cd0668-4f2d-4265-9148-ba3a31eb5bc4",
+      "body": {
+        "id": "7faa10c4-1b6c-4906-a095-2694a383df83",
+        "title": "D20自编中文上传问题",
+        "description": "真实PG验收：HTTP422错误需要排查。",
+        "status": "open",
+        "created_at": "2026-10-26T15:59:15.352639Z",
+        "updated_at": "2026-10-26T15:59:15.352639Z"
+      }
+    },
+    {
+      "name": "detail",
+      "status": 200,
+      "run_id": "5e1dd260-ff4d-4d2f-bb9e-b295aa96c70b",
+      "body": {
+        "id": "7faa10c4-1b6c-4906-a095-2694a383df83",
+        "title": "D20自编中文上传问题",
+        "description": "真实PG验收：HTTP422错误需要排查。",
+        "status": "open",
+        "created_at": "2026-10-26T15:59:15.352639Z",
+        "updated_at": "2026-10-26T15:59:15.352639Z"
+      }
+    },
+    {
+      "name": "filtered-list",
+      "status": 200,
+      "run_id": "43ef52de-2514-4bd6-ab15-406dcacacee9",
+      "body": {
+        "items": [
+          {
+            "id": "7faa10c4-1b6c-4906-a095-2694a383df83",
+            "title": "D20自编中文上传问题",
+            "description": "真实PG验收：HTTP422错误需要排查。",
+            "status": "open",
+            "created_at": "2026-10-26T15:59:15.352639Z",
+            "updated_at": "2026-10-26T15:59:15.352639Z"
+          }
+        ],
+        "limit": 20,
+        "offset": 0
+      }
+    },
+    {
+      "name": "invalid-input",
+      "status": 422,
+      "run_id": "4d79b643-dee1-4aa4-9732-975e1326dcb5",
+      "body": {
+        "detail": [
+          {
+            "type": "string_too_short",
+            "loc": [
+              "body",
+              "title"
+            ],
+            "msg": "String should have at least 1 character",
+            "input": " ",
+            "ctx": {
+              "min_length": 1
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "missing-ticket",
+      "status": 404,
+      "run_id": "966953b5-4656-4f9b-9b76-bbd3e6d867f0",
+      "body": {
+        "detail": "工单不存在"
+      }
+    },
+    {
+      "name": "restarted-health",
+      "status": 200,
+      "run_id": "8c9d34db-148f-443c-8f26-eccaf2684774",
+      "body": {
+        "status": "ok",
+        "service": "Project Copilot",
+        "environment": "test"
+      }
+    },
+    {
+      "name": "persisted-detail",
+      "status": 200,
+      "run_id": "6f2e424d-5d22-4b6d-87de-4e7e5940aa29",
+      "body": {
+        "id": "7faa10c4-1b6c-4906-a095-2694a383df83",
+        "title": "D20自编中文上传问题",
+        "description": "真实PG验收：HTTP422错误需要排查。",
+        "status": "open",
+        "created_at": "2026-10-26T15:59:15.352639Z",
+        "updated_at": "2026-10-26T15:59:15.352639Z"
+      }
+    }
+  ],
+  "test_database_deleted": true,
+  "isolated_database": "pc_test_d20_6a135b13f8974b4abe6434796ef1e5c5",
+  "migration": {
+    "empty_database": true,
+    "revision": "0001_tickets",
+    "second_upgrade_ok": true,
+    "model_drift": false
+  },
+  "postgresql_version": "17.11 (Debian 17.11-1.pgdg12+2)",
+  "ticket_id": "7faa10c4-1b6c-4906-a095-2694a383df83",
+  "rollback": {
+    "status": "ok",
+    "probe_ticket_id": "f7459bc3-7b07-4e05-bca0-a6c2580f3dac",
+    "flushed_before_failure": true,
+    "visible_after_rollback": false,
+    "pool_checked_out_after": 0
+  },
+  "first_api_pid": 74787,
+  "restarted_api_pid": 74835,
+  "persisted_after_api_process_restart": true,
+  "committed_rows_before_cleanup": 1,
+  "pool_checked_out_after": 0,
+  "owned_api_processes_stopped": true
+}

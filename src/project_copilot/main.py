@@ -10,7 +10,9 @@ from fastapi.responses import JSONResponse
 
 from project_copilot.api.documents import router as documents_router
 from project_copilot.api.rag import router as rag_router
+from project_copilot.api.tickets import router as tickets_router
 from project_copilot.config import Settings, load_settings
+from project_copilot.db.session import Database
 from project_copilot.infrastructure.tracing import RequestContextMiddleware
 
 
@@ -23,17 +25,26 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @asynccontextmanager
     async def lifespan(application: FastAPI) -> AsyncIterator[None]:
         application.state.settings = settings if settings is not None else load_settings()
+        active = application.state.settings
+        database = Database(
+            active.database_url.get_secret_value(), connect_timeout=active.database_connect_timeout_seconds,
+            pool_timeout=active.database_pool_timeout_seconds,
+        ) if active.database_url is not None else None
+        application.state.database = database
         logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(name)s %(message)s")
         logger.info("Starting %s", application.state.settings.app_name)
         try:
             yield
         finally:
+            if database is not None:
+                database.close()
             logger.info("Stopping %s", application.state.settings.app_name)
 
     application = FastAPI(title="Project Copilot", version="0.1.0", lifespan=lifespan)
     application.add_middleware(RequestContextMiddleware)
     application.include_router(documents_router)
     application.include_router(rag_router)
+    application.include_router(tickets_router)
 
     @application.exception_handler(Exception)
     async def unexpected_error(request: Request, exc: Exception) -> JSONResponse:

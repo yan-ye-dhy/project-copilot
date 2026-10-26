@@ -1,6 +1,6 @@
 # Project Copilot
 
-基于RAG与LangGraph的研发知识及工单协作智能体。D1–D19已按各日实际学习/验证记录收尾；D19用户学习已确认，本次授权Codex代操作验证通过，阶段A/B均完成，见[D19报告](docs/reports/DAY_19.md)。当前问答API仍Dense/750/150，默认Prompt保持rag-answer-v1，Few-shot候选仅用于实验。
+基于RAG与LangGraph的研发知识及工单协作智能体。D1–D19已按各日实际学习/验证记录收尾；D20整合批次覆盖原D20–D23，PostgreSQL工单后端及真实自动验收已完成，学习与三项手测待用户主动开启，见[D20报告](docs/reports/DAY_20.md)。当前问答API仍Dense/750/150和rag-answer-v1；工单API独立，不调用模型，D24尚未开始。
 
 协作流程见 [长期协作规则](docs/COLLABORATION_RULES.md)：Codex开发、自动验证、提供报告并指导Git操作；用户亲自提交和推送GitHub，随后通过ChatGPT学习代码/架构，学习后主动要求Codex开始手动测试。以下命令是自助运行参考，Codex仅在用户要求后单步带练。
 
@@ -346,3 +346,25 @@ offline使用明确注入的固定响应，仅验证管线，不能用其“通�
 本轮经用户单独授权，实际8次DeepSeek生成完成；两版各4个非空场景的结构/状态/口号检查通过，空证据各1条由后端确定拒答。该小样本未显示候选更好，保留默认v1；本次受托原文复核由Codex执行，原人工标注快照保持。最终完整离线1105项通过、1项真实Qdrant默认跳过，冻结数据/配置/历史结果保持，见[真实对照审计](docs/evidence/D19_PROMPT_LIVE_AUDIT.json)。
 
 2026-10-26用户授权Codex直接验证并提交：两份归档重放、5项拒绝门禁及临时Uvicorn的12次真实本地HTTP检查通过，原回答/引用与原文核对一致，详见[委托验证收据](docs/evidence/D19_DELEGATED_VERIFICATION_20261026.json)。HTTP重放已保存回答与受控错误，新增模型API/Embedding/Qdrant调用0；233份受检非Markdown文件保持。用户另行确认ChatGPT学习完成，操作执行者为Codex，不登记为用户亲自终端操作。
+
+## D20整合批次：PostgreSQL工单后端
+
+覆盖原D20连接、D21模型/迁移、D22 Service/API、D23事务/持久化，当前计划为31个主任务批次＋原D35弹性日，共32；D24–D34保留原编号。新增SQLAlchemy、Psycopg和Alembic，不改RAG默认与历史评测。
+
+- `POST /tickets`：JSON仅title（≤200）、description（≤10000），非空；201返回PG生成的UUID、open及带时区时间。
+- `GET /tickets`：status、q、limit（默认20，最多100）、offset（最多10000），返回items/limit/offset；按创建时间/ID倒序，关键词绑定参数并转义字面%/_。
+- `GET /tickets/{UUID}`：真实详情或404；输入非法422，数据库未配置/不可用/提交失败503，保留X-Run-ID与脱敏日志。
+
+应用PG使用127.0.0.1:5433和project-copilot专属postgres_data卷；测试实例在5434、test profile及独立tmpfs中，测试只创建/清理自己的随机数据库。无连接配置时原health/RAG仍可用；工单请求返回503。启动不自动建表，先显式升级：
+
+```bash
+docker compose --env-file .env.example up -d --wait postgres
+PROJECT_COPILOT_DATABASE_URL='postgresql+psycopg://project_copilot:local-dev-only@127.0.0.1:5433/project_copilot' \
+  .venv/bin/python -m scripts.ticket_db upgrade
+```
+
+连接串可保存到新项目.env，示例口令仅用于本机演示；保留原.env密钥，不替换整个文件。Engine归lifespan管理，每请求独立Session；Service flush后，由function作用域依赖提交/回滚并关闭，成功提交后才发201。无状态更新/删除API、Agent工具或确认机制；本批次不承诺创建幂等。
+
+最终全量1192 passed、1 skipped（原Qdrant opt-in），其中本批次87项、36项真实PG。真实PG17.11的迁移/约束/API/回滚与8次Uvicorn HTTP验收通过，两个不同API进程查到同一已提交工单；自己的测试库及进程已清理，模型调用0。证据见[PG原始收据](docs/evidence/D20_POSTGRES_SMOKE.json)和[批次审计](docs/evidence/D20_BATCH_AUDIT.json)。
+
+学习后的手动验证仅[创建/查询、受控回滚、API重启持久化三项](docs/D20_MANUAL_VERIFICATION.md)，本次不自动进入带练或登记学习完成。系统教学入口见[D20报告](docs/reports/DAY_20.md)和[学习笔记](docs/STUDY_NOTES.md#d20整合批次postgresql工单后端原d20d23)。

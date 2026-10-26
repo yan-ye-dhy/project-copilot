@@ -5,6 +5,8 @@ from typing import Literal
 
 from pydantic import Field, HttpUrl, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from sqlalchemy.engine import make_url
+from sqlalchemy.exc import ArgumentError
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -51,6 +53,26 @@ class Settings(BaseSettings):
     rag_top_k: int = Field(default=5, ge=1, le=100)
     upload_max_bytes: int = Field(default=5 * 1024 * 1024, ge=1, le=50 * 1024 * 1024)
     tracing_enabled: bool = False
+
+    # Optional: RAG/health remain usable without the ticket database.
+    database_url: SecretStr | None = None
+    database_connect_timeout_seconds: int = Field(default=5, ge=1, le=30)
+    database_pool_timeout_seconds: int = Field(default=5, ge=1, le=30)
+
+    @field_validator("database_url")
+    @classmethod
+    def validate_database_url(cls, value: SecretStr | None) -> SecretStr | None:
+        if value is None:
+            return None
+        try:
+            url = make_url(value.get_secret_value())
+            valid = (url.drivername == "postgresql+psycopg" and url.host and url.username
+                     and url.database and not url.query and url.port is not None and 1 <= url.port <= 65535)
+        except (ArgumentError, ValueError, TypeError):
+            valid = False
+        if not valid:
+            raise ValueError("数据库URL须为含主机、端口、用户和库名的postgresql+psycopg地址，不能含查询参数")
+        return value
 
     @field_validator("tracing_enabled")
     @classmethod

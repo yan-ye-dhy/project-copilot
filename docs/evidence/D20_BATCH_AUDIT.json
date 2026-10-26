@@ -1,0 +1,285 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-26",
+  "batch": "D20 integrated backend",
+  "covered_original_days": [
+    20,
+    21,
+    22,
+    23
+  ],
+  "executed_by": "Codex",
+  "authorization": "User explicitly authorized integrated implementation, validation and one Git commit/push; no manual learning completion inferred.",
+  "base_commit": "30fc9a86a388d6d79d36ae3119dada6ce6528873",
+  "worktree_clean_at_start": true,
+  "remote_main_verified_before_commit": "30fc9a86a388d6d79d36ae3119dada6ce6528873",
+  "prerequisite_d19": "stage A/B completed and synchronized in base commit; no unresolved prerequisite recorded",
+  "plan": {
+    "main_batches": 31,
+    "elastic_days": 1,
+    "total": 32,
+    "preserved_future_numbers": "D24-D34; D35 remains the elastic identifier",
+    "future_days_started": false
+  },
+  "tests": [
+    {
+      "phase": "A",
+      "command": "HF_HUB_OFFLINE=1 .venv/bin/python -m pytest -q tests/test_database.py tests/test_main.py",
+      "passed": 14,
+      "output": "stage-a-tests.txt",
+      "kind": "local SQLAlchemy lifecycle; no database",
+      "exit_code": 0,
+      "output_sha256": "3ea39aa5c5509d0f0317b29b0677d71fe5ebf0e5bbfc98505d2448ee05568204"
+    },
+    {
+      "phase": "B-local",
+      "command": "HF_HUB_OFFLINE=1 .venv/bin/python -m pytest -q tests/test_ticket_schemas.py",
+      "passed": 21,
+      "output": "stage-b-local.txt",
+      "kind": "local schema/PostgreSQL DDL compilation",
+      "exit_code": 0,
+      "output_sha256": "da50f2614da3da707dea099573d9d24bd1b0a9f35ab7d0d9d000447f64302026"
+    },
+    {
+      "phase": "B-PostgreSQL-initial",
+      "command": "PROJECT_COPILOT_RUN_POSTGRES_INTEGRATION=1 HF_HUB_OFFLINE=1 .venv/bin/python -m pytest -q tests/test_ticket_database.py",
+      "passed": 11,
+      "output": "stage-b-postgres.txt",
+      "kind": "real PostgreSQL; initial constraints, later expanded to 13 cases",
+      "exit_code": 0,
+      "output_sha256": "f012b349eb95123a52981462df0d64fdca4dfedc59050d02b7b637d01bb1b738"
+    },
+    {
+      "phase": "C",
+      "command": "PROJECT_COPILOT_RUN_POSTGRES_INTEGRATION=1 HF_HUB_OFFLINE=1 .venv/bin/python -m pytest -q tests/test_ticket_service.py tests/test_ticket_api.py",
+      "passed": 20,
+      "output": "stage-c-tests.txt",
+      "kind": "real PostgreSQL API and local SQL binding/guard tests",
+      "exit_code": 0,
+      "output_sha256": "e40e6dc4142913fb0a726526dedc8db80adfda40ece119f7eff01f793489b5b6"
+    },
+    {
+      "phase": "D",
+      "command": "PROJECT_COPILOT_RUN_POSTGRES_INTEGRATION=1 HF_HUB_OFFLINE=1 .venv/bin/python -m pytest -q tests/test_ticket_api.py",
+      "passed": 22,
+      "output": "stage-d-tests.txt",
+      "kind": "real PG transaction/commit failure; includes earlier API cases",
+      "exit_code": 0,
+      "output_sha256": "db169131d854a1fbf75ad07a9851cfad283156eb8926f0a0c85e53fdfc913a8d"
+    },
+    {
+      "phase": "batch-final",
+      "command": "PROJECT_COPILOT_RUN_POSTGRES_INTEGRATION=1 HF_HUB_OFFLINE=1 .venv/bin/python -m pytest -q tests/test_database.py tests/test_ticket_schemas.py tests/test_ticket_database.py tests/test_ticket_service.py tests/test_ticket_api.py tests/test_ticket_cli.py",
+      "passed": 87,
+      "seconds": 5.81,
+      "output": "batch-tests-accepted.txt",
+      "kind": "36 real-PG fixture cases; 51 local/compile/mock cases",
+      "exit_code": 0,
+      "output_sha256": "a69bd4d3c089301561e24f7d66d4fe6cdd57199e88c93afb625a671f5bf96995"
+    },
+    {
+      "phase": "all-final",
+      "command": "PROJECT_COPILOT_RUN_POSTGRES_INTEGRATION=1 PROJECT_COPILOT_RUN_QDRANT_INTEGRATION=0 HF_HUB_OFFLINE=1 timeout --signal=INT 240s .venv/bin/python -m pytest -q",
+      "passed": 1192,
+      "failed": 0,
+      "skipped": 1,
+      "seconds": 74.28,
+      "output": "full-tests-accepted.txt",
+      "kind": "existing full suite plus all 87 new cases; Qdrant opt-in test skipped",
+      "exit_code": 0,
+      "output_sha256": "1f52f95825adeee3eb6821da61442741b11d3eb3cf5537dbe094f87fe7d391d2"
+    }
+  ],
+  "counting_policy": "Stages overlap; only final 1192 pass/1 skip and 87 new cases are unique final counts.",
+  "stage_a_real_connection": {
+    "status": "ok",
+    "database": "project_copilot_test",
+    "postgresql_version": "17.11 (Debian 17.11-1.pgdg12+2)",
+    "select_one": 1,
+    "pool_checked_out_during": 1,
+    "pool_checked_out_after": 0
+  },
+  "real_postgres": {
+    "version": "17.11 (Debian 17.11-1.pgdg12+2)",
+    "image": "postgres:17.11-bookworm",
+    "image_repo_digests": [
+      "postgres@sha256:858bb5e98eed02eb8cafbcdc007f9a65d1b613972028944a8ec2133ccaf80d27"
+    ],
+    "test_container": "project-copilot-postgres-test-1",
+    "test_port": 5434,
+    "mounts": [],
+    "isolation": "test-only bootstrap database and role required; each test/smoke creates and drops only its newly-created pc_test_d20 UUID database; no FORCE/CASCADE or volume deletion",
+    "real_pg_test_cases": 36,
+    "local_or_mock_new_cases": 51,
+    "sqlite_used": false,
+    "application_database_used_as_test_target": false,
+    "host_config_tmpfs": {
+      "/var/lib/postgresql/data": ""
+    },
+    "tmpfs_verified_by": "docker inspect project-copilot-postgres-test-1 --format {{json .HostConfig.Tmpfs}}"
+  },
+  "real_api_smoke": {
+    "command": "HF_HUB_OFFLINE=1 .venv/bin/python -m scripts.postgres_smoke --local --output-dir data/auto-d20/pg-smoke-accepted",
+    "exit_code": 0,
+    "raw_receipt": "docs/evidence/D20_POSTGRES_SMOKE.json",
+    "raw_receipt_sha256": "0ea9982e80483679d9da58b771d2d87996c07cfe198c39e2f948a754c088dd8f",
+    "private_receipt": "data/auto-d20/pg-smoke-accepted/report.json",
+    "http_requests": 8,
+    "first_api_pid": 74787,
+    "restarted_api_pid": 74835,
+    "ticket_id": "7faa10c4-1b6c-4906-a095-2694a383df83",
+    "rollback": {
+      "status": "ok",
+      "probe_ticket_id": "f7459bc3-7b07-4e05-bca0-a6c2580f3dac",
+      "flushed_before_failure": true,
+      "visible_after_rollback": false,
+      "pool_checked_out_after": 0
+    },
+    "persisted_after_api_process_restart": true,
+    "owned_processes_stopped": true,
+    "owned_database_deleted": true
+  },
+  "real_admin_cli": {
+    "executor": "Codex",
+    "records": [
+      {
+        "command": [
+          "/home/yanye/project-copilot/.venv/bin/python",
+          "-m",
+          "scripts.ticket_db",
+          "upgrade"
+        ],
+        "exit_code": 0,
+        "output": {
+          "status": "ok",
+          "migration": "head"
+        }
+      },
+      {
+        "command": [
+          "/home/yanye/project-copilot/.venv/bin/python",
+          "-m",
+          "scripts.ticket_db",
+          "upgrade"
+        ],
+        "exit_code": 0,
+        "output": {
+          "status": "ok",
+          "migration": "head"
+        }
+      },
+      {
+        "command": [
+          "/home/yanye/project-copilot/.venv/bin/python",
+          "-m",
+          "scripts.ticket_db",
+          "check"
+        ],
+        "exit_code": 0,
+        "output": {
+          "status": "ok",
+          "database": "pc_test_d20_4deb4edcd7924a4a96ce6bab1a89b43a",
+          "postgresql_version": "17.11 (Debian 17.11-1.pgdg12+2)"
+        }
+      },
+      {
+        "command": [
+          "/home/yanye/project-copilot/.venv/bin/python",
+          "-m",
+          "scripts.ticket_db",
+          "rollback-check"
+        ],
+        "exit_code": 0,
+        "output": {
+          "status": "ok",
+          "probe_ticket_id": "3336eba4-826e-459b-b8d2-663f2d55d529",
+          "flushed_before_failure": true,
+          "visible_after_rollback": false,
+          "pool_checked_out_after": 0
+        }
+      }
+    ],
+    "owned_test_database_deleted": true,
+    "model_api_calls": 0
+  },
+  "transaction_failure_proof": {
+    "test_business_failure_after_two_flushes": "new Session observes zero rows",
+    "test_http_business_error_after_flush": "500 sanitized; zero rows",
+    "test_deferred_unique_commit_failure": "PostgreSQL accepted flush but COMMIT failed; HTTP 503 before any 201; previous successful row count remains 1",
+    "session_release": "each real API response checks pool.checkedout()==0; lifecycle tests cover permanent Session closure"
+  },
+  "source_sha256": {
+    "src/project_copilot/config.py": "70d5ce2cf353f50e46b247595e5c0905a289fbe8d84d588bbeac735d0ec705e0",
+    "src/project_copilot/main.py": "c1500951889f74ad87b441c80e416573d38617824a5df09b520793141ed79cdc",
+    "src/project_copilot/db/session.py": "c6ee3d19e1828057ff71fec8a0593832c9fcd46acc921c4047ae12fa513216c9",
+    "src/project_copilot/db/models.py": "dfadac2802d5a8e95a9c0874b442c876ff0e63feef847e6be5f96e0f649bbdcd",
+    "src/project_copilot/db/migrations.py": "a3638e49348428efd59013045280f5dfff87c228f813a5b716d696ee72bfbdfc",
+    "src/project_copilot/schemas/tickets.py": "65bb7ba135a8971e8d129d50469a4baab822b346d38a116ce74d824668ccdf5b",
+    "src/project_copilot/services/tickets.py": "afa1b7b8284aac2ab7008a319fcff99def7ba8ca9494176150a53b3f3424fa55",
+    "src/project_copilot/services/ticket_checks.py": "dea277a131aa95887d2edaa13f62b2ec5caae41757625676aee2078421b9ffc6",
+    "src/project_copilot/api/tickets.py": "65ebda1f35c1fc4142c3b0e37bea2d199c17c866ef876cf209107a14752ab8f5",
+    "migrations/env.py": "553c8161ef21e25ff098791bf2a0e6b2a3c21ecfbb3563cb8fb5cd6b6e7da0d7",
+    "migrations/versions/0001_create_tickets.py": "22a72e8360ecb220d79d83bf0b42c52b596be04ff99cd9e0b870ef6994c0004b",
+    "alembic.ini": "e7955a0ffb9c32a9c5067d7885ee9197328f17a4a12fb4a5bb556c2b85763aa2",
+    "scripts/postgres_support.py": "32adaf7ae142b8383ac88594f64d6cb4ec376f953b6b294c2a5c512cadbf9a38",
+    "scripts/ticket_db.py": "d7833451414d7ea572e32962e607e97e9a7710b7bf5dc6b917014766a9dd4757",
+    "scripts/postgres_smoke.py": "4311f3dfc346af6646d9a06300fe4ee0ae5f04186217321025e283775f854a4f",
+    "uv.lock": "e2ac7f317330a88361a72e057869f68200cfe48d5e2f2d4c685b5c81fe115178",
+    "docker-compose.yml": "c981a6c4a00ff469cc47a09cae279cd93a9ec6f70cccc54486b9acd5cf9d8679",
+    "pyproject.toml": "58c6cf638e3ef873060ae27509b7ab2997a39b51fe42e0935074b1e8da8066cf",
+    "tests/conftest.py": "640212f75c942b969256c1d56529ebf88ee8a0a919ed97a6978c732a98cc504d",
+    "tests/test_database.py": "6fcc419e18a1fcb9f85b2b3996690ef2f87e3dcbf07ea801b15f559c69aeda8e",
+    "tests/test_ticket_schemas.py": "fe3ea722c69f32d5d4aa4c7777a72353ae997673cd6ced4e65cb4662774d8c9b",
+    "tests/test_ticket_database.py": "b7f9e7b68e7828218762bbe41fa801ede9621a1c2c757c50f31cc1eb49d8009c",
+    "tests/test_ticket_service.py": "0cc31b1bc29411c49c420ccd9497dc032bf5e1886de8e639b111efeff6cee840",
+    "tests/test_ticket_api.py": "1dcbfca99cb2dfda86defbe053978d5abf9f022beb88c454abb5a0e013b919c0",
+    "tests/test_ticket_cli.py": "25224255a092d5094354ddf74934e39a8da1f7137e63c472e2f243e34044e5dd",
+    "migrations/script.py.mako": "9c72f2b9aa664f849982dd50ae87f788bd81a5270898624dfd0a6b2703da561e"
+  },
+  "protected_preexisting_non_markdown_files": 227,
+  "protected_files_unchanged": true,
+  "calls": {
+    "model_api": 0,
+    "embedding": 0,
+    "qdrant": 0
+  },
+  "manual_learning": {
+    "user_learning_confirmed": false,
+    "manual_verification_started": false,
+    "scope": "only create/query, controlled rollback and API restart persistence; wait for user"
+  },
+  "limitations": [
+    "Application database/named volume is not used as an automated-test target; manual startup and migration commands are supplied.",
+    "Persistence proof is an actual API process restart while the PG instance stays alive; no database crash/failover or cross-host durability claim.",
+    "No state-update/delete HTTP endpoint, Agent tools, confirmation state machine or idempotency/concurrent confirmation is implemented.",
+    "Old RAG/Phoenix/frozen results retain their historical execution identities; no old archives are rewritten.",
+    "User learning/manual checks remain pending even though code/tests are complete."
+  ],
+  "test_expansion_notes": [
+    "Final review added Alembic follow-up revision generation in a temporary copy; no later business table created.",
+    "NUL and invalid UTF-8 inputs now fail Pydantic validation (422), not PostgreSQL operations (503).",
+    "Raw final PG smoke was rerun after runtime schema validation changed; earlier private development reports are not published as final."
+  ],
+  "delivery_checks": {
+    "files": 40,
+    "python_ast_files": 23,
+    "markdown_files": 9,
+    "tables": 53,
+    "local_links": 369,
+    "anchors": 15,
+    "bash_syntax_snippets": 46,
+    "protected_old_files": 227,
+    "executed_source_sha_matches": 26,
+    "raw_smoke_source_sha_matches": 16,
+    "old_locked_packages_unchanged": true,
+    "future_day_rows_unchanged": true,
+    "log_append_only": true,
+    "report_sections": 8,
+    "manual_projects": 3,
+    "credentials_and_private_data_excluded": true,
+    "git_diff_check": "passed",
+    "new_files_whitespace_check": "passed",
+    "lock_check_command": "env UV_CACHE_DIR=/tmp/project-copilot-uv-cache uv lock --check --offline",
+    "lock_check_exit_code": 0
+  }
+}
