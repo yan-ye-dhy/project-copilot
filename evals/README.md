@@ -295,3 +295,17 @@ D18只修改业务入库及存储核验，原V0/V1/V2/V3/D17数据、配置、Pr
 重复内容现在先只读核验再复用，首次成功source_name不因改名重传而变化；新内容即使同名也有新身份。失败点不进入完成清单，BM25须在新成功后显式重建，不能把旧快照与新清单混用。当前API仍Dense/750/150。
 
 2026-10-26本次授权的[委托验证](../docs/evidence/D18_DELEGATED_VERIFICATION_20261026.json)由Codex执行：真实恢复8阶段、2项ASGI故障/重试场景及门禁通过，V1/V2/V3/D17公开verify再次通过；213份受检非Markdown文件SHA、原3集合及点数保持，模型API0。原开发收据与冻结归档保持，本轮只新增验证记录，不重新采集语义指标。用户另行确认学习完成，阶段A/B均完成，D19未开启。
+
+## D19：固定证据的独立Prompt可靠性对照
+
+入口为[prompt_reliability.py](prompt_reliability.py)，样例为[新编可靠性输入](fixtures/d19_reliability.json)，实际结果与边界见[实验报告](reports/PROMPT_RELIABILITY_D19.md)。不读取copilot_v0的保留题/标签来构建或选择Prompt，原V0配置只用于核对冻结模板、Schema和生成参数。
+
+```bash
+uv run --frozen python -m evals.prompt_reliability plan
+uv run --frozen python -m evals.prompt_reliability offline --output-dir data/manual-d19/offline-01
+uv run --frozen python -m evals.prompt_reliability verify --output-dir data/manual-d19/offline-01
+```
+
+collect需显式--live并先取得本轮费用授权，最多8次DeepSeek调用，无Embedding/Qdrant或自动重试；上游失败立即停止并封存partial，不缩小题目范围冒充完整。输出目录拒绝覆盖；config记录两版模板、相同User/Schema/生成合同、固定输入、源码SHA、commit/dirty、依赖和模式。answers逐题记录实际消息、原始回答、错误、后端结果及usage；summary记录成对状态/口号探针，manifest保护3份产物字节。verify检查SHA、输入合同、题目顺序/完整性、重解析原回答与重算汇总，不请求模型。
+
+offline为固定响应的管线检查，假调用与真实API分别计数；live也不自动将状态/编号有效当作事实支持，人工支持率未采集记null。候选不推广至API，不改冻结检索配置，不把Prompt实验解释成Recall/MRR变化。旧归档保持旧源码身份；新回答源码的效果与D10/D17历史归属分开。

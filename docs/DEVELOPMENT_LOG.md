@@ -1366,3 +1366,32 @@ D18收尾检查：20文件范围符合交付清单；7份Markdown的围栏/空�
 本次范围为7份关联Markdown和1份独立验证收据，Git操作按用户当前明确授权由Codex执行，真实提交ID与推送结果在会话补全。D18阶段A/B均完成，D19仍需用户明确开启。
 
 本次收尾检查：7份Markdown的围栏、空白、56张表、326处本地链接及15个锚点、日报固定8节通过；计划第10节外及既有日志原文保持。新增JSON语法、独立文件空白、敏感凭据模式及忽略规则检查通过；213份受检非Markdown文件、4份真实执行源码和本地输出SHA再次匹配。提交范围仅为上述8文件，不改业务源码、依赖或冻结归档。
+
+## D19：回答可靠性与独立Prompt对照（2026-10-26）
+
+用户明确开启D19并授权同步GitHub，起点为已同步[c6355934a79d85463eb46c7085638f337933e086](https://github.com/yan-ye-dhy/project-copilot/commit/c6355934a79d85463eb46c7085638f337933e086)、干净main。按计划只处理回答可靠性及一个Prompt候选，不增加检索算法、分数阈值、重试、依赖或提前开启D20。用户D19学习及学习后手测尚未确认，本次为Codex开发期自动验证。
+
+回答服务增加后端显式AnswerPrompt选项，默认HTTP继续使用v1；prompt_info/build_messages在默认参数下保持D10模板、User组织规则、Schema及指纹。提取validate_model_answer，分别记录invalid_json、invalid_schema、invalid_citation；对外沿用脱敏502，不输出私密异常或原模型回答。新编5个中文场景固定证据，对照冻结Zero-shot与一个System追加两示例的Few-shot模板；User载荷、Schema、6000字符预算及生成参数相同，不读取保留题来选词，不覆盖原结果或推广候选。
+
+新增36项测试覆盖空证据零聊天调用、弱证据受控拒答、中文Markdown page=null、注入保持User数据、JSON/Schema/伪引用分类、ASGI 502与资源关闭/run_id、模板/参数漂移、收费门禁、防覆盖、上游失败停止及归档损坏/重封不一致。另明确测试合法结构的无依据事实仍可通过编号校验，不能把Pydantic当事实裁判；补充攻击口号经JSON Unicode反转义后也可被探针发现。
+
+### 自动验证（执行者：Codex）
+
+```bash
+HF_HUB_OFFLINE=1 PROJECT_COPILOT_RUN_QDRANT_INTEGRATION=0 \
+  timeout --signal=INT 180s .venv/bin/python -m pytest -q
+```
+
+最终1105 passed、1 skipped，68.28秒；包含36项D19新增，不累加首轮相关92项或修订前全量1104项。默认跳过的真实Qdrant集成未启用，本轮不改存储、不把跳过算通过。ASGI线程池测试在沙箱外执行，使用假模型/内存对象，没有真实模型或Qdrant调用。
+
+独立运行器plan/offline/verify不读.env；已实际完成离线10条/5对、8次固定假响应，空证据两侧各0调用。缺--live退出2且输出目录未创建，重复输出退出1；上游失败与重封指标不符等边界由新增测试覆盖。offline固定答案不能用来推断Prompt效果。原始命令/输出保存在忽略目录data/auto-d19，最终源码、命令和冻结保护见[自动审计](evidence/D19_RELIABILITY_AUDIT.json)。
+
+V0完整verify首次误用公开精简目录，因缺完整manifest返回1；核对archive_manifest后改用data/evals/dense-v0-20261019-01，退出0/verified，公开12产物另按SHA通过。V1/V2/V3/D17公开verify也分别退出0/verified，旧Prompt/Schema、冻结配置/标签/结果与历史收据保持；不修改工具来绕过本次目录错误。
+
+### 费用与交接
+
+本次真实对照计划为4个非空场景×2版=最多8次DeepSeek，空证据确定返回不发模型请求；不请求Embedding/Qdrant/GPU，不自动重试，供应商异常立即停止并封存partial。按官方高峰单价与每次输入3000/输出最多1024 tokens预算约¥0.113536，价格来源、日期与边界见[实验报告](../evals/reports/PROMPT_RELIABILITY_D19.md)。按计划8.3节已单独请求本轮费用确认，尚未执行收费调用，后续实际结果据授权另行补记。
+
+交接见[D19日报](reports/DAY_19.md)；本次Git按用户明确授权由Codex审核、提交和推送，真实commit/结果会话补全。D19学习与用户手动验证仍待主动开启，D20不自动开始。
+
+本次收尾范围18文件：1份业务源码、1份独立运行器、1份新编输入、2份测试、1份审计、4份离线产物及8份Markdown。围栏/空白、55张表、346处本地链接、16个锚点、48段既有及新增bash示例语法、日报固定8节均通过；计划第10节外及既有日志原文保持。新Python语法、JSON/JSONL、11份新文件独立空白检查通过；218份受保护非Markdown文件及8份执行源码/依赖/测试指纹保持，原数据/Prompt/配置/归档不重签。真实.env、本地输出与缓存仍忽略；先同步已完成代码与离线证据，8次真实生成仍待独立费用确认，不登记完整阶段A或学习后阶段B完成。

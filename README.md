@@ -1,6 +1,6 @@
 # Project Copilot
 
-基于RAG与LangGraph的研发知识及工单协作智能体。D1–D18已按各日实际学习/验证记录收尾。D18入库幂等重传、写后回读与失败恢复已实现，用户确认学习完成，本次授权Codex代操作验证通过，见[D18报告](docs/reports/DAY_18.md)。当前问答API仍Dense/750/150，D19未开启。
+基于RAG与LangGraph的研发知识及工单协作智能体。D1–D18已按各日实际学习/验证记录收尾；D19代码及离线验收已完成，真实Prompt对照待本轮费用授权，见[D19报告](docs/reports/DAY_19.md)。当前问答API仍Dense/750/150，默认Prompt保持rag-answer-v1，Few-shot候选仅用于实验。
 
 协作流程见 [长期协作规则](docs/COLLABORATION_RULES.md)：Codex开发、自动验证、提供报告并指导Git操作；用户亲自提交和推送GitHub，随后通过ChatGPT学习代码/架构，学习后主动要求Codex开始手动测试。以下命令是自助运行参考，Codex仅在用户要求后单步带练。
 
@@ -326,3 +326,19 @@ uv run --frozen python scripts/ingestion_recovery_smoke.py --local \
 开发期完整离线1069项通过，默认跳过的1项真实HTTP集成另行通过；真实存储8阶段显示点数[1,2,4,4,5,7,7,7]、完成文档[1,1,2,2,3,3,4,4]，模型API0。证据见[恢复收据](docs/evidence/D18_RECOVERY_SMOKE.json)和[存储保护/历史回归](docs/evidence/D18_STORAGE_AUDIT.json)。合成向量仅验证工程边界，旧D17配置/结果不改；详细行为与学习交接见[D18报告](docs/reports/DAY_18.md)。
 
 2026-10-26按用户本次授权，Codex另行完成代操作验证：真实Qdrant恢复8阶段、上传失败/重试的2项ASGI测试、缺--local及输出防覆盖门禁、4份历史归档verify均符合预期。原3个集合及点数保持，测试集合已删除，新增模型API调用0；见[委托验证收据](docs/evidence/D18_DELEGATED_VERIFICATION_20261026.json)。用户另行确认已通过ChatGPT学习、能够解释主流程，阶段A/B均完成；本次不重复运行完整1069项测试，也不登记为用户亲自终端操作。
+
+## D19：回答可靠性与Prompt小对照
+
+模型输出先经严格JSON、Pydantic回答Schema和本次上下文编号校验，三类错误分别记录为invalid_json、invalid_schema、invalid_citation；API继续返回脱敏502，空证据由后端确定返回insufficient_evidence且不调用聊天模型。TXT/Markdown的page=null保持，合法引用仅说明来源映射正确，不代表事实支持已通过。
+
+独立实验使用5个新编中文样例（可答、弱证据、纯注入、事实混合注入、空证据），比较冻结v1与一个Few-shot候选。两侧固定问题、证据、User消息、Schema和生成参数，只改变System模板；不使用保留集选提示词，不覆盖V0或D17结果，不自动上线候选。
+
+离线入口参考（不读.env，不访问模型或Qdrant）：
+
+```bash
+uv run --frozen python -m evals.prompt_reliability plan
+uv run --frozen python -m evals.prompt_reliability offline --output-dir data/manual-d19/offline-01
+uv run --frozen python -m evals.prompt_reliability verify --output-dir data/manual-d19/offline-01
+```
+
+offline使用明确注入的固定响应，仅验证管线，不能用其“通过率”说明Prompt效果。真实对照使用collect并显式加--live，需遵守费用约定；最多8次DeepSeek请求、无Embedding/Qdrant或自动重试，上游失败即停止，原始回答和失败项保留。当前实测范围与限制见[实验报告](evals/reports/PROMPT_RELIABILITY_D19.md)；学习与用户手动验证尚未登记，D20不自动开启。

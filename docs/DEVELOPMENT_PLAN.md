@@ -461,7 +461,7 @@ feat(agent): require approval for idempotent ticket creation
 
 这些是建议，不是已存在的历史。原仓库不整理或提交；新项目由用户在Codex指导下亲自提交、推送约定GitHub仓库/分支，失败如实报告，不强推或重写历史。未配置远端时先记录待同步并获取实际地址，不猜测仓库。每个完整模块验收后可交给ChatGPT新开学习窗口，如“Project Copilot · Dense RAG”“Project Copilot · 检索评测与优化”“Project Copilot · LangGraph与工单确认”。
 
-## 10. 当前开发进度：D18阶段A/B均完成，D19待用户明确开启
+## 10. 当前开发进度：D19代码及离线验收完成，真实Prompt对照待费用授权
 
 **D1已完成：** 工程、自动验收、ChatGPT学习和用户手测完成；2026-10-12只读核实用户提交的 `4c04a29` 已同步GitHub，A/B均完成，见 [D1报告](reports/DAY_1.md)。用户已明确开启D2。
 
@@ -570,6 +570,12 @@ Codex执行9条CLI：最终配置verify、保留集plan及公开verify退出0；
 开发提交[077e3f8c850e0d02cd79bca52a149157163f0919](https://github.com/yan-ye-dhy/project-copilot/commit/077e3f8c850e0d02cd79bca52a149157163f0919)已同步main，阶段A完成。用户主动要求直接验证并提交GitHub，并另行确认已通过ChatGPT学习、能解释上传→完成清单→重复复用/新入库→回读→失败重试。本次阶段B以“用户学习确认＋明确委托代操作验证”完成，执行者为Codex，不登记为用户亲自终端操作，长期默认分工不变。
 
 本轮8条CLI退出码均符合预期：真实Qdrant恢复8阶段、上传失败/重试/重传的2项ASGI测试通过，缺--local与重复输出目录被拒绝，V1/V2/V3/D17公开归档verify均通过。原3集合及点数保持，测试集合已删除，213份受检非Markdown文件SHA保持，模型API及GPU评分0；未重跑完整1069项开发测试。新建[委托验证收据](evidence/D18_DELEGATED_VERIFICATION_20261026.json)，实际执行者、合成向量范围及学习状态分别记录。D19仍需用户明确开启，35日安排不变。
+
+### D19实施记录（2026-10-26）
+
+用户明确开启D19并授权本次提交GitHub，起点为已同步c635593、干净main。保留D10的System/User模板、Schema、指纹与默认Dense/750/150；只添加后端显式实验模板选项和JSON/Schema/编号三类错误标记。新增回答可靠性、ASGI错误/资源关闭和独立Prompt运行器回归，覆盖中文page=null、无/弱证据、文档伪角色指令、非法JSON/Schema/错引用；不以引用有效冒充事实支持。
+
+独立新编5场景对照冻结v1和一个Few-shot候选，只改变System模板，固定证据、模型及生成合同。最终1105项离线通过、1项真实Qdrant默认跳过（含36项新增），独立离线归档verify通过，218份受保护非Markdown文件保持；离线注入响应只作管线验收，不推断Prompt效果。真实最多8次DeepSeek请求按8.3节另行确认，目前尚未执行；不重新索引、不调用Embedding/Qdrant、不自动重试或用保留集选择提示词，不上线候选。开发/收费调用/学习手测的实际完成情况见[D19日报](reports/DAY_19.md)和[实验报告](../evals/reports/PROMPT_RELIABILITY_D19.md)，原冻结归档及35日任务表保持，D20不自动开启。
 
 ## 11. 最终验收和可选裁剪
 

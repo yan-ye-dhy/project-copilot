@@ -1,0 +1,149 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-26",
+  "day": 19,
+  "executed_by": "Codex",
+  "stage": "development automated verification; not user manual testing",
+  "base_commit": "c6355934a79d85463eb46c7085638f337933e086",
+  "dirty": true,
+  "test_command": "HF_HUB_OFFLINE=1 PROJECT_COPILOT_RUN_QDRANT_INTEGRATION=0 timeout --signal=INT 180s .venv/bin/python -m pytest -q",
+  "final_tests": {
+    "passed": 1105,
+    "skipped": 1,
+    "seconds": 68.28,
+    "new_day19_tests": 36,
+    "skipped_reason": "real Qdrant HTTP integration is opt-in; not enabled in this storage-unchanged task"
+  },
+  "test_output_sha256": "aaeab169b607bf532a7b78858488409b2e59cbda4d449ad53ffb35de0752c4c9",
+  "test_output_path": "data/auto-d19/pytest-final.txt",
+  "source_sha256": {
+    "src/project_copilot/rag/answering.py": "ec9fe346ff904f89e55eba7b48171cfb922126abe99d6bd6c028a5068049456c",
+    "src/project_copilot/schemas/rag.py": "9fe3a6f37bdb72f5adc3e83303c61d5d2c890f7929bbfcdc1f060caa3eba917c",
+    "src/project_copilot/infrastructure/models.py": "46673765a8437a86cfaaf6bd053cf08601e016e037fd6beb67aaab6449c2d8d9",
+    "evals/prompt_reliability.py": "4040575a39c3c971400a39acd6b529de9c3d649b78c643cf618f8a8d5e62a2fc",
+    "uv.lock": "78566b7df31921945713f0a08087b73691b24f170f668f48f5a3ae6db52a746d",
+    "evals/fixtures/d19_reliability.json": "7e21ff63c0c76f27ae265b8bcbfb250910ead24de6c47ca50d0a943965018307",
+    "tests/test_answer_reliability.py": "27dd2e6776ff8e08041122bb9c9d456f0501b0aa49aa5f1989d50c42c92ba031",
+    "tests/test_prompt_reliability.py": "0e1d9bd7370cb4c79a2101c8940177a937a715b573d588fc850d93085ac7e42f"
+  },
+  "commands": [
+    {
+      "name": "offline",
+      "command": [
+        "/home/yanye/project-copilot/.venv/bin/python",
+        "-m",
+        "evals.prompt_reliability",
+        "offline",
+        "--output-dir",
+        "data/auto-d19/offline-20261026-01"
+      ],
+      "expected_exit_code": 0,
+      "exit_code": 0
+    },
+    {
+      "name": "offline-verify",
+      "command": [
+        "/home/yanye/project-copilot/.venv/bin/python",
+        "-m",
+        "evals.prompt_reliability",
+        "verify",
+        "--output-dir",
+        "data/auto-d19/offline-20261026-01"
+      ],
+      "expected_exit_code": 0,
+      "exit_code": 0
+    },
+    {
+      "name": "live-gate",
+      "command": [
+        "/home/yanye/project-copilot/.venv/bin/python",
+        "-m",
+        "evals.prompt_reliability",
+        "collect",
+        "--output-dir",
+        "data/auto-d19/must-not-exist"
+      ],
+      "expected_exit_code": 2,
+      "exit_code": 2
+    },
+    {
+      "name": "overwrite-gate",
+      "command": [
+        "/home/yanye/project-copilot/.venv/bin/python",
+        "-m",
+        "evals.prompt_reliability",
+        "offline",
+        "--output-dir",
+        "data/auto-d19/offline-20261026-01"
+      ],
+      "expected_exit_code": 1,
+      "exit_code": 1
+    }
+  ],
+  "final_offline_archive": {
+    "private_path": "data/auto-d19/d19-offline-20261026-01",
+    "public_path": "evals/results/d19-offline-20261026-01",
+    "all_files_identical": true,
+    "files": {
+      "config.json": "0c54ab7a9345ea8083ee6fbbc044c38b6a08947822c058bebe01cbbe302b8389",
+      "summary.json": "642aec9aece877791df0cadd023ee25a3b7a317009602b0f5f21cc884abfc85f",
+      "answers.jsonl": "2f8c8ce5f12cecb4902ca7d7c3878d91deec61e3f538178c1b3cd5ef00e4336f",
+      "manifest.json": "e85f5e1885cb1a32afff79cf7ae5d9eb3cdf0a1e660eb9a8336cdc9b1d25234c"
+    },
+    "mode": "offline",
+    "model_api_calls": 0,
+    "controlled_fake_calls": 8,
+    "case_pairs": 5,
+    "semantic_effect_measured": false
+  },
+  "historical_archive_checks": {
+    "v0_complete_private_verify": {
+      "exit_code": 0,
+      "files": 12
+    },
+    "v0_public_sha_checks": 12,
+    "v1_verify": {
+      "exit_code": 0,
+      "files": 19
+    },
+    "v2_verify": {
+      "exit_code": 0,
+      "files": 23
+    },
+    "v3_verify": {
+      "exit_code": 0,
+      "files": 19
+    },
+    "d17_holdout_verify": {
+      "exit_code": 0,
+      "files": 23
+    },
+    "initial_v0_public_complete_verify": {
+      "exit_code": 1,
+      "reason": "public V0 snapshot excludes vectors and renames manifest; corrected to original private archive, without changing verifier or old files"
+    }
+  },
+  "protected_non_markdown_files_unchanged": 218,
+  "frozen_prompt_fingerprint": "83971da601780ea5a5f5e6e4b45f11d952cb261e50d7275a1efb38494a46a9ea",
+  "frozen_schema_hash": "ded2c45bf4b0dcd4888884ad1ff1bcbc729a1846ee0977ec90e7dfdd903c5941",
+  "new_live_calls_from_this_audit": {
+    "chat": 0,
+    "embedding": 0,
+    "qdrant": 0,
+    "gpu": 0
+  },
+  "live_experiment": "pending separate user billing authorization; not run",
+  "learning": {
+    "confirmed": false,
+    "status": "not yet confirmed; this does not assert the user has not studied"
+  },
+  "manual_verification": {
+    "status": "not started by user; development automation only"
+  },
+  "limitations": [
+    "Controlled responses validate backend paths, not prompt effectiveness.",
+    "Valid schema and citation numbers do not establish factual support.",
+    "The attack marker test is a limited probe; no universal prompt-injection protection is claimed.",
+    "V0 and D17 frozen results are preserved; default API prompt remains v1, candidate not promoted."
+  ]
+}

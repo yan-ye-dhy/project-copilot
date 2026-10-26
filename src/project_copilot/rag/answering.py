@@ -4,6 +4,7 @@ import hashlib
 import json
 from collections.abc import Iterator
 from contextlib import contextmanager
+from dataclasses import dataclass
 from typing import Protocol
 
 from pydantic import ValidationError
@@ -54,20 +55,38 @@ class JsonChat(Protocol):
 class AnswerResponseError(RuntimeError):
     """回答语法、契约或引用非法；不暴露原始模型输出。"""
 
+    def __init__(self, message: str, *, reason: str = "invalid_schema") -> None:
+        super().__init__(message)
+        self.reason = reason
 
-def prompt_info(context_max_chars: int = CONTEXT_MAX_CHARS) -> PromptInfo:
+
+@dataclass(frozen=True)
+class AnswerPrompt:
+    """仅供后端显式选择的实验模板；HTTP请求不能覆盖System消息。"""
+
+    version: str
+    system_message: str
+
+
+def prompt_info(
+    context_max_chars: int = CONTEXT_MAX_CHARS, *, template: AnswerPrompt | None = None,
+) -> PromptInfo:
+    version = PROMPT_VERSION if template is None else template.version
+    system = SYSTEM_MESSAGE if template is None else template.system_message
     encoded = json.dumps({
-        "version": PROMPT_VERSION, "system": SYSTEM_MESSAGE, "user_template": USER_TEMPLATE,
+        "version": version, "system": system, "user_template": USER_TEMPLATE,
         "answer_schema_hash": ANSWER_SCHEMA_HASH, "context_max_chars": context_max_chars,
         "context_policy": "retrieval-order;whole-chunks;skip-over-budget;first-unique-chunk-id;1-based",
     }, ensure_ascii=False, sort_keys=True).encode("utf-8")
     return PromptInfo(
-        version=PROMPT_VERSION, fingerprint=hashlib.sha256(encoded).hexdigest(),
+        version=version, fingerprint=hashlib.sha256(encoded).hexdigest(),
         answer_schema_hash=ANSWER_SCHEMA_HASH, context_max_chars=context_max_chars,
     )
 
 
-def build_messages(question: str, evidence: list[RetrievedChunk]) -> list[dict[str, str]]:
+def build_messages(
+    question: str, evidence: list[RetrievedChunk], *, template: AnswerPrompt | None = None,
+) -> list[dict[str, str]]:
     """只对固定模板做一次变量绑定；正文里的花括号不会再次被format解释。"""
     payload = {"question": question, "evidence": [
         {"number": number, "source_name": item.metadata.source_name,
@@ -75,7 +94,7 @@ def build_messages(question: str, evidence: list[RetrievedChunk]) -> list[dict[s
         for number, item in enumerate(evidence, start=1)
     ]}
     return [
-        {"role": "system", "content": SYSTEM_MESSAGE},
+        {"role": "system", "content": SYSTEM_MESSAGE if template is None else template.system_message},
         {"role": "user", "content": USER_TEMPLATE.format(payload=json.dumps(payload, ensure_ascii=False))},
     ]
 
@@ -93,17 +112,35 @@ def _reject_json_constant(value: str) -> None:
     raise ValueError("非标准JSON数值")
 
 
+def validate_model_answer(content: str, *, evidence_count: int) -> ModelAnswer:
+    """区分语法、Schema与编号错误；有效引用不代表答案事实已获支持。"""
+    try:
+        parsed = json.loads(content, object_pairs_hook=_unique_json_object,
+                            parse_constant=_reject_json_constant)
+    except (ValueError, TypeError, RecursionError):
+        raise AnswerResponseError("模型回答不满足JSON语法", reason="invalid_json") from None
+    try:
+        answer = ModelAnswer.model_validate(parsed)
+    except ValidationError:
+        raise AnswerResponseError("模型回答不满足本地回答契约", reason="invalid_schema") from None
+    if any(number > evidence_count for number in answer.citation_numbers):
+        raise AnswerResponseError("模型引用了本次上下文之外的证据编号", reason="invalid_citation") from None
+    return answer
+
+
 class RagAnswerer:
     def __init__(
         self, retriever: Retriever, chat: JsonChat, *, index_version: str | None = None,
         context_max_chars: int = CONTEXT_MAX_CHARS,
+        prompt_template: AnswerPrompt | None = None,
     ) -> None:
         if type(context_max_chars) is not int or context_max_chars < 1:
             raise ValueError("上下文字符预算必须是正整数")
         self.retriever = retriever
         self.chat = chat
         self.index_version = index_version
-        self.prompt = prompt_info(context_max_chars)
+        self._prompt_template = prompt_template
+        self.prompt = prompt_info(context_max_chars, template=prompt_template)
 
     def answer(self, question: str) -> RagAnswer:
         question = RagQuestion(question=question).question
@@ -122,15 +159,8 @@ class RagAnswerer:
             return RagAnswer(**common, status="insufficient_evidence",
                              answer="当前没有可用的检索证据，无法回答该问题。", citations=(), generation=None)
 
-        generated = self.chat.generate_json(build_messages(question, evidence))
-        try:
-            parsed = json.loads(generated.content, object_pairs_hook=_unique_json_object,
-                                parse_constant=_reject_json_constant)
-            answer = ModelAnswer.model_validate(parsed)
-        except (ValueError, TypeError, RecursionError, ValidationError):
-            raise AnswerResponseError("模型回答不满足JSON语法或本地回答契约") from None
-        if any(number > len(evidence) for number in answer.citation_numbers):
-            raise AnswerResponseError("模型引用了本次上下文之外的证据编号")
+        generated = self.chat.generate_json(build_messages(question, evidence, template=self._prompt_template))
+        answer = validate_model_answer(generated.content, evidence_count=len(evidence))
         citations = tuple(
             Citation(number=number, text=evidence[number - 1].text,
                      metadata=evidence[number - 1].metadata)
