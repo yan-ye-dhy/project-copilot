@@ -1,0 +1,115 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-27",
+  "batch": "D20 integrated batch (original D20-D23)",
+  "development_commit": "7d78db860abcb7b31fa96d36a9849c3d03eb5824",
+  "operator": "user",
+  "guide_and_recorded_by": "Codex",
+  "evidence_origin": "User terminal output supplied in this conversation; local ticket.json read only by Codex. Commands below are normalized descriptions, not a captured complete shell history.",
+  "prerequisites": {
+    "compose_service": "postgres",
+    "image_reported": "postgres:17.11-bookworm",
+    "health": "healthy",
+    "port_mapping_reported": "127.0.0.1:5433->5432/tcp",
+    "volume_created_reported": "project-copilot_postgres_data",
+    "migration": {
+      "command": ".venv/bin/python -m scripts.ticket_db upgrade",
+      "output": {
+        "status": "ok",
+        "migration": "head"
+      }
+    }
+  },
+  "projects": [
+    {
+      "name": "create-and-query",
+      "result": "passed",
+      "create": {
+        "method": "POST",
+        "path": "/tickets",
+        "status": 201,
+        "response": {
+          "id": "0e4f3559-4beb-4c2b-9cfe-b5ddd6ae869b",
+          "title": "D20 手动验证",
+          "description": "观察请求、事务、真实数据库与返回结果。",
+          "status": "open",
+          "created_at": "2026-10-27T06:25:08.567833Z",
+          "updated_at": "2026-10-27T06:25:08.567833Z"
+        }
+      },
+      "detail": {
+        "method": "GET",
+        "path": "/tickets/0e4f3559-4beb-4c2b-9cfe-b5ddd6ae869b",
+        "status": 200,
+        "response_matches_create": true
+      },
+      "database_query": {
+        "tool": "docker compose exec -T postgres psql",
+        "sql": "SELECT id, title, status, created_at, updated_at FROM tickets WHERE id = :'ticket_id'::uuid;",
+        "rows": 1,
+        "id": "0e4f3559-4beb-4c2b-9cfe-b5ddd6ae869b",
+        "title": "D20 手动验证",
+        "status": "open",
+        "created_at": "2026-10-27 06:25:08.567833+00",
+        "updated_at": "2026-10-27 06:25:08.567833+00"
+      }
+    },
+    {
+      "name": "controlled-rollback",
+      "result": "passed",
+      "command": ".venv/bin/python -m scripts.ticket_db rollback-check",
+      "output": {
+        "status": "ok",
+        "probe_ticket_id": "f0173a76-b92d-4303-82eb-9fb8f23ba64c",
+        "flushed_before_failure": true,
+        "visible_after_rollback": false,
+        "pool_checked_out_after": 0
+      }
+    },
+    {
+      "name": "api-restart-persistence",
+      "result": "passed",
+      "start_command": ".venv/bin/python -m uvicorn project_copilot.main:app --host 127.0.0.1 --port 8002",
+      "first_pid_reported": 56610,
+      "restarted_pid_reported": 58981,
+      "get_path": "/tickets/0e4f3559-4beb-4c2b-9cfe-b5ddd6ae869b",
+      "status": 200,
+      "response_matches_create": true,
+      "run_id_reported": "5c490c7a-a6c6-4c94-8486-669397c06c2d",
+      "elapsed_ms_reported": 33.05,
+      "trace_exported_reported": false,
+      "persistence_scope": "same PostgreSQL instance across two API processes; no PostgreSQL restart/crash test"
+    }
+  ],
+  "local_artifact": {
+    "path": "data/manual-d20/ticket.json",
+    "sha256": "407309d9b7c0926e95259dc7fc9990998f2d9adb4e808c11356ac97a610966f0",
+    "matches_user_response": true
+  },
+  "learning": {
+    "confirmed_by": "user",
+    "answer": "已学习，能够解释",
+    "topics": [
+      "Session生命周期",
+      "Schema/ORM/物理表职责",
+      "flush/commit/rollback主流程"
+    ]
+  },
+  "stage_a": "completed (development commit previously pushed)",
+  "stage_b": "completed (user operated all three manual projects and separately confirmed learning)",
+  "closure_document_git_status": "pending user add/commit/push",
+  "scope": {
+    "business_source_changed": false,
+    "existing_auto_receipts_changed": false,
+    "pytest_rerun": false,
+    "codex_reexecuted_manual_commands": false,
+    "model_api_calls": 0,
+    "qdrant_calls": 0,
+    "postgres_restart_tested": false,
+    "successful_manual_ticket_deleted": false,
+    "final_api_shutdown_observed": false,
+    "day24_started": false
+  },
+  "protected_preexisting_non_markdown_files": 258,
+  "protected_preexisting_files_unchanged": true
+}

@@ -176,7 +176,7 @@
 
 ## D20整合批次：真实工单后端的设计与证据
 
-待用户学习，结合[D20报告](reports/DAY_20.md)、[PG原始收据](evidence/D20_POSTGRES_SMOKE.json)与[真实数据库测试](../tests/test_ticket_database.py)，回答应能指到实际源码和用例。
+用户于2026-10-27确认学习理解，并亲自完成三项手测，见[手测记录](evidence/D20_MANUAL_VERIFICATION_20261027.json)。结合[D20报告](reports/DAY_20.md)、[PG原始收据](evidence/D20_POSTGRES_SMOKE.json)与[真实数据库测试](../tests/test_ticket_database.py)复习，回答应能指到实际源码和用例。
 
 1. **为什么Engine共享而Session不能全局共享？** Engine/池由lifespan创建并dispose；请求各自持有Session/事务，结束归还连接。Session包含ORM对象和未提交状态；跨请求共享会混淆事务和异常。`Database.transaction`及生命周期测试验证正常/异常关闭，缺配置不拖垮独立RAG/health。
 2. **拿到工单ID为什么还可能创建失败？** UUID由PG INSERT RETURNING取回，但flush尚未commit。Service只flush，外层边界统一提交；真实延迟约束测试在commit阶段失败仍返回503而非提前201。function作用域依赖是响应时序的一部分，不是单纯代码风格。

@@ -1,6 +1,6 @@
 # 【Day 20 整合开发批次报告】
 
-日期：2026-10-26。覆盖原D20连接、D21模型迁移、D22 Service/API、D23事务与持久化四项。本批次实现及自动验收已完成，按用户明确授权审核后用一条commit提交推送；真实Git结果在会话补全。用户本批次学习/手测尚未确认，D24未开始。
+开发日期：2026-10-26；学习与手测收尾：2026-10-27。覆盖原D20连接、D21模型迁移、D22 Service/API、D23事务与持久化四项。开发提交7d78db8已推送，用户亲自完成三项手测并确认ChatGPT学习理解，阶段A/B均完成；本次收尾文档待用户提交，D24未开始。
 
 ## 1. 今日开发目标
 
@@ -19,7 +19,7 @@
 | 新增 | [services/ticket_checks.py](../../src/project_copilot/services/ticket_checks.py)、[scripts/ticket_db.py](../../scripts/ticket_db.py) | 连接/迁移CLI、真实flush后受控回滚诊断，无API故障后门 |
 | 新增 | [postgres_support.py](../../scripts/postgres_support.py)、[postgres_smoke.py](../../scripts/postgres_smoke.py) | 严格测试库/角色门禁，随机独立库、真实HTTP与API进程重启验收 |
 | 新增/修改 | [数据库测试](../../tests/test_database.py)、[Schema测试](../../tests/test_ticket_schemas.py)、[PG迁移/约束测试](../../tests/test_ticket_database.py)、[查询/隔离测试](../../tests/test_ticket_service.py)、[API/事务测试](../../tests/test_ticket_api.py)、[CLI测试](../../tests/test_ticket_cli.py)、[conftest.py](../../tests/conftest.py) | 87项新增，明确区分本地对象/编译/Mock与真实PG |
-| 新增/修改 | README、AGENTS、协作规则、计划、日志、学习/面试笔记、[三个手动验证](../D20_MANUAL_VERIFICATION.md)、本报告、[PG原始收据](../evidence/D20_POSTGRES_SMOKE.json)、[批次审计](../evidence/D20_BATCH_AUDIT.json) | 批次编号、系统教学与可复现交接；包入口`db/__init__.py`、`services/__init__.py`随模块增加 |
+| 新增/修改 | README、AGENTS、协作规则、计划、日志、学习/面试笔记、[三个手动验证](../D20_MANUAL_VERIFICATION.md)、本报告、[PG原始收据](../evidence/D20_POSTGRES_SMOKE.json)、[批次审计](../evidence/D20_BATCH_AUDIT.json)、[2026-10-27手测记录](../evidence/D20_MANUAL_VERIFICATION_20261027.json) | 批次编号、系统教学与可复现交接；包入口`db/__init__.py`、`services/__init__.py`随模块增加；本次仅改6份关联Markdown并新增独立手测记录，原收据/源码不改 |
 
 新增直接依赖SQLAlchemy2.0.55（ORM/连接池）、Psycopg3.3.6含binary（PG驱动）、Alembic1.20.1（迁移）；Mako/greenlet等为锁定传递依赖。同步安装用--inexact保留已有GPU依赖，未修改原参考项目环境。
 
@@ -84,15 +84,26 @@ sequenceDiagram
 
 最终审查补齐了标准revision模板，并在临时副本实际生成后续迁移文件；未创建后续业务表。NUL和非法UTF-8在Schema阶段拒绝（422），不等PG报数据库503。原D19前置已核实，真实PG迁移/API/事务/API进程重启验收完成；业务5433命名卷未作为自动测试靶标，未验证PG崩溃恢复/跨主机容灾。227份原受保护非Markdown文件保持，详见[批次审计](../evidence/D20_BATCH_AUDIT.json)。用户学习和三个手测另列阶段B，原D24–D34均未实施。
 
+**2026-10-27用户手动验证（与上表自动测试分开）：**
+
+| 项目 | 用户亲自执行并反馈的结果 |
+| --- | --- |
+| 创建/查询闭环 | 业务PG17.11 healthy、5433端口；upgrade返回head；POST /tickets为201，详情200及psql一行对应同一UUID/open/时间 |
+| 受控事务失败 | probe f0173a76-b92d-4303-82eb-9fb8f23ba64c；flushed_before_failure=true、visible_after_rollback=false、pool_checked_out_after=0 |
+| API重启持久化 | PID 56610→58981后GET原ID返回200，created_at/updated_at仍2026-10-27T06:25:08.567833Z；新进程日志run_id与请求路径对应 |
+
+成功工单ID为0e4f3559-4beb-4c2b-9cfe-b5ddd6ae869b，保留用于后续演示；本地ticket.json与用户粘贴响应一致。其余证据来自用户终端反馈，Codex未代发HTTP/SQL或重跑业务测试；未取得本轮完整shell历史、初进程退出日志或最终API停止结果，不补写为已自动采集/清理。原自动验收和历史pending快照不改，三项手测及学习确认见[独立记录](../evidence/D20_MANUAL_VERIFICATION_20261027.json)。
+
 ## 6. GitHub 提交信息
 
 - 起点main已同步[30fc9a86a388d6d79d36ae3119dada6ce6528873](https://github.com/yan-ye-dhy/project-copilot/commit/30fc9a86a388d6d79d36ae3119dada6ce6528873)，工作区干净、D19阶段A/B均完成。
-- 用户本批次明确授权Codex直接审核、创建一条commit并推送origin/main；真实SHA、远端确认与链接在最终会话补全，不预填未来提交ID。
+- 用户本批次明确授权的开发提交为[7d78db860abcb7b31fa96d36a9849c3d03eb5824](https://github.com/yan-ye-dhy/project-copilot/commit/7d78db860abcb7b31fa96d36a9849c3d03eb5824)，分支main；当时push成功并只读核对远端SHA一致。此次收尾开始时本地main/origin/main同指该提交且工作区干净。
+- 2026-10-27学习/手测收尾按默认规则由用户亲自add/commit/push，当前待提交；不将已完成的开发推送冒充本次文档已同步。
 - 运行收据如实记录base commit/dirty和实际源码SHA，不修改历史归档的执行身份或强推历史。
 
 ## 7. 后续学习提示
 
-交ChatGPT结合本报告、commit及实际测试做加长版教学，建议按下面五条串联：
+用户已确认通过ChatGPT学习并能解释主流程；以下五条作为后续复习线索：
 
 1. `main.lifespan→Database→sessionmaker→transaction→yield依赖`：Engine/池/连接/Session分别是什么，懒连接与每请求资源关闭如何验证，为什么Session不能全局共享。
 2. `TicketCreate / TicketRead→Ticket ORM→0001迁移→PG物理表`：输入字段权限、模型映射与实际约束的职责，UUID/时区时间为何由数据库生成，Alembic.check证明的范围。
@@ -102,4 +113,4 @@ sequenceDiagram
 
 ## 8. 下一步计划
 
-完成本批次Git同步后先由用户通过ChatGPT系统学习，再主动开启[仅三个手动验证项目](../D20_MANUAL_VERIFICATION.md)。不将助手自动验收登记为用户学习/手测。本批次归为D20，覆盖原D20–D23；实际31个主任务批次＋1弹性，共32，原D24–D34暂留编号。等待用户明确要求后才进入D24。
+本批次开发同步、用户系统学习及[仅三个手动验证项目](../D20_MANUAL_VERIFICATION.md)均已完成，阶段A/B完成；下一步只提交本次学习/手测收尾文档，不重复实施原四日内容。本批次归为D20，覆盖原D20–D23；实际31个主任务批次＋1弹性，共32，原D24–D34暂留编号。等待用户明确要求后才进入D24。

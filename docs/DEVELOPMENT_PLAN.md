@@ -465,7 +465,7 @@ feat(agent): require approval for idempotent ticket creation
 
 这些是建议，不是已存在的历史。原仓库不整理或提交；新项目由用户在Codex指导下亲自提交、推送约定GitHub仓库/分支，失败如实报告，不强推或重写历史。未配置远端时先记录待同步并获取实际地址，不猜测仓库。每个完整模块验收后可交给ChatGPT新开学习窗口，如“Project Copilot · Dense RAG”“Project Copilot · 检索评测与优化”“Project Copilot · LangGraph与工单确认”。
 
-## 10. 当前开发进度：D20整合批次实现与自动验收完成，待学习及三个手动验证
+## 10. 当前开发进度：D20整合批次阶段A/B均完成，D24待用户明确开启
 
 **D1已完成：** 工程、自动验收、ChatGPT学习和用户手测完成；2026-10-12只读核实用户提交的 `4c04a29` 已同步GitHub，A/B均完成，见 [D1报告](reports/DAY_1.md)。用户已明确开启D2。
 
@@ -596,6 +596,12 @@ Codex执行9条CLI：最终配置verify、保留集plan及公开verify退出0；
 最终87项新增联合通过，其中36项使用真实PG、51项本地/编译/Mock；完整1192 passed、1 skipped（原Qdrant opt-in）。独立测试库空库迁移、约束、ORM一致性、正常提交、两个flush后失败回滚及真实COMMIT失败返回503均有验证；真实Uvicorn8次HTTP验证同一PG生成ID在不同API进程重启后保留，测试库与自己的进程已清理，原业务卷不作测试靶标。证据见[D20日报](reports/DAY_20.md)、[PG收据](evidence/D20_POSTGRES_SMOKE.json)和[批次审计](evidence/D20_BATCH_AUDIT.json)。
 
 代码/自动验收完成，Git本次按授权审核后直接提交推送，真实信息在会话补全；用户系统学习及[仅三个手测项目](D20_MANUAL_VERIFICATION.md)尚未确认，不登记阶段B完成。当前实际31个主任务批次＋原D35弹性，共32；D24–D34均未完成且保留原编号，等待用户明确要求才继续。
+
+### D20学习与用户手动验证收尾（2026-10-27）
+
+开发提交[7d78db860abcb7b31fa96d36a9849c3d03eb5824](https://github.com/yan-ye-dhy/project-copilot/commit/7d78db860abcb7b31fa96d36a9849c3d03eb5824)已推送，阶段A完成。用户主动开启手动验证，亲自启动5433业务PG并执行迁移；201创建工单后，详情200与psql一行记录的ID/open/时间一致；受控失败探针已flush但回滚后不可见、连接归还；API进程56610→58981后同一工单仍为200，时间保持。三项均通过，原成功工单保留，未要求额外低价值手测。
+
+用户另外确认通过ChatGPT学习，能够解释Session生命周期、Schema/ORM/物理表区别及flush/commit/rollback流程，阶段B完成，见[手测记录](evidence/D20_MANUAL_VERIFICATION_20261027.json)。本轮记录执行者为用户、指导者为Codex；不改原自动验收收据/历史pending快照，不重跑业务测试或调用模型。仅收尾文档待用户按默认流程提交；当前31＋1（32）及D24–D34编号保持，D24等待明确要求。
 
 ## 11. 最终验收和可选裁剪
 

@@ -1,6 +1,6 @@
 # Project Copilot
 
-基于RAG与LangGraph的研发知识及工单协作智能体。D1–D19已按各日实际学习/验证记录收尾；D20整合批次覆盖原D20–D23，PostgreSQL工单后端及真实自动验收已完成，学习与三项手测待用户主动开启，见[D20报告](docs/reports/DAY_20.md)。当前问答API仍Dense/750/150和rag-answer-v1；工单API独立，不调用模型，D24尚未开始。
+基于RAG与LangGraph的研发知识及工单协作智能体。D1–D19已按各日实际学习/验证记录收尾；D20整合批次覆盖原D20–D23，2026-10-27用户亲自完成三项手测并确认ChatGPT学习理解，阶段A/B均完成，见[D20报告](docs/reports/DAY_20.md)。当前问答API仍Dense/750/150和rag-answer-v1；工单API独立，不调用模型，D24尚未开始。
 
 协作流程见 [长期协作规则](docs/COLLABORATION_RULES.md)：Codex开发、自动验证、提供报告并指导Git操作；用户亲自提交和推送GitHub，随后通过ChatGPT学习代码/架构，学习后主动要求Codex开始手动测试。以下命令是自助运行参考，Codex仅在用户要求后单步带练。
 
@@ -367,4 +367,4 @@ PROJECT_COPILOT_DATABASE_URL='postgresql+psycopg://project_copilot:local-dev-onl
 
 最终全量1192 passed、1 skipped（原Qdrant opt-in），其中本批次87项、36项真实PG。真实PG17.11的迁移/约束/API/回滚与8次Uvicorn HTTP验收通过，两个不同API进程查到同一已提交工单；自己的测试库及进程已清理，模型调用0。证据见[PG原始收据](docs/evidence/D20_POSTGRES_SMOKE.json)和[批次审计](docs/evidence/D20_BATCH_AUDIT.json)。
 
-学习后的手动验证仅[创建/查询、受控回滚、API重启持久化三项](docs/D20_MANUAL_VERIFICATION.md)，本次不自动进入带练或登记学习完成。系统教学入口见[D20报告](docs/reports/DAY_20.md)和[学习笔记](docs/STUDY_NOTES.md#d20整合批次postgresql工单后端原d20d23)。
+2026-10-27用户亲自完成[创建/查询、受控回滚、API重启持久化三项](docs/D20_MANUAL_VERIFICATION.md)：201创建后API与psql查到相同工单；探针回滚无残留、连接归还；API进程56610→58981后原ID/时间保持，详见[手动验证记录](docs/evidence/D20_MANUAL_VERIFICATION_20261027.json)。用户确认已通过ChatGPT学习并能解释主要流程，阶段A/B均完成；本次收尾文档待用户提交，不自动开始D24。系统教学入口见[D20报告](docs/reports/DAY_20.md)和[学习笔记](docs/STUDY_NOTES.md#d20整合批次postgresql工单后端原d20d23)。

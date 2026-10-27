@@ -388,7 +388,7 @@ D18用户已确认通过ChatGPT学习、能够解释主流程，本次授权Code
 
 ## D20整合批次：PostgreSQL工单后端（原D20–D23）
 
-本批次代码和自动验收已完成，用户系统学习与[三个手动验证](D20_MANUAL_VERIFICATION.md)尚未确认。主入口为[D20日报](reports/DAY_20.md)，交ChatGPT做一次加长版讲解，不再按原四天重复教学/手测。
+本批次代码和自动验收已完成。2026-10-27用户亲自完成[三个手动验证](D20_MANUAL_VERIFICATION.md)，并确认通过ChatGPT学习、能够解释Session生命周期、三种模型职责及flush/commit/rollback主流程，阶段A/B均完成，见[手测记录](evidence/D20_MANUAL_VERIFICATION_20261027.json)。主入口为[D20日报](reports/DAY_20.md)，以下保留模块复习线索，不再按原四天重复教学/手测。
 
 ### 1. Engine、连接池、Connection与Session
 
@@ -424,4 +424,4 @@ flush只是把SQL送进当前事务，拿到ID不表示其他连接可见；comm
 
 [真实验收脚本](../scripts/postgres_smoke.py)在独立测试集群创建空随机库，运行迁移、真实Uvicorn HTTP和回滚，再结束首个API进程、启动不同PID并查同一工单，最后只清理自己的测试库。记录见[原始收据](evidence/D20_POSTGRES_SMOKE.json)；它证明PG存储跨API进程存在，不扩大成PG崩溃恢复或容灾。本地/Mock与36项真实PG测试分别记录，不用SQLite替代。
 
-交ChatGPT时，先讲一张工单的完整链，再定位三层模型和事务失败分支；用户理解后只做[三个高价值手动验证](D20_MANUAL_VERIFICATION.md)。D24等待本批次学习与手测完成后用户明确开启。
+本次用户观察到API返回201、详情200及psql一行对应相同ID/状态/时间；受控探针已flush但回滚后不可见、池checkedout为0；不同API进程读取相同已提交工单。用户已确认学习理解，无需新增手算或重复测试。本次未操作PG重启、清理工单或验证崩溃恢复；D24仍等待用户明确开启。

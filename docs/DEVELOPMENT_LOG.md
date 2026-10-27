@@ -1456,3 +1456,17 @@ HF_HUB_OFFLINE=1 .venv/bin/python -m scripts.postgres_smoke --local \
 本批次新增/修改的代码、配置、迁移、测试、原始收据与八项报告见[D20报告](reports/DAY_20.md)。227份原受保护非Markdown文件及旧冻结结果保持原字节，原D18/D19报告不改。用户系统学习与手动验证尚未确认，只交付[创建/查询、受控失败回滚、API重启持久化三个项目](D20_MANUAL_VERIFICATION.md)的准确命令、预期和限定ID清理方式，未自动开始带练。按当前授权审核相关文件后用一条提交同步origin/main，真实Git结果在最终会话填写；等待用户学习和明确要求，不开启D24。
 
 最终交付检查通过：40文件范围、23份Python语法树、9份Markdown的53张表/369处本地链接/15个锚点/46段bash语法、固定八项日报和仅三项手测；26份执行源码/依赖SHA及16份最终smoke源码SHA匹配，227份原受保护文件保持，原锁定包不变，D24–D34原表格行保持，旧日志仅追加。私密文件与数据受忽略规则保护，凭据模式、Git diff及新文件独立空白检查通过。提交前再次只读核对远端main仍为30fc9a8，无分歧；按授权只暂存本批次40文件，不包含.env或运行数据。
+
+## D20整合批次：用户学习与三项手动验证完成（2026-10-27）
+
+开发提交[7d78db860abcb7b31fa96d36a9849c3d03eb5824](https://github.com/yan-ye-dhy/project-copilot/commit/7d78db860abcb7b31fa96d36a9849c3d03eb5824)已推送并核对远端，阶段A完成；本次收尾开始时main/origin/main同指该提交、工作区干净。用户主动要求开始手动验证，按约定仅实施三个高价值项目，由用户亲自终端操作，Codex逐步指导并根据反馈核对，不记为助手代执行。
+
+用户启动业务postgres服务，输出显示postgres:17.11-bookworm、healthy、127.0.0.1:5433→5432及新project-copilot_postgres_data卷；显式迁移返回status=ok/migration=head。API首进程PID56610。POST /tickets返回201，工单ID为0e4f3559-4beb-4c2b-9cfe-b5ddd6ae869b、title为D20 手动验证、status=open、created_at/updated_at为2026-10-27T06:25:08.567833Z。详情GET返回200，容器内psql直接查询返回一行，UUID/标题/状态/UTC时间与API一致，创建与查询闭环通过。
+
+用户执行ticket_db rollback-check，真实探针ID为f0173a76-b92d-4303-82eb-9fb8f23ba64c；flushed_before_failure=true、visible_after_rollback=false、pool_checked_out_after=0，受控失败回滚通过。用户随后以新API进程PID58981启动同一应用，查询原工单返回200，ID/内容/时间保持，服务日志run_id=5c490c7a-a6c6-4c94-8486-669397c06c2d与路径对应。仅证明API重启后的持久化，本轮未操作PG重启、清理成功工单或验证崩溃恢复；最终API停止状态未反馈。
+
+用户另行确认已通过ChatGPT学习，能够解释Session生命周期、Schema/ORM/物理表区别以及flush/commit/rollback主流程，阶段B完成。三项结果据用户粘贴输出记录，Codex只读核对data/manual-d20/ticket.json与创建响应一致；见[独立手测记录](evidence/D20_MANUAL_VERIFICATION_20261027.json)。本轮未代发HTTP/SQL、重跑业务测试或调用模型，原1192 passed/1 skipped记录和自动验收收据保持。本次仅更新6份关联Markdown并新增1份记录，258份原受检非Markdown文件保持，原计划第10节之外及旧日志保留。
+
+本次收尾遵循默认Git分工，由用户亲自add/commit/push，当前待提交；既有开发推送不代表本次收尾已同步。D20整合批次阶段A/B均完成，实际31个主任务批次＋1弹性（32）及D24–D34编号保持，不自动开始D24。
+
+本次收尾检查通过：7文件范围正确；6份Markdown的围栏、52张表、372处本地链接、15个锚点及40段bash语法、日报八节、新记录JSON与独立空白检查通过。258份原受检非Markdown文件、26份已测源码/依赖与16份smoke源码SHA保持；计划第10节之外及旧日志保持，新增记录与本地响应一致。未执行Git暂存、提交或推送，等待用户按指导操作。
