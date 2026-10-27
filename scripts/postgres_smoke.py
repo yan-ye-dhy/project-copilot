@@ -115,7 +115,7 @@ def run(output):
                 upgrade(database)
                 upgrade(database)
                 check_model_drift(database)
-                report["migration"] = {"empty_database": True, "revision": "0001_tickets",
+                report["migration"] = {"empty_database": True, "revision": "0002_approvals",
                                        "second_upgrade_ok": True, "model_drift": False}
                 with database.transaction() as session:
                     report["postgresql_version"] = session.scalar(text("SHOW server_version"))

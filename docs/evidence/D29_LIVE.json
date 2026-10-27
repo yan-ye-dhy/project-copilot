@@ -1,0 +1,171 @@
+{
+  "status": "ok",
+  "executor": "Codex",
+  "calls": {
+    "chat": 2,
+    "embedding": 1
+  },
+  "automatic_retries": 0,
+  "database": "new isolated test database",
+  "actual_account_cost": null,
+  "source_sha256": {
+    "src/project_copilot/agent/graph.py": "c9021e858e72125c8c941328b8cdc1e7e5c5802c3ebf17753966250b9c4e8bd5",
+    "src/project_copilot/agent/service.py": "bd74e1a8fd45d89745c24b5c23e7ca546b6c2fbfd9518c90f95c3e3f0d51c555",
+    "src/project_copilot/agent/proposals.py": "bcdee6a953a55826cbfc9906e066ff360b85cda9b09f018813eae61fd24d3436",
+    "src/project_copilot/api/actions.py": "65bcf2a473fd47daf34238614df8a4f49b50c8cb8249a78c5ce3edfa87e5774f",
+    "src/project_copilot/services/approvals.py": "1d70d77195ee15fa795d1eb449935be993568b8679543336528d3af81dbbb6ee",
+    "src/project_copilot/rag/final_retrieval.py": "21310d52ba686e411d923312e8f8b8589706b28379e903435a2a45ca853e0d9b",
+    "migrations/versions/0002_approvals.py": "80c7267dd89c502dc081edeaa7d3f288cc2546e6149318335096f3127fb2dcf1"
+  },
+  "agent": {
+    "run_id": "40824a37-ee48-45a8-9692-b94a204e0f72",
+    "status": "pending_confirmation",
+    "answer": "已生成待确认工单提案；请查看预览并明确确认或拒绝。",
+    "sources": [
+      {
+        "id": "ticket:114eb35c-cf17-4bc6-a881-71c6928d9640",
+        "kind": "ticket",
+        "data": {
+          "id": "114eb35c-cf17-4bc6-a881-71c6928d9640",
+          "title": "蓝鹤既有工单",
+          "description": "蓝鹤测试环境已有任务",
+          "status": "open",
+          "created_at": "2026-10-27T09:36:11.832341Z",
+          "updated_at": "2026-10-27T09:36:11.832341Z"
+        }
+      },
+      {
+        "id": "knowledge:958835e5-2c81-594b-aacb-47cd444903a3",
+        "kind": "knowledge",
+        "data": {
+          "text": "D24最终检索验收：蓝鹤协议的唯一识别码是 TICKET-ALPHA-739，知识文档只用于隔离测试。",
+          "metadata": {
+            "document_id": "6be53255-1f67-502c-8e7c-c364afa71cfc",
+            "content_hash": "803bf5b31cd24e96e15dc5ef4de4f57bec7d00bb2e363f75071753a38219ab21",
+            "source_name": "d24-final-test.txt",
+            "page": null,
+            "chunk_id": "958835e5-2c81-594b-aacb-47cd444903a3",
+            "chunk_index": 0,
+            "index_version": "split-v1-bccb93671dcace12f58d366eb4ec6f530be20573f8b948a17484a0a00c989e78"
+          },
+          "score": 7.24609375
+        }
+      },
+      {
+        "id": "proposal:994fbeef-ca46-4078-80b1-2c413428bc4a",
+        "kind": "proposal",
+        "data": {
+          "action_id": "994fbeef-ca46-4078-80b1-2c413428bc4a",
+          "context_id": "98346c80-6f9e-461f-9828-0926c774e77e",
+          "status": "pending",
+          "payload": {
+            "title": "蓝鹤验收",
+            "description": "需要排查蓝鹤协议。关联既有工单：114eb35c-cf17-4bc6-a881-71c6928d9640（蓝鹤既有工单，状态 open）。知识库检索到的蓝鹤协议识别码为 TICKET-ALPHA-739（来源：d24-final-test.txt）。"
+          },
+          "payload_fingerprint": "5a02b866e242000a00788bbe342180a8350e31a4fc1161d10d4bdfa235ff2047",
+          "created_at": "2026-10-27T09:36:34.134221Z",
+          "expires_at": "2026-10-27T09:51:34.136647Z",
+          "ticket_id": null
+        }
+      }
+    ],
+    "events": [
+      {
+        "tool_call_id": "call_00_bvW6ehF7I6aRMXEQ5Mhc1517",
+        "name": "search_tickets",
+        "status": "ok",
+        "failure_type": null,
+        "elapsed_ms": 9.735657000419451
+      },
+      {
+        "tool_call_id": "call_01_ecnHQMYY4Sgr1xeB9jU90898",
+        "name": "search_knowledge",
+        "status": "ok",
+        "failure_type": null,
+        "elapsed_ms": 19601.285320000898
+      },
+      {
+        "tool_call_id": "call_00_zyNbSxPqPt5goqM80pPg4764",
+        "name": "propose_ticket",
+        "status": "ok",
+        "failure_type": null,
+        "elapsed_ms": 11.343755999405403
+      }
+    ],
+    "model_calls": 2,
+    "tool_calls": 3,
+    "tool_executions": 3,
+    "usage": {
+      "prompt_cache_miss_tokens": 1750,
+      "prompt_cache_hit_tokens": 1024,
+      "total_tokens": 2973,
+      "prompt_tokens": 2774,
+      "completion_tokens": 199
+    },
+    "model_events": [
+      {
+        "step": 1,
+        "status": "ok",
+        "model": "deepseek-flash",
+        "usage": {
+          "prompt_tokens": 1010,
+          "completion_tokens": 73,
+          "total_tokens": 1083,
+          "prompt_cache_hit_tokens": 0,
+          "prompt_cache_miss_tokens": 1010
+        },
+        "elapsed_ms": 1178.3033259998774
+      },
+      {
+        "step": 2,
+        "status": "ok",
+        "model": "deepseek-flash",
+        "usage": {
+          "prompt_tokens": 1764,
+          "completion_tokens": 126,
+          "total_tokens": 1890,
+          "prompt_cache_hit_tokens": 1024,
+          "prompt_cache_miss_tokens": 740
+        },
+        "elapsed_ms": 1393.015623001702
+      }
+    ],
+    "elapsed_ms": 22204.890987002727,
+    "failure_type": null,
+    "trace_exported": false
+  },
+  "before_confirmation": {
+    "existing_ticket_id": "114eb35c-cf17-4bc6-a881-71c6928d9640",
+    "ticket_count": 1,
+    "proposal_count": 1
+  },
+  "after_confirmation": {
+    "action": {
+      "action_id": "994fbeef-ca46-4078-80b1-2c413428bc4a",
+      "context_id": "98346c80-6f9e-461f-9828-0926c774e77e",
+      "status": "completed",
+      "payload": {
+        "title": "蓝鹤验收",
+        "description": "需要排查蓝鹤协议。关联既有工单：114eb35c-cf17-4bc6-a881-71c6928d9640（蓝鹤既有工单，状态 open）。知识库检索到的蓝鹤协议识别码为 TICKET-ALPHA-739（来源：d24-final-test.txt）。"
+      },
+      "payload_fingerprint": "5a02b866e242000a00788bbe342180a8350e31a4fc1161d10d4bdfa235ff2047",
+      "created_at": "2026-10-27T09:36:34.134221Z",
+      "expires_at": "2026-10-27T09:51:34.136647Z",
+      "ticket_id": "21a8f869-0812-4d27-8bdc-5f8d0a1735f3"
+    },
+    "ticket": {
+      "id": "21a8f869-0812-4d27-8bdc-5f8d0a1735f3",
+      "title": "蓝鹤验收",
+      "description": "需要排查蓝鹤协议。关联既有工单：114eb35c-cf17-4bc6-a881-71c6928d9640（蓝鹤既有工单，状态 open）。知识库检索到的蓝鹤协议识别码为 TICKET-ALPHA-739（来源：d24-final-test.txt）。",
+      "status": "open",
+      "created_at": "2026-10-27T09:36:34.507917Z",
+      "updated_at": "2026-10-27T09:36:34.507917Z"
+    },
+    "repeat_same_id": true,
+    "pending_survived_application_restart": true
+  },
+  "ticket_survived_application_restart": true,
+  "hybrid": "shared final retriever; real Qdrant and CUDA model",
+  "embedding_usage": "not collected",
+  "retained_qdrant_collection": "pc_test_final_live_902ed2ba74124fbe9b1c22982644cbfa"
+}

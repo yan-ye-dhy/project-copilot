@@ -373,14 +373,23 @@ PROJECT_COPILOT_DATABASE_URL='postgresql+psycopg://project_copilot:local-dev-onl
 
 `POST /agent/ask`接收`question`及可选`history`（仅user/assistant文本、最多8条/总10000字），返回真实来源、工具events、run_id、模型/工具次数、耗时及可用usage。LangGraph编译图按model→tools→model条件循环，最多4次模型决策、6个工具尝试预算；D24.1调整默认单工具240秒、模型30秒、总300秒，为本地重排首次加载/预热保留预算。每个可识别调用ID有配对ToolMessage；HTTP200仍须检查运行status。知识检索实际失败时显式failed，不伪装为无证据。
 
-工具白名单只有get_ticket、search_tickets、search_knowledge；复用TicketService及统一最终检索（DenseRetriever是其中一条分支），PG事务声明READ ONLY。客户端不能提供工具结果、确认权限或任意SQL/HTTP工具；Agent尚无写入能力。来源id由真实后台结果构成，最终合同校验来源归属，不能代替语义事实审核。history不是服务端持久会话。
+D24只读模式工具白名单为get_ticket、search_tickets、search_knowledge；复用TicketService及统一最终检索（DenseRetriever是其中一条分支），PG事务声明READ ONLY。客户端不能提供工具结果、确认权限或任意SQL/HTTP工具；Agent只读工具无写入能力；D29额外提供受控提案能力。来源id由真实后台结果构成，最终合同校验来源归属，不能代替语义事实审核。history不是服务端持久会话。
 
 完整1336项通过、143项本批相关回归通过；7项新用例使用真实存储，65项SDK MockTransport、60项受控图、10项受控API与本地/真实后台测试分开记录。真实模型三路径实际6次DeepSeek＋3次Embedding，零重试；支付账单未采集。计量边界修复后用原模型消息和真实服务隔离快照回放，不重付费；见[批次审计](docs/evidence/D24_BATCH_AUDIT.json)。工具线程超时后同步操作仍受底层超时限制并最终关闭，Phoenix尚未导出。
 
-学习后仅执行[三个高价值手测](docs/D24_MANUAL_VERIFICATION.md)，本次不代用户完成学习/手测。用户随后插入D24.1最终检索集成，当前26主批次＋1弹性共27；D29须在D24.1验收并推送后重新实施，D32–D34未开始。
+学习后仅执行[三个高价值手测](docs/D24_MANUAL_VERIFICATION.md)，本次不代用户完成学习/手测。用户随后插入D24.1最终检索集成，当前26主批次＋1弹性共27；D24.1已验收推送，D29整合批次已实施；D32–D34未开始。
 
 ## D24.1：统一最终Hybrid＋Rerank
 
 `/rag/ask`与`/agent/ask`的`search_knowledge`共用[最终检索服务](src/project_copilot/rag/final_retrieval.py)：Dense 10＋BM25 10→RRF c=60取10→本地固定BGE重排取5，embedding-3/2048维、750/150。BM25快照与成功清单绑定，跨进程文件锁保护入库/查询，完整校验临时快照后原子发布；失败后明确报错或重建，不回退单路Dense。
 
 默认CUDA float16、batch 2、512 tokens、固定revision本地缓存；同一进程首次加载并预热、后续复用，超时实例失败关闭。显式CPU需同时配置cpu/float32并准备CPU依赖，不在GPU失败时自动切换。多进程各有模型显存，文件锁要求支持flock/原子rename的共享清单目录；Python线程等待超时不能强杀仍在执行的CUDA工作。完整数据流、边界和运行配置见[架构说明](docs/ARCHITECTURE.md)，学习后执行[三个手测](docs/D24_1_MANUAL_VERIFICATION.md)。
+
+
+## D29：受控工单提案与确认
+
+先`POST /agent/contexts`创建24小时上下文凭据；仅首次返回令牌，保存并保护好它。`POST /agent/ask`带`X-Copilot-Context-ID`与`X-Copilot-Context-Token`时，可使用`propose_ticket`保存15分钟内待确认预览；只有明确`POST /actions/{id}/confirm`并携带相同凭据和预览指纹才能创建真实工单，`reject`拒绝，`GET /actions/{id}`查看。普通聊天确认不会执行工单写入；重复确认同一action返回相同ticket_id。
+
+迁移增加不可变提案、PostgreSQL行锁和工单唯一创建键；模型无法调用确认工具。数据库完成态与实际工单在同一事务提交，过期、拒绝、上下文或指纹不符不创建。上下文令牌是局部bearer能力，不等于完整身份/租户授权；不同提案不去重、聊天历史不持久化。更多信息见[D29报告](docs/reports/DAY_29.md)、[学习后手测](docs/D29_MANUAL_VERIFICATION.md)及[真实PG证据](docs/evidence/D29_POSTGRES_CONCURRENCY.json)。用户学习和手测尚未进行，不自动开始D32。
+
+当前保留的D20 `POST /tickets`是本地开发直建接口，本身没有身份认证，也不经过D29提案确认。D29的确认保障适用于Agent受控创建路径；如果部署到不可信网络，必须先为包括该旧接口在内的所有写接口增加真实身份认证、授权及网络隔离，不能将本地bearer上下文冒称完整安全边界。

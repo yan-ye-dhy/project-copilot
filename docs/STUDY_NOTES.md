@@ -443,3 +443,8 @@ MCP作为独立知识补充：[官方架构](https://modelcontextprotocol.io/doc
 用户学习尚待确认。沿[架构说明](ARCHITECTURE.md)理解两路Top10、RRF 60、固定本地CUDA BGE重排Top5；比较原文/metadata、RRF分数与logit，不将分数解释为可信度。重点分析完成清单与BM25快照的版本绑定、共享文件锁、验证临时文件后原子替换，以及上传失败重试为什么不返回旧快照。
 
 同一进程首次加载/预热GPU模型，后续请求复用；多进程各自占显存。超时停止等待不杀CUDA线程，服务关闭等待已运行任务，GPU失败不自动切CPU或Dense。RAG与Agent共用同一FinalRetriever；空清单与检索异常分别是证据不足和显式失败。用户学习后可主动进行[三个手测](D24_1_MANUAL_VERIFICATION.md)，自动验收不计为用户操作。
+
+
+## D29整合批次：受控提案、行锁与幂等
+
+从上下文凭据和Agent `propose_ticket`追踪到pending预览，确认前没有新工单；再追踪明确确认的指纹验证、`SELECT FOR UPDATE`、过期判断、唯一创建键、flush与单事务提交。对照拒绝/过期终态、提交失败回滚和重复/并发确认，注意模型消息及聊天“确认”不能授权数据库写入；上下文bearer能力不是用户登录，不能代表多租户权限。结合[D29报告](reports/DAY_29.md)、[架构图](ARCHITECTURE.md)和[实际数据库证据](evidence/D29_POSTGRES_CONCURRENCY.json)教学。用户学习状态尚未确认。

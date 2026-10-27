@@ -28,8 +28,8 @@ class TicketService:
     def __init__(self, session: Session):
         self.session = session
 
-    def create(self, payload: TicketCreate) -> TicketRead:
-        ticket = Ticket(title=payload.title, description=payload.description)
+    def create(self, payload: TicketCreate, *, creation_key: UUID | None = None) -> TicketRead:
+        ticket = Ticket(title=payload.title, description=payload.description, creation_key=creation_key)
         self.session.add(ticket)
         self.session.flush()  # INSERT ... RETURNING: actual ID/status/timestamps from PostgreSQL.
         return TicketRead.model_validate(ticket)

@@ -16,16 +16,16 @@ def test_empty_postgres_migrates_to_model_and_upgrade_is_repeatable(postgres_dat
         assert session.scalar(text("SELECT current_database()")).startswith("pc_test_d20_")
     upgrade(db)
     upgrade(db)
-    assert set(inspect(db.engine).get_table_names()) == {"alembic_version", "tickets"}
+    assert set(inspect(db.engine).get_table_names()) == {"alembic_version", "tickets", "agent_contexts", "pending_actions"}
     check_model_drift(db)
     columns = {c["name"]: c for c in inspect(db.engine).get_columns("tickets")}
-    assert set(columns) == {"id", "title", "description", "status", "created_at", "updated_at"}
-    assert all(not col["nullable"] for col in columns.values())
+    assert set(columns) == {"id", "title", "description", "status", "created_at", "updated_at", "creation_key"}
+    assert all(not col["nullable"] for name, col in columns.items() if name != "creation_key") and columns["creation_key"]["nullable"]
     assert columns["title"]["type"].length == 200
     assert columns["created_at"]["type"].timezone is True
     assert "gen_random_uuid" in columns["id"]["default"]
     with db.transaction() as session:
-        assert session.scalar(text("SELECT version_num FROM alembic_version")) == "0001_tickets"
+        assert session.scalar(text("SELECT version_num FROM alembic_version")) == "0002_approvals"
     assert db.engine.pool.checkedout() == 0
 
 

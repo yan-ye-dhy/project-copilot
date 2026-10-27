@@ -81,5 +81,5 @@ def test_alembic_can_generate_a_followup_revision_in_an_isolated_copy(tmp_path):
     generated = command.revision(config, message="local template probe", rev_id="local_probe")
     content = Path(generated.path).read_text()
     ast.parse(content)
-    assert generated.down_revision == "0001_tickets"
+    assert generated.down_revision == "0002_approvals"
     assert "local template probe" in content

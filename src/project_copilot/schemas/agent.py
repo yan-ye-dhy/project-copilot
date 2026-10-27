@@ -76,7 +76,7 @@ class AgentSource(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     id: str = Field(strict=True, min_length=1, max_length=100)
-    kind: Literal["ticket", "knowledge"]
+    kind: Literal["ticket", "knowledge", "proposal"]
     data: dict[str, Any]
 
     @model_validator(mode="after")
@@ -100,7 +100,7 @@ class AgentRun(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     run_id: str
-    status: Literal["answered", "insufficient_evidence", "failed", "budget_exhausted"]
+    status: Literal["answered", "insufficient_evidence", "failed", "budget_exhausted", "pending_confirmation"]
     answer: str
     sources: list[AgentSource]
     events: list[ToolEvent]

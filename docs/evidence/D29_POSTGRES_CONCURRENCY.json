@@ -1,0 +1,36 @@
+{
+  "status": "ok",
+  "executor": "Codex",
+  "postgres": "real isolated test database",
+  "confirm": {
+    "requests": 8,
+    "action_id": "916897cc-c2e7-49a1-bf43-c354a6626ef2",
+    "unique_ticket_ids": 1,
+    "ticket_id": "42fc33b9-f02b-4d99-a5d7-11a309185130",
+    "database_count": 1
+  },
+  "confirm_reject_races": [
+    {
+      "action_id": "a8ba3d0c-9fc5-41c3-83f6-62019c722a04",
+      "status": "cancelled",
+      "ticket_count": 0
+    },
+    {
+      "action_id": "c804d81c-7d78-4b02-b9ba-1a01d868973d",
+      "status": "cancelled",
+      "ticket_count": 0
+    },
+    {
+      "action_id": "ff90d17e-17c0-461d-8405-7d67fd103a0d",
+      "status": "completed",
+      "ticket_count": 1
+    }
+  ],
+  "failure_after_flush": {
+    "action_id": "a0442588-350f-4eaf-940f-5ac37d15d05b",
+    "status_after_rollback": "pending",
+    "ticket_count": 0
+  },
+  "checked_out_after": 0,
+  "test_database_disposition": "only freshly created random test database dropped"
+}

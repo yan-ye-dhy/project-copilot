@@ -24,3 +24,21 @@ flowchart LR
 PostgreSQL工单API经Pydantic→Service→独立Session/事务→数据库，数据库生成真实ID和时间；查询使用绑定参数。LangGraph按AIMessage.tool_calls→后端白名单/Schema→真实只读服务→匹配tool_call_id的ToolMessage循环，受模型、工具、上下文和时间预算限制。最终来源由后端构建，合法来源不等于模型每句话都已得到事实支持。请求history只在本次使用，未实现持久聊天会话。
 
 D29受控写入功能须在本次最终检索验收及独立推送后重新实现；仅有模型文本不能成为写入权限。D32部署和D33 Phoenix Trace仍待执行，当前`trace_exported=false`。
+
+
+## 工单确认与事务
+
+```mermaid
+flowchart LR
+    U[用户] --> A[Agent 只读查询与知识检索]
+    A --> P[后端生成 pending 提案]
+    P --> V[预览与上下文凭据]
+    V --> C[用户明确确认或拒绝]
+    C --> L[PostgreSQL 行锁和状态校验]
+    L --> T[同一事务创建工单并记录 ticket_id]
+    L --> R[拒绝或过期终态]
+```
+
+上下文随机令牌只保存哈希、作为有限范围的bearer凭据，尚无用户登录和租户授权。提案内容和终态受数据库触发器保护，确认事务以action ID唯一创建键保证重复和并发确认不重复写工单；检索仍使用统一FinalRetriever，模型不能访问确认工具。请求异常或提交失败时事务回滚；无法强杀的Agent工具线程在极窄取消竞争下可能留下未确认提案，但不能创建工单。
+
+当前保留的D20 `POST /tickets`是本地开发直建接口，本身没有身份认证，也不经过D29提案确认。D29的确认保障适用于Agent受控创建路径；如果部署到不可信网络，必须先为包括该旧接口在内的所有写接口增加真实身份认证、授权及网络隔离，不能将本地bearer上下文冒称完整安全边界。

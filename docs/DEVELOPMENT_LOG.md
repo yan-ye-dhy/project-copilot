@@ -1494,3 +1494,14 @@ HF_HUB_OFFLINE=1 .venv/bin/python -m scripts.postgres_smoke --local \
 完整PG/Qdrant/GPU回归最终1348 passed/114.07秒、0失败0跳过；此前完整回归3项失败分别为锁文件进入历史封存目录及内存Qdrant清理误拦，修复后对应42项通过并全量重跑通过；最终单独GPU弱引用复用/释放测试1 passed，原候选排名[3,4,2,1,5]。真实上传、RAG、Agent在实际ASGI应用及隔离真实Qdrant/embedding-3/DeepSeek/RTX4060上成功，新进程加载同一快照inode，GPU模型在请求间复用；三轮开发联调总计9次Embedding＋9次DeepSeek、零自动重试。DeepSeek输入7386/输出474 tokens，高峰价估算约US$0.00124，实际账单与Embedding tokens未采集。保留全部新建测试集合，不删除已有Qdrant数据；129份D17及其他冻结评测文件与D24基线原字节一致。详见[D24.1报告](reports/DAY_24_1.md)及[验收审计](evidence/D24_1_VALIDATION.json)。
 
 独立Git提交/推送完成并核对前不实施新D29；两个批次学习及手动验证均需用户主动开启，不自动开始D32。计划现为26主批次＋1弹性共27，原D24–D31映射与D32–D35编号保留。
+
+
+## D29整合批次：受控工单创建（2026-10-27）
+
+D24.1提交338fdf8fd76313cfe5780332d6ca9ea816f9ac32推送后，基于新架构重新实施D29–D31，不直接恢复旧备份。新增上下文能力、不可变提案、预览/明确确认/拒绝和Alembic迁移；确认行锁、唯一创建键和同事务回写使同action重复或并发确认仅产生一张真实工单。只读PG和统一Hybrid＋Rerank保持，模型只能提案。
+
+完整测试1360 passed、0失败0跳过；追加旧库升级、提交失败回滚、模型越权、HTTP提交失败和上下文过期后定向126 passed。隔离PG实际8并发确认产生一个ticket_id、三轮确认/拒绝竞争与flush失败回滚详见[数据库记录](evidence/D29_POSTGRES_CONCURRENCY.json)。真实DeepSeek＋Embedding＋Qdrant＋CUDA＋隔离PG联调为2次对话和1次Embedding，模型提出的提案确认前不创建工单，重启ASGI应用后确认及重放同ID，详见[联调记录](evidence/D29_LIVE.json)；实际账单及Embedding token未采集。此前旧迁移测试固定版本断言失败后已更新并重跑通过。
+
+上下文令牌不是完整用户认证或租户隔离；工具线程超时后可能在极窄竞争中留下pending提案但不能创建工单。随机隔离测试数据库按辅助程序清理，没有删除原数据库、卷、Qdrant数据或模型缓存。当前按授权独立审核Git并推送，用户学习与[手测](D29_MANUAL_VERIFICATION.md)尚未确认；不自动开始D32。
+
+当前保留的D20 `POST /tickets`是本地开发直建接口，本身没有身份认证，也不经过D29提案确认。D29的确认保障适用于Agent受控创建路径；如果部署到不可信网络，必须先为包括该旧接口在内的所有写接口增加真实身份认证、授权及网络隔离，不能将本地bearer上下文冒称完整安全边界。
