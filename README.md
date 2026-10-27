@@ -1,6 +1,6 @@
 # Project Copilot
 
-基于RAG与LangGraph的研发知识及工单协作智能体。D1–D19已按各日实际学习/验证记录收尾；D20整合批次覆盖原D20–D23，2026-10-27用户亲自完成三项手测并确认ChatGPT学习理解，阶段A/B均完成，见[D20报告](docs/reports/DAY_20.md)。当前问答API仍Dense/750/150和rag-answer-v1；工单API独立，不调用模型，D24尚未开始。
+基于RAG与LangGraph的研发知识及工单协作智能体。D20整合批次阶段A/B均完成；D24整合批次（原D24–D28）的只读Agent、真实服务/模型与回归验收已完成，见[D24报告](docs/reports/DAY_24.md)。本次按授权先独立提交推送，再实施D29受控创建批次。原问答API仍Dense/750/150和rag-answer-v1；不因批次合并减少安全验证，用户学习及少量手测分别记录。
 
 协作流程见 [长期协作规则](docs/COLLABORATION_RULES.md)：Codex开发、自动验证、提供报告并指导Git操作；用户亲自提交和推送GitHub，随后通过ChatGPT学习代码/架构，学习后主动要求Codex开始手动测试。以下命令是自助运行参考，Codex仅在用户要求后单步带练。
 
@@ -368,3 +368,13 @@ PROJECT_COPILOT_DATABASE_URL='postgresql+psycopg://project_copilot:local-dev-onl
 最终全量1192 passed、1 skipped（原Qdrant opt-in），其中本批次87项、36项真实PG。真实PG17.11的迁移/约束/API/回滚与8次Uvicorn HTTP验收通过，两个不同API进程查到同一已提交工单；自己的测试库及进程已清理，模型调用0。证据见[PG原始收据](docs/evidence/D20_POSTGRES_SMOKE.json)和[批次审计](docs/evidence/D20_BATCH_AUDIT.json)。
 
 2026-10-27用户亲自完成[创建/查询、受控回滚、API重启持久化三项](docs/D20_MANUAL_VERIFICATION.md)：201创建后API与psql查到相同工单；探针回滚无残留、连接归还；API进程56610→58981后原ID/时间保持，详见[手动验证记录](docs/evidence/D20_MANUAL_VERIFICATION_20261027.json)。用户确认已通过ChatGPT学习并能解释主要流程，阶段A/B均完成；本次收尾文档待用户提交，不自动开始D24。系统教学入口见[D20报告](docs/reports/DAY_20.md)和[学习笔记](docs/STUDY_NOTES.md#d20整合批次postgresql工单后端原d20d23)。
+
+## D24整合批次：只读业务Agent（原D24–D28）
+
+`POST /agent/ask`接收`question`及可选`history`（仅user/assistant文本、最多8条/总10000字），返回真实来源、工具events、run_id、模型/工具次数、耗时及可用usage。LangGraph编译图按model→tools→model条件循环，最多4次模型决策、6个工具尝试预算，单工具10秒、模型30秒、总120秒；每个可识别调用ID有配对ToolMessage，错误/预算返回明确运行状态。HTTP200表示运行结果已返回，仍须检查`status`是否answered，不能把failed当成功。
+
+工具白名单只有get_ticket、search_tickets、search_knowledge；复用TicketService及DenseRetriever，PG事务声明READ ONLY。客户端不能提供工具结果、确认权限或任意SQL/HTTP工具；Agent尚无写入能力。来源id由真实后台结果构成，最终合同校验来源归属，不能代替语义事实审核。history不是服务端持久会话。
+
+完整1336项通过、143项本批相关回归通过；7项新用例使用真实存储，65项SDK MockTransport、60项受控图、10项受控API与本地/真实后台测试分开记录。真实模型三路径实际6次DeepSeek＋3次Embedding，零重试；支付账单未采集。计量边界修复后用原模型消息和真实服务隔离快照回放，不重付费；见[批次审计](docs/evidence/D24_BATCH_AUDIT.json)。工具线程超时后同步操作仍受底层超时限制并最终关闭，Phoenix尚未导出。
+
+学习后仅执行[三个高价值手测](docs/D24_MANUAL_VERIFICATION.md)，本次不代用户完成学习/手测。当前25主批次＋1弹性共26；D29须在本批验收通过并推送后实施，D32–D34未开始。

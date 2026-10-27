@@ -183,3 +183,9 @@
 3. **Pydantic与ORM、迁移是否重复？** 传输Schema约束输入及字段权限；ORM映射实例；迁移在PG落下物理约束和版本。绕过API的直接SQL也要被长度、空白、状态及非空限制拒绝；空库升级/重复升级/无模型漂移均有真实PG验证。API中id/status/时间不由客户端或LLM决定。
 4. **如何证明回滚与持久化真实发生？** flush后抛错再用新Session确认零残留，成功工单保持；提交失败验证计数不增加；关闭首API进程后另一个PID查同ID/时间。证据不是Mock commit次数或HTTP200，测试只清理刚创建的随机库、不触原业务卷。
 5. **查询与错误怎么控制？** SQLAlchemy绑定参数，ILIKE自动转义字面%/_，status/limit/offset校验；404/422/503与未知500按责任区分，日志不打印SQL参数/凭据并保留run_id。本批次尚无状态更新、幂等键或Agent确认，不能借本批次宣称解决并发重复创建。
+
+## D24整合批次：只读Agent与实际证据
+
+结合[D24报告](reports/DAY_24.md)复习：为什么State要用消息reducer，条件路由怎样结束循环；AIMessage工具调用为何必须由后端校验并以相同tool_call_id回传；工具白名单和PG READ ONLY分别保护什么；为何最终来源合法不等于语义正确；真实模型/受控图/真实存储与Mock分别证明什么。
+
+执行预算由后端决定，attempt与execution分开，超时不等于底层线程瞬间终止；usage缺项不能造零。当前真实模型三路径有记录，但组合查询是同轮多工具，不能包装成模型先看到空结果才重新规划；失败、资源边界及trace_exported=false都应在项目表达中保留。MCP Client/Server与当前模型Tool Calling的职责不同，未声称本批已部署MCP或多用户权限系统。

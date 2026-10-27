@@ -59,6 +59,12 @@ class Settings(BaseSettings):
     database_connect_timeout_seconds: int = Field(default=5, ge=1, le=30)
     database_pool_timeout_seconds: int = Field(default=5, ge=1, le=30)
 
+    agent_max_model_calls: int = Field(default=4, ge=1, le=8)
+    agent_max_tool_calls: int = Field(default=6, ge=1, le=12)
+    agent_tool_timeout_seconds: float = Field(default=10.0, gt=0, le=30, allow_inf_nan=False)
+    agent_model_timeout_seconds: float = Field(default=30.0, gt=0, le=120, allow_inf_nan=False)
+    agent_total_timeout_seconds: float = Field(default=120.0, gt=0, le=300, allow_inf_nan=False)
+
     @field_validator("database_url")
     @classmethod
     def validate_database_url(cls, value: SecretStr | None) -> SecretStr | None:

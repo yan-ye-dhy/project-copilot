@@ -1,0 +1,396 @@
+{
+  "status": "ok",
+  "executor": "Codex/CLI user",
+  "mode": "scripted_model_real_services",
+  "base_commit": "ec781f7b7ef5ad183295f6717bc1c6af7140042c",
+  "source_sha256": {
+    "scripts/agent_smoke.py": "5788ff6d2e81bf4ea3337932bbfcae38f78e775a8405d91fa1ccf673aacb1b14",
+    "src/project_copilot/agent/__init__.py": "58ba0e8b82f26a2b626491531c43a708e656bb3193cc232015ec806eef7e9096",
+    "src/project_copilot/agent/backend.py": "64bc2436a0d0c9ccf4a75b3c8ca9abe8d51d52e329ff748731a901203781a578",
+    "src/project_copilot/agent/graph.py": "946ffce5dacc13298f03c5f64cf13c18112a2cb1d00b3205939a2be1504a472d",
+    "src/project_copilot/agent/service.py": "085c5fb7a479e96d67462275dceaf05841e6f0a482d416c044e7c1c4850cfb17",
+    "src/project_copilot/agent/state.py": "d700db2975a0ea1fab6459a992d9497d51422360dda10cb7dd1c31eb7840276e",
+    "src/project_copilot/agent/tools.py": "660d0d63c73c36486c4013e05c82aa8a38585fa2535fb2d7871fd566b12687b2",
+    "src/project_copilot/infrastructure/agent_model.py": "129fd8d4f9af59ab89b510558812acffb210225863ce490bcde3ab4f1103c538",
+    "src/project_copilot/schemas/agent.py": "1f8a918bebade30e025197e82a34ac9a0e0cf0d29f83f5fca94777d54f67a14c",
+    "uv.lock": "d6a5ee558161ce51428e2f7cd5fad38fa3fc1b08d8315125fdff56cf36f38dc7"
+  },
+  "automatic_retries": 0,
+  "actual_account_cost": null,
+  "external_chat_calls": 0,
+  "postgresql_version": "17.11 (Debian 17.11-1.pgdg12+2)",
+  "collection": "pc_test_d24_c9e3279d18ff4a719ec3f5c565804a01",
+  "ticket": {
+    "id": "f050314c-e78f-42a3-bfc4-090c86bbaf87",
+    "title": "D24上传故障",
+    "description": "上传6 MiB文件收到HTTP413；请核对大小限制。",
+    "status": "open",
+    "created_at": "2026-10-27T06:57:05.863139Z",
+    "updated_at": "2026-10-27T06:57:05.863139Z"
+  },
+  "runs": [
+    {
+      "path": "knowledge",
+      "question": "请使用search_knowledge查询上传文件大小上限及超限HTTP状态码，依据知识来源回答。",
+      "result": {
+        "run_id": "46921bef-35d8-4538-84bd-6db005a1c320",
+        "status": "answered",
+        "answer": "已核对真实工单及知识来源。",
+        "sources": [
+          {
+            "id": "knowledge:cc7104b5-d8ce-5d53-a329-f062b62acf98",
+            "kind": "knowledge",
+            "data": {
+              "text": "Project Copilot 上传文件大小上限为5 MiB。超过上限返回HTTP413，空文件返回HTTP422。\n",
+              "metadata": {
+                "document_id": "be1f3906-01ba-5d4a-9fe5-0df4ca509039",
+                "content_hash": "4228a354d1a979e833f09601872b1468d74fcf0b71f9f5c08c025018c17af281",
+                "source_name": "knowledge.txt",
+                "page": null,
+                "chunk_id": "cc7104b5-d8ce-5d53-a329-f062b62acf98",
+                "chunk_index": 0,
+                "index_version": "split-v1-bccb93671dcace12f58d366eb4ec6f530be20573f8b948a17484a0a00c989e78"
+              },
+              "score": 1.0
+            }
+          }
+        ],
+        "events": [
+          {
+            "tool_call_id": "call_566559de578e42d5b811c30de3d8cc9c",
+            "name": "search_knowledge",
+            "status": "ok",
+            "failure_type": null,
+            "elapsed_ms": 8.377262001886265
+          }
+        ],
+        "model_calls": 2,
+        "tool_calls": 1,
+        "tool_executions": 1,
+        "usage": null,
+        "model_events": [
+          {
+            "step": 1,
+            "status": "ok",
+            "model": null,
+            "usage": null,
+            "elapsed_ms": 1.038964997860603
+          },
+          {
+            "step": 2,
+            "status": "ok",
+            "model": null,
+            "usage": null,
+            "elapsed_ms": 0.6547080010932405
+          }
+        ],
+        "elapsed_ms": 15.985009998985333,
+        "failure_type": null,
+        "trace_exported": false
+      },
+      "decisions": [
+        {
+          "message_roles": [
+            "system",
+            "human"
+          ],
+          "tools": [
+            "get_ticket",
+            "search_tickets",
+            "search_knowledge"
+          ],
+          "content": "",
+          "tool_calls": [
+            {
+              "name": "search_knowledge",
+              "args": {
+                "query": "上传文件大小上限与HTTP413"
+              },
+              "id": "call_566559de578e42d5b811c30de3d8cc9c",
+              "type": "tool_call"
+            }
+          ],
+          "invalid_tool_calls": [],
+          "metadata": {}
+        },
+        {
+          "message_roles": [
+            "system",
+            "human",
+            "ai",
+            "tool"
+          ],
+          "tools": [
+            "get_ticket",
+            "search_tickets",
+            "search_knowledge"
+          ],
+          "content": "{\"status\": \"answered\", \"answer\": \"已核对真实工单及知识来源。\", \"source_ids\": [\"knowledge:cc7104b5-d8ce-5d53-a329-f062b62acf98\"]}",
+          "tool_calls": [],
+          "invalid_tool_calls": [],
+          "metadata": {}
+        }
+      ]
+    },
+    {
+      "path": "ticket",
+      "question": "请使用get_ticket查询工单f050314c-e78f-42a3-bfc4-090c86bbaf87并告诉我标题和状态，依据工单来源回答。",
+      "result": {
+        "run_id": "0d5f00d5-86cf-4d11-aa96-f7b6dc6937a7",
+        "status": "answered",
+        "answer": "已核对真实工单及知识来源。",
+        "sources": [
+          {
+            "id": "ticket:f050314c-e78f-42a3-bfc4-090c86bbaf87",
+            "kind": "ticket",
+            "data": {
+              "id": "f050314c-e78f-42a3-bfc4-090c86bbaf87",
+              "title": "D24上传故障",
+              "description": "上传6 MiB文件收到HTTP413；请核对大小限制。",
+              "status": "open",
+              "created_at": "2026-10-27T06:57:05.863139Z",
+              "updated_at": "2026-10-27T06:57:05.863139Z"
+            }
+          }
+        ],
+        "events": [
+          {
+            "tool_call_id": "call_df56a6a9f1854df2b1ff7c8989b05b4b",
+            "name": "get_ticket",
+            "status": "ok",
+            "failure_type": null,
+            "elapsed_ms": 5.046717000368517
+          }
+        ],
+        "model_calls": 2,
+        "tool_calls": 1,
+        "tool_executions": 1,
+        "usage": null,
+        "model_events": [
+          {
+            "step": 1,
+            "status": "ok",
+            "model": null,
+            "usage": null,
+            "elapsed_ms": 3.3380630011379253
+          },
+          {
+            "step": 2,
+            "status": "ok",
+            "model": null,
+            "usage": null,
+            "elapsed_ms": 0.6224649987416342
+          }
+        ],
+        "elapsed_ms": 11.158294997585472,
+        "failure_type": null,
+        "trace_exported": false
+      },
+      "decisions": [
+        {
+          "message_roles": [
+            "system",
+            "human"
+          ],
+          "tools": [
+            "get_ticket",
+            "search_tickets",
+            "search_knowledge"
+          ],
+          "content": "",
+          "tool_calls": [
+            {
+              "name": "get_ticket",
+              "args": {
+                "ticket_id": "f050314c-e78f-42a3-bfc4-090c86bbaf87"
+              },
+              "id": "call_df56a6a9f1854df2b1ff7c8989b05b4b",
+              "type": "tool_call"
+            }
+          ],
+          "invalid_tool_calls": [],
+          "metadata": {}
+        },
+        {
+          "message_roles": [
+            "system",
+            "human",
+            "ai",
+            "tool"
+          ],
+          "tools": [
+            "get_ticket",
+            "search_tickets",
+            "search_knowledge"
+          ],
+          "content": "{\"status\": \"answered\", \"answer\": \"已核对真实工单及知识来源。\", \"source_ids\": [\"ticket:f050314c-e78f-42a3-bfc4-090c86bbaf87\"]}",
+          "tool_calls": [],
+          "invalid_tool_calls": [],
+          "metadata": {}
+        }
+      ]
+    },
+    {
+      "path": "combined",
+      "question": "请先search_tickets搜索D24上传故障，再search_knowledge核对上传上限，结合工单与知识解释HTTP413；需要两类来源。工单IDf050314c-e78f-42a3-bfc4-090c86bbaf87。",
+      "result": {
+        "run_id": "7b9693a4-176f-4185-8ac8-77624c495452",
+        "status": "answered",
+        "answer": "已核对真实工单及知识来源。",
+        "sources": [
+          {
+            "id": "ticket:f050314c-e78f-42a3-bfc4-090c86bbaf87",
+            "kind": "ticket",
+            "data": {
+              "id": "f050314c-e78f-42a3-bfc4-090c86bbaf87",
+              "title": "D24上传故障",
+              "description": "上传6 MiB文件收到HTTP413；请核对大小限制。",
+              "status": "open",
+              "created_at": "2026-10-27T06:57:05.863139Z",
+              "updated_at": "2026-10-27T06:57:05.863139Z"
+            }
+          },
+          {
+            "id": "knowledge:cc7104b5-d8ce-5d53-a329-f062b62acf98",
+            "kind": "knowledge",
+            "data": {
+              "text": "Project Copilot 上传文件大小上限为5 MiB。超过上限返回HTTP413，空文件返回HTTP422。\n",
+              "metadata": {
+                "document_id": "be1f3906-01ba-5d4a-9fe5-0df4ca509039",
+                "content_hash": "4228a354d1a979e833f09601872b1468d74fcf0b71f9f5c08c025018c17af281",
+                "source_name": "knowledge.txt",
+                "page": null,
+                "chunk_id": "cc7104b5-d8ce-5d53-a329-f062b62acf98",
+                "chunk_index": 0,
+                "index_version": "split-v1-bccb93671dcace12f58d366eb4ec6f530be20573f8b948a17484a0a00c989e78"
+              },
+              "score": 1.0
+            }
+          }
+        ],
+        "events": [
+          {
+            "tool_call_id": "call_d7571755612a43d08800e67786e1ba77",
+            "name": "search_tickets",
+            "status": "ok",
+            "failure_type": null,
+            "elapsed_ms": 5.748423998738872
+          },
+          {
+            "tool_call_id": "call_107294d8013c4e6abfdcea7d14f860fe",
+            "name": "search_knowledge",
+            "status": "ok",
+            "failure_type": null,
+            "elapsed_ms": 7.369495997409103
+          }
+        ],
+        "model_calls": 3,
+        "tool_calls": 2,
+        "tool_executions": 2,
+        "usage": null,
+        "model_events": [
+          {
+            "step": 1,
+            "status": "ok",
+            "model": null,
+            "usage": null,
+            "elapsed_ms": 0.7343530014622957
+          },
+          {
+            "step": 2,
+            "status": "ok",
+            "model": null,
+            "usage": null,
+            "elapsed_ms": 1.1776690007536672
+          },
+          {
+            "step": 3,
+            "status": "ok",
+            "model": null,
+            "usage": null,
+            "elapsed_ms": 0.81110099927173
+          }
+        ],
+        "elapsed_ms": 18.981327000801684,
+        "failure_type": null,
+        "trace_exported": false
+      },
+      "decisions": [
+        {
+          "message_roles": [
+            "system",
+            "human"
+          ],
+          "tools": [
+            "get_ticket",
+            "search_tickets",
+            "search_knowledge"
+          ],
+          "content": "",
+          "tool_calls": [
+            {
+              "name": "search_tickets",
+              "args": {
+                "q": "D24上传故障",
+                "limit": 5
+              },
+              "id": "call_d7571755612a43d08800e67786e1ba77",
+              "type": "tool_call"
+            }
+          ],
+          "invalid_tool_calls": [],
+          "metadata": {}
+        },
+        {
+          "message_roles": [
+            "system",
+            "human",
+            "ai",
+            "tool"
+          ],
+          "tools": [
+            "get_ticket",
+            "search_tickets",
+            "search_knowledge"
+          ],
+          "content": "",
+          "tool_calls": [
+            {
+              "name": "search_knowledge",
+              "args": {
+                "query": "上传文件大小上限与HTTP413"
+              },
+              "id": "call_107294d8013c4e6abfdcea7d14f860fe",
+              "type": "tool_call"
+            }
+          ],
+          "invalid_tool_calls": [],
+          "metadata": {}
+        },
+        {
+          "message_roles": [
+            "system",
+            "human",
+            "ai",
+            "tool",
+            "ai",
+            "tool"
+          ],
+          "tools": [
+            "get_ticket",
+            "search_tickets",
+            "search_knowledge"
+          ],
+          "content": "{\"status\": \"answered\", \"answer\": \"已核对真实工单及知识来源。\", \"source_ids\": [\"ticket:f050314c-e78f-42a3-bfc4-090c86bbaf87\", \"knowledge:cc7104b5-d8ce-5d53-a329-f062b62acf98\"]}",
+          "tool_calls": [],
+          "invalid_tool_calls": [],
+          "metadata": {}
+        }
+      ]
+    }
+  ],
+  "external_embedding_calls": 0,
+  "ticket_count_after": 1,
+  "pool_checked_out_after": 0,
+  "owned_test_resources_cleaned": true
+}

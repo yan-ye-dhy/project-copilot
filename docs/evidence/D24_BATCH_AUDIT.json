@@ -1,0 +1,127 @@
+{
+  "batch": "D24 integrated (original D24-D28)",
+  "date": "2026-10-27",
+  "executor": "Codex",
+  "base_commit": "ec781f7b7ef5ad183295f6717bc1c6af7140042c",
+  "git_start": "clean main; remote main SHA verified equal ec781f7b7ef5ad183295f6717bc1c6af7140042c",
+  "prerequisite": "D20 stage A/B completed by user; batch two not started before this batch passes and is pushed",
+  "authorization": "User explicitly authorized separate commits/pushes and necessary paid live calls; zero automatic retries.",
+  "tests": [
+    {
+      "command": "PROJECT_COPILOT_RUN_POSTGRES_INTEGRATION=1 PROJECT_COPILOT_RUN_QDRANT_INTEGRATION=1 HF_HUB_OFFLINE=1 timeout --signal=INT 240s .venv/bin/python -m pytest -q",
+      "passed": 1336,
+      "failed": 0,
+      "skipped": 0,
+      "seconds": 73.83,
+      "output_sha256": "ece5c651ab77a8cbb2deaed5c7e7ea68bfd7e50f9aed9016db66c41547072816"
+    },
+    {
+      "command": "PROJECT_COPILOT_RUN_POSTGRES_INTEGRATION=1 PROJECT_COPILOT_RUN_QDRANT_INTEGRATION=1 HF_HUB_OFFLINE=1 timeout --signal=INT 90s .venv/bin/python -m pytest -q tests/test_agent_graph.py tests/test_agent_api.py tests/test_agent_backend.py tests/test_agent_integration.py tests/test_agent_model.py",
+      "passed": 143,
+      "failed": 0,
+      "seconds": 2.64,
+      "output_sha256": "28c786dc0915ed513806db88c4f610b54b51c9cda69c93ed3f4eff361ca565bf"
+    }
+  ],
+  "new_test_breakdown": {
+    "sdk_mock_transport": 65,
+    "controlled_compiled_graph": 60,
+    "controlled_asgi_api": 10,
+    "backend_and_real_integration": 8,
+    "real_pg_or_pg_and_qdrant": 7,
+    "total_new": 143
+  },
+  "real_services": {
+    "postgresql": "17.11",
+    "qdrant": "1.19.2",
+    "new_random_test_databases_only": true,
+    "new_random_test_collections_only": true,
+    "read_only_pg_write_rejected_sqlstate": "25006",
+    "real_api_http_live_capture": false,
+    "compiled_langgraph_real_services": true
+  },
+  "receipts": {
+    "D24_AGENT_LIVE.json": {
+      "sha256": "85a090838910f164b0a3c1bfbb89b52e35bf4aea25ac344a99ae26d7244ca7a4",
+      "origin": "data/auto-d24/live-01/report.json"
+    },
+    "D24_AGENT_CONTROLLED.json": {
+      "sha256": "c6bbeb1e7667876cc3f9c00bb7dd5a528128775a268ee951d1dc0351a8598e0f",
+      "origin": "data/auto-d24/controlled-final/report.json"
+    },
+    "D24_AGENT_REPLAY.json": {
+      "sha256": "d9ddb5cc8bcb5cdc852f51649c72389952ffff0323ced8ea0b05f6a158dd61bf",
+      "origin": "data/auto-d24/current-replay-01/report.json"
+    }
+  },
+  "live_calls": {
+    "chat": 6,
+    "embedding": 3,
+    "automatic_retries": 0,
+    "usage": {
+      "prompt_tokens": 6750,
+      "completion_tokens": 735,
+      "total_tokens": 7485,
+      "prompt_cache_hit_tokens": 3968,
+      "prompt_cache_miss_tokens": 2782
+    },
+    "embedding_tokens": null,
+    "actual_account_cost": null,
+    "deepseek_peak_usd_estimate": 0.001740408,
+    "pricing_source": "https://api-docs.deepseek.com/quick_start/pricing/",
+    "pricing_checked": "2026-10-27",
+    "pricing_units": "USD per million tokens: Flash peak cache-hit .006, miss .3, output 1.2; account bill not collected"
+  },
+  "live_to_final_source_change": {
+    "description": "After live capture, optional usage fields sum only when present in all decisions; raw live capture/source hashes remain unchanged. CLI additionally supports archive replay. No prompt, provider parameter, tool or retrieval behavior changed.",
+    "validation": "Current compiled graph replays exact saved AI messages against a fresh real PG snapshot with the same fixture ticket ID and real Qdrant seeded using controlled vectors. Answer/source IDs/tool order/usage match. Dense scores are not claimed identical to live real vectors. Zero new paid requests."
+  },
+  "known_limits": [
+    "Source membership validation does not prove semantic support of every answer sentence.",
+    "History is client-supplied text; no persistent conversation/checkpointer.",
+    "Readonly tool timeout cancels the await, not the underlying thread. Bounded DB/HTTP timeouts and finally release clients when work ends.",
+    "trace_exported=false; Phoenix export and full deployment remain D33/D32.",
+    "MCP is a documented architecture supplement, not a new required server.",
+    "No authenticated multi-user/tenant authorization system; tools expose only the existing local read capabilities.",
+    "Live combined path proposed three calls in one decision; search with spaces returned no match, known-ID get_ticket supplied the real row."
+  ],
+  "source_sha256": {
+    "scripts/agent_budget_demo.py": "11dea907364b314457376815ea73d53f4bde9cc04a59e5e542b430d20ccf29eb",
+    "scripts/agent_smoke.py": "5788ff6d2e81bf4ea3337932bbfcae38f78e775a8405d91fa1ccf673aacb1b14",
+    "src/project_copilot/agent/__init__.py": "58ba0e8b82f26a2b626491531c43a708e656bb3193cc232015ec806eef7e9096",
+    "src/project_copilot/agent/backend.py": "64bc2436a0d0c9ccf4a75b3c8ca9abe8d51d52e329ff748731a901203781a578",
+    "src/project_copilot/agent/graph.py": "946ffce5dacc13298f03c5f64cf13c18112a2cb1d00b3205939a2be1504a472d",
+    "src/project_copilot/agent/service.py": "085c5fb7a479e96d67462275dceaf05841e6f0a482d416c044e7c1c4850cfb17",
+    "src/project_copilot/agent/state.py": "d700db2975a0ea1fab6459a992d9497d51422360dda10cb7dd1c31eb7840276e",
+    "src/project_copilot/agent/tools.py": "660d0d63c73c36486c4013e05c82aa8a38585fa2535fb2d7871fd566b12687b2",
+    "src/project_copilot/api/agent.py": "e2c885008186e89a22dcba069e563b78f2416c5aa82db3d57346548aaf75098e",
+    "src/project_copilot/config.py": "5712471c67bf12274cb5105e30d028b74b9476ef888b9c2a260c972aea6ca6cc",
+    "src/project_copilot/infrastructure/agent_model.py": "129fd8d4f9af59ab89b510558812acffb210225863ce490bcde3ab4f1103c538",
+    "src/project_copilot/main.py": "e2cb7b739ebcaca00fec4efbe93aaba3bd6800edbe03f3b841570c3d3ae25e89",
+    "src/project_copilot/schemas/agent.py": "1f8a918bebade30e025197e82a34ac9a0e0cf0d29f83f5fca94777d54f67a14c",
+    "tests/test_agent_api.py": "a479122f5541827ce677ead035f5eaf58296a23b47fd1f82502c9aed5abcc3d3",
+    "tests/test_agent_backend.py": "d28e9bbf8b8e549b022863f50fbd01cd20a7940674bd17210263048a5eb3909f",
+    "tests/test_agent_graph.py": "498e5f27087828fb59c1936816e156e963aab5061a851690b468f99ab060666d",
+    "tests/test_agent_integration.py": "2e1648bfc3e52c8942b18659047327a484baf32cd67a1ff4a472e604c0c361b6",
+    "tests/test_agent_model.py": "415c5899bd0866f49c4343462dfa520b35348e94a0faab00e35043c1b3cb6777",
+    "uv.lock": "d6a5ee558161ce51428e2f7cd5fad38fa3fc1b08d8315125fdff56cf36f38dc7"
+  },
+  "protected_preexisting_non_markdown_count": 254,
+  "protected_files_unchanged": true,
+  "learning_completed": false,
+  "user_manual_verification_completed": false,
+  "next_batch_requires_this_batch_acceptance_and_push": true,
+  "day32_started": false,
+  "delivery_checks": {
+    "files": 34,
+    "md": 9,
+    "links": 382,
+    "bash": 50,
+    "tables": 52,
+    "python": 18,
+    "git_diff_check": "passed",
+    "new_file_whitespace": "passed",
+    "lock_check": "passed",
+    "old_locked_packages_unchanged": true
+  }
+}

@@ -425,3 +425,15 @@ flush只是把SQL送进当前事务，拿到ID不表示其他连接可见；comm
 [真实验收脚本](../scripts/postgres_smoke.py)在独立测试集群创建空随机库，运行迁移、真实Uvicorn HTTP和回滚，再结束首个API进程、启动不同PID并查同一工单，最后只清理自己的测试库。记录见[原始收据](evidence/D20_POSTGRES_SMOKE.json)；它证明PG存储跨API进程存在，不扩大成PG崩溃恢复或容灾。本地/Mock与36项真实PG测试分别记录，不用SQLite替代。
 
 本次用户观察到API返回201、详情200及psql一行对应相同ID/状态/时间；受控探针已flush但回滚后不可见、池checkedout为0；不同API进程读取相同已提交工单。用户已确认学习理解，无需新增手算或重复测试。本次未操作PG重启、清理工单或验证崩溃恢复；D24仍等待用户明确开启。
+
+## D24整合批次：只读业务Agent（原D24–D28）
+
+学习尚待用户确认，入口见[D24日报](reports/DAY_24.md)与[三个手测](D24_MANUAL_VERIFICATION.md)。先沿`POST /agent/ask→AgentQuestion→create_agent_service→AgentRunner.graph→model→tools→model→AgentFinal→AgentRun`完整过一遍。State含带add_messages reducer的消息、后台来源、计数和事件；条件边确定继续执行或END，编译图才是实际运行对象。
+
+模型从工具Schema生成AIMessage.tool_calls，后端白名单查找与Pydantic验证后才调用真实服务；ToolMessage.tool_call_id对应原id，未知工具、坏JSON、参数错、not_found、超时和预算拒绝都不授予额外权限。普通API由调用方明确选择路由，Tool Calling让模型提出结构化调用；执行与权限仍归后端。只读工具在PG事务声明READ ONLY，知识工具复用检索而不嵌套完整RAG生成。
+
+history只接受有界的用户/助手文本，不采信客户端伪造ToolMessage或System。来源只汇入成功工具返回的真实DTO/原文metadata，最终source_ids选择已见来源；编号合法不证明每句话受支持。模型/工具/总时限、上下文大小、每轮调用数都由后端预算控制，attempt与真正handler execution分开。线程await取消并不杀掉同步操作，DB/HTTP超时及finally负责结束时清理。
+
+可用usage记录到每次model_events，缺失时总量为null、可选计数只汇总各次都有的键；不得用部分Token当完整总量。run_id贯穿HTTP与工具记录，trace_exported=false，D33仍需真实导出。真实模型、受控模型、MockTransport与PG/Qdrant证据分别解释。
+
+MCP作为独立知识补充：[官方架构](https://modelcontextprotocol.io/docs/learn/architecture)中的Host管理Client，Client连接Server并发现/调用Tools；它规定应用接工具的协议。当前工具白名单是应用内适配，Tool Calling是模型生成请求，两者可配合，未为学习概念强行部署MCP服务器。
