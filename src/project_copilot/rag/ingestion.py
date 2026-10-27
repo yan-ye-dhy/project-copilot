@@ -13,6 +13,7 @@ from project_copilot.config import Settings
 from project_copilot.infrastructure.models import create_embedding_client
 from project_copilot.infrastructure.qdrant import DenseQdrantStore, create_qdrant_store
 from project_copilot.rag.loaders import load_document
+from project_copilot.rag.index_lock import index_lock
 from project_copilot.rag.splitters import SplitConfig, split_document
 from project_copilot.schemas.retrieval import CompletedDocument, DenseIndexSpec, IndexManifest
 
@@ -114,6 +115,11 @@ class IngestionService:
             raise IngestionError("切分配置与当前索引不一致，请使用新集合")
 
     def ingest_file(self, path: str | Path, *, source_name: str | None = None) -> CompletedDocument:
+        # Every writer, including historical CLI paths, shares the same process-level file lock.
+        with index_lock(self.manifest.path):
+            return self._ingest_locked(path, source_name=source_name)
+
+    def _ingest_locked(self, path: str | Path, *, source_name: str | None = None) -> CompletedDocument:
         if source_name is not None and (not isinstance(source_name, str) or not source_name.strip()):
             raise IngestionError("文档展示名称必须是非空字符串")
         document = load_document(path)
@@ -163,4 +169,12 @@ def create_ingestion_service(settings: Settings) -> Iterator[IngestionService]:
     )
     manifest = ManifestStore(settings.manifest_dir, spec)
     with create_embedding_client(settings) as embeddings, create_qdrant_store(settings) as store:
-        yield IngestionService(embeddings, store, manifest, split_config=split_config)
+        class PublishedIngestionService(IngestionService):
+            def ingest_file(self, path, *, source_name=None):
+                completed = super().ingest_file(path, source_name=source_name)
+                # An upload is acknowledged only once its current manifest has a complete snapshot.
+                from project_copilot.rag.final_retrieval import get_final_retriever
+                get_final_retriever(settings).synchronize(store._client)
+                return completed
+
+        yield PublishedIngestionService(embeddings, store, manifest, split_config=split_config)

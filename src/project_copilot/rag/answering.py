@@ -1,4 +1,4 @@
-"""固定Zero-shot消息、Dense证据与本地回答/引用校验。"""
+"""固定Zero-shot消息、最终检索证据与本地回答/引用校验。"""
 
 import hashlib
 import json
@@ -10,17 +10,11 @@ from typing import Protocol
 from pydantic import ValidationError
 
 from project_copilot.config import Settings
-from project_copilot.infrastructure.models import (
-    ChatGeneration, create_chat_client, create_embedding_client,
-)
-from project_copilot.infrastructure.qdrant import create_qdrant_store
-from project_copilot.rag.ingestion import ManifestStore
-from project_copilot.rag.retrieval import DenseRetriever
-from project_copilot.rag.splitters import SplitConfig
+from project_copilot.infrastructure.models import ChatGeneration, create_chat_client
 from project_copilot.schemas.rag import (
     Citation, GenerationInfo, ModelAnswer, PromptInfo, RagAnswer, RagQuestion,
 )
-from project_copilot.schemas.retrieval import DenseIndexSpec, RetrievedChunk
+from project_copilot.schemas.retrieval import RetrievedChunk
 
 
 PROMPT_VERSION = "rag-answer-v1"
@@ -176,13 +170,8 @@ class RagAnswerer:
 
 @contextmanager
 def create_answer_service(settings: Settings) -> Iterator[RagAnswerer]:
-    """复用D4索引与成功清单；每次请求结束或失败都会释放同步客户端。"""
-    spec = DenseIndexSpec(
-        collection_name=settings.qdrant_collection_name, embedding_model=settings.embedding_model,
-        dimensions=settings.embedding_expected_dimensions, splitter_version=SplitConfig().index_version,
-    )
-    manifest = ManifestStore(settings.manifest_dir, spec)
-    with create_embedding_client(settings) as embeddings, create_qdrant_store(settings) as store, \
-            create_chat_client(settings) as chat:
-        retriever = DenseRetriever(embeddings, store, manifest, top_k=settings.rag_top_k)
-        yield RagAnswerer(retriever, chat, index_version=spec.index_version)
+    """所有业务问答复用最终检索；模型HTTP客户端仍按请求释放。"""
+    from project_copilot.rag.final_retrieval import get_final_retriever
+    retriever = get_final_retriever(settings)
+    with create_chat_client(settings) as chat:
+        yield RagAnswerer(retriever, chat, index_version=retriever.spec.index_version)

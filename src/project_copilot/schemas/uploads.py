@@ -12,7 +12,7 @@ class DocumentUploadResult(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid", hide_input_in_errors=True)
 
     status: Literal["indexed"] = "indexed"
-    mode: Literal["DENSE"] = "DENSE"
+    mode: Literal["HYBRID_RERANK"] = "HYBRID_RERANK"
     document: CompletedDocument
     chunk_count: int = Field(ge=1, strict=True)
     size_bytes: int = Field(ge=1, strict=True)

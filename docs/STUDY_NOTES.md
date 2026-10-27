@@ -437,3 +437,9 @@ history只接受有界的用户/助手文本，不采信客户端伪造ToolMessa
 可用usage记录到每次model_events，缺失时总量为null、可选计数只汇总各次都有的键；不得用部分Token当完整总量。run_id贯穿HTTP与工具记录，trace_exported=false，D33仍需真实导出。真实模型、受控模型、MockTransport与PG/Qdrant证据分别解释。
 
 MCP作为独立知识补充：[官方架构](https://modelcontextprotocol.io/docs/learn/architecture)中的Host管理Client，Client连接Server并发现/调用Tools；它规定应用接工具的协议。当前工具白名单是应用内适配，Tool Calling是模型生成请求，两者可配合，未为学习概念强行部署MCP服务器。
+
+## D24.1：统一最终检索
+
+用户学习尚待确认。沿[架构说明](ARCHITECTURE.md)理解两路Top10、RRF 60、固定本地CUDA BGE重排Top5；比较原文/metadata、RRF分数与logit，不将分数解释为可信度。重点分析完成清单与BM25快照的版本绑定、共享文件锁、验证临时文件后原子替换，以及上传失败重试为什么不返回旧快照。
+
+同一进程首次加载/预热GPU模型，后续请求复用；多进程各自占显存。超时停止等待不杀CUDA线程，服务关闭等待已运行任务，GPU失败不自动切CPU或Dense。RAG与Agent共用同一FinalRetriever；空清单与检索异常分别是证据不足和显式失败。用户学习后可主动进行[三个手测](D24_1_MANUAL_VERIFICATION.md)，自动验收不计为用户操作。

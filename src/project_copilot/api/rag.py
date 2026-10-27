@@ -11,6 +11,10 @@ from project_copilot.infrastructure.models import (
 from project_copilot.infrastructure.qdrant import QdrantConfigError, QdrantRequestError, QdrantResponseError
 from project_copilot.rag.answering import AnswerResponseError, create_answer_service
 from project_copilot.rag.ingestion import ManifestError
+from project_copilot.rag.bm25 import BM25Error
+from project_copilot.rag.final_retrieval import FinalRetrievalError
+from project_copilot.rag.hybrid import HybridError
+from project_copilot.rag.index_lock import IndexLockError
 from project_copilot.schemas.rag import RagAnswer, RagQuestion
 
 
@@ -24,7 +28,8 @@ def ask(payload: RagQuestion, request: Request) -> RagAnswer:
     try:
         with create_answer_service(request.app.state.settings) as service:
             return service.answer(payload.question)
-    except (ChatConfigError, EmbeddingConfigError, QdrantConfigError, ManifestError) as exc:
+    except (ChatConfigError, EmbeddingConfigError, QdrantConfigError, ManifestError,
+            BM25Error, HybridError, IndexLockError, FinalRetrievalError) as exc:
         logger.warning("RAG configuration failed: %s", type(exc).__name__)
         raise HTTPException(status_code=503, detail="问答配置或索引清单不可用，请检查本项目配置") from None
     except (ChatRequestError, EmbeddingRequestError, QdrantRequestError) as exc:

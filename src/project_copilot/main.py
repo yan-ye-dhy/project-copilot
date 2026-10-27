@@ -39,6 +39,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         finally:
             if database is not None:
                 database.close()
+            from project_copilot.rag.final_retrieval import close_final_retriever
+            close_final_retriever(application.state.settings)
             logger.info("Stopping %s", application.state.settings.app_name)
 
     application = FastAPI(title="Project Copilot", version="0.1.0", lifespan=lifespan)

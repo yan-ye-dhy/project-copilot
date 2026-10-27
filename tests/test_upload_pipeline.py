@@ -25,17 +25,17 @@ FIXTURES = Path(__file__).parent / "fixtures" / "documents"
 
 
 class OfflineEmbeddings:
-    """二维固定值只验证工程协作，不代表真实Embedding或语义质量。"""
+    """2048维固定值只验证工程协作，不代表真实Embedding或语义质量。"""
 
     model = "embedding-3"
-    expected_dimensions = 2
+    expected_dimensions = 2048
 
     def __init__(self):
         self.documents = []
 
     def embed_documents(self, texts):
         self.documents.append(list(texts))
-        return [[1.0, 0.0] for _ in texts]
+        return [[1.0] + [0.0] * 2047 for _ in texts]
 
     def embed_query(self, _text):
         pytest.fail("上传不应请求问题Embedding")
@@ -55,7 +55,7 @@ def upload(settings, filename, content, media_type="application/octet-stream"):
 @pytest.fixture
 def pipeline(tmp_path, monkeypatch):
     settings = Settings(_env_file=None, zhipu_api_key=None, deepseek_api_key=None,
-                        embedding_expected_dimensions=2, manifest_dir=tmp_path / "manifests",
+                        embedding_expected_dimensions=2048, manifest_dir=tmp_path / "manifests",
                         environment="test")
     state = SimpleNamespace(settings=settings, embeddings=OfflineEmbeddings(), events=[],
                             paths=[], snapshots=[], failure=None)
@@ -81,7 +81,7 @@ def pipeline(tmp_path, monkeypatch):
     def store_factory(active):
         assert active is settings
         store = DenseQdrantStore(QdrantClient(":memory:"),
-                                 collection_name=settings.qdrant_collection_name, dimensions=2)
+                                 collection_name=settings.qdrant_collection_name, dimensions=2048)
         state.events.append("qdrant_opened")
         try:
             if state.failure == "qdrant":
@@ -131,7 +131,7 @@ def test_three_formats_preserve_source_pages_and_stable_d3_identity(pipeline, fi
         assert {point.payload["metadata"]["page"] for point in points} == {0, 2}
     assert pipeline.embeddings.documents == [[chunk.text for chunk in expected]]
     spec = DenseIndexSpec(collection_name=pipeline.settings.qdrant_collection_name,
-                          embedding_model="embedding-3", dimensions=2,
+                          embedding_model="embedding-3", dimensions=2048,
                           splitter_version=SplitConfig().index_version)
     assert ManifestStore(pipeline.settings.manifest_dir, spec).load().documents == (result.document,)
     assert len(pipeline.paths) == 1 and not pipeline.paths[0].exists()
@@ -186,12 +186,12 @@ def test_model_write_and_manifest_failures_cleanup_without_success(pipeline, mon
 def test_same_bytes_original_path_and_random_upload_path_keep_document_and_chunk_ids(tmp_path):
     embeddings = OfflineEmbeddings()
     spec = DenseIndexSpec(collection_name="pc_upload_identity", embedding_model=embeddings.model,
-                          dimensions=2, splitter_version=SplitConfig().index_version)
+                          dimensions=2048, splitter_version=SplitConfig().index_version)
     manifest = ManifestStore(tmp_path / "manifests", spec)
     original = FIXTURES / "sample.md"
     temporary = tmp_path / "server-random-0c82.md"
     temporary.write_bytes(original.read_bytes())
-    with DenseQdrantStore(QdrantClient(":memory:"), collection_name=spec.collection_name, dimensions=2) as store:
+    with DenseQdrantStore(QdrantClient(":memory:"), collection_name=spec.collection_name, dimensions=2048) as store:
         service = IngestionService(embeddings, store, manifest)
         first = service.ingest_file(original)
         uploaded = service.ingest_file(temporary, source_name="用户原始名称.md")

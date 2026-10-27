@@ -21,6 +21,9 @@ from project_copilot.rag.ingestion import (
     EmptyDocumentError, IngestionError, ManifestError, create_ingestion_service,
 )
 from project_copilot.rag.loaders import DocumentLoadError
+from project_copilot.rag.bm25 import BM25Error
+from project_copilot.rag.index_lock import IndexLockError
+from project_copilot.rag.final_retrieval import FinalRetrievalError
 from project_copilot.schemas.uploads import DocumentUploadResult
 
 
@@ -138,7 +141,8 @@ async def upload_document(request: Request) -> DocumentUploadResult:
     except (DocumentLoadError, EmptyDocumentError) as exc:
         logger.warning("Upload document validation failed: %s", type(exc).__name__)
         raise HTTPException(status_code=422, detail="文档解析失败或没有可索引的非空文本") from None
-    except (EmbeddingConfigError, QdrantConfigError, ManifestError, IngestionError) as exc:
+    except (EmbeddingConfigError, QdrantConfigError, ManifestError, IngestionError,
+            BM25Error, IndexLockError, FinalRetrievalError) as exc:
         logger.warning("Upload configuration failed: %s", type(exc).__name__)
         raise HTTPException(status_code=503, detail="入库配置或索引清单不可用，请检查本项目配置") from None
     except (EmbeddingRequestError, QdrantRequestError) as exc:

@@ -63,6 +63,6 @@ class IndexManifest(BaseModel):
 
 
 class RetrievedChunk(DocumentChunk):
-    """实际检索证据；score是Cosine相关度，不是答案置信度。"""
+    """实际检索证据；score含义由检索阶段定义，不能视为答案置信度。"""
 
     score: float = Field(strict=True, allow_inf_nan=False)

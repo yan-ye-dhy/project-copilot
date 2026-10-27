@@ -30,6 +30,7 @@ rerank-gpu = ["torch==2.14.1", "transformers==5.20.2"]
 
 [tool.uv]
 conflicts = [[{ group = "rerank" }, { group = "rerank-gpu" }]]
+default-groups = ["dev", "rerank-gpu"]
 
 [tool.uv.sources]
 torch = [

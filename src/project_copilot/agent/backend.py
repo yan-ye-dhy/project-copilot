@@ -7,12 +7,6 @@ from sqlalchemy import text
 
 from project_copilot.config import Settings
 from project_copilot.db.session import Database
-from project_copilot.infrastructure.models import create_embedding_client
-from project_copilot.infrastructure.qdrant import create_qdrant_store
-from project_copilot.rag.ingestion import ManifestStore
-from project_copilot.rag.retrieval import DenseRetriever
-from project_copilot.rag.splitters import SplitConfig
-from project_copilot.schemas.retrieval import DenseIndexSpec
 from project_copilot.schemas.tickets import TicketFilters
 from project_copilot.services.tickets import TicketService
 
@@ -52,18 +46,8 @@ class ReadOnlyBackend:
     def _knowledge(self, query):
         if self._knowledge_search is not None:
             return self._knowledge_search(query)
-        # Bounds apply only to agent clients; the existing RAG defaults stay unchanged.
-        settings = self.settings.model_copy(update={
-            "zhipu_timeout_seconds": min(self.settings.zhipu_timeout_seconds, 8.0),
-            "qdrant_timeout_seconds": min(self.settings.qdrant_timeout_seconds, 5.0),
-        })
-        spec = DenseIndexSpec(collection_name=settings.qdrant_collection_name,
-                              embedding_model=settings.embedding_model,
-                              dimensions=settings.embedding_expected_dimensions,
-                              splitter_version=SplitConfig().index_version)
-        manifest = ManifestStore(settings.manifest_dir, spec)
-        with create_embedding_client(settings) as embeddings, create_qdrant_store(settings) as store:
-            return DenseRetriever(embeddings, store, manifest, top_k=min(settings.rag_top_k, 5)).search(query)
+        from project_copilot.rag.final_retrieval import get_final_retriever
+        return get_final_retriever(self.settings).search(query)
 
     async def search_knowledge(self, query: str):
         hits = await asyncio.to_thread(self._knowledge, query)

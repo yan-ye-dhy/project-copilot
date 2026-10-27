@@ -185,6 +185,21 @@ def test_tool_exception_is_sanitized_and_still_paired():
     assert result.tool_executions == 1
 
 
+def test_knowledge_failure_is_terminal_and_cannot_be_misreported_as_no_evidence():
+    class Broken(Backend):
+        async def search_knowledge(self, query):
+            raise RuntimeError("private-retrieval-error")
+
+    result, runner, model, _ = run([
+        call("search_knowledge", {"query": "资料"}),
+        final([], "insufficient_evidence"),
+    ], backend=Broken())
+    assert result.status == "failed" and result.failure_type == "knowledge_retrieval_failed"
+    assert result.events[0].failure_type == "tool_exception"
+    assert runner.tool_messages[0].tool_call_id == "call_1"
+    assert len(model.received) == 1 and "private-retrieval-error" not in result.model_dump_json()
+
+
 def test_tool_not_found_has_explicit_failure_class():
     class Missing(Backend):
         async def get_ticket(self, ticket_id):

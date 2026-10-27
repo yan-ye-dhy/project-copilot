@@ -1,0 +1,139 @@
+{
+  "batch": "D24.1 unified final RAG",
+  "date": "2026-10-27",
+  "base_commit": "44f61102da682de1b3760057c70e9dceb7a96190",
+  "executor": "Codex",
+  "backup": {
+    "location": "data/backups/d29-pre-final-rag-20261027/backup.tar.gz",
+    "sha256": "4f707cd1c1fe0904d6c95ed3013ac7222aa99f11260105108dd6455e64492ba7",
+    "tracked_modified": 13,
+    "untracked": 9,
+    "staged": 0,
+    "restore_extraction_verified": true,
+    "git_history_rewritten": false
+  },
+  "final_contract": {
+    "embedding_model": "embedding-3",
+    "dimensions": 2048,
+    "chunk_size": 750,
+    "chunk_overlap": 150,
+    "dense_candidates": 10,
+    "bm25_candidates": 10,
+    "rrf_constant": 60,
+    "fusion_candidates": 10,
+    "rerank_top_k": 5,
+    "model": "BAAI/bge-reranker-v2-m3",
+    "revision": "953dc6f6f85a1b2dbfca4c34a2796e7dde08d41e",
+    "device": "cuda",
+    "dtype": "float16",
+    "batch_size": 2,
+    "max_length": 512,
+    "local_files_only": true
+  },
+  "actual_calls_all_three_development_runs": {
+    "embedding": 9,
+    "chat": 9
+  },
+  "chat_usage_all_runs": {
+    "prompt_tokens": 7386,
+    "completion_tokens": 474,
+    "total_tokens": 7860,
+    "prompt_cache_hit_tokens": 5248,
+    "prompt_cache_miss_tokens": 2138
+  },
+  "embedding_token_usage": null,
+  "actual_account_cost": null,
+  "deepseek_flash_peak_usd_estimate": 0.001241688,
+  "pricing_source": "https://api-docs.deepseek.com/quick_start/pricing/",
+  "live_development_runs": [
+    {
+      "name": "live-01",
+      "sha256": "e47626c39c6f26d23819760918f650dc7d3118d1f2268a46d244bc9bb7370633",
+      "calls": {
+        "embedding": 3,
+        "chat": 3,
+        "bm25": 2,
+        "rrf": 2
+      }
+    },
+    {
+      "name": "live-final",
+      "sha256": "b64c0abc6e099e88e061abf8a193b77d31ccfc6ade542488011de04ec4b37530",
+      "calls": {
+        "embedding": 3,
+        "chat": 3,
+        "bm25": 2,
+        "rrf": 2
+      }
+    },
+    {
+      "name": "live-accepted",
+      "sha256": "f705b1aa4c1f4fa036cce2a768f79506250a90edd48fe37e152d61bba8dc5e05",
+      "calls": {
+        "embedding": 3,
+        "chat": 3,
+        "bm25": 2,
+        "rrf": 2
+      }
+    }
+  ],
+  "automatic_retries": 0,
+  "final_live_receipt_sha256": "f705b1aa4c1f4fa036cce2a768f79506250a90edd48fe37e152d61bba8dc5e05",
+  "tests": {
+    "full": {
+      "passed": 1348,
+      "failed": 0,
+      "skipped": 0,
+      "seconds": 114.07,
+      "sha256": "7be2f5b628019978cfa3502ca325f78bc006d3e55ad661e5469dd23eb02f9390"
+    },
+    "gpu_model_reuse_and_release": {
+      "passed": 1,
+      "sha256": "f88c47ac4c646bfed91e12ff897376e0e8712675d27c29b9ce8330569ee15cf5",
+      "reranked_candidate_original_ranks": [
+        3,
+        4,
+        2,
+        1,
+        5
+      ]
+    },
+    "archive_recovery_and_multi_process": {
+      "passed": 42,
+      "sha256": "dad827107db1683e635f6abcc14361d679b6c1f8d78cae9b6a2496aac6cf0666"
+    },
+    "previous_full_attempts": "Two earlier full runs had three failures: sealed experiment extra lock file and an in-memory cleanup test blocked by retain plugin; fixed, targeted 42 passed and final full passed."
+  },
+  "observed_gpu": {
+    "model_reused": true,
+    "load_ms": 12731.392698999116,
+    "allocated_bytes_before_shutdown": 1144163840,
+    "allocated_bytes_after_shutdown": 8519680,
+    "model_reference_released": true
+  },
+  "snapshot": {
+    "new_process_loaded_same_inode": {
+      "count": 1,
+      "inode": 463115,
+      "source": "d24-final-test.txt"
+    },
+    "manifest_hash_bound": true,
+    "atomic_temp_validation_and_replace": true
+  },
+  "history_preservation": {
+    "protected_eval_files": 129,
+    "all_equal_to_d24_base": true
+  },
+  "qdrant_deletion": "No remote Qdrant data deleted; new test collections retained. pytest plugin only permits in-memory cleanup.",
+  "scope_limits": [
+    "flock/atomic rename require a shared supporting filesystem; not a distributed multi-host lock",
+    "sync CUDA work cannot be force-killed by Python timeout; fail closed and wait on shutdown",
+    "actual account bill and embedding token usage not collected",
+    "source identity validation is not semantic verification",
+    "RAG/Agent live API exercised through real ASGI app with real services, not a network Uvicorn process",
+    "D29 not implemented until this batch is independently pushed"
+  ],
+  "user_learning_completed": false,
+  "user_manual_validation_completed": false,
+  "d32_started": false
+}

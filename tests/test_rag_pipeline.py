@@ -12,6 +12,8 @@ from project_copilot.config import Settings
 from project_copilot.infrastructure import models
 from project_copilot.main import create_app
 from project_copilot.rag import answering
+from project_copilot.rag import final_retrieval
+from project_copilot.rag.rerank import RerankedHit
 from project_copilot.rag.ingestion import ManifestStore
 from project_copilot.rag.loaders import load_document
 from project_copilot.rag.splitters import SplitConfig, split_document
@@ -21,11 +23,11 @@ from project_copilot.schemas.retrieval import CompletedDocument, DenseIndexSpec,
 @pytest.mark.parametrize("bad_answer", [False, True])
 def test_http_question_runs_sdk_retrieval_answering_and_closes_clients(tmp_path, monkeypatch, bad_answer):
     settings = Settings(_env_file=None, zhipu_api_key="offline-zhipu-key",
-                        deepseek_api_key="offline-deepseek-key", embedding_expected_dimensions=2,
+                        deepseek_api_key="offline-deepseek-key", embedding_expected_dimensions=2048,
                         manifest_dir=tmp_path, environment="test")
     chunks = split_document(load_document(Path(__file__).parent / "fixtures/documents/sample.pdf"))
     spec = DenseIndexSpec(collection_name=settings.qdrant_collection_name, embedding_model="embedding-3",
-                          dimensions=2, splitter_version=SplitConfig().index_version)
+                          dimensions=2048, splitter_version=SplitConfig().index_version)
     manifest = ManifestStore(tmp_path, spec)
     manifest.record(manifest.load(), CompletedDocument(
         document_id=chunks[0].metadata.document_id, content_hash=chunks[0].metadata.content_hash,
@@ -39,7 +41,7 @@ def test_http_question_runs_sdk_retrieval_answering_and_closes_clients(tmp_path,
         body = json.loads(request.content)
         assert body["input"] == ["第一页描述什么？"]
         return httpx.Response(200, json={"model": "embedding-3",
-                                       "data": [{"index": 0, "embedding": [1.0, 0.0]}]})
+                                       "data": [{"index": 0, "embedding": [1.0] + [0.0] * 2047}]})
 
     def chat_http(request):
         calls.append("chat")
@@ -64,18 +66,19 @@ def test_http_question_runs_sdk_retrieval_answering_and_closes_clients(tmp_path,
 
     class Store:
         collection_name = settings.qdrant_collection_name
-        dimensions = 2
+        dimensions = 2048
         vector_name = "dense"
+        _client = object()
 
         def ensure_collection(self):
             calls.append("collection")
 
         def query(self, vector, *, document_ids, dense_index_version, limit):
             calls.append("query")
-            assert vector == [1.0, 0.0]
+            assert vector == [1.0] + [0.0] * 2047
             assert document_ids == [chunks[0].metadata.document_id]
             assert dense_index_version == spec.index_version
-            assert limit == 5
+            assert limit == 10
             return [RetrievedChunk(**chunk.model_dump(), score=0.9) for chunk in chunks]
 
     @contextmanager
@@ -85,9 +88,27 @@ def test_http_question_runs_sdk_retrieval_answering_and_closes_clients(tmp_path,
         finally:
             calls.append("store_closed")
 
-    monkeypatch.setattr(answering, "create_embedding_client", embeddings_factory)
+    class FakeReranker:
+        def __init__(self, active):
+            pass
+
+        def prepare(self):
+            pass
+
+        def rerank(self, query, candidates):
+            calls.append("rerank")
+            ordered = sorted(candidates, key=lambda hit: hit.metadata.page)
+            return [RerankedHit(hit=hit, candidate_rank=i, rerank_score=1.0)
+                    for i, hit in enumerate(ordered, 1)]
+
+        def close(self):
+            pass
+
+    monkeypatch.setattr(final_retrieval, "SharedReranker", FakeReranker)
+    monkeypatch.setattr(final_retrieval, "read_completed_chunks", lambda client, current: chunks)
+    monkeypatch.setattr(final_retrieval, "create_embedding_client", embeddings_factory)
     monkeypatch.setattr(answering, "create_chat_client", chat_factory)
-    monkeypatch.setattr(answering, "create_qdrant_store", store_factory)
+    monkeypatch.setattr(final_retrieval, "create_qdrant_store", store_factory)
 
     async def request():
         app = create_app(settings)
@@ -97,7 +118,7 @@ def test_http_question_runs_sdk_retrieval_answering_and_closes_clients(tmp_path,
 
     response = asyncio.run(request())
     assert response.status_code == (502 if bad_answer else 200)
-    assert calls == ["collection", "embedding", "query", "chat", "store_closed"]
+    assert calls == ["collection", "embedding", "query", "rerank", "store_closed", "chat"]
     assert all(client.is_closed for client in transports)
     if not bad_answer:
         body = response.json()

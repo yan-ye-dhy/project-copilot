@@ -3,7 +3,7 @@
 from pathlib import Path
 from typing import Literal
 
-from pydantic import Field, HttpUrl, SecretStr, field_validator
+from pydantic import Field, HttpUrl, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy.engine import make_url
 from sqlalchemy.exc import ArgumentError
@@ -61,9 +61,21 @@ class Settings(BaseSettings):
 
     agent_max_model_calls: int = Field(default=4, ge=1, le=8)
     agent_max_tool_calls: int = Field(default=6, ge=1, le=12)
-    agent_tool_timeout_seconds: float = Field(default=10.0, gt=0, le=30, allow_inf_nan=False)
+    agent_tool_timeout_seconds: float = Field(default=240.0, gt=0, le=300, allow_inf_nan=False)
     agent_model_timeout_seconds: float = Field(default=30.0, gt=0, le=120, allow_inf_nan=False)
-    agent_total_timeout_seconds: float = Field(default=120.0, gt=0, le=300, allow_inf_nan=False)
+    agent_total_timeout_seconds: float = Field(default=300.0, gt=0, le=300, allow_inf_nan=False)
+    final_rerank_device: Literal["cuda", "cpu"] = "cuda"
+    final_rerank_dtype: Literal["float16", "float32"] = "float16"
+    final_rerank_timeout_seconds: float = Field(default=90.0, gt=0, le=120, allow_inf_nan=False)
+    final_model_cache_dir: Path = PROJECT_ROOT / "models" / "huggingface"
+
+    @model_validator(mode="after")
+    def validate_final_retrieval(self):
+        if (self.final_rerank_device, self.final_rerank_dtype) not in {("cuda", "float16"), ("cpu", "float32")}:
+            raise ValueError("最终重排须显式选择cuda/float16或cpu/float32")
+        if self.agent_tool_timeout_seconds <= self.final_rerank_timeout_seconds:
+            raise ValueError("Agent工具时限必须长于最终重排时限，确保首次加载有预算")
+        return self
 
     @field_validator("database_url")
     @classmethod

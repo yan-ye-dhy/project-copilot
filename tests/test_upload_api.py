@@ -107,7 +107,7 @@ def test_success_uses_random_path_preserves_name_and_closes_upload(
     result = DocumentUploadResult.model_validate(response.json())
     assert result.document == completed
     assert result.chunk_count == 2 and result.size_bytes == len(payload)
-    assert result.status == "indexed" and result.mode == "DENSE"
+    assert result.status == "indexed" and result.mode == "HYBRID_RERANK"
     assert result.index_version == "dense-v1-offline-test"
     assert result.trace_exported is False
     assert str(result.run_id) == response.headers["X-Run-ID"]

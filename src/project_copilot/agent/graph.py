@@ -160,6 +160,7 @@ class AgentRunner:
         sources = {source.id: source for source in state["sources"]}
         attempts = state["tool_calls"]
         executions = state["tool_executions"]
+        knowledge_failed = False
         for call, malformed in calls:
             started = time.monotonic()
             attempts += 1
@@ -175,6 +176,8 @@ class AgentRunner:
             if protocol_error:
                 kind = "tool_protocol_error"
                 updates = _failure(kind)
+            elif knowledge_failed:
+                kind = "prior_tool_failure"
             elif attempts > self.limits.max_tool_calls:
                 kind = "tool_budget"
                 updates = _failure(kind, budget=True)
@@ -222,6 +225,10 @@ class AgentRunner:
                             kind = "tool_exception"
             if kind is not None:
                 output = {"status": "error", "failure_type": kind, "message": "工具调用未完成，请检查参数、权限或服务状态。"}
+                if name == "search_knowledge" and kind in {"tool_exception", "tool_timeout", "tool_output_invalid", "tool_output_too_large"}:
+                    knowledge_failed = True
+                    if not updates:
+                        updates = _failure("knowledge_retrieval_failed")
             assert output is not None
             messages.append(ToolMessage(content=_json(output), tool_call_id=call_id, name=event_name,
                                         status="error" if kind else "success"))

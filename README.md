@@ -1,6 +1,6 @@
 # Project Copilot
 
-基于RAG与LangGraph的研发知识及工单协作智能体。D20整合批次阶段A/B均完成；D24整合批次（原D24–D28）的只读Agent、真实服务/模型与回归验收已完成，见[D24报告](docs/reports/DAY_24.md)。本次按授权先独立提交推送，再实施D29受控创建批次。原问答API仍Dense/750/150和rag-answer-v1；不因批次合并减少安全验证，用户学习及少量手测分别记录。
+基于RAG与LangGraph的研发知识及工单协作智能体。D20整合批次阶段A/B均完成，D24只读Agent已推送；D24.1将RAG与Agent知识工具统一为Hybrid＋固定本地BGE Rerank，完成独立验收后再重新实施D29受控创建。Prompt仍为rag-answer-v1；学习及少量手测分别记录。
 
 协作流程见 [长期协作规则](docs/COLLABORATION_RULES.md)：Codex开发、自动验证、提供报告并指导Git操作；用户亲自提交和推送GitHub，随后通过ChatGPT学习代码/架构，学习后主动要求Codex开始手动测试。以下命令是自助运行参考，Codex仅在用户要求后单步带练。
 
@@ -166,7 +166,7 @@ curl --noproxy 127.0.0.1 --silent --show-error \
   -F 'file=@tests/fixtures/documents/sample.pdf;type=application/pdf'
 ```
 
-只有Qdrant写入与成功清单保存均完成后返回`status=indexed`、`mode=DENSE`、文档/片段ID、文件字节数、索引版本及run_id。原名经基本名称/后缀/MIME筛选后作为source_name；临时物理文件使用服务端随机名，所有正常/异常路径均尝试清理。实际内容由原UTF-8/PDF解析器校验；框架可能先将Windows上传路径规范为basename，文件名不会用于构造物理路径。
+D6当时在Qdrant写入与成功清单保存完成后返回`mode=DENSE`。D24.1当前上传还需成功发布匹配清单的BM25快照，返回`mode=HYBRID_RERANK`及文档/片段ID、字节数、索引版本和run_id。原名经基本名称/后缀/MIME筛选后作为source_name；临时物理文件使用服务端随机名，所有正常/异常路径均尝试清理。实际内容由原UTF-8/PDF解析器校验；框架可能先将Windows上传路径规范为basename，文件名不会用于构造物理路径。
 
 HTTP415表示不支持的类型，422表示缺文件/非法名/解析失败/空文本，413表示文件或整个body超限，400表示表单结构非法；上传繁忙时409。配置或成功清单问题503，上游请求/结果错误502，临时IO失败500。上传采用进程内非阻塞锁保护完整入库，维持D4单进程顺序契约；跨进程/CLI并发、恢复和跨存储事务按后续阶段处理。同内容改名共享稳定ID，重新上传会覆盖该身份的显示来源。
 
@@ -371,10 +371,16 @@ PROJECT_COPILOT_DATABASE_URL='postgresql+psycopg://project_copilot:local-dev-onl
 
 ## D24整合批次：只读业务Agent（原D24–D28）
 
-`POST /agent/ask`接收`question`及可选`history`（仅user/assistant文本、最多8条/总10000字），返回真实来源、工具events、run_id、模型/工具次数、耗时及可用usage。LangGraph编译图按model→tools→model条件循环，最多4次模型决策、6个工具尝试预算，单工具10秒、模型30秒、总120秒；每个可识别调用ID有配对ToolMessage，错误/预算返回明确运行状态。HTTP200表示运行结果已返回，仍须检查`status`是否answered，不能把failed当成功。
+`POST /agent/ask`接收`question`及可选`history`（仅user/assistant文本、最多8条/总10000字），返回真实来源、工具events、run_id、模型/工具次数、耗时及可用usage。LangGraph编译图按model→tools→model条件循环，最多4次模型决策、6个工具尝试预算；D24.1调整默认单工具240秒、模型30秒、总300秒，为本地重排首次加载/预热保留预算。每个可识别调用ID有配对ToolMessage；HTTP200仍须检查运行status。知识检索实际失败时显式failed，不伪装为无证据。
 
-工具白名单只有get_ticket、search_tickets、search_knowledge；复用TicketService及DenseRetriever，PG事务声明READ ONLY。客户端不能提供工具结果、确认权限或任意SQL/HTTP工具；Agent尚无写入能力。来源id由真实后台结果构成，最终合同校验来源归属，不能代替语义事实审核。history不是服务端持久会话。
+工具白名单只有get_ticket、search_tickets、search_knowledge；复用TicketService及统一最终检索（DenseRetriever是其中一条分支），PG事务声明READ ONLY。客户端不能提供工具结果、确认权限或任意SQL/HTTP工具；Agent尚无写入能力。来源id由真实后台结果构成，最终合同校验来源归属，不能代替语义事实审核。history不是服务端持久会话。
 
 完整1336项通过、143项本批相关回归通过；7项新用例使用真实存储，65项SDK MockTransport、60项受控图、10项受控API与本地/真实后台测试分开记录。真实模型三路径实际6次DeepSeek＋3次Embedding，零重试；支付账单未采集。计量边界修复后用原模型消息和真实服务隔离快照回放，不重付费；见[批次审计](docs/evidence/D24_BATCH_AUDIT.json)。工具线程超时后同步操作仍受底层超时限制并最终关闭，Phoenix尚未导出。
 
-学习后仅执行[三个高价值手测](docs/D24_MANUAL_VERIFICATION.md)，本次不代用户完成学习/手测。当前25主批次＋1弹性共26；D29须在本批验收通过并推送后实施，D32–D34未开始。
+学习后仅执行[三个高价值手测](docs/D24_MANUAL_VERIFICATION.md)，本次不代用户完成学习/手测。用户随后插入D24.1最终检索集成，当前26主批次＋1弹性共27；D29须在D24.1验收并推送后重新实施，D32–D34未开始。
+
+## D24.1：统一最终Hybrid＋Rerank
+
+`/rag/ask`与`/agent/ask`的`search_knowledge`共用[最终检索服务](src/project_copilot/rag/final_retrieval.py)：Dense 10＋BM25 10→RRF c=60取10→本地固定BGE重排取5，embedding-3/2048维、750/150。BM25快照与成功清单绑定，跨进程文件锁保护入库/查询，完整校验临时快照后原子发布；失败后明确报错或重建，不回退单路Dense。
+
+默认CUDA float16、batch 2、512 tokens、固定revision本地缓存；同一进程首次加载并预热、后续复用，超时实例失败关闭。显式CPU需同时配置cpu/float32并准备CPU依赖，不在GPU失败时自动切换。多进程各有模型显存，文件锁要求支持flock/原子rename的共享清单目录；Python线程等待超时不能强杀仍在执行的CUDA工作。完整数据流、边界和运行配置见[架构说明](docs/ARCHITECTURE.md)，学习后执行[三个手测](docs/D24_1_MANUAL_VERIFICATION.md)。

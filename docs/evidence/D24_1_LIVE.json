@@ -1,0 +1,225 @@
+{
+  "status": "ok",
+  "mode": "real_http_qdrant_real_embedding_real_chat_real_cuda",
+  "executor": "Codex/CLI user",
+  "collection": "pc_test_final_live_902ed2ba74124fbe9b1c22982644cbfa",
+  "calls": {
+    "embedding": 3,
+    "chat": 3,
+    "bm25": 2,
+    "rrf": 2
+  },
+  "automatic_retries": 0,
+  "actual_account_cost": null,
+  "base_commit": "44f61102da682de1b3760057c70e9dceb7a96190",
+  "responses": [
+    {
+      "name": "empty",
+      "http": 200,
+      "run_id": "cd5b4114-c3b9-4664-bddb-54afe539ea5d",
+      "body": {
+        "question": "蓝鹤协议识别码是什么？",
+        "status": "insufficient_evidence",
+        "answer": "当前没有可用的检索证据，无法回答该问题。",
+        "citations": [],
+        "evidence_count": 0,
+        "prompt": {
+          "version": "rag-answer-v1",
+          "fingerprint": "83971da601780ea5a5f5e6e4b45f11d952cb261e50d7275a1efb38494a46a9ea",
+          "answer_schema_hash": "ded2c45bf4b0dcd4888884ad1ff1bcbc729a1846ee0977ec90e7dfdd903c5941",
+          "context_max_chars": 6000
+        },
+        "index_version": "dense-v1-afdaae66f2fc479d6c5e6c9f04fcef10633c1d1a0b9f4a380e427978738af5cf",
+        "generation": null
+      }
+    },
+    {
+      "name": "upload",
+      "http": 200,
+      "run_id": "792ea54e-f9e6-468c-9fdc-cd69f0a84b4d",
+      "body": {
+        "status": "indexed",
+        "mode": "HYBRID_RERANK",
+        "document": {
+          "document_id": "6be53255-1f67-502c-8e7c-c364afa71cfc",
+          "content_hash": "803bf5b31cd24e96e15dc5ef4de4f57bec7d00bb2e363f75071753a38219ab21",
+          "source_name": "d24-final-test.txt",
+          "chunk_ids": [
+            "958835e5-2c81-594b-aacb-47cd444903a3"
+          ]
+        },
+        "chunk_count": 1,
+        "size_bytes": 113,
+        "index_version": "dense-v1-afdaae66f2fc479d6c5e6c9f04fcef10633c1d1a0b9f4a380e427978738af5cf",
+        "run_id": "792ea54e-f9e6-468c-9fdc-cd69f0a84b4d",
+        "trace_exported": false
+      }
+    },
+    {
+      "name": "rag",
+      "http": 200,
+      "run_id": "492e34af-a94f-4b67-b422-acbd8302d5ae",
+      "body": {
+        "question": "蓝鹤协议的唯一识别码是什么？",
+        "status": "answered",
+        "answer": "蓝鹤协议的唯一识别码是 TICKET-ALPHA-739。",
+        "citations": [
+          {
+            "text": "D24最终检索验收：蓝鹤协议的唯一识别码是 TICKET-ALPHA-739，知识文档只用于隔离测试。",
+            "metadata": {
+              "document_id": "6be53255-1f67-502c-8e7c-c364afa71cfc",
+              "content_hash": "803bf5b31cd24e96e15dc5ef4de4f57bec7d00bb2e363f75071753a38219ab21",
+              "source_name": "d24-final-test.txt",
+              "page": null,
+              "chunk_id": "958835e5-2c81-594b-aacb-47cd444903a3",
+              "chunk_index": 0,
+              "index_version": "split-v1-bccb93671dcace12f58d366eb4ec6f530be20573f8b948a17484a0a00c989e78"
+            },
+            "number": 1
+          }
+        ],
+        "evidence_count": 1,
+        "prompt": {
+          "version": "rag-answer-v1",
+          "fingerprint": "83971da601780ea5a5f5e6e4b45f11d952cb261e50d7275a1efb38494a46a9ea",
+          "answer_schema_hash": "ded2c45bf4b0dcd4888884ad1ff1bcbc729a1846ee0977ec90e7dfdd903c5941",
+          "context_max_chars": 6000
+        },
+        "index_version": "dense-v1-afdaae66f2fc479d6c5e6c9f04fcef10633c1d1a0b9f4a380e427978738af5cf",
+        "generation": {
+          "requested_model": "deepseek-flash",
+          "actual_model": "deepseek-flash",
+          "temperature": 0.0,
+          "max_tokens": 512,
+          "thinking": "disabled",
+          "usage": {
+            "prompt_tokens": 315,
+            "completion_tokens": 30,
+            "total_tokens": 345,
+            "prompt_cache_hit_tokens": 128,
+            "prompt_cache_miss_tokens": 187
+          }
+        }
+      }
+    },
+    {
+      "name": "agent",
+      "http": 200,
+      "run_id": "e89bf3e2-0c5d-4713-a89e-065c5cfce4de",
+      "body": {
+        "run_id": "e89bf3e2-0c5d-4713-a89e-065c5cfce4de",
+        "status": "answered",
+        "answer": "根据知识库文档 d24-final-test.txt 的检索结果，蓝鹤协议的唯一识别码是 TICKET-ALPHA-739。该文档同时说明其仅用于隔离测试。",
+        "sources": [
+          {
+            "id": "knowledge:958835e5-2c81-594b-aacb-47cd444903a3",
+            "kind": "knowledge",
+            "data": {
+              "text": "D24最终检索验收：蓝鹤协议的唯一识别码是 TICKET-ALPHA-739，知识文档只用于隔离测试。",
+              "metadata": {
+                "document_id": "6be53255-1f67-502c-8e7c-c364afa71cfc",
+                "content_hash": "803bf5b31cd24e96e15dc5ef4de4f57bec7d00bb2e363f75071753a38219ab21",
+                "source_name": "d24-final-test.txt",
+                "page": null,
+                "chunk_id": "958835e5-2c81-594b-aacb-47cd444903a3",
+                "chunk_index": 0,
+                "index_version": "split-v1-bccb93671dcace12f58d366eb4ec6f530be20573f8b948a17484a0a00c989e78"
+              },
+              "score": 7.84765625
+            }
+          }
+        ],
+        "events": [
+          {
+            "tool_call_id": "call_00_eudnTKkv6XjLKMfKL3HN9863",
+            "name": "search_knowledge",
+            "status": "ok",
+            "failure_type": null,
+            "elapsed_ms": 371.2751169987314
+          }
+        ],
+        "model_calls": 2,
+        "tool_calls": 1,
+        "tool_executions": 1,
+        "usage": {
+          "prompt_tokens": 2147,
+          "total_tokens": 2270,
+          "prompt_cache_hit_tokens": 1792,
+          "prompt_cache_miss_tokens": 355,
+          "completion_tokens": 123
+        },
+        "model_events": [
+          {
+            "step": 1,
+            "status": "ok",
+            "model": "deepseek-flash",
+            "usage": {
+              "prompt_tokens": 824,
+              "completion_tokens": 45,
+              "total_tokens": 869,
+              "prompt_cache_hit_tokens": 640,
+              "prompt_cache_miss_tokens": 184
+            },
+            "elapsed_ms": 917.014028000267
+          },
+          {
+            "step": 2,
+            "status": "ok",
+            "model": "deepseek-flash",
+            "usage": {
+              "prompt_tokens": 1323,
+              "completion_tokens": 78,
+              "total_tokens": 1401,
+              "prompt_cache_hit_tokens": 1152,
+              "prompt_cache_miss_tokens": 171
+            },
+            "elapsed_ms": 912.1065700019244
+          }
+        ],
+        "elapsed_ms": 2223.2748169990373,
+        "failure_type": null,
+        "trace_exported": false
+      }
+    }
+  ],
+  "source_sha256": {
+    "scripts/final_rag_live_smoke.py": "6dfa4d0a8dbefc0e92bd3d38d169f47873d7cd0ed8c5485d970ecb020d92056a",
+    "src/project_copilot/rag/final_retrieval.py": "21310d52ba686e411d923312e8f8b8589706b28379e903435a2a45ca853e0d9b",
+    "src/project_copilot/rag/index_lock.py": "ecdbbba21d60b65a6975d3287fbd34548cbd4274da7ab0c1c08491c5e881c19c",
+    "src/project_copilot/rag/ingestion.py": "ee7e9209aac231220720ce191255f36fcef1d63fd6fa2224ca9ad8959d231e7b",
+    "src/project_copilot/rag/answering.py": "c25cff5a19914d0bedadf069bcb83570c10f76658fd5d6c540980e28d2bfb95f",
+    "src/project_copilot/agent/backend.py": "10cc2a88d035038b18287c4b8d7225650e93bf0845dd4e2a267ad7be391a8b6d",
+    "src/project_copilot/agent/graph.py": "dd8b4a7d646f14fc84ef42d0be70894a9c5d019355cd5b6c420ef54aa3ae4bac",
+    "src/project_copilot/agent/tools.py": "660d0d63c73c36486c4013e05c82aa8a38585fa2535fb2d7871fd566b12687b2",
+    "src/project_copilot/agent/service.py": "085c5fb7a479e96d67462275dceaf05841e6f0a482d416c044e7c1c4850cfb17",
+    "src/project_copilot/infrastructure/agent_model.py": "129fd8d4f9af59ab89b510558812acffb210225863ce490bcde3ab4f1103c538",
+    "src/project_copilot/rag/bm25.py": "487b56bde868e70d72375fcff6474c8ca60170bac1f6b1e4f4099b1c28a7b31d",
+    "src/project_copilot/rag/hybrid.py": "c3626e62ab493fb98e6b8219c21d8ad15ada506d34093efbccaaae2ad575c20a",
+    "src/project_copilot/rag/fusion.py": "2c55019fc427c5fcd9e72741561dbc2a1a019ae295596a247dfb14997b7f92d4",
+    "src/project_copilot/rag/rerank.py": "53a50d785629ad574119f89c8dfd1d1e1a05910da05a48bfa6fdb004e7252e58",
+    "src/project_copilot/api/rag.py": "ffeeb70030d0a9833143173ad3a3ebc70ba8b25faf54ec9b36b64febde8b3a2d",
+    "src/project_copilot/api/agent.py": "e2c885008186e89a22dcba069e563b78f2416c5aa82db3d57346548aaf75098e",
+    "src/project_copilot/api/documents.py": "b69017a650c9a21d40be3e96212eb35dbfadb3d01c8ebdd4dd98620087e003cf",
+    "src/project_copilot/main.py": "f829bb6537ea35a1ea1d68a8c34c4890b28f0e693c420b113c8c54c8c38a1429",
+    "src/project_copilot/config.py": "f194deda310942d963111241e3c58b0fae7a1825c1b571b28477607964c2cc31",
+    "uv.lock": "d6a5ee558161ce51428e2f7cd5fad38fa3fc1b08d8315125fdff56cf36f38dc7"
+  },
+  "single_process_model_reused": true,
+  "snapshot_sha256": "f0795c2be3bd51771c5d7cb227b7b837d5c551e83203d6bca9d6084a7a8b160a",
+  "snapshot_inode": 463115,
+  "reranker_model": "BAAI/bge-reranker-v2-m3",
+  "reranker_revision": "953dc6f6f85a1b2dbfca4c34a2796e7dde08d41e",
+  "reranker_device": "cuda",
+  "reranker_dtype": "float16",
+  "model_load_ms": 12731.392698999116,
+  "gpu_allocated_bytes_before_shutdown": 1144163840,
+  "gpu_peak_allocated_bytes": 1145201152,
+  "model_released_on_app_shutdown": true,
+  "gpu_allocated_bytes_after_shutdown": 8519680,
+  "new_process_snapshot_reuse": {
+    "count": 1,
+    "inode": 463115,
+    "source": "d24-final-test.txt"
+  },
+  "retained_test_collection": "pc_test_final_live_902ed2ba74124fbe9b1c22982644cbfa"
+}
