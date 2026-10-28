@@ -1,0 +1,460 @@
+{
+  "first_aborted_run": {
+    "sample_scope": "One synthetic final demonstration, not a benchmark or production SLA",
+    "tool_success": {
+      "successful": 0,
+      "attempt_events": 0,
+      "rate": null,
+      "failure_types": {}
+    },
+    "agent_tasks": {
+      "scope": "Two planned demo scenarios; unobserved scenes are not counted as successes",
+      "tasks": [
+        {
+          "name": "agent_combined",
+          "observed": false,
+          "passed": false
+        },
+        {
+          "name": "agent_proposal",
+          "observed": false,
+          "passed": false
+        }
+      ],
+      "successful": 0,
+      "denominator": 2,
+      "rate": 0.0
+    },
+    "llm": {
+      "reported_attempts": 1,
+      "calls_with_usage": 0,
+      "usage": null,
+      "usage_complete": false
+    },
+    "embedding": {
+      "request_spans": 2,
+      "calls_with_prompt_usage": 2,
+      "prompt_tokens": 144
+    },
+    "http": {
+      "requests": 3,
+      "by_status": {
+        "200": 2,
+        "502": 1
+      },
+      "latency": {
+        "samples": 3,
+        "median_ms": 2510.001968999859,
+        "p95_nearest_rank_ms": 26524.52207100032
+      }
+    },
+    "stages": {
+      "GET /health": {
+        "samples": 1,
+        "median_ms": 0.22,
+        "p95_nearest_rank_ms": 0.22
+      },
+      "POST /documents/upload": {
+        "samples": 1,
+        "median_ms": 2504.515,
+        "p95_nearest_rank_ms": 2504.515
+      },
+      "POST /rag/ask": {
+        "samples": 1,
+        "median_ms": 26449.365,
+        "p95_nearest_rank_ms": 26449.365
+      },
+      "document.ingest": {
+        "samples": 1,
+        "median_ms": 1173.419,
+        "p95_nearest_rank_ms": 1173.419
+      },
+      "document.load": {
+        "samples": 1,
+        "median_ms": 0.165,
+        "p95_nearest_rank_ms": 0.165
+      },
+      "document.split": {
+        "samples": 1,
+        "median_ms": 0.598,
+        "p95_nearest_rank_ms": 0.598
+      },
+      "embedding.documents": {
+        "samples": 1,
+        "median_ms": 1070.554,
+        "p95_nearest_rank_ms": 1070.554
+      },
+      "embedding.query": {
+        "samples": 1,
+        "median_ms": 563.4630000000001,
+        "p95_nearest_rank_ms": 563.4630000000001
+      },
+      "embedding.request": {
+        "samples": 2,
+        "median_ms": 816.159,
+        "p95_nearest_rank_ms": 1070.482
+      },
+      "index.manifest.publish": {
+        "samples": 1,
+        "median_ms": 2.527,
+        "p95_nearest_rank_ms": 2.527
+      },
+      "qdrant.search": {
+        "samples": 1,
+        "median_ms": 164.47899999999998,
+        "p95_nearest_rank_ms": 164.47899999999998
+      },
+      "qdrant.upsert": {
+        "samples": 1,
+        "median_ms": 6.715,
+        "p95_nearest_rank_ms": 6.715
+      },
+      "qdrant.verify": {
+        "samples": 1,
+        "median_ms": 42.266999999999996,
+        "p95_nearest_rank_ms": 42.266999999999996
+      },
+      "rag.answer": {
+        "samples": 1,
+        "median_ms": 26414.677,
+        "p95_nearest_rank_ms": 26414.677
+      },
+      "rag.bm25": {
+        "samples": 1,
+        "median_ms": 184.934,
+        "p95_nearest_rank_ms": 184.934
+      },
+      "rag.dense": {
+        "samples": 1,
+        "median_ms": 813.1500000000001,
+        "p95_nearest_rank_ms": 813.1500000000001
+      },
+      "rag.generate": {
+        "samples": 1,
+        "median_ms": 5117.455,
+        "p95_nearest_rank_ms": 5117.455
+      },
+      "rag.rerank": {
+        "samples": 1,
+        "median_ms": 61.504999999999995,
+        "p95_nearest_rank_ms": 61.504999999999995
+      },
+      "rag.rerank.prepare": {
+        "samples": 1,
+        "median_ms": 20061.042,
+        "p95_nearest_rank_ms": 20061.042
+      },
+      "rag.retrieve": {
+        "samples": 1,
+        "median_ms": 21291.822,
+        "p95_nearest_rank_ms": 21291.822
+      },
+      "rag.rrf": {
+        "samples": 1,
+        "median_ms": 1.571,
+        "p95_nearest_rank_ms": 1.571
+      },
+      "rag.snapshot": {
+        "samples": 2,
+        "median_ms": 621.9580000000001,
+        "p95_nearest_rank_ms": 1243.794
+      }
+    },
+    "timing_boundary": "Stage spans are nested and overlapping; do not sum parent and child durations. API timings include trace-export acknowledgement.",
+    "cost_estimate": {
+      "currency": "USD",
+      "deepseek_flash_peak": null,
+      "deepseek_flash_off_peak": null,
+      "embedding_cny": 7.2e-05,
+      "actual_account_bill": null,
+      "price_date": "2026-10-28",
+      "sources": [
+        "https://api-docs.deepseek.com/quick_start/pricing/",
+        "https://docs.bigmodel.cn/cn/guide/models/embedding/embedding-3"
+      ],
+      "boundary": "Published-rate estimates based on available usage; not the account invoice. Peak/off-peak shown as a range."
+    }
+  },
+  "accepted_run": {
+    "sample_scope": "One synthetic final demonstration, not a benchmark or production SLA",
+    "tool_success": {
+      "successful": 3,
+      "attempt_events": 3,
+      "rate": 1.0,
+      "failure_types": {}
+    },
+    "agent_tasks": {
+      "scope": "Two planned demo scenarios; unobserved scenes are not counted as successes",
+      "tasks": [
+        {
+          "name": "agent_combined",
+          "observed": true,
+          "passed": true
+        },
+        {
+          "name": "agent_proposal",
+          "observed": true,
+          "passed": true
+        }
+      ],
+      "successful": 2,
+      "denominator": 2,
+      "rate": 1.0
+    },
+    "llm": {
+      "reported_attempts": 4,
+      "calls_with_usage": 4,
+      "usage": {
+        "prompt_tokens": 4466,
+        "completion_tokens": 744,
+        "total_tokens": 5210,
+        "prompt_cache_hit_tokens": 2304,
+        "prompt_cache_miss_tokens": 2162
+      },
+      "usage_complete": true
+    },
+    "embedding": {
+      "request_spans": 2,
+      "calls_with_prompt_usage": 2,
+      "prompt_tokens": 35
+    },
+    "http": {
+      "requests": 17,
+      "by_status": {
+        "200": 14,
+        "201": 2,
+        "409": 1
+      },
+      "latency": {
+        "samples": 17,
+        "median_ms": 35.9237659995415,
+        "p95_nearest_rank_ms": 5299.946760000239
+      }
+    },
+    "stages": {
+      "GET /actions/{action_id}": {
+        "samples": 1,
+        "median_ms": 8.659,
+        "p95_nearest_rank_ms": 8.659
+      },
+      "GET /health": {
+        "samples": 2,
+        "median_ms": 0.264,
+        "p95_nearest_rank_ms": 0.28400000000000003
+      },
+      "GET /tickets": {
+        "samples": 1,
+        "median_ms": 53.663000000000004,
+        "p95_nearest_rank_ms": 53.663000000000004
+      },
+      "GET /tickets/{ticket_id}": {
+        "samples": 4,
+        "median_ms": 27.9885,
+        "p95_nearest_rank_ms": 83.721
+      },
+      "POST /actions/{action_id}/confirm": {
+        "samples": 3,
+        "median_ms": 9.313,
+        "p95_nearest_rank_ms": 11.878
+      },
+      "POST /agent/ask": {
+        "samples": 2,
+        "median_ms": 3650.5685,
+        "p95_nearest_rank_ms": 5292.534
+      },
+      "POST /agent/contexts": {
+        "samples": 1,
+        "median_ms": 24.486,
+        "p95_nearest_rank_ms": 24.486
+      },
+      "POST /documents/upload": {
+        "samples": 1,
+        "median_ms": 264.55,
+        "p95_nearest_rank_ms": 264.55
+      },
+      "POST /rag/ask": {
+        "samples": 1,
+        "median_ms": 3153.856,
+        "p95_nearest_rank_ms": 3153.856
+      },
+      "POST /tickets": {
+        "samples": 1,
+        "median_ms": 366.695,
+        "p95_nearest_rank_ms": 366.695
+      },
+      "agent.model": {
+        "samples": 3,
+        "median_ms": 1991.929,
+        "p95_nearest_rank_ms": 2442.612
+      },
+      "agent.run": {
+        "samples": 2,
+        "median_ms": 3572.4835000000003,
+        "p95_nearest_rank_ms": 5172.884
+      },
+      "agent.tool.execute": {
+        "samples": 3,
+        "median_ms": 47.684,
+        "p95_nearest_rank_ms": 575.4019999999999
+      },
+      "agent.tool.result": {
+        "samples": 3,
+        "median_ms": 0.009000000000000001,
+        "p95_nearest_rank_ms": 0.013
+      },
+      "agent.tools": {
+        "samples": 2,
+        "median_ms": 319.7575,
+        "p95_nearest_rank_ms": 591.3389999999999
+      },
+      "approval.confirm": {
+        "samples": 3,
+        "median_ms": 1.916,
+        "p95_nearest_rank_ms": 7.907000000000001
+      },
+      "approval.get": {
+        "samples": 1,
+        "median_ms": 4.281,
+        "p95_nearest_rank_ms": 4.281
+      },
+      "approval.preview": {
+        "samples": 1,
+        "median_ms": 43.277,
+        "p95_nearest_rank_ms": 43.277
+      },
+      "db.transaction": {
+        "samples": 14,
+        "median_ms": 9.612,
+        "p95_nearest_rank_ms": 357.401
+      },
+      "document.ingest": {
+        "samples": 1,
+        "median_ms": 86.081,
+        "p95_nearest_rank_ms": 86.081
+      },
+      "document.load": {
+        "samples": 1,
+        "median_ms": 3.8960000000000004,
+        "p95_nearest_rank_ms": 3.8960000000000004
+      },
+      "document.split": {
+        "samples": 1,
+        "median_ms": 6.025,
+        "p95_nearest_rank_ms": 6.025
+      },
+      "embedding.query": {
+        "samples": 2,
+        "median_ms": 994.174,
+        "p95_nearest_rank_ms": 1649.7759999999998
+      },
+      "embedding.request": {
+        "samples": 2,
+        "median_ms": 994.1145,
+        "p95_nearest_rank_ms": 1649.712
+      },
+      "qdrant.search": {
+        "samples": 2,
+        "median_ms": 9.400500000000001,
+        "p95_nearest_rank_ms": 10.728
+      },
+      "rag.answer": {
+        "samples": 1,
+        "median_ms": 3126.25,
+        "p95_nearest_rank_ms": 3126.25
+      },
+      "rag.answer.validate": {
+        "samples": 1,
+        "median_ms": 1.317,
+        "p95_nearest_rank_ms": 1.317
+      },
+      "rag.bm25": {
+        "samples": 2,
+        "median_ms": 4.151,
+        "p95_nearest_rank_ms": 5.361999999999999
+      },
+      "rag.dense": {
+        "samples": 2,
+        "median_ms": 1010.2655,
+        "p95_nearest_rank_ms": 1665.998
+      },
+      "rag.generate": {
+        "samples": 1,
+        "median_ms": 1206.9319999999998,
+        "p95_nearest_rank_ms": 1206.9319999999998
+      },
+      "rag.rerank": {
+        "samples": 2,
+        "median_ms": 174.466,
+        "p95_nearest_rank_ms": 174.77
+      },
+      "rag.rerank.prepare": {
+        "samples": 2,
+        "median_ms": 0.20450000000000002,
+        "p95_nearest_rank_ms": 0.251
+      },
+      "rag.retrieve": {
+        "samples": 2,
+        "median_ms": 1245.7179999999998,
+        "p95_nearest_rank_ms": 1916.512
+      },
+      "rag.rrf": {
+        "samples": 2,
+        "median_ms": 0.21950000000000003,
+        "p95_nearest_rank_ms": 0.406
+      },
+      "rag.snapshot": {
+        "samples": 3,
+        "median_ms": 0.306,
+        "p95_nearest_rank_ms": 0.839
+      },
+      "ticket.create": {
+        "samples": 2,
+        "median_ms": 164.15,
+        "p95_nearest_rank_ms": 327.027
+      },
+      "ticket.get": {
+        "samples": 4,
+        "median_ms": 12.057500000000001,
+        "p95_nearest_rank_ms": 47.064
+      },
+      "ticket.search": {
+        "samples": 2,
+        "median_ms": 13.111500000000001,
+        "p95_nearest_rank_ms": 24.045
+      }
+    },
+    "timing_boundary": "Stage spans are nested and overlapping; do not sum parent and child durations. API timings include trace-export acknowledgement.",
+    "cost_estimate": {
+      "currency": "USD",
+      "deepseek_flash_peak": 0.001555224,
+      "deepseek_flash_off_peak": 0.000777612,
+      "embedding_cny": 1.75e-05,
+      "actual_account_bill": null,
+      "price_date": "2026-10-28",
+      "sources": [
+        "https://api-docs.deepseek.com/quick_start/pricing/",
+        "https://docs.bigmodel.cn/cn/guide/models/embedding/embedding-3"
+      ],
+      "boundary": "Published-rate estimates based on available usage; not the account invoice. Peak/off-peak shown as a range."
+    }
+  },
+  "combined_scope": {
+    "http_requests": 20,
+    "llm_attempts": 5,
+    "llm_calls_with_usage": 4,
+    "known_llm_usage": {
+      "prompt_tokens": 4466,
+      "completion_tokens": 744,
+      "total_tokens": 5210,
+      "prompt_cache_hit_tokens": 2304,
+      "prompt_cache_miss_tokens": 2162
+    },
+    "failed_llm_usage": null,
+    "embedding_requests": 4,
+    "embedding_prompt_tokens": 179,
+    "known_embedding_cny_estimate": 8.95e-05,
+    "unknown_first_generation_fee": true,
+    "actual_account_bill": null,
+    "boundary": "Accepted-run Agent 2/2 and tool 3/3 are selected synthetic scenes. Earlier aborted RAG and unknown generation usage are retained separately, not removed or filled with zero."
+  }
+}

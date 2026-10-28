@@ -1531,3 +1531,19 @@ Codex正常关闭3795并启动3970，在同一PostgreSQL数据库查询工单返
 用户原Agent响应报告1次DeepSeek模型调用，输入983、输出65、共1048 tokens；Codex代执行阶段不调用模型/Embedding、不自动重试，实际账单未采集。上下文凭据未写入[独立手测记录](evidence/D29_MANUAL_VERIFICATION_20261028.json)，原agent/proposal及代执行记录仅计算本地SHA，不提交data运行目录。未修改业务源码、依赖和旧自动收据，也未重跑pytest。D29功能手测按用户参与及明确委托分别如实记录；用户D29学习尚无明确完成确认，阶段B不预填完成，不自动开始D32。
 
 本轮起点main与本地origin/main一致、工作区干净；按用户本轮明确授权，审核后由Codex仅提交本次收尾文档和脱敏记录并推送，实际SHA及推送结果以最终交接为准，不使用强推。
+
+## D32最终整合批次：Docker、Phoenix与最终交付（原D32–D34，2026-10-28）
+
+用户明确合并最后三项，授权连续实施全部部署/真实追踪/七项演示/文档与Git同步；D35仅作本批修复缓冲。起点main、origin/main与实际远端均00d08dba737128a162057812dcd4c771ebbfa129，工作区干净；确认既有PG工单、Hybrid＋Rerank、LangGraph和受控确认完整。D29学习未明确确认，当前也不将最终源码学习或本人手测登记完成。计划改为24主任务批次，保留原D32–D34映射，D35不另增功能。
+
+新增独立Dockerfile/.dockerignore、部署与GPU覆盖层，锁依赖、非root进程、只读.env/固定模型、可写清单、PG/Qdrant原卷和Phoenix新卷；容器内部服务名通信、仅localhost端口、一次性Alembic/健康就绪。实际CPU/GPU镜像构建、固定模型CPU/float32和CUDA/float16推断通过；API/PG/Qdrant/Phoenix四容器均正常停止/更换ID，原存储卷保持，前后工单DTO/数据库摘要、Qdrant点/payload/向量摘要与旧Phoenix Trace保持。
+
+tracing实现真实OTel SDK与按trace_id隔离的有限Span/JSON响应，单次OTLP实际ack后改写X-Trace-ID/X-Trace-Exported及既有布尔字段。HTTP、Agent模型/工具/终态、Dense/BM25/RRF/BGE/生成/Embedding单次请求、工单/提案及真正事务提交/回滚均有安全阶段元数据；不导出header/令牌/原文/异常正文。同步yield依赖的事务Span避免跨线程上下文解绑。Phoenix实际停服时业务200、false与ConnectError诊断，追踪关闭且Phoenix停服时业务也200；恢复后导出成功。内部日志不替代Phoenix REST收存证据。
+
+首次全量旧OpenAPI const=false断言失败，更新为实际布尔合同；另一轮GPU预热超时并停止，清理本轮挂起工具测试、独立CUDA通过后限制OMP/MKL线程再回归。最终全量1386 passed、0 failed、0 skipped、105.84秒（真实PG/Qdrant/GPU启用，远端测试集合保留）。核心/业务定向25、独立GPU1、最终指标5项与全量重叠，不相加充数。CPU包首次官方站TLS失败，直接连通验证后清空构建代理参数一次重试成功，未改锁定包或关闭TLS。
+
+真实业务第一轮RAG生成网络错误502，停止后续非必要付费请求并保存3条Trace/24个Span；只读/models恢复后进行一次有界第二轮，完整七项通过。第二轮17条实际HTTP（含1个预期指纹409），17条Trace/84个Span由Phoenix回读并核对父子/run_id；2个Agent预设任务2/2、工具3/3，仅为小规模自编场景。提案确认由Codex作为外部测试客户端执行，不登记为用户本人确认；模型没有确认工具。历史选型/保留集verify均0，155份既有配置/归档/证据SHA保持。
+
+两轮实际5次对话生成/决策尝试，4次usage合计输入4466/输出744，失败一次usage未知；4次Embedding请求有179输入tokens。已知费用按2026-10-28官方价估算DeepSeek约US$0.000778～0.001555、Embedding约¥0.0000895，未包含未知失败费用，不等于账单。第二轮复用已预热模型，不冒称完整冷启动或生产P95。Docker独立GPU探针peak allocated 1,144,796,160字节、释放后8,519,680字节，不等于整卡显存或API worker监控。
+
+交付入口为[八项报告](reports/DAY_32.md)、[最终验收](FINAL_ACCEPTANCE.md)、[部署](DEPLOYMENT.md)、[架构](ARCHITECTURE.md)、[独立审计](evidence/D32_FINAL_ACCEPTANCE.json)和[三项本人手测](FINAL_MANUAL_VERIFICATION.md)。只提交本批源码/部署/测试/脱敏证据及文档，不提交.env、上下文令牌、权重、数据库和运行缓存；Git按本次明确授权在审核后由Codex提交推送，实际SHA在最终交接填写。关键自动验收完成后结束正式开发，等待用户集中学习并主动开启本人手测；D29学习确认仍独立保留。

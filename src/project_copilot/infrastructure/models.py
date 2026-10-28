@@ -15,6 +15,7 @@ from openai import (
 )
 
 from project_copilot.config import Settings
+from project_copilot.infrastructure.tracing import trace_span
 
 
 class EmbeddingConfigError(ValueError):
@@ -63,33 +64,41 @@ class ZhipuEmbeddings:
         vectors: list[list[float]] = []
         for start in range(0, len(texts), self.batch_size):
             batch = list(texts[start : start + self.batch_size])
-            try:
-                raw_response = self._client.embeddings.with_raw_response.create(
-                    model=self.model,
-                    input=batch,
-                    encoding_format="float",
-                )
-                # SDK类型转换可能把bool/字符串转换成float；校验原始JSON才可识别。
-                response = raw_response.http_response.json()
-            except APITimeoutError:
-                raise EmbeddingRequestError("智谱Embedding请求超时") from None
-            except APIConnectionError:
-                raise EmbeddingRequestError("无法连接智谱Embedding服务") from None
-            except APIStatusError as exc:
-                status = exc.status_code
-                if status in (401, 403):
-                    message = "智谱Embedding认证或权限失败，请检查新项目密钥"
-                elif status == 429:
-                    message = "智谱Embedding请求受限，请检查限流与账号状态"
-                elif status >= 500:
-                    message = "智谱Embedding服务暂时不可用"
-                else:
-                    message = "智谱Embedding请求被拒绝，请检查模型和输入配置"
-                raise EmbeddingRequestError(message, status_code=status) from None
-            except (APIResponseValidationError, ValueError, TypeError):
-                raise EmbeddingResponseError("智谱Embedding响应无法解析") from None
+            with trace_span("embedding.request", {"openinference.span.kind": "EMBEDDING",
+                    "embedding.model": self.model, "embedding.input_count": len(batch)}) as span:
+                try:
+                    raw_response = self._client.embeddings.with_raw_response.create(
+                        model=self.model,
+                        input=batch,
+                        encoding_format="float",
+                    )
+                    # SDK类型转换可能把bool/字符串转换成float；校验原始JSON才可识别。
+                    response = raw_response.http_response.json()
+                except APITimeoutError:
+                    raise EmbeddingRequestError("智谱Embedding请求超时") from None
+                except APIConnectionError:
+                    raise EmbeddingRequestError("无法连接智谱Embedding服务") from None
+                except APIStatusError as exc:
+                    status = exc.status_code
+                    if status in (401, 403):
+                        message = "智谱Embedding认证或权限失败，请检查新项目密钥"
+                    elif status == 429:
+                        message = "智谱Embedding请求受限，请检查限流与账号状态"
+                    elif status >= 500:
+                        message = "智谱Embedding服务暂时不可用"
+                    else:
+                        message = "智谱Embedding请求被拒绝，请检查模型和输入配置"
+                    raise EmbeddingRequestError(message, status_code=status) from None
+                except (APIResponseValidationError, ValueError, TypeError):
+                    raise EmbeddingResponseError("智谱Embedding响应无法解析") from None
 
-            vectors.extend(self._validate_batch(response, count=len(batch)))
+                vectors.extend(self._validate_batch(response, count=len(batch)))
+                usage = response.get("usage") if isinstance(response, dict) else None
+                if isinstance(usage, dict):
+                    for key in ("prompt_tokens", "completion_tokens", "total_tokens"):
+                        value = usage.get(key)
+                        if type(value) is int and value >= 0:
+                            span.set_attribute("usage." + key, value)
         return vectors
 
     def _validate_batch(

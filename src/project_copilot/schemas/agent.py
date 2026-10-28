@@ -111,4 +111,5 @@ class AgentRun(BaseModel):
     model_events: list[dict[str, Any]]
     elapsed_ms: float = Field(ge=0)
     failure_type: str | None = None
-    trace_exported: Literal[False] = False
+    # HTTP middleware replaces this with the current trace's actual export acknowledgement.
+    trace_exported: bool = False

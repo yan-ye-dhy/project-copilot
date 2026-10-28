@@ -19,4 +19,5 @@ class DocumentUploadResult(BaseModel):
     index_version: str = Field(min_length=1)
     run_id: UUID
     # D6只预留关联约定，没有初始化或验证Trace导出。
-    trace_exported: Literal[False] = False
+    # HTTP middleware replaces this with the current trace's actual export acknowledgement.
+    trace_exported: bool = False

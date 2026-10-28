@@ -1,5 +1,6 @@
 """同一成功清单内编排Dense与BM25，以排名融合；不改变现有问答默认路由。"""
 
+from project_copilot.infrastructure.tracing import trace_span
 from project_copilot.rag.bm25 import BM25Index
 from project_copilot.rag.fusion import reciprocal_rank_fusion
 from project_copilot.rag.retrieval import DenseRetriever
@@ -43,7 +44,9 @@ class HybridRetriever:
         self._validate_binding()
         dense_hits = self.dense.search(query)
         self._validate_binding()
-        bm25_hits = self.bm25.search(query, top_k=self.bm25_candidates)
+        with trace_span("rag.bm25", {"openinference.span.kind": "RETRIEVER", "retrieval.top_k": self.bm25_candidates}) as span:
+            bm25_hits = self.bm25.search(query, top_k=self.bm25_candidates)
+            span.set_attribute("retrieval.result_count", len(bm25_hits))
         self._validate_binding()
         canonical = {
             chunk.metadata.chunk_id: chunk for chunk in self.bm25.snapshot.chunks
@@ -59,6 +62,10 @@ class HybridRetriever:
                 if chunk is None or (hit.text, hit.metadata) != (chunk.text, chunk.metadata):
                     raise HybridError(f"{route}片段原文或元数据与BM25快照不一致")
         # 真正无命中可为空；任一路执行异常直接向上抛出，不伪装为空列表。
-        return reciprocal_rank_fusion(
-            [dense_hits, bm25_hits], rank_constant=self.rank_constant, top_k=self.top_k,
-        )
+        with trace_span("rag.rrf", {"openinference.span.kind": "CHAIN", "fusion.rank_constant": self.rank_constant,
+                        "fusion.dense_count": len(dense_hits), "fusion.bm25_count": len(bm25_hits)}) as span:
+            result = reciprocal_rank_fusion(
+                [dense_hits, bm25_hits], rank_constant=self.rank_constant, top_k=self.top_k,
+            )
+            span.set_attribute("fusion.result_count", len(result))
+            return result

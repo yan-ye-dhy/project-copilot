@@ -1,0 +1,17 @@
+# Whitelist the build inputs. Credentials, runtime data and weights never enter context.
+**
+!Dockerfile
+!pyproject.toml
+!uv.lock
+!README.md
+!alembic.ini
+!src/
+!src/**
+!scripts/
+!scripts/**
+!migrations/
+!migrations/**
+**/__pycache__/
+**/*.py[cod]
+**/.env
+**/.env.*

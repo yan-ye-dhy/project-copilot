@@ -9,6 +9,7 @@ from uuid import UUID
 from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
+from project_copilot.infrastructure.tracing import trace_span
 from project_copilot.db.models import AgentContext, PendingAction
 from project_copilot.schemas.approvals import ActionRead, ContextCredentials
 from project_copilot.schemas.tickets import TicketCreate
@@ -68,6 +69,13 @@ class ApprovalService:
                           created_at=action.created_at, expires_at=action.expires_at, ticket_id=action.ticket_id)
 
     def preview(self, context, payload):
+        with trace_span("approval.preview", {"openinference.span.kind": "CHAIN"}) as span:
+            result = self._preview(context, payload)
+            span.set_attribute("action.id", str(result.action_id))
+            span.set_attribute("status", result.status)
+            return result
+
+    def _preview(self, context, payload):
         now = self.now()
         if context.expires_at <= now:
             raise ContextRejected()
@@ -91,6 +99,16 @@ class ApprovalService:
         return action, now
 
     def decide(self, context, action_id, payload_fingerprint, *, approve):
+        with trace_span("approval.confirm" if approve else "approval.reject", {"openinference.span.kind": "CHAIN",
+                        "action.id": str(action_id)}) as span:
+            result = self._decide(context, action_id, payload_fingerprint, approve=approve)
+            span.set_attribute("status", result.status)
+            span.set_attribute("transaction.state", "awaiting_commit")
+            if result.ticket_id is not None:
+                span.set_attribute("ticket.id", str(result.ticket_id))
+            return result
+
+    def _decide(self, context, action_id, payload_fingerprint, *, approve):
         action, now = self.locked(context, action_id)
         if not hmac.compare_digest(action.payload_fingerprint, payload_fingerprint):
             raise FingerprintMismatch()
@@ -108,6 +126,12 @@ class ApprovalService:
         return self.read(action)
 
     def get(self, context, action_id):
+        with trace_span("approval.get", {"openinference.span.kind": "CHAIN", "action.id": str(action_id)}) as span:
+            result = self._get(context, action_id)
+            span.set_attribute("status", result.status)
+            return result
+
+    def _get(self, context, action_id):
         action, now = self.locked(context, action_id)
         if action.status == 'pending' and action.expires_at <= now:
             action.status = 'expired'

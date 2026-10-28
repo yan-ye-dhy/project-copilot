@@ -53,6 +53,9 @@ class Settings(BaseSettings):
     rag_top_k: int = Field(default=5, ge=1, le=100)
     upload_max_bytes: int = Field(default=5 * 1024 * 1024, ge=1, le=50 * 1024 * 1024)
     tracing_enabled: bool = False
+    phoenix_endpoint: HttpUrl = "http://127.0.0.1:6007/v1/traces"
+    phoenix_project: str = Field(default="project-copilot", pattern=r"^[A-Za-z0-9_.-]+$", max_length=100)
+    trace_export_timeout_seconds: float = Field(default=2.0, gt=0, le=10, allow_inf_nan=False)
 
     # Optional: RAG/health remain usable without the ticket database.
     database_url: SecretStr | None = None
@@ -92,12 +95,11 @@ class Settings(BaseSettings):
             raise ValueError("数据库URL须为含主机、端口、用户和库名的postgresql+psycopg地址，不能含查询参数")
         return value
 
-    @field_validator("tracing_enabled")
+    @field_validator("phoenix_endpoint")
     @classmethod
-    def require_available_tracing(cls, value: bool) -> bool:
-        # D6仅预留开关，实际Phoenix导出到D33接入；不能静默宣称已启用。
-        if value:
-            raise ValueError("Phoenix导出尚未接入，请保持PROJECT_COPILOT_TRACING_ENABLED=false")
+    def validate_phoenix_endpoint(cls, value: HttpUrl) -> HttpUrl:
+        if value.username or value.password or value.query or value.fragment or not value.path.endswith("/v1/traces"):
+            raise ValueError("Phoenix endpoint须为无凭据/查询参数的OTLP HTTP /v1/traces地址")
         return value
 
     @field_validator("zhipu_base_url")

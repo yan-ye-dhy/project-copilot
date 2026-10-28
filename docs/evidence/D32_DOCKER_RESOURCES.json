@@ -1,0 +1,293 @@
+{
+  "containers_before": [
+    {
+      "name": "project-copilot-api-1",
+      "id": "a8d1e70763ace0f168bffa1171e3b83706419d57a7fa8345dce7fafb87e05ecd",
+      "image": "sha256:dbf73ac4ac972daf232e8ec11a83f73ae48c76d01344d63279335d8f26eb3509",
+      "user": "1002:1003",
+      "mounts": [
+        {
+          "type": "bind",
+          "name": null,
+          "destination": "/app/data/manifests",
+          "read_write": true
+        },
+        {
+          "type": "bind",
+          "name": null,
+          "destination": "/app/models/huggingface",
+          "read_write": false
+        },
+        {
+          "type": "bind",
+          "name": null,
+          "destination": "/app/.env",
+          "read_write": false
+        }
+      ],
+      "gpu_device_requests": [
+        {
+          "Driver": "",
+          "Count": -1,
+          "DeviceIDs": null,
+          "Capabilities": [
+            [
+              "gpu"
+            ]
+          ],
+          "Options": null
+        }
+      ],
+      "health": "healthy"
+    },
+    {
+      "name": "project-copilot-postgres-1",
+      "id": "1819559c959a6cfa0db946e77ea38c868eeb844592c8e67ef2c43a6fb3f71acf",
+      "image": "sha256:858bb5e98eed02eb8cafbcdc007f9a65d1b613972028944a8ec2133ccaf80d27",
+      "user": "",
+      "mounts": [
+        {
+          "type": "volume",
+          "name": "project-copilot_postgres_data",
+          "destination": "/var/lib/postgresql/data",
+          "read_write": true
+        }
+      ],
+      "gpu_device_requests": null,
+      "health": "healthy"
+    },
+    {
+      "name": "project-copilot-qdrant-1",
+      "id": "bd59bf8f0334853b7cb123ec8fc8fd07cb7ad486b03837b90e007e6488c62c2c",
+      "image": "sha256:b7b0444c4c351c970b98e90a6f89c2ee4287c65b44e52b4cb503fa5b2aa927ad",
+      "user": "0:0",
+      "mounts": [
+        {
+          "type": "volume",
+          "name": "project-copilot_qdrant_data",
+          "destination": "/qdrant/storage",
+          "read_write": true
+        }
+      ],
+      "gpu_device_requests": null,
+      "health": "healthy"
+    },
+    {
+      "name": "project-copilot-phoenix-1",
+      "id": "49dc2882ca048a56775f41b4632085bcb1b0018dc7fd0c1f334af32be169fe3a",
+      "image": "sha256:d55a4ffac8c670e2d0bf72e44e81e32a73e832b7ce449e6e4567487adfa9d8d6",
+      "user": "0",
+      "mounts": [
+        {
+          "type": "volume",
+          "name": "project-copilot_phoenix_data",
+          "destination": "/data",
+          "read_write": true
+        }
+      ],
+      "gpu_device_requests": null,
+      "health": "healthy"
+    }
+  ],
+  "containers_after_recreation": [
+    {
+      "name": "project-copilot-api-1",
+      "id": "f446c10ca8fc9514cc025124472eb2d686fd2326865318f9132c296069d11eb2",
+      "image": "sha256:dbf73ac4ac972daf232e8ec11a83f73ae48c76d01344d63279335d8f26eb3509",
+      "user": "1002:1003",
+      "mounts": [
+        {
+          "type": "bind",
+          "name": null,
+          "destination": "/app/models/huggingface",
+          "read_write": false
+        },
+        {
+          "type": "bind",
+          "name": null,
+          "destination": "/app/.env",
+          "read_write": false
+        },
+        {
+          "type": "bind",
+          "name": null,
+          "destination": "/app/data/manifests",
+          "read_write": true
+        }
+      ],
+      "gpu_device_requests": [
+        {
+          "Driver": "",
+          "Count": -1,
+          "DeviceIDs": null,
+          "Capabilities": [
+            [
+              "gpu"
+            ]
+          ],
+          "Options": null
+        }
+      ],
+      "health": "healthy"
+    },
+    {
+      "name": "project-copilot-postgres-1",
+      "id": "73d26cfaaba608ff2ec282fc9d3afc142411997f1a52aed48c57a9812bb8ab77",
+      "image": "sha256:858bb5e98eed02eb8cafbcdc007f9a65d1b613972028944a8ec2133ccaf80d27",
+      "user": "",
+      "mounts": [
+        {
+          "type": "volume",
+          "name": "project-copilot_postgres_data",
+          "destination": "/var/lib/postgresql/data",
+          "read_write": true
+        }
+      ],
+      "gpu_device_requests": null,
+      "health": "healthy"
+    },
+    {
+      "name": "project-copilot-qdrant-1",
+      "id": "7778e965259c45d2e51c309e51a44c811f69b40ff45f3a9d2fb8a7df35ea3b3d",
+      "image": "sha256:b7b0444c4c351c970b98e90a6f89c2ee4287c65b44e52b4cb503fa5b2aa927ad",
+      "user": "0:0",
+      "mounts": [
+        {
+          "type": "volume",
+          "name": "project-copilot_qdrant_data",
+          "destination": "/qdrant/storage",
+          "read_write": true
+        }
+      ],
+      "gpu_device_requests": null,
+      "health": "healthy"
+    },
+    {
+      "name": "project-copilot-phoenix-1",
+      "id": "3dd24fb1501a1351af63c90e3c3dbc455d33a0e6ead3058f9e85a844894bf05c",
+      "image": "sha256:d55a4ffac8c670e2d0bf72e44e81e32a73e832b7ce449e6e4567487adfa9d8d6",
+      "user": "0",
+      "mounts": [
+        {
+          "type": "volume",
+          "name": "project-copilot_phoenix_data",
+          "destination": "/data",
+          "read_write": true
+        }
+      ],
+      "gpu_device_requests": null,
+      "health": "healthy"
+    }
+  ],
+  "cpu_container_model": {
+    "status": "ok",
+    "torch": "2.14.1+cpu",
+    "device": "cpu",
+    "dtype": "torch.float32",
+    "scores": [
+      0.5868683457374573,
+      -7.798744201660156
+    ],
+    "local_revision": "953dc6f6f85a1b2dbfca4c34a2796e7dde08d41e"
+  },
+  "gpu_container_probe": {
+    "status": "ok",
+    "device": "cuda",
+    "dtype": "float16",
+    "revision": "953dc6f6f85a1b2dbfca4c34a2796e7dde08d41e",
+    "model_reused": true,
+    "pairs": 4,
+    "scores": [
+      -0.4970703125,
+      -8.765625
+    ],
+    "torch": "2.14.1+cu130",
+    "cuda_compiled": "13.0",
+    "model_load_ms": 12167.35368099944,
+    "gpu_allocated_before": 0,
+    "gpu_allocated_after_scoring": 1144163840,
+    "gpu_peak_allocated": 1144796160,
+    "gpu_peak_reserved": 1166016512,
+    "process_peak_rss_kib": 3349156,
+    "gpu_allocated_after_release": 8519680
+  },
+  "image_safety": [
+    {
+      "image": "project-copilot-api:gpu",
+      "image_id": "sha256:dbf73ac4ac972daf232e8ec11a83f73ae48c76d01344d63279335d8f26eb3509",
+      "user": "app",
+      "project_root": "/app",
+      "env_file_in_image": false,
+      "weights_in_image": false,
+      "real_keys_in_image_config": false
+    },
+    {
+      "image": "project-copilot-api:cpu",
+      "image_id": "sha256:6be22ddee246040bd3549afb00393401c9fab76871dd98a230ab128b9807b79f",
+      "user": "app",
+      "project_root": "/app",
+      "env_file_in_image": false,
+      "weights_in_image": false,
+      "real_keys_in_image_config": false
+    }
+  ],
+  "exporter_unavailable": {
+    "phoenix_stopped": true,
+    "checks": [
+      {
+        "path": "/health",
+        "http_status": 200,
+        "run_id": "9ae13a1f-27bb-4636-b9b1-3eb5c3340a7b",
+        "trace_id": "3d8917a5a36eb73616a29f9647901643",
+        "trace_exported": "false",
+        "business_ok": true
+      },
+      {
+        "path": "/tickets/5a73dbe2-2243-426e-aed1-a2135cb54657",
+        "http_status": 200,
+        "run_id": "ea461627-e89e-4fe6-8339-5675bcb2e17b",
+        "trace_id": "5a8ca7668cf5e33f315fba2ffaecf16a",
+        "trace_exported": "false",
+        "business_ok": true
+      }
+    ],
+    "model_calls": 0
+  },
+  "exporter_diagnostic": {
+    "http_status": 200,
+    "run_id": "30e2e67a-ef53-44b3-b27d-083881aae497",
+    "trace_id": "f7926fd727834d8fe14154d88867bc6e",
+    "trace_exported": false,
+    "diagnostics": [
+      "WARNING: project_copilot.infrastructure.tracing trace_export_failed run_id=30e2e67a-ef53-44b3-b27d-083881aae497 trace_id=f7926fd727834d8fe14154d88867bc6e reason=ConnectError spans=1"
+    ],
+    "model_calls": 0
+  },
+  "tracing_disabled": {
+    "tracing_enabled": false,
+    "phoenix_stopped": true,
+    "checks": [
+      {
+        "path": "/health",
+        "http_status": 200,
+        "run_id": "6bfcd5a8-410c-4f4a-bb53-e0a3487e29dd",
+        "trace_id": null,
+        "business_ok": true
+      },
+      {
+        "path": "/tickets/5a73dbe2-2243-426e-aed1-a2135cb54657",
+        "http_status": 200,
+        "run_id": "141e19cc-dea8-4ca2-9d46-c83a1165de12",
+        "trace_id": null,
+        "business_ok": true
+      }
+    ],
+    "model_calls": 0
+  },
+  "tracing_restored": {
+    "http_status": 200,
+    "trace_exported": true,
+    "trace_id": "d69ac211bdf3ec799818ef9ef569e95b",
+    "phoenix_ui_http": 200
+  }
+}

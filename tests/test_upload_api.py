@@ -244,7 +244,8 @@ def test_openapi_exposes_one_required_binary_file_and_completed_upload(monkeypat
     }
     assert result["properties"]["document"]["$ref"].endswith("/CompletedDocument")
     assert result["properties"]["run_id"]["format"] == "uuid"
-    assert result["properties"]["trace_exported"]["const"] is False
+    assert result["properties"]["trace_exported"]["type"] == "boolean"
+    assert result["properties"]["trace_exported"]["default"] is False
 
 
 def test_validator_rejects_windows_path_if_parser_has_not_normalized_it():

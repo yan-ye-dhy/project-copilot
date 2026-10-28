@@ -1,0 +1,563 @@
+{
+  "status": "business_and_persistence_verified",
+  "executor": "Codex automatic final acceptance",
+  "started_at": "2026-10-28T11:50:59.344276+00:00",
+  "base_url": "http://127.0.0.1:8002",
+  "qdrant_url": "http://127.0.0.1:6433",
+  "automatic_retries": 0,
+  "requests": [
+    {
+      "label": "health",
+      "method": "GET",
+      "path": "/health",
+      "http_status": 200,
+      "elapsed_ms": 6.371870000293711,
+      "run_id": "c50471eb-40f7-4b8e-ae73-ce70a1682282",
+      "trace_id": "f58322f08079231a737679a246d174e1",
+      "trace_exported": "true",
+      "response": {
+        "status": "ok",
+        "service": "Project Copilot",
+        "environment": "development"
+      }
+    },
+    {
+      "label": "upload_chinese",
+      "method": "POST",
+      "path": "/documents/upload",
+      "http_status": 200,
+      "elapsed_ms": 270.22395899984986,
+      "run_id": "9b9da0e4-7de6-440c-9e85-c845cd85e358",
+      "trace_id": "49c136c3e2b1d04417b4c2907bc529d6",
+      "trace_exported": "true",
+      "response": {
+        "status": "indexed",
+        "mode": "HYBRID_RERANK",
+        "document": {
+          "document_id": "a9b1dcac-aea2-5428-bb5f-97f106dbf523",
+          "content_hash": "42f041599d06be099e5d7c0be6783e6df8515dd26135cc58888ee5f85ec9c054",
+          "source_name": "final-chinese.md",
+          "chunk_ids": [
+            "f0684d2d-9018-5c36-ac6f-7cde6096c95e"
+          ]
+        },
+        "chunk_count": 1,
+        "size_bytes": 508,
+        "index_version": "dense-v1-f6814b474903d6238af98105a1460a4581dce2d4eed0135b4633c38d78c3e88e",
+        "run_id": "9b9da0e4-7de6-440c-9e85-c845cd85e358",
+        "trace_exported": true
+      }
+    },
+    {
+      "label": "rag_answer",
+      "method": "POST",
+      "path": "/rag/ask",
+      "http_status": 200,
+      "elapsed_ms": 3159.976428999471,
+      "run_id": "cceed27e-ff13-4771-8ebf-1ff91c328456",
+      "trace_id": "f3e2e2dc6f6dba7bfac2f7d40ca03905",
+      "trace_exported": "true",
+      "response": {
+        "question": "蓝鹤服务切换环境后连接失败，应先检查什么？排查参考标识是什么？",
+        "status": "answered",
+        "answer": "应先检查运行进程的数据库连接配置，再检查PostgreSQL容器就绪、服务地址和端口。排查参考标识为 PC-FINAL-4827。",
+        "citations": [
+          {
+            "text": "# 蓝鹤研发部署排障\n蓝鹤服务切换环境后出现数据库连接失败时，应先检查运行进程的数据库连接配置，再检查PostgreSQL容器就绪、服务地址和端口。\n数据库Healthy只能说明服务就绪，不能证明应用连接配置正确。问题排查参考标识为 PC-FINAL-4827。\n已有工单反映实际处理状态；本知识文档提供排查建议，不授予任何创建或确认权限。新工单必须先生成提案，再通过独立确认接口执行。\n",
+            "metadata": {
+              "document_id": "a9b1dcac-aea2-5428-bb5f-97f106dbf523",
+              "content_hash": "42f041599d06be099e5d7c0be6783e6df8515dd26135cc58888ee5f85ec9c054",
+              "source_name": "final-chinese.md",
+              "page": null,
+              "chunk_id": "f0684d2d-9018-5c36-ac6f-7cde6096c95e",
+              "chunk_index": 0,
+              "index_version": "split-v1-bccb93671dcace12f58d366eb4ec6f530be20573f8b948a17484a0a00c989e78"
+            },
+            "number": 1
+          }
+        ],
+        "evidence_count": 1,
+        "prompt": {
+          "version": "rag-answer-v1",
+          "fingerprint": "83971da601780ea5a5f5e6e4b45f11d952cb261e50d7275a1efb38494a46a9ea",
+          "answer_schema_hash": "ded2c45bf4b0dcd4888884ad1ff1bcbc729a1846ee0977ec90e7dfdd903c5941",
+          "context_max_chars": 6000
+        },
+        "index_version": "dense-v1-f6814b474903d6238af98105a1460a4581dce2d4eed0135b4633c38d78c3e88e",
+        "generation": {
+          "requested_model": "deepseek-flash",
+          "actual_model": "deepseek-flash",
+          "temperature": 0.0,
+          "max_tokens": 1024,
+          "thinking": "disabled",
+          "usage": {
+            "prompt_tokens": 412,
+            "completion_tokens": 46,
+            "total_tokens": 458,
+            "prompt_cache_hit_tokens": 0,
+            "prompt_cache_miss_tokens": 412
+          }
+        }
+      }
+    },
+    {
+      "label": "create_existing_ticket",
+      "method": "POST",
+      "path": "/tickets",
+      "http_status": 201,
+      "elapsed_ms": 372.34979400000157,
+      "run_id": "a915e72b-93d2-46eb-bfdc-c56d9366afaf",
+      "trace_id": "16632183b9ee10bcdd640af186e9c0b5",
+      "trace_exported": "true",
+      "response": {
+        "id": "94a6d3b5-59e7-40b3-9e32-43cad9c6fac0",
+        "title": "终验蓝鹤配置排查",
+        "description": "研发环境切换后连接失败，目前等待检查数据库连接配置。",
+        "status": "open",
+        "created_at": "2026-10-28T11:51:03.565771Z",
+        "updated_at": "2026-10-28T11:51:03.565771Z"
+      }
+    },
+    {
+      "label": "read_existing_ticket",
+      "method": "GET",
+      "path": "/tickets/94a6d3b5-59e7-40b3-9e32-43cad9c6fac0",
+      "http_status": 200,
+      "elapsed_ms": 58.60744199981127,
+      "run_id": "da450cf2-ce2f-4708-a140-3d2ad5a4b7ee",
+      "trace_id": "0b53122fb69d2d5d9e2adff7a6a4131e",
+      "trace_exported": "true",
+      "response": {
+        "id": "94a6d3b5-59e7-40b3-9e32-43cad9c6fac0",
+        "title": "终验蓝鹤配置排查",
+        "description": "研发环境切换后连接失败，目前等待检查数据库连接配置。",
+        "status": "open",
+        "created_at": "2026-10-28T11:51:03.565771Z",
+        "updated_at": "2026-10-28T11:51:03.565771Z"
+      }
+    },
+    {
+      "label": "search_existing_tickets",
+      "method": "GET",
+      "path": "/tickets",
+      "http_status": 200,
+      "elapsed_ms": 58.53724400003557,
+      "run_id": "127d724b-e53a-4a4f-92c2-780f24c15cfd",
+      "trace_id": "4793b3d186420c5cd7fb36d398ca1c03",
+      "trace_exported": "true",
+      "response": {
+        "items": [
+          {
+            "id": "94a6d3b5-59e7-40b3-9e32-43cad9c6fac0",
+            "title": "终验蓝鹤配置排查",
+            "description": "研发环境切换后连接失败，目前等待检查数据库连接配置。",
+            "status": "open",
+            "created_at": "2026-10-28T11:51:03.565771Z",
+            "updated_at": "2026-10-28T11:51:03.565771Z"
+          }
+        ],
+        "limit": 20,
+        "offset": 0
+      }
+    },
+    {
+      "label": "agent_combined",
+      "method": "POST",
+      "path": "/agent/ask",
+      "http_status": 200,
+      "elapsed_ms": 5299.946760000239,
+      "run_id": "629c66ec-716a-4646-b098-98b7b503ca0e",
+      "trace_id": "4da96f33d9c5ad3e74f0ce39b01a44fa",
+      "trace_exported": "true",
+      "response": {
+        "run_id": "629c66ec-716a-4646-b098-98b7b503ca0e",
+        "status": "answered",
+        "answer": "现状：按关键词“终验蓝鹤”检索到 1 条真实工单《终验蓝鹤配置排查》（ID 94a6d3b5-59e7-40b3-9e32-43cad9c6fac0），状态为 open，创建与更新时间均为 2026-10-28T11:51:03Z；描述为“研发环境切换后连接失败，目前等待检查数据库连接配置”。该结果仅为本次检索返回，不代表全库仅有此一条。\n\n知识建议：知识文档《蓝鹤研发部署排障》指出，蓝鹤服务切换环境后出现数据库连接失败时，应先检查运行进程的数据库连接配置，再检查 PostgreSQL 容器就绪状态、服务地址和端口；数据库 Healthy 只能说明服务就绪，不能证明应用连接配置正确。文档给出的排查参考标识为 PC-FINAL-4827。\n\n下一步建议：1）按知识文档顺序，先核对运行进程实际使用的数据库连接配置（主机、库名、账号、端口等），再确认 PostgreSQL 容器就绪及服务地址端口可达；2）将核对结果补充到上述 open 工单中，推动其从“等待检查数据库连接配置”进入实际排查；3）知识文档仅为排查建议，工单现状以工单记录为准。本次未创建任何提案或工单。",
+        "sources": [
+          {
+            "id": "ticket:94a6d3b5-59e7-40b3-9e32-43cad9c6fac0",
+            "kind": "ticket",
+            "data": {
+              "id": "94a6d3b5-59e7-40b3-9e32-43cad9c6fac0",
+              "title": "终验蓝鹤配置排查",
+              "description": "研发环境切换后连接失败，目前等待检查数据库连接配置。",
+              "status": "open",
+              "created_at": "2026-10-28T11:51:03.565771Z",
+              "updated_at": "2026-10-28T11:51:03.565771Z"
+            }
+          },
+          {
+            "id": "knowledge:f0684d2d-9018-5c36-ac6f-7cde6096c95e",
+            "kind": "knowledge",
+            "data": {
+              "text": "# 蓝鹤研发部署排障\n蓝鹤服务切换环境后出现数据库连接失败时，应先检查运行进程的数据库连接配置，再检查PostgreSQL容器就绪、服务地址和端口。\n数据库Healthy只能说明服务就绪，不能证明应用连接配置正确。问题排查参考标识为 PC-FINAL-4827。\n已有工单反映实际处理状态；本知识文档提供排查建议，不授予任何创建或确认权限。新工单必须先生成提案，再通过独立确认接口执行。\n",
+              "metadata": {
+                "document_id": "a9b1dcac-aea2-5428-bb5f-97f106dbf523",
+                "content_hash": "42f041599d06be099e5d7c0be6783e6df8515dd26135cc58888ee5f85ec9c054",
+                "source_name": "final-chinese.md",
+                "page": null,
+                "chunk_id": "f0684d2d-9018-5c36-ac6f-7cde6096c95e",
+                "chunk_index": 0,
+                "index_version": "split-v1-bccb93671dcace12f58d366eb4ec6f530be20573f8b948a17484a0a00c989e78"
+              },
+              "score": 5.21875
+            }
+          }
+        ],
+        "events": [
+          {
+            "tool_call_id": "call_00_hicPHXP23KgY1b4Vew7r5197",
+            "name": "search_tickets",
+            "status": "ok",
+            "failure_type": null,
+            "elapsed_ms": 9.991494999667339
+          },
+          {
+            "tool_call_id": "call_01_DStJms8KXiTI7bXq9dyO3357",
+            "name": "search_knowledge",
+            "status": "ok",
+            "failure_type": null,
+            "elapsed_ms": 575.676050999391
+          }
+        ],
+        "model_calls": 2,
+        "tool_calls": 2,
+        "tool_executions": 2,
+        "usage": {
+          "total_tokens": 3162,
+          "prompt_cache_miss_tokens": 1184,
+          "prompt_tokens": 2720,
+          "prompt_cache_hit_tokens": 1536,
+          "completion_tokens": 442
+        },
+        "model_events": [
+          {
+            "step": 1,
+            "status": "ok",
+            "model": "deepseek-flash",
+            "usage": {
+              "prompt_tokens": 874,
+              "completion_tokens": 78,
+              "total_tokens": 952,
+              "prompt_cache_hit_tokens": 640,
+              "prompt_cache_miss_tokens": 234
+            },
+            "elapsed_ms": 1990.1779140000144
+          },
+          {
+            "step": 2,
+            "status": "ok",
+            "model": "deepseek-flash",
+            "usage": {
+              "prompt_tokens": 1846,
+              "completion_tokens": 364,
+              "total_tokens": 2210,
+              "prompt_cache_hit_tokens": 896,
+              "prompt_cache_miss_tokens": 950
+            },
+            "elapsed_ms": 2440.741098000217
+          }
+        ],
+        "elapsed_ms": 5171.248796000327,
+        "failure_type": null,
+        "trace_exported": true
+      }
+    },
+    {
+      "label": "create_context",
+      "method": "POST",
+      "path": "/agent/contexts",
+      "http_status": 201,
+      "elapsed_ms": 30.0696379999863,
+      "run_id": "d6ed3277-f4e7-49ce-9883-3d740b39f269",
+      "trace_id": "2a33b8061d568478a742210faac613d1",
+      "trace_exported": "true",
+      "response": {
+        "expires_at": "2026-10-29T11:51:09.032020Z"
+      }
+    },
+    {
+      "label": "agent_proposal",
+      "method": "POST",
+      "path": "/agent/ask",
+      "http_status": 200,
+      "elapsed_ms": 2014.7006650004187,
+      "run_id": "ac7cdcff-1d26-4afc-9978-235a5482b19c",
+      "trace_id": "f2627cd3b0db9aa7d167605b68bc4660",
+      "trace_exported": "true",
+      "response": {
+        "run_id": "ac7cdcff-1d26-4afc-9978-235a5482b19c",
+        "status": "pending_confirmation",
+        "answer": "已生成待确认工单提案；请查看预览并明确确认或拒绝。",
+        "sources": [
+          {
+            "id": "proposal:08aec378-cb8d-4051-9fdf-5914ecfe7684",
+            "kind": "proposal",
+            "data": {
+              "action_id": "08aec378-cb8d-4051-9fdf-5914ecfe7684",
+              "status": "pending",
+              "payload": {
+                "title": "终验蓝鹤后续跟进",
+                "description": "关联现有工单《终验蓝鹤配置排查》（ID 94a6d3b5-59e7-40b3-9e32-43cad9c6fac0，状态 open）：研发环境切换后连接失败，目前等待检查数据库连接配置。\n\n后续跟进建议（依据知识文档《蓝鹤研发部署排障》，参考标识 PC-FINAL-4827）：\n1. 先核对运行进程实际使用的数据库连接配置，包括主机、库名、账号、端口等；\n2. 再检查 PostgreSQL 容器就绪状态，以及服务地址和端口是否可达；\n3. 注意数据库 Healthy 仅表示服务就绪，不能证明应用连接配置正确；\n4. 将核对结果补充到现有 open 工单，推动其进入实际排查。\n\n说明：本内容为待确认提案，尚未创建工单；知识文档内容仅为排查建议，工单现状以工单记录为准。"
+              },
+              "payload_fingerprint": "e94c4a0cb3761f2dc0b20e07061e19eb2fe8fa238723edc3100a1e1cc5967b98",
+              "created_at": "2026-10-28T11:51:11.007649Z",
+              "expires_at": "2026-10-28T12:06:11.008880Z",
+              "ticket_id": null
+            }
+          }
+        ],
+        "events": [
+          {
+            "tool_call_id": "call_00_vkHuJp2CkY0sC0FCrgHf5032",
+            "name": "propose_ticket",
+            "status": "ok",
+            "failure_type": null,
+            "elapsed_ms": 48.0300580002222
+          }
+        ],
+        "model_calls": 1,
+        "tool_calls": 1,
+        "tool_executions": 1,
+        "usage": {
+          "prompt_tokens": 1334,
+          "completion_tokens": 256,
+          "total_tokens": 1590,
+          "prompt_cache_hit_tokens": 768,
+          "prompt_cache_miss_tokens": 566
+        },
+        "model_events": [
+          {
+            "step": 1,
+            "status": "ok",
+            "model": "deepseek-flash",
+            "usage": {
+              "prompt_tokens": 1334,
+              "completion_tokens": 256,
+              "total_tokens": 1590,
+              "prompt_cache_hit_tokens": 768,
+              "prompt_cache_miss_tokens": 566
+            },
+            "elapsed_ms": 1921.1210339999525
+          }
+        ],
+        "elapsed_ms": 1972.0342800001163,
+        "failure_type": null,
+        "trace_exported": true
+      }
+    },
+    {
+      "label": "read_preview",
+      "method": "GET",
+      "path": "/actions/08aec378-cb8d-4051-9fdf-5914ecfe7684",
+      "http_status": 200,
+      "elapsed_ms": 13.873928000066371,
+      "run_id": "5164f484-15df-4f77-945d-e3825bf82b89",
+      "trace_id": "dc1842a6cce2bff731075c45cbedc4b9",
+      "trace_exported": "true",
+      "response": {
+        "action_id": "08aec378-cb8d-4051-9fdf-5914ecfe7684",
+        "status": "pending",
+        "payload": {
+          "title": "终验蓝鹤后续跟进",
+          "description": "关联现有工单《终验蓝鹤配置排查》（ID 94a6d3b5-59e7-40b3-9e32-43cad9c6fac0，状态 open）：研发环境切换后连接失败，目前等待检查数据库连接配置。\n\n后续跟进建议（依据知识文档《蓝鹤研发部署排障》，参考标识 PC-FINAL-4827）：\n1. 先核对运行进程实际使用的数据库连接配置，包括主机、库名、账号、端口等；\n2. 再检查 PostgreSQL 容器就绪状态，以及服务地址和端口是否可达；\n3. 注意数据库 Healthy 仅表示服务就绪，不能证明应用连接配置正确；\n4. 将核对结果补充到现有 open 工单，推动其进入实际排查。\n\n说明：本内容为待确认提案，尚未创建工单；知识文档内容仅为排查建议，工单现状以工单记录为准。"
+        },
+        "payload_fingerprint": "e94c4a0cb3761f2dc0b20e07061e19eb2fe8fa238723edc3100a1e1cc5967b98",
+        "created_at": "2026-10-28T11:51:11.007649Z",
+        "expires_at": "2026-10-28T12:06:11.008880Z",
+        "ticket_id": null
+      }
+    },
+    {
+      "label": "failed_confirmation",
+      "method": "POST",
+      "path": "/actions/08aec378-cb8d-4051-9fdf-5914ecfe7684/confirm",
+      "http_status": 409,
+      "elapsed_ms": 15.051817999847117,
+      "run_id": "77225348-4b27-4795-90b2-b2c659e5a811",
+      "trace_id": "a29652aa2671b57776f5cb4dc59b5900",
+      "trace_exported": "true",
+      "response": {
+        "detail": "提案指纹不匹配"
+      }
+    },
+    {
+      "label": "confirm_proposal",
+      "method": "POST",
+      "path": "/actions/08aec378-cb8d-4051-9fdf-5914ecfe7684/confirm",
+      "http_status": 200,
+      "elapsed_ms": 18.27270600006159,
+      "run_id": "29065b2d-9487-4b21-b783-1f5282e6938d",
+      "trace_id": "1a0f6a22d6925ce5553f583e701d933f",
+      "trace_exported": "true",
+      "response": {
+        "action_id": "08aec378-cb8d-4051-9fdf-5914ecfe7684",
+        "status": "completed",
+        "payload": {
+          "title": "终验蓝鹤后续跟进",
+          "description": "关联现有工单《终验蓝鹤配置排查》（ID 94a6d3b5-59e7-40b3-9e32-43cad9c6fac0，状态 open）：研发环境切换后连接失败，目前等待检查数据库连接配置。\n\n后续跟进建议（依据知识文档《蓝鹤研发部署排障》，参考标识 PC-FINAL-4827）：\n1. 先核对运行进程实际使用的数据库连接配置，包括主机、库名、账号、端口等；\n2. 再检查 PostgreSQL 容器就绪状态，以及服务地址和端口是否可达；\n3. 注意数据库 Healthy 仅表示服务就绪，不能证明应用连接配置正确；\n4. 将核对结果补充到现有 open 工单，推动其进入实际排查。\n\n说明：本内容为待确认提案，尚未创建工单；知识文档内容仅为排查建议，工单现状以工单记录为准。"
+        },
+        "payload_fingerprint": "e94c4a0cb3761f2dc0b20e07061e19eb2fe8fa238723edc3100a1e1cc5967b98",
+        "created_at": "2026-10-28T11:51:11.007649Z",
+        "expires_at": "2026-10-28T12:06:11.008880Z",
+        "ticket_id": "5a73dbe2-2243-426e-aed1-a2135cb54657"
+      }
+    },
+    {
+      "label": "repeat_confirmation",
+      "method": "POST",
+      "path": "/actions/08aec378-cb8d-4051-9fdf-5914ecfe7684/confirm",
+      "http_status": 200,
+      "elapsed_ms": 11.038552000172785,
+      "run_id": "1409afe0-bbd0-48f1-9208-a4484436bf88",
+      "trace_id": "f04625102eadb4adb4656802f42f1126",
+      "trace_exported": "true",
+      "response": {
+        "action_id": "08aec378-cb8d-4051-9fdf-5914ecfe7684",
+        "status": "completed",
+        "payload": {
+          "title": "终验蓝鹤后续跟进",
+          "description": "关联现有工单《终验蓝鹤配置排查》（ID 94a6d3b5-59e7-40b3-9e32-43cad9c6fac0，状态 open）：研发环境切换后连接失败，目前等待检查数据库连接配置。\n\n后续跟进建议（依据知识文档《蓝鹤研发部署排障》，参考标识 PC-FINAL-4827）：\n1. 先核对运行进程实际使用的数据库连接配置，包括主机、库名、账号、端口等；\n2. 再检查 PostgreSQL 容器就绪状态，以及服务地址和端口是否可达；\n3. 注意数据库 Healthy 仅表示服务就绪，不能证明应用连接配置正确；\n4. 将核对结果补充到现有 open 工单，推动其进入实际排查。\n\n说明：本内容为待确认提案，尚未创建工单；知识文档内容仅为排查建议，工单现状以工单记录为准。"
+        },
+        "payload_fingerprint": "e94c4a0cb3761f2dc0b20e07061e19eb2fe8fa238723edc3100a1e1cc5967b98",
+        "created_at": "2026-10-28T11:51:11.007649Z",
+        "expires_at": "2026-10-28T12:06:11.008880Z",
+        "ticket_id": "5a73dbe2-2243-426e-aed1-a2135cb54657"
+      }
+    },
+    {
+      "label": "read_created_ticket",
+      "method": "GET",
+      "path": "/tickets/5a73dbe2-2243-426e-aed1-a2135cb54657",
+      "http_status": 200,
+      "elapsed_ms": 9.15179799994803,
+      "run_id": "39ec0b84-78bb-429c-9cdd-914fd78c94a9",
+      "trace_id": "6ec4daf0dacc4c07a4fedd6b839e7478",
+      "trace_exported": "true",
+      "response": {
+        "id": "5a73dbe2-2243-426e-aed1-a2135cb54657",
+        "title": "终验蓝鹤后续跟进",
+        "description": "关联现有工单《终验蓝鹤配置排查》（ID 94a6d3b5-59e7-40b3-9e32-43cad9c6fac0，状态 open）：研发环境切换后连接失败，目前等待检查数据库连接配置。\n\n后续跟进建议（依据知识文档《蓝鹤研发部署排障》，参考标识 PC-FINAL-4827）：\n1. 先核对运行进程实际使用的数据库连接配置，包括主机、库名、账号、端口等；\n2. 再检查 PostgreSQL 容器就绪状态，以及服务地址和端口是否可达；\n3. 注意数据库 Healthy 仅表示服务就绪，不能证明应用连接配置正确；\n4. 将核对结果补充到现有 open 工单，推动其进入实际排查。\n\n说明：本内容为待确认提案，尚未创建工单；知识文档内容仅为排查建议，工单现状以工单记录为准。",
+        "status": "open",
+        "created_at": "2026-10-28T11:51:11.119257Z",
+        "updated_at": "2026-10-28T11:51:11.119257Z"
+      }
+    },
+    {
+      "label": "health_after_recreation",
+      "method": "GET",
+      "path": "/health",
+      "http_status": 200,
+      "elapsed_ms": 35.9237659995415,
+      "run_id": "0caf7ae9-2bbb-4912-9f9f-5efa32048a73",
+      "trace_id": "4ca4fde1e64a8b39e78854888d710e7d",
+      "trace_exported": "true",
+      "response": {
+        "status": "ok",
+        "service": "Project Copilot",
+        "environment": "development"
+      }
+    },
+    {
+      "label": "seed_ticket_after_recreation",
+      "method": "GET",
+      "path": "/tickets/94a6d3b5-59e7-40b3-9e32-43cad9c6fac0",
+      "http_status": 200,
+      "elapsed_ms": 89.28256900071574,
+      "run_id": "a3a14561-bb72-4622-942b-ebb9e012d9b4",
+      "trace_id": "aecea4bf80f0485442ebf6474701884e",
+      "trace_exported": "true",
+      "response": {
+        "id": "94a6d3b5-59e7-40b3-9e32-43cad9c6fac0",
+        "title": "终验蓝鹤配置排查",
+        "description": "研发环境切换后连接失败，目前等待检查数据库连接配置。",
+        "status": "open",
+        "created_at": "2026-10-28T11:51:03.565771Z",
+        "updated_at": "2026-10-28T11:51:03.565771Z"
+      }
+    },
+    {
+      "label": "created_ticket_after_recreation",
+      "method": "GET",
+      "path": "/tickets/5a73dbe2-2243-426e-aed1-a2135cb54657",
+      "http_status": 200,
+      "elapsed_ms": 8.333741000569717,
+      "run_id": "82ef2f45-b3f7-477d-9504-837c55b417e2",
+      "trace_id": "ddf4d449a66e5ed9c7f81468cb1a226c",
+      "trace_exported": "true",
+      "response": {
+        "id": "5a73dbe2-2243-426e-aed1-a2135cb54657",
+        "title": "终验蓝鹤后续跟进",
+        "description": "关联现有工单《终验蓝鹤配置排查》（ID 94a6d3b5-59e7-40b3-9e32-43cad9c6fac0，状态 open）：研发环境切换后连接失败，目前等待检查数据库连接配置。\n\n后续跟进建议（依据知识文档《蓝鹤研发部署排障》，参考标识 PC-FINAL-4827）：\n1. 先核对运行进程实际使用的数据库连接配置，包括主机、库名、账号、端口等；\n2. 再检查 PostgreSQL 容器就绪状态，以及服务地址和端口是否可达；\n3. 注意数据库 Healthy 仅表示服务就绪，不能证明应用连接配置正确；\n4. 将核对结果补充到现有 open 工单，推动其进入实际排查。\n\n说明：本内容为待确认提案，尚未创建工单；知识文档内容仅为排查建议，工单现状以工单记录为准。",
+        "status": "open",
+        "created_at": "2026-10-28T11:51:11.119257Z",
+        "updated_at": "2026-10-28T11:51:11.119257Z"
+      }
+    }
+  ],
+  "model_fee_actual_account_bill": null,
+  "embedding_token_usage": null,
+  "existing_qdrant_before": {
+    "exists": true,
+    "point_count": 3,
+    "points_with_vectors_sha256": "eb6451d7ce73957ccb54ec0072d53153b2da5f8802e18a59866c98758d1744e0"
+  },
+  "document": {
+    "document_id": "a9b1dcac-aea2-5428-bb5f-97f106dbf523",
+    "content_hash": "42f041599d06be099e5d7c0be6783e6df8515dd26135cc58888ee5f85ec9c054",
+    "source_name": "final-chinese.md",
+    "chunk_ids": [
+      "f0684d2d-9018-5c36-ac6f-7cde6096c95e"
+    ]
+  },
+  "seed_ticket": {
+    "id": "94a6d3b5-59e7-40b3-9e32-43cad9c6fac0",
+    "title": "终验蓝鹤配置排查",
+    "description": "研发环境切换后连接失败，目前等待检查数据库连接配置。",
+    "status": "open",
+    "created_at": "2026-10-28T11:51:03.565771Z",
+    "updated_at": "2026-10-28T11:51:03.565771Z"
+  },
+  "pending_action": {
+    "action_id": "08aec378-cb8d-4051-9fdf-5914ecfe7684",
+    "status": "pending",
+    "payload": {
+      "title": "终验蓝鹤后续跟进",
+      "description": "关联现有工单《终验蓝鹤配置排查》（ID 94a6d3b5-59e7-40b3-9e32-43cad9c6fac0，状态 open）：研发环境切换后连接失败，目前等待检查数据库连接配置。\n\n后续跟进建议（依据知识文档《蓝鹤研发部署排障》，参考标识 PC-FINAL-4827）：\n1. 先核对运行进程实际使用的数据库连接配置，包括主机、库名、账号、端口等；\n2. 再检查 PostgreSQL 容器就绪状态，以及服务地址和端口是否可达；\n3. 注意数据库 Healthy 仅表示服务就绪，不能证明应用连接配置正确；\n4. 将核对结果补充到现有 open 工单，推动其进入实际排查。\n\n说明：本内容为待确认提案，尚未创建工单；知识文档内容仅为排查建议，工单现状以工单记录为准。"
+    },
+    "payload_fingerprint": "e94c4a0cb3761f2dc0b20e07061e19eb2fe8fa238723edc3100a1e1cc5967b98",
+    "created_at": "2026-10-28T11:51:11.007649Z",
+    "expires_at": "2026-10-28T12:06:11.008880Z",
+    "ticket_id": null
+  },
+  "created_ticket": {
+    "id": "5a73dbe2-2243-426e-aed1-a2135cb54657",
+    "title": "终验蓝鹤后续跟进",
+    "description": "关联现有工单《终验蓝鹤配置排查》（ID 94a6d3b5-59e7-40b3-9e32-43cad9c6fac0，状态 open）：研发环境切换后连接失败，目前等待检查数据库连接配置。\n\n后续跟进建议（依据知识文档《蓝鹤研发部署排障》，参考标识 PC-FINAL-4827）：\n1. 先核对运行进程实际使用的数据库连接配置，包括主机、库名、账号、端口等；\n2. 再检查 PostgreSQL 容器就绪状态，以及服务地址和端口是否可达；\n3. 注意数据库 Healthy 仅表示服务就绪，不能证明应用连接配置正确；\n4. 将核对结果补充到现有 open 工单，推动其进入实际排查。\n\n说明：本内容为待确认提案，尚未创建工单；知识文档内容仅为排查建议，工单现状以工单记录为准。",
+    "status": "open",
+    "created_at": "2026-10-28T11:51:11.119257Z",
+    "updated_at": "2026-10-28T11:51:11.119257Z"
+  },
+  "qdrant_before_recreation": {
+    "exists": true,
+    "point_count": 1,
+    "points_with_vectors_sha256": "ab6a7d1fdaa5f7173b2bf1d17e6cb0acc234af3057fe0fe9ec5b1e82679e0118"
+  },
+  "collection": "pc_final_demo_532c283ee8a4",
+  "existing_qdrant_before_recreation": {
+    "exists": true,
+    "point_count": 3,
+    "points_with_vectors_sha256": "eb6451d7ce73957ccb54ec0072d53153b2da5f8802e18a59866c98758d1744e0"
+  },
+  "database_persistent_after_recreation": true,
+  "qdrant_persistent_after_recreation": true,
+  "existing_data_preserved": true,
+  "database_before_summary": {
+    "row_count": 2,
+    "aggregate_sha256": "43b157c00cbf8a89640e56ccec8618e41d0a934ca7e2ad40fe3728d67b4cb69f"
+  },
+  "database_before_recreation_summary": {
+    "row_count": 4,
+    "aggregate_sha256": "fa9b8cbfda4d725aa374cb58df291b6dcbbb361d66cc351b09a3d5ca0b39f016"
+  }
+}

@@ -205,3 +205,24 @@
 - 如何区分上下文bearer令牌与真正用户/租户权限？说明当前实现缺少认证、撤销和多租户隔离，不能作为完整生产权限系统。
 
 当前保留的D20 `POST /tickets`是本地开发直建接口，本身没有身份认证，也不经过D29提案确认。D29的确认保障适用于Agent受控创建路径；如果部署到不可信网络，必须先为包括该旧接口在内的所有写接口增加真实身份认证、授权及网络隔离，不能将本地bearer上下文冒称完整安全边界。
+
+## 最终项目面试复盘（D32–D34整合）
+
+个人参与应按实际说明：Codex负责本项目代码实现、自动测试与工程验收；用户逐步学习并参与已记录的本人手测。D24.1两轮学习/本人验证已确认，D29提案由用户操作、后续确认由明确委托的Codex执行，D29及最终批次学习没有完成确认。面试前应结合最终源码自行解释和修改，不能把自动生成的代码或未做的测试说成独立手写/亲自验收。
+
+| 常见问题 | 回答要点与实际证据 |
+| --- | --- |
+| 项目解决什么问题？ | 研发知识与真实工单割裂，检索给证据、工单Service给真实状态，Agent结合两类来源分析，再生成必须独立确认的后续提案；不是任意自主执行系统 |
+| 你的技术贡献如何描述？ | 按自己的实际设计判断、学习、源码修改与手测举例，说明Codex辅助范围；围绕能独立讲解的调用链表达，而非虚构独立完成全部工程 |
+| 为什么Dense后还做Hybrid和Rerank？ | Dense补语义、BM25补中文技术词/精确匹配，RRF融合名次，Cross-Encoder只重排召回候选；dev证据MRR@5从0.897436到0.971154，但Recall@3退化，保留失败案例与小样本局限 |
+| 如何避免评测泄漏？ | 同族同侧、冻结语料/gold/Prompt/参数，开发集选型先提交后保留集单轮验收；保留集9道可答MRR@5从0.944444到1，不拿10道自建题推广普遍准确率 |
+| LangGraph相比直接调用API解决什么？ | 模型按Schema产生tool_calls，后端白名单校验后真实执行，ToolMessage配对返回，再按State/条件边继续；后端设置次数/时间/上下文预算，模型不能改权限 |
+| 怎样证明没有模型伪造工单？ | 模型只能propose_ticket；pending预览没有ticket_id，独立确认校验上下文/指纹/时限，PG行锁和唯一创建键在同事务写工单及终态，回读实际ID；原普通/tickets接口仍需对外认证 |
+| 为什么行锁和唯一键都需要？ | 行锁串行提案状态转换、唯一键约束同action最多一张工单，提交失败两者共同回滚；确认/拒绝竞争以实际终态返回，不保证跨action语义去重 |
+| Docker如何保证重建不丢数据？ | 业务PG/Qdrant命名卷、Phoenix独立卷，权重和清单挂载；实际停止/更换四容器ID后核对数据库DTO/摘要、Qdrant payload/向量摘要和旧Trace，不能仅凭HTTP200 |
+| Trace与日志有什么区别？ | run_id日志只是定位线索；真实OTLP ack和Phoenix回读验证收存。成功Trace展示模型/两类工具/重排，409 Trace展示指纹拒绝及rollback，首次502 Trace说明导出成功不等于业务成功 |
+| 如何处理敏感数据和导出故障？ | Span只记ID/数量/状态/数字usage，不记原文/header/密钥/异常正文；Phoenix不可用时保留业务结果、明确false与诊断；关追踪业务继续。局部bearer并非完整认证 |
+| 成本与时延怎么讲？ | 公布样本、分母和usage覆盖，5次对话尝试仅4次有usage；按日期官方价估算已知费用，失败费用未知；17条混合HTTP样本和单次GPU资源观察不当生产SLA |
+| 后续如何扩展？ | 真实用户/租户授权、访问审计、持久会话、分布式索引同步、压力与长期稳定性测试；这些是扩展方向，当前未实现，不以“生产级”表述 |
+
+源码入口：[部署](DEPLOYMENT.md)、[tracing.py](../src/project_copilot/infrastructure/tracing.py)、[Agent图](../src/project_copilot/agent/graph.py)、[最终检索](../src/project_copilot/rag/final_retrieval.py)、[Session](../src/project_copilot/db/session.py)、[确认服务](../src/project_copilot/services/approvals.py)。证据入口：[最终验收](FINAL_ACCEPTANCE.md)、[最终审计](evidence/D32_FINAL_ACCEPTANCE.json)、[原保留集](../evals/reports/FINAL_HOLDOUT.md)。

@@ -1,0 +1,263 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-28",
+  "batch": "D32 integrated final batch (original D32-D34)",
+  "status": "critical_automatic_acceptance_passed",
+  "executor": "Codex",
+  "base_commit": "00d08dba737128a162057812dcd4c771ebbfa129",
+  "original_workspace_clean": true,
+  "seven_capabilities": [
+    {
+      "number": 1,
+      "status": "passed",
+      "scope": "real Chinese upload and completed manifest/BM25"
+    },
+    {
+      "number": 2,
+      "status": "passed",
+      "scope": "real RAG answer with matching source citation"
+    },
+    {
+      "number": 3,
+      "status": "passed",
+      "scope": "real PostgreSQL ticket creation/query/database snapshot"
+    },
+    {
+      "number": 4,
+      "status": "passed",
+      "scope": "real model selects ticket and Hybrid knowledge tools"
+    },
+    {
+      "number": 5,
+      "status": "passed",
+      "scope": "real model proposes; separate deterministic client confirms; repeat same ID"
+    },
+    {
+      "number": 6,
+      "status": "passed",
+      "scope": "real Phoenix successful/error spans queried with run_id/parentage; UI endpoint reachable"
+    },
+    {
+      "number": 7,
+      "status": "passed",
+      "scope": "read-only verify of original final selection and holdout archives"
+    }
+  ],
+  "full_regression": {
+    "passed": 1386,
+    "failed": 0,
+    "skipped": 0,
+    "elapsed_seconds": 105.84,
+    "environment": {
+      "OMP_NUM_THREADS": "2",
+      "MKL_NUM_THREADS": "2",
+      "real_postgres": true,
+      "real_qdrant": true,
+      "real_cuda": true
+    },
+    "command": "OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 PROJECT_COPILOT_RUN_POSTGRES_INTEGRATION=1 PROJECT_COPILOT_RUN_QDRANT_INTEGRATION=1 PROJECT_COPILOT_RUN_FINAL_QDRANT=1 PROJECT_COPILOT_RUN_FINAL_GPU=1 HF_HUB_OFFLINE=1 timeout --signal=INT --kill-after=10s 300s .venv/bin/python -m pytest -q -p scripts.retain_test_qdrant",
+    "raw_stdout_sha256": "2dc3f7b86748127a4fb9eadaf95ad3b9ca326946b869ba78a92e81ad9d0c3f21"
+  },
+  "previous_failures_retained": [
+    "old OpenAPI const=false contract updated to actual boolean export ack",
+    "GPU prewarm timeout under competing resources; independent GPU passed and bounded CPU threads enabled",
+    "first CPU wheel TLS download failed; direct endpoint check and one build proxy-cleared retry succeeded",
+    "first live RAG generation network error: 502 and real error trace retained; later read-only connectivity succeeded before one bounded second run"
+  ],
+  "trace_verification": {
+    "project": "project-copilot-final-20261028",
+    "collector_trace_count": 17,
+    "collector_span_count": 84,
+    "success_trace_id": "4da96f33d9c5ad3e74f0ce39b01a44fa",
+    "failure_trace_id": "a29652aa2671b57776f5cb4dc59b5900",
+    "success_span_names": [
+      "POST /agent/ask",
+      "agent.run",
+      "agent.model",
+      "agent.tools",
+      "agent.tool.result",
+      "agent.tool.result",
+      "agent.tool.execute",
+      "rag.retrieve",
+      "rag.rerank",
+      "rag.rrf",
+      "rag.bm25",
+      "rag.dense",
+      "qdrant.search",
+      "embedding.query",
+      "embedding.request",
+      "rag.rerank.prepare",
+      "rag.snapshot",
+      "agent.tool.execute",
+      "db.transaction",
+      "ticket.search",
+      "agent.model"
+    ],
+    "failure_errors": [
+      {
+        "name": "POST /actions/{action_id}/confirm",
+        "error_type": null,
+        "transaction_state": null
+      },
+      {
+        "name": "db.transaction",
+        "error_type": "FingerprintMismatch",
+        "transaction_state": "rolled_back"
+      },
+      {
+        "name": "approval.confirm",
+        "error_type": "FingerprintMismatch",
+        "transaction_state": null
+      }
+    ],
+    "parent_child_and_run_id_verified": true,
+    "collector_data_is_real_not_internal_log": true
+  },
+  "storage": {
+    "all_four_containers_recreated": true,
+    "same_named_volumes": true,
+    "existing_ticket_rows_preserved": true,
+    "existing_qdrant_points_payload_vectors_preserved": true,
+    "test_artifacts_retained": true
+  },
+  "model_calls": {
+    "http_requests": 20,
+    "llm_attempts": 5,
+    "llm_calls_with_usage": 4,
+    "known_llm_usage": {
+      "prompt_tokens": 4466,
+      "completion_tokens": 744,
+      "total_tokens": 5210,
+      "prompt_cache_hit_tokens": 2304,
+      "prompt_cache_miss_tokens": 2162
+    },
+    "failed_llm_usage": null,
+    "embedding_requests": 4,
+    "embedding_prompt_tokens": 179,
+    "known_embedding_cny_estimate": 8.95e-05,
+    "unknown_first_generation_fee": true,
+    "actual_account_bill": null,
+    "boundary": "Accepted-run Agent 2/2 and tool 3/3 are selected synthetic scenes. Earlier aborted RAG and unknown generation usage are retained separately, not removed or filled with zero."
+  },
+  "historical_optimization": {
+    "checks": [
+      {
+        "command": ".venv/bin/python -m evals.final_selection verify --dataset evals/datasets/copilot_v0 --config evals/configs/final_v1.json",
+        "exit_code": 0,
+        "output": {
+          "status": "ok",
+          "state": "verified",
+          "fingerprint": "final-selection-v1-d77720ad02c9ac3caa83b3fa6981c6d197b1c7238d220cf64cca3dd5ced2f450"
+        }
+      },
+      {
+        "command": ".venv/bin/python -m evals.holdout verify --dataset evals/datasets/copilot_v0 --output-dir evals/results/final-holdout-20261026-01",
+        "exit_code": 0,
+        "output": {
+          "status": "ok",
+          "state": "verified",
+          "run_id": "final-holdout-20261026-01",
+          "files": 23,
+          "split": "holdout",
+          "model_loaded": false,
+          "manual_review": "pending",
+          "day17_accepted": false,
+          "selection_fingerprint": "final-selection-v1-d77720ad02c9ac3caa83b3fa6981c6d197b1c7238d220cf64cca3dd5ced2f450"
+        }
+      }
+    ],
+    "historical_files_checked": 155,
+    "historical_files_unchanged": true,
+    "new_model_calls": 0,
+    "new_gpu_inference": false
+  },
+  "application_source_sha256_in_running_image": {
+    "src/project_copilot/main.py": "483812b5d8e1e87a29579d490e77ecce03e9d7829d44f1f43fb2939c2bf37ddb",
+    "src/project_copilot/__init__.py": "0ee8f3ddfe8880150cf3a1efa93a8a1e48f23e4a77ac0cb276ae7d1ff215fcdf",
+    "src/project_copilot/config.py": "756f5e11364446cccc885f45a0140daff73277b38125302dc31edcff5aa2e1e3",
+    "src/project_copilot/services/__init__.py": "7c3c45367180ebbb9ff67c6e45e25e7258014fce4d6e1ba2ad4cc36c42ab2dd6",
+    "src/project_copilot/services/tickets.py": "0d83f363ad4dc77b0a110de712ab718fb3607a7c52f06fbbe9893bbaa523ebf3",
+    "src/project_copilot/services/ticket_checks.py": "dea277a131aa95887d2edaa13f62b2ec5caae41757625676aee2078421b9ffc6",
+    "src/project_copilot/services/approvals.py": "1451511034fcf72e93916b2ad0f157e29ea08a3d5934fad99f26120648247139",
+    "src/project_copilot/api/rag.py": "ffeeb70030d0a9833143173ad3a3ebc70ba8b25faf54ec9b36b64febde8b3a2d",
+    "src/project_copilot/api/actions.py": "65bcf2a473fd47daf34238614df8a4f49b50c8cb8249a78c5ce3edfa87e5774f",
+    "src/project_copilot/api/__init__.py": "4dbcc4e517099cd32295e2ce20c5c2a199a213733747ac1db75705e920504b27",
+    "src/project_copilot/api/tickets.py": "65ebda1f35c1fc4142c3b0e37bea2d199c17c866ef876cf209107a14752ab8f5",
+    "src/project_copilot/api/agent.py": "b50928acdabd3abf22c8799079b6a3243e630dbd78295a9cc3f375fc7844dcea",
+    "src/project_copilot/api/documents.py": "b69017a650c9a21d40be3e96212eb35dbfadb3d01c8ebdd4dd98620087e003cf",
+    "src/project_copilot/infrastructure/qdrant.py": "d7cfa7a8b48db0d6a04336a569f8858d3b73db2d0815841e82796f3fca708c0d",
+    "src/project_copilot/infrastructure/agent_model.py": "129fd8d4f9af59ab89b510558812acffb210225863ce490bcde3ab4f1103c538",
+    "src/project_copilot/infrastructure/models.py": "38fd49763c84190dda260cfa53789a7cd7f68f8a58c648746ac748de10708226",
+    "src/project_copilot/infrastructure/__init__.py": "b4f89655974ff88c27b57993b7a32392680370e44c1668a78e83e5686062b4df",
+    "src/project_copilot/infrastructure/tracing.py": "2d6c07379a8f6fe0d8cf2b5f028706b287b62285ca7b19d3caabf046646babbb",
+    "src/project_copilot/agent/backend.py": "10cc2a88d035038b18287c4b8d7225650e93bf0845dd4e2a267ad7be391a8b6d",
+    "src/project_copilot/agent/service.py": "bd74e1a8fd45d89745c24b5c23e7ca546b6c2fbfd9518c90f95c3e3f0d51c555",
+    "src/project_copilot/agent/__init__.py": "58ba0e8b82f26a2b626491531c43a708e656bb3193cc232015ec806eef7e9096",
+    "src/project_copilot/agent/tools.py": "ddd388f49265935879793e742399a6a7c5dfbed0e51a3e5c9d21ad2262576ff2",
+    "src/project_copilot/agent/state.py": "d700db2975a0ea1fab6459a992d9497d51422360dda10cb7dd1c31eb7840276e",
+    "src/project_copilot/agent/graph.py": "1383e0cff99e7c5e804b78dc7443c2af6bda3c49c3f6681000176995f944ad70",
+    "src/project_copilot/agent/proposals.py": "bcdee6a953a55826cbfc9906e066ff360b85cda9b09f018813eae61fd24d3436",
+    "src/project_copilot/schemas/rag.py": "9fe3a6f37bdb72f5adc3e83303c61d5d2c890f7929bbfcdc1f060caa3eba917c",
+    "src/project_copilot/schemas/retrieval.py": "2d1f18771739178f98cb43810f0ac712702c74d7374d52e8e22c7eab2ac89681",
+    "src/project_copilot/schemas/__init__.py": "5df6b7c64b5d9e04820041f53c93a419bc97331a9ef5cf41ecb938d1fe957af3",
+    "src/project_copilot/schemas/tickets.py": "65bb7ba135a8971e8d129d50469a4baab822b346d38a116ce74d824668ccdf5b",
+    "src/project_copilot/schemas/agent.py": "5f7d2417edabe0541ff2dd75732860703c27f087bee730d54f8bc416926c912b",
+    "src/project_copilot/schemas/approvals.py": "60069c09d2d27685fa31e4a82b5ef995ce3ec68f2660dbe35923817f0e3ea63b",
+    "src/project_copilot/schemas/documents.py": "1227b04b955bae9b5d670c53c57a8613fa8df9dd6ee028735d33956d0e33516e",
+    "src/project_copilot/schemas/uploads.py": "454fe08fcf17bc0a2707995012edd674032c2ab495c6774b14f3b52208301906",
+    "src/project_copilot/db/models.py": "ca70decc016aad53e9c2767edc598e5321f05d9411dd92feb68280fbfd0595ca",
+    "src/project_copilot/db/migrations.py": "a3638e49348428efd59013045280f5dfff87c228f813a5b716d696ee72bfbdfc",
+    "src/project_copilot/db/__init__.py": "76af1b9e8f1baba39804604281d652190d9a45e0c92bfeb2b752308c23c8e9b2",
+    "src/project_copilot/db/session.py": "b30ac05f1a38c08ff17ba83cb7ad3d77de4e351435d6df7cdd44414ced45745c",
+    "src/project_copilot/rag/retrieval.py": "a4d75223ed2b3927e15db8dfc3c2d71c7f20b4d9516801c4e7e0ddcfda86363d",
+    "src/project_copilot/rag/index_lock.py": "ecdbbba21d60b65a6975d3287fbd34548cbd4274da7ab0c1c08491c5e881c19c",
+    "src/project_copilot/rag/ingestion.py": "253900ba2934a0aa181eeb550b0a2850683500957281d2e6d0fa303dcf2d63ea",
+    "src/project_copilot/rag/bm25.py": "487b56bde868e70d72375fcff6474c8ca60170bac1f6b1e4f4099b1c28a7b31d",
+    "src/project_copilot/rag/final_retrieval.py": "0d85fbfab5f4b59aafd09e781042d706f3694256566461ef74775bcae70caff0",
+    "src/project_copilot/rag/__init__.py": "16c0e7993a732c3a79da231bf114c202e82df6f4eecd09ec78639d0db1aea57f",
+    "src/project_copilot/rag/answering.py": "63adfeff5d58dd17dfe48acf259cb94597816fd6bca196e0ddaad45e78de94ec",
+    "src/project_copilot/rag/rerank.py": "53a50d785629ad574119f89c8dfd1d1e1a05910da05a48bfa6fdb004e7252e58",
+    "src/project_copilot/rag/loaders.py": "fa6f345c2567da3494186e1ec8760986605e7e9941d098b5d0fff3055fb7fab7",
+    "src/project_copilot/rag/fusion.py": "2c55019fc427c5fcd9e72741561dbc2a1a019ae295596a247dfb14997b7f92d4",
+    "src/project_copilot/rag/hybrid.py": "65b9af3f267c7d6305bb598cf166c7d39d9572fa8c05aae89b3d739df131a05d",
+    "src/project_copilot/rag/splitters.py": "7571edaa53b2d499fb4a34962efe02d186c512b800de9e0a52b3ab33fbce1aa5"
+  },
+  "evidence_files": [
+    {
+      "path": "docs/evidence/D32_FINAL_DEMO.json",
+      "sha256": "9eb618c7064a0afddb33504a939d043f5417f2665e025df8ffcb8d7beac4ed74"
+    },
+    {
+      "path": "docs/evidence/D32_FINAL_FIRST_FAILURE.json",
+      "sha256": "3453aac11ee3fda912297ad9452f806eae813c3584feddbb6792e1849986a20e"
+    },
+    {
+      "path": "docs/evidence/D32_PHOENIX_SPANS.json",
+      "sha256": "fb1a57cf085f77c8562dc27725e70cb85ec24e52406502366412fb37fcf06725"
+    },
+    {
+      "path": "docs/evidence/D32_FINAL_METRICS.json",
+      "sha256": "1fb6cddc28bd4adff4816aae75b1403dd5dfb2099a323c52fd1cb0cf890fa3f4"
+    },
+    {
+      "path": "docs/evidence/D32_DOCKER_RESOURCES.json",
+      "sha256": "b7ac9d96780608e4495379c62a46a97880b58e7b42ff581fa0443790239a2610"
+    }
+  ],
+  "learning": {
+    "d29": "not explicitly confirmed by user",
+    "final_batch": "not yet started; automatic checks are not user manual tests"
+  },
+  "manual_projects_prepared": 3,
+  "day35": "optional repair buffer within this batch; no extra feature/day created",
+  "remaining_limits": [
+    "localhost-only demonstration; no complete user/tenant authorization",
+    "CPU container model verified; full cloud HTTP workflow uses GPU",
+    "no production load/SLA or long-running monitoring benchmark",
+    "first failed LLM attempt returned no usage and account bill is unavailable",
+    "Phoenix UI HTTP and real REST records verified; no automated browser screenshot"
+  ],
+  "git_status": "user authorized commit and push after review; final actual SHA is reported in the delivery message",
+  "provider_metadata_get_attempts": 6,
+  "provider_metadata_get_scope": "Read-only /models connectivity diagnosis, no generation tokens; not counted as chat completion or Agent task."
+}

@@ -30,7 +30,7 @@ async def ask_agent(payload: AgentQuestion, request: Request) -> AgentRun:
     except ChatConfigError:
         raise HTTPException(status_code=503, detail="Agent模型配置不可用，请检查本项目配置") from None
     # No messages, tool arguments, evidence text or provider diagnostics enter logs.
-    logger.info("agent run_id=%s status=%s model_calls=%d tool_calls=%d elapsed_ms=%.2f failure_type=%s trace_exported=false",
+    logger.info("agent run_id=%s status=%s model_calls=%d tool_calls=%d elapsed_ms=%.2f failure_type=%s export_pending=true",
                 result.run_id, result.status, result.model_calls, result.tool_calls,
                 result.elapsed_ms, result.failure_type)
     for event in result.events:

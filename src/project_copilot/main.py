@@ -15,7 +15,7 @@ from project_copilot.api.agent import router as agent_router
 from project_copilot.api.actions import router as actions_router
 from project_copilot.config import Settings, load_settings
 from project_copilot.db.session import Database
-from project_copilot.infrastructure.tracing import RequestContextMiddleware
+from project_copilot.infrastructure.tracing import RequestContextMiddleware, create_trace_runtime
 
 
 logger = logging.getLogger(__name__)
@@ -33,6 +33,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             pool_timeout=active.database_pool_timeout_seconds,
         ) if active.database_url is not None else None
         application.state.database = database
+        application.state.tracing = create_trace_runtime(active)
         logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(name)s %(message)s")
         logger.info("Starting %s", application.state.settings.app_name)
         try:
@@ -40,6 +41,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         finally:
             if database is not None:
                 database.close()
+            if application.state.tracing is not None:
+                application.state.tracing.close()
             from project_copilot.rag.final_retrieval import close_final_retriever
             close_final_retriever(application.state.settings)
             logger.info("Stopping %s", application.state.settings.app_name)
@@ -56,9 +59,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     async def unexpected_error(request: Request, exc: Exception) -> JSONResponse:
         run_id = getattr(request.state, "run_id", None) or str(uuid4())
         logger.error("Unhandled request error run_id=%s error_type=%s", run_id, type(exc).__name__)
+        headers = {"X-Run-ID": run_id}
+        if getattr(request.state, "trace_id", None):
+            headers["X-Trace-ID"] = request.state.trace_id
+            headers["X-Trace-Exported"] = str(getattr(request.state, "trace_exported", False)).lower()
         return JSONResponse(
             status_code=500, content={"detail": "服务器内部处理失败，请根据run_id排查", "run_id": run_id},
-            headers={"X-Run-ID": run_id},
+            headers=headers,
         )
 
     @application.get("/health", tags=["health"])

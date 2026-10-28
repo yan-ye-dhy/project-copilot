@@ -108,7 +108,8 @@ def test_unexpected_error_response_is_safe_and_has_same_run_id(monkeypatch, capl
 
 
 @pytest.mark.parametrize('values', [{'upload_max_bytes': 0}, {'upload_max_bytes': 50*1024*1024+1},
-                                 {'tracing_enabled': True}])
-def test_unavailable_export_and_invalid_upload_limits_fail_configuration(values):
+                                 {'trace_export_timeout_seconds': 0}, {'phoenix_endpoint': 'http://localhost:6007'},
+                                 {'phoenix_endpoint': 'http://user:password@localhost:6007/v1/traces'}])
+def test_invalid_export_or_upload_settings_fail_configuration(values):
     with pytest.raises(ValidationError):
         Settings(_env_file=None, **values)

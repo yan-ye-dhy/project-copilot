@@ -6,6 +6,8 @@ from contextlib import contextmanager
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
+from project_copilot.infrastructure.tracing import detached_trace_span
+
 
 class Database:
     def __init__(self, url: str, *, connect_timeout: int = 5, pool_timeout: int = 5) -> None:
@@ -21,9 +23,15 @@ class Database:
     @contextmanager
     def transaction(self) -> Iterator[Session]:
         """事务由调用边界持有；Service只flush，便于组合原子业务操作。"""
-        with self.sessions() as session:
-            with session.begin():
-                yield session
+        with detached_trace_span("db.transaction", {"openinference.span.kind": "CHAIN", "db.system": "postgresql"}) as span:
+            try:
+                with self.sessions() as session:
+                    with session.begin():
+                        yield session
+                span.set_attribute("transaction.state", "committed")
+            except BaseException:
+                span.set_attribute("transaction.state", "rolled_back")
+                raise
 
     def close(self) -> None:
         self.engine.dispose()

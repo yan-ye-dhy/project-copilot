@@ -7,6 +7,7 @@ from pathlib import Path
 from threading import Lock
 from uuid import uuid4
 
+from project_copilot.infrastructure.tracing import trace_span
 from project_copilot.config import Settings
 from project_copilot.infrastructure.models import create_embedding_client
 from project_copilot.infrastructure.qdrant import create_qdrant_store
@@ -34,6 +35,14 @@ class SnapshotManager:
         self._stat: tuple[int, int, int] | None = None
 
     def get_locked(self, client) -> BM25Index:
+        with trace_span("rag.snapshot", {"openinference.span.kind": "CHAIN"}) as span:
+            previous = self._stat
+            result = self._get_locked(client)
+            span.set_attribute("snapshot.reused", previous is not None and previous == self._stat)
+            span.set_attribute("snapshot.chunk_count", len(result.snapshot.chunks))
+            return result
+
+    def _get_locked(self, client) -> BM25Index:
         current = self.manifest.load()
         try:
             st = self.path.stat()
@@ -105,6 +114,11 @@ class SharedReranker:
             self._warm = True
 
     def prepare(self):
+        with trace_span("rag.rerank.prepare", {"openinference.span.kind": "CHAIN", "rerank.device": self.scorer.config.device,
+                        "rerank.dtype": self.scorer.config.dtype, "rerank.already_warm": self._warm}):
+            self._prepare_wait()
+
+    def _prepare_wait(self):
         with self._guard:
             if self._unavailable:
                 raise FinalRetrievalError("重排实例不可用，请检查模型后重启服务")
@@ -119,6 +133,14 @@ class SharedReranker:
             raise FinalRetrievalError("本地重排加载或预热失败；未调用Embedding") from exc
 
     def rerank(self, query, candidates):
+        with trace_span("rag.rerank", {"openinference.span.kind": "RERANKER", "rerank.candidate_count": len(candidates),
+                        "rerank.model": self.scorer.config.model_name, "rerank.revision": self.scorer.config.revision,
+                        "rerank.device": self.scorer.config.device}) as span:
+            result = self._rerank_wait(query, candidates)
+            span.set_attribute("rerank.result_count", len(result))
+            return result
+
+    def _rerank_wait(self, query, candidates):
         if not candidates:
             return []
         with self._guard:
@@ -164,6 +186,14 @@ class FinalRetriever:
         return self.snapshots.synchronize(client)
 
     def search(self, query: str) -> list[RetrievedChunk]:
+        with trace_span("rag.retrieve", {"openinference.span.kind": "RETRIEVER", "retrieval.mode": "HYBRID_RERANK",
+                        "retrieval.dense_candidates": 10, "retrieval.bm25_candidates": 10,
+                        "retrieval.fusion_candidates": 10, "retrieval.final_top_k": 5}) as span:
+            result = self._search(query)
+            span.set_attribute("retrieval.result_count", len(result))
+            return result
+
+    def _search(self, query: str) -> list[RetrievedChunk]:
         if not isinstance(query, str) or not query.strip():
             raise ValueError("检索问题必须是非空文本")
         with index_lock(self.manifest.path):

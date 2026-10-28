@@ -1,0 +1,105 @@
+# Overlay: docker compose --env-file .env.example -f docker-compose.yml -f docker-compose.deploy.yml ...
+# Uses the existing project's PostgreSQL/Qdrant volumes; never use down -v.
+x-app: &app
+  image: ${PROJECT_COPILOT_API_IMAGE:-project-copilot-api:cpu}
+  build:
+    context: .
+    dockerfile: Dockerfile
+    args:
+      RERANK_GROUP: rerank
+      VCS_REF: ${PROJECT_COPILOT_VCS_REF:-unknown}
+  user: "${PROJECT_COPILOT_CONTAINER_UID:-1000}:${PROJECT_COPILOT_CONTAINER_GID:-1000}"
+  environment: &app-env
+    PROJECT_COPILOT_DATABASE_URL: ${PROJECT_COPILOT_DOCKER_DATABASE_URL:-postgresql+psycopg://project_copilot:local-dev-only@postgres:5432/project_copilot}
+    PROJECT_COPILOT_QDRANT_URL: http://qdrant:6333
+    PROJECT_COPILOT_QDRANT_COLLECTION_NAME: ${PROJECT_COPILOT_QDRANT_COLLECTION_NAME:-pc_knowledge_dense_v0}
+    PROJECT_COPILOT_MANIFEST_DIR: /app/data/manifests
+    PROJECT_COPILOT_FINAL_MODEL_CACHE_DIR: /app/models/huggingface
+    PROJECT_COPILOT_FINAL_RERANK_DEVICE: cpu
+    PROJECT_COPILOT_FINAL_RERANK_DTYPE: float32
+    PROJECT_COPILOT_TRACING_ENABLED: ${PROJECT_COPILOT_DOCKER_TRACING_ENABLED:-true}
+    PROJECT_COPILOT_PHOENIX_ENDPOINT: http://phoenix:6006/v1/traces
+    PROJECT_COPILOT_PHOENIX_PROJECT: ${PROJECT_COPILOT_PHOENIX_PROJECT:-project-copilot}
+    PROJECT_COPILOT_TRACE_EXPORT_TIMEOUT_SECONDS: 2
+    HF_HUB_OFFLINE: "1"
+    TRANSFORMERS_OFFLINE: "1"
+    OMP_NUM_THREADS: ${PROJECT_COPILOT_CPU_THREADS:-2}
+    MKL_NUM_THREADS: ${PROJECT_COPILOT_CPU_THREADS:-2}
+  volumes:
+    - type: bind
+      source: ${PROJECT_COPILOT_ENV_FILE:-./.env}
+      target: /app/.env
+      read_only: true
+      bind:
+        create_host_path: false
+    - type: bind
+      source: ${PROJECT_COPILOT_MANIFEST_HOST_DIR:-./data/manifests}
+      target: /app/data/manifests
+      bind:
+        create_host_path: false
+    - type: bind
+      source: ${PROJECT_COPILOT_MODEL_CACHE_HOST_DIR:-./models/huggingface}
+      target: /app/models/huggingface
+      read_only: true
+      bind:
+        create_host_path: false
+  read_only: true
+  tmpfs:
+    - /tmp:size=512m
+
+services:
+  qdrant:
+    healthcheck:
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/6333; printf 'GET /readyz HTTP/1.0\\r\\n\\r\\n' >&3; read -r reply <&3; [[ \"$$reply\" == *'200 OK'* ]]"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  phoenix:
+    # Existing verified upstream v20.16.0 image, pinned by immutable digest.
+    image: arizephoenix/phoenix@sha256:d55a4ffac8c670e2d0bf72e44e81e32a73e832b7ce449e6e4567487adfa9d8d6
+    ports:
+      - "127.0.0.1:${PROJECT_COPILOT_PHOENIX_PORT:-6007}:6006"
+    environment:
+      PHOENIX_WORKING_DIR: /data
+      PHOENIX_HOST: 0.0.0.0
+      PHOENIX_PORT: 6006
+      PHOENIX_ENABLE_AUTH: "false"
+    volumes:
+      - phoenix_data:/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:6006/healthz', timeout=3).read()"]
+      interval: 5s
+      timeout: 5s
+      start_period: 20s
+      retries: 20
+    restart: unless-stopped
+
+  migrate:
+    <<: *app
+    command: ["python", "-m", "scripts.ticket_db", "upgrade"]
+    healthcheck:
+      disable: true
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    <<: *app
+    ports:
+      - "127.0.0.1:${PROJECT_COPILOT_API_PORT:-8002}:8002"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+      phoenix:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    stop_grace_period: 120s
+
+volumes:
+  phoenix_data:

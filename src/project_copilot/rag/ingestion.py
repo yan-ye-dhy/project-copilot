@@ -9,6 +9,7 @@ from typing import Protocol
 
 from pydantic import ValidationError
 
+from project_copilot.infrastructure.tracing import trace_span
 from project_copilot.config import Settings
 from project_copilot.infrastructure.models import create_embedding_client
 from project_copilot.infrastructure.qdrant import DenseQdrantStore, create_qdrant_store
@@ -116,17 +117,24 @@ class IngestionService:
 
     def ingest_file(self, path: str | Path, *, source_name: str | None = None) -> CompletedDocument:
         # Every writer, including historical CLI paths, shares the same process-level file lock.
-        with index_lock(self.manifest.path):
-            return self._ingest_locked(path, source_name=source_name)
+        with trace_span("document.ingest", {"openinference.span.kind": "CHAIN"}) as span:
+            with index_lock(self.manifest.path):
+                result = self._ingest_locked(path, source_name=source_name)
+            span.set_attribute("document.id", str(result.document_id))
+            span.set_attribute("document.chunk_count", len(result.chunk_ids))
+            return result
 
     def _ingest_locked(self, path: str | Path, *, source_name: str | None = None) -> CompletedDocument:
         if source_name is not None and (not isinstance(source_name, str) or not source_name.strip()):
             raise IngestionError("文档展示名称必须是非空字符串")
-        document = load_document(path)
+        with trace_span("document.load", {"openinference.span.kind": "CHAIN"}):
+            document = load_document(path)
         if source_name is not None:
             # 上传使用服务端临时路径；展示名称不参与文件或片段的稳定身份。
             document = document.model_copy(update={"source_name": source_name})
-        chunks = split_document(document, self.split_config)
+        with trace_span("document.split", {"openinference.span.kind": "CHAIN"}) as span:
+            chunks = split_document(document, self.split_config)
+            span.set_attribute("document.chunk_count", len(chunks))
         if not chunks:
             raise EmptyDocumentError("文档没有可索引的非空文本，未发Embedding请求")
         previous = self.manifest.load()
@@ -144,16 +152,21 @@ class IngestionService:
             )}) for chunk in chunks]
             self.store.verify_chunks(canonical, dense_index_version=self.manifest.spec.index_version)
             return completed
-        vectors = self.embeddings.embed_documents([chunk.text for chunk in chunks])
-        self.store.upsert(chunks, vectors, dense_index_version=self.manifest.spec.index_version)
+        with trace_span("embedding.documents", {"openinference.span.kind": "EMBEDDING", "embedding.model": "embedding-3",
+                        "embedding.text_count": len(chunks)}):
+            vectors = self.embeddings.embed_documents([chunk.text for chunk in chunks])
+        with trace_span("qdrant.upsert", {"openinference.span.kind": "CHAIN", "document.chunk_count": len(chunks)}):
+            self.store.upsert(chunks, vectors, dense_index_version=self.manifest.spec.index_version)
         # completed响应后仍回读精确片段；失败点可残留，但未登记文档不能进入检索清单。
-        self.store.verify_chunks(chunks, dense_index_version=self.manifest.spec.index_version)
+        with trace_span("qdrant.verify", {"openinference.span.kind": "CHAIN", "document.chunk_count": len(chunks)}):
+            self.store.verify_chunks(chunks, dense_index_version=self.manifest.spec.index_version)
         completed = CompletedDocument(
             document_id=document.document_id, content_hash=document.content_hash,
             source_name=document.source_name,
             chunk_ids=tuple(chunk.metadata.chunk_id for chunk in chunks),
         )
-        self.manifest.record(previous, completed)
+        with trace_span("index.manifest.publish", {"openinference.span.kind": "CHAIN", "document.id": str(completed.document_id)}):
+            self.manifest.record(previous, completed)
         return completed
 
 

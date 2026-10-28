@@ -1,0 +1,2291 @@
+{
+  "source": "Actual Phoenix REST response data filtered to recorded request trace IDs",
+  "first_failed_run": [
+    {
+      "id": "U3BhbjoxMDE=",
+      "name": "POST /rag/ask",
+      "context": {
+        "trace_id": "156769016bf6f1f9c5d76f681d274f38",
+        "span_id": "c439240213f25515"
+      },
+      "span_kind": "CHAIN",
+      "parent_id": null,
+      "start_time": "2026-10-28T11:45:31.518396+00:00",
+      "end_time": "2026-10-28T11:45:57.967761+00:00",
+      "status_code": "ERROR",
+      "status_message": "",
+      "attributes": {
+        "http.response.status_code": 502,
+        "http.route": "/rag/ask",
+        "http.request.method": "POST",
+        "copilot.run_id": "bf1297e3-95e6-4d64-bd7f-374e8e3dba44"
+      },
+      "events": []
+    },
+    {
+      "id": "U3BhbjoxMDA=",
+      "name": "rag.answer",
+      "context": {
+        "trace_id": "156769016bf6f1f9c5d76f681d274f38",
+        "span_id": "57d154b5b9105268"
+      },
+      "span_kind": "CHAIN",
+      "parent_id": "c439240213f25515",
+      "start_time": "2026-10-28T11:45:31.535634+00:00",
+      "end_time": "2026-10-28T11:45:57.950311+00:00",
+      "status_code": "ERROR",
+      "status_message": "",
+      "attributes": {
+        "copilot.run_id": "bf1297e3-95e6-4d64-bd7f-374e8e3dba44",
+        "error.type": "ChatRequestError"
+      },
+      "events": []
+    },
+    {
+      "id": "U3Bhbjo5OQ==",
+      "name": "rag.generate",
+      "context": {
+        "trace_id": "156769016bf6f1f9c5d76f681d274f38",
+        "span_id": "8981e0ea1a3efe43"
+      },
+      "span_kind": "LLM",
+      "parent_id": "57d154b5b9105268",
+      "start_time": "2026-10-28T11:45:52.832290+00:00",
+      "end_time": "2026-10-28T11:45:57.949745+00:00",
+      "status_code": "ERROR",
+      "status_message": "",
+      "attributes": {
+        "rag.evidence_count": 1,
+        "copilot.run_id": "bf1297e3-95e6-4d64-bd7f-374e8e3dba44",
+        "error.type": "ChatRequestError"
+      },
+      "events": []
+    },
+    {
+      "id": "U3Bhbjo5OA==",
+      "name": "rag.retrieve",
+      "context": {
+        "trace_id": "156769016bf6f1f9c5d76f681d274f38",
+        "span_id": "c98ecb758224e0b4"
+      },
+      "span_kind": "RETRIEVER",
+      "parent_id": "57d154b5b9105268",
+      "start_time": "2026-10-28T11:45:31.535685+00:00",
+      "end_time": "2026-10-28T11:45:52.827507+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "copilot.run_id": "bf1297e3-95e6-4d64-bd7f-374e8e3dba44",
+        "retrieval.fusion_candidates": 10,
+        "retrieval.final_top_k": 5,
+        "retrieval.dense_candidates": 10,
+        "retrieval.bm25_candidates": 10,
+        "retrieval.mode": "HYBRID_RERANK",
+        "retrieval.result_count": 1
+      },
+      "events": []
+    },
+    {
+      "id": "U3Bhbjo5Nw==",
+      "name": "rag.rerank",
+      "context": {
+        "trace_id": "156769016bf6f1f9c5d76f681d274f38",
+        "span_id": "068a06b0ccc191b3"
+      },
+      "span_kind": "RERANKER",
+      "parent_id": "c98ecb758224e0b4",
+      "start_time": "2026-10-28T11:45:52.673157+00:00",
+      "end_time": "2026-10-28T11:45:52.734662+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "copilot.run_id": "bf1297e3-95e6-4d64-bd7f-374e8e3dba44",
+        "rerank.revision": "953dc6f6f85a1b2dbfca4c34a2796e7dde08d41e",
+        "rerank.candidate_count": 1,
+        "rerank.model": "BAAI/bge-reranker-v2-m3",
+        "rerank.device": "cuda",
+        "rerank.result_count": 1
+      },
+      "events": []
+    },
+    {
+      "id": "U3Bhbjo5Ng==",
+      "name": "rag.rrf",
+      "context": {
+        "trace_id": "156769016bf6f1f9c5d76f681d274f38",
+        "span_id": "b46ad02217349e7a"
+      },
+      "span_kind": "CHAIN",
+      "parent_id": "c98ecb758224e0b4",
+      "start_time": "2026-10-28T11:45:52.669902+00:00",
+      "end_time": "2026-10-28T11:45:52.671473+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "fusion.bm25_count": 1,
+        "fusion.rank_constant": 60,
+        "fusion.dense_count": 1,
+        "fusion.result_count": 1,
+        "copilot.run_id": "bf1297e3-95e6-4d64-bd7f-374e8e3dba44"
+      },
+      "events": []
+    },
+    {
+      "id": "U3Bhbjo5NQ==",
+      "name": "rag.bm25",
+      "context": {
+        "trace_id": "156769016bf6f1f9c5d76f681d274f38",
+        "span_id": "5315c847f889a26a"
+      },
+      "span_kind": "RETRIEVER",
+      "parent_id": "c98ecb758224e0b4",
+      "start_time": "2026-10-28T11:45:52.483447+00:00",
+      "end_time": "2026-10-28T11:45:52.668381+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "copilot.run_id": "bf1297e3-95e6-4d64-bd7f-374e8e3dba44",
+        "retrieval.top_k": 10,
+        "retrieval.result_count": 1
+      },
+      "events": []
+    },
+    {
+      "id": "U3Bhbjo5NA==",
+      "name": "rag.dense",
+      "context": {
+        "trace_id": "156769016bf6f1f9c5d76f681d274f38",
+        "span_id": "ccded8149e7f70e5"
+      },
+      "span_kind": "RETRIEVER",
+      "parent_id": "c98ecb758224e0b4",
+      "start_time": "2026-10-28T11:45:51.669655+00:00",
+      "end_time": "2026-10-28T11:45:52.482805+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "copilot.run_id": "bf1297e3-95e6-4d64-bd7f-374e8e3dba44",
+        "retrieval.top_k": 10,
+        "retrieval.result_count": 1
+      },
+      "events": []
+    },
+    {
+      "id": "U3Bhbjo5Mw==",
+      "name": "qdrant.search",
+      "context": {
+        "trace_id": "156769016bf6f1f9c5d76f681d274f38",
+        "span_id": "24f9113bbf21ba07"
+      },
+      "span_kind": "RETRIEVER",
+      "parent_id": "ccded8149e7f70e5",
+      "start_time": "2026-10-28T11:45:52.317976+00:00",
+      "end_time": "2026-10-28T11:45:52.482455+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "copilot.run_id": "bf1297e3-95e6-4d64-bd7f-374e8e3dba44",
+        "retrieval.top_k": 10
+      },
+      "events": []
+    },
+    {
+      "id": "U3Bhbjo5Mg==",
+      "name": "embedding.query",
+      "context": {
+        "trace_id": "156769016bf6f1f9c5d76f681d274f38",
+        "span_id": "ac0f24cf3dbc6b8c"
+      },
+      "span_kind": "EMBEDDING",
+      "parent_id": "ccded8149e7f70e5",
+      "start_time": "2026-10-28T11:45:51.754378+00:00",
+      "end_time": "2026-10-28T11:45:52.317841+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "copilot.run_id": "bf1297e3-95e6-4d64-bd7f-374e8e3dba44",
+        "embedding.model": "embedding-3"
+      },
+      "events": []
+    },
+    {
+      "id": "U3Bhbjo5MQ==",
+      "name": "embedding.request",
+      "context": {
+        "trace_id": "156769016bf6f1f9c5d76f681d274f38",
+        "span_id": "0e58198cb55a8164"
+      },
+      "span_kind": "EMBEDDING",
+      "parent_id": "ac0f24cf3dbc6b8c",
+      "start_time": "2026-10-28T11:45:51.755952+00:00",
+      "end_time": "2026-10-28T11:45:52.317788+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "copilot.run_id": "bf1297e3-95e6-4d64-bd7f-374e8e3dba44",
+        "embedding.model": "embedding-3",
+        "embedding.input_count": 1,
+        "usage.prompt_tokens": 23,
+        "usage.total_tokens": 23,
+        "usage.completion_tokens": 0
+      },
+      "events": []
+    },
+    {
+      "id": "U3Bhbjo5MA==",
+      "name": "rag.rerank.prepare",
+      "context": {
+        "trace_id": "156769016bf6f1f9c5d76f681d274f38",
+        "span_id": "df2a0a7d4a5bd20d"
+      },
+      "span_kind": "CHAIN",
+      "parent_id": "c98ecb758224e0b4",
+      "start_time": "2026-10-28T11:45:31.572670+00:00",
+      "end_time": "2026-10-28T11:45:51.633712+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "copilot.run_id": "bf1297e3-95e6-4d64-bd7f-374e8e3dba44",
+        "rerank.device": "cuda",
+        "rerank.already_warm": false,
+        "rerank.dtype": "float16"
+      },
+      "events": []
+    },
+    {
+      "id": "U3Bhbjo4OQ==",
+      "name": "rag.snapshot",
+      "context": {
+        "trace_id": "156769016bf6f1f9c5d76f681d274f38",
+        "span_id": "63d8d28a8ec67901"
+      },
+      "span_kind": "CHAIN",
+      "parent_id": "c98ecb758224e0b4",
+      "start_time": "2026-10-28T11:45:31.572475+00:00",
+      "end_time": "2026-10-28T11:45:31.572597+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "copilot.run_id": "bf1297e3-95e6-4d64-bd7f-374e8e3dba44",
+        "snapshot.reused": true,
+        "snapshot.chunk_count": 1
+      },
+      "events": []
+    },
+    {
+      "id": "U3Bhbjo4Ng==",
+      "name": "POST /documents/upload",
+      "context": {
+        "trace_id": "0b2eb95c0550a35917618db37c1b6daa",
+        "span_id": "e71b9a80b067617d"
+      },
+      "span_kind": "CHAIN",
+      "parent_id": null,
+      "start_time": "2026-10-28T11:45:29.007956+00:00",
+      "end_time": "2026-10-28T11:45:31.512471+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "http.response.status_code": 200,
+        "http.route": "/documents/upload",
+        "http.request.method": "POST",
+        "copilot.run_id": "f0bca390-1e84-4a3d-95a6-2c1be8754b8f",
+        "app.status": "indexed"
+      },
+      "events": []
+    },
+    {
+      "id": "U3Bhbjo4NQ==",
+      "name": "rag.snapshot",
+      "context": {
+        "trace_id": "0b2eb95c0550a35917618db37c1b6daa",
+        "span_id": "e189c2d0d9b13138"
+      },
+      "span_kind": "CHAIN",
+      "parent_id": "e71b9a80b067617d",
+      "start_time": "2026-10-28T11:45:30.267857+00:00",
+      "end_time": "2026-10-28T11:45:31.511651+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "copilot.run_id": "f0bca390-1e84-4a3d-95a6-2c1be8754b8f",
+        "snapshot.reused": false,
+        "snapshot.chunk_count": 1
+      },
+      "events": []
+    },
+    {
+      "id": "U3Bhbjo4NA==",
+      "name": "document.ingest",
+      "context": {
+        "trace_id": "0b2eb95c0550a35917618db37c1b6daa",
+        "span_id": "82cb2fbc7af7960a"
+      },
+      "span_kind": "CHAIN",
+      "parent_id": "e71b9a80b067617d",
+      "start_time": "2026-10-28T11:45:29.092964+00:00",
+      "end_time": "2026-10-28T11:45:30.266383+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "document.id": "a9b1dcac-aea2-5428-bb5f-97f106dbf523",
+        "document.chunk_count": 1,
+        "copilot.run_id": "f0bca390-1e84-4a3d-95a6-2c1be8754b8f"
+      },
+      "events": []
+    },
+    {
+      "id": "U3Bhbjo4Mw==",
+      "name": "index.manifest.publish",
+      "context": {
+        "trace_id": "0b2eb95c0550a35917618db37c1b6daa",
+        "span_id": "7a5b3e673fc513dd"
+      },
+      "span_kind": "CHAIN",
+      "parent_id": "82cb2fbc7af7960a",
+      "start_time": "2026-10-28T11:45:30.263705+00:00",
+      "end_time": "2026-10-28T11:45:30.266232+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "document.id": "a9b1dcac-aea2-5428-bb5f-97f106dbf523",
+        "copilot.run_id": "f0bca390-1e84-4a3d-95a6-2c1be8754b8f"
+      },
+      "events": []
+    },
+    {
+      "id": "U3Bhbjo4Mg==",
+      "name": "qdrant.verify",
+      "context": {
+        "trace_id": "0b2eb95c0550a35917618db37c1b6daa",
+        "span_id": "e4b20cc8a82a435b"
+      },
+      "span_kind": "CHAIN",
+      "parent_id": "82cb2fbc7af7960a",
+      "start_time": "2026-10-28T11:45:30.221293+00:00",
+      "end_time": "2026-10-28T11:45:30.263560+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "document.chunk_count": 1,
+        "copilot.run_id": "f0bca390-1e84-4a3d-95a6-2c1be8754b8f"
+      },
+      "events": []
+    },
+    {
+      "id": "U3Bhbjo4MQ==",
+      "name": "qdrant.upsert",
+      "context": {
+        "trace_id": "0b2eb95c0550a35917618db37c1b6daa",
+        "span_id": "ddb87b8163519b22"
+      },
+      "span_kind": "CHAIN",
+      "parent_id": "82cb2fbc7af7960a",
+      "start_time": "2026-10-28T11:45:30.214490+00:00",
+      "end_time": "2026-10-28T11:45:30.221205+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "document.chunk_count": 1,
+        "copilot.run_id": "f0bca390-1e84-4a3d-95a6-2c1be8754b8f"
+      },
+      "events": []
+    },
+    {
+      "id": "U3Bhbjo4MA==",
+      "name": "embedding.documents",
+      "context": {
+        "trace_id": "0b2eb95c0550a35917618db37c1b6daa",
+        "span_id": "6ab13412abc40558"
+      },
+      "span_kind": "EMBEDDING",
+      "parent_id": "82cb2fbc7af7960a",
+      "start_time": "2026-10-28T11:45:29.143858+00:00",
+      "end_time": "2026-10-28T11:45:30.214412+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "copilot.run_id": "f0bca390-1e84-4a3d-95a6-2c1be8754b8f",
+        "embedding.model": "embedding-3",
+        "embedding.text_count": 1
+      },
+      "events": []
+    },
+    {
+      "id": "U3Bhbjo3OQ==",
+      "name": "embedding.request",
+      "context": {
+        "trace_id": "0b2eb95c0550a35917618db37c1b6daa",
+        "span_id": "c989a7e3a226e672"
+      },
+      "span_kind": "EMBEDDING",
+      "parent_id": "6ab13412abc40558",
+      "start_time": "2026-10-28T11:45:29.143904+00:00",
+      "end_time": "2026-10-28T11:45:30.214386+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "copilot.run_id": "f0bca390-1e84-4a3d-95a6-2c1be8754b8f",
+        "embedding.model": "embedding-3",
+        "embedding.input_count": 1,
+        "usage.prompt_tokens": 121,
+        "usage.total_tokens": 121,
+        "usage.completion_tokens": 0
+      },
+      "events": []
+    },
+    {
+      "id": "U3Bhbjo3OA==",
+      "name": "document.split",
+      "context": {
+        "trace_id": "0b2eb95c0550a35917618db37c1b6daa",
+        "span_id": "ad2a09725d410c10"
+      },
+      "span_kind": "CHAIN",
+      "parent_id": "82cb2fbc7af7960a",
+      "start_time": "2026-10-28T11:45:29.093607+00:00",
+      "end_time": "2026-10-28T11:45:29.094205+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "document.chunk_count": 1,
+        "copilot.run_id": "f0bca390-1e84-4a3d-95a6-2c1be8754b8f"
+      },
+      "events": []
+    },
+    {
+      "id": "U3Bhbjo3Nw==",
+      "name": "document.load",
+      "context": {
+        "trace_id": "0b2eb95c0550a35917618db37c1b6daa",
+        "span_id": "792b432994073a04"
+      },
+      "span_kind": "CHAIN",
+      "parent_id": "82cb2fbc7af7960a",
+      "start_time": "2026-10-28T11:45:29.093374+00:00",
+      "end_time": "2026-10-28T11:45:29.093539+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "copilot.run_id": "f0bca390-1e84-4a3d-95a6-2c1be8754b8f"
+      },
+      "events": []
+    },
+    {
+      "id": "U3Bhbjo3Ng==",
+      "name": "GET /health",
+      "context": {
+        "trace_id": "606a722d611cb671458bcb220d6e0853",
+        "span_id": "2ff6a7e51232f5bf"
+      },
+      "span_kind": "CHAIN",
+      "parent_id": null,
+      "start_time": "2026-10-28T11:45:29.001811+00:00",
+      "end_time": "2026-10-28T11:45:29.002031+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "http.response.status_code": 200,
+        "http.route": "/health",
+        "http.request.method": "GET",
+        "copilot.run_id": "30fde807-e46b-4778-9cc7-2a879dd56091",
+        "app.status": "ok"
+      },
+      "events": []
+    }
+  ],
+  "accepted_run": [
+    {
+      "id": "U3BhbjoyNDA=",
+      "name": "GET /tickets/{ticket_id}",
+      "context": {
+        "trace_id": "ddf4d449a66e5ed9c7f81468cb1a226c",
+        "span_id": "886996263d862e04"
+      },
+      "span_kind": "CHAIN",
+      "parent_id": null,
+      "start_time": "2026-10-28T11:56:41.820861+00:00",
+      "end_time": "2026-10-28T11:56:41.824093+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "http.route": "/tickets/{ticket_id}",
+        "http.request.method": "GET",
+        "http.response.status_code": 200,
+        "app.status": "open",
+        "copilot.run_id": "82ef2f45-b3f7-477d-9504-837c55b417e2"
+      },
+      "events": []
+    },
+    {
+      "id": "U3BhbjoyMzk=",
+      "name": "db.transaction",
+      "context": {
+        "trace_id": "ddf4d449a66e5ed9c7f81468cb1a226c",
+        "span_id": "5ba393c99d95caf3"
+      },
+      "span_kind": "CHAIN",
+      "parent_id": "886996263d862e04",
+      "start_time": "2026-10-28T11:56:41.821283+00:00",
+      "end_time": "2026-10-28T11:56:41.823946+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "transaction.state": "committed",
+        "copilot.run_id": "82ef2f45-b3f7-477d-9504-837c55b417e2",
+        "db.system": "postgresql"
+      },
+      "events": []
+    },
+    {
+      "id": "U3BhbjoyMzg=",
+      "name": "ticket.get",
+      "context": {
+        "trace_id": "ddf4d449a66e5ed9c7f81468cb1a226c",
+        "span_id": "a4df23ee31736250"
+      },
+      "span_kind": "CHAIN",
+      "parent_id": "886996263d862e04",
+      "start_time": "2026-10-28T11:56:41.821702+00:00",
+      "end_time": "2026-10-28T11:56:41.823333+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "copilot.run_id": "82ef2f45-b3f7-477d-9504-837c55b417e2",
+        "ticket.id": "5a73dbe2-2243-426e-aed1-a2135cb54657"
+      },
+      "events": []
+    },
+    {
+      "id": "U3BhbjoyMzc=",
+      "name": "GET /tickets/{ticket_id}",
+      "context": {
+        "trace_id": "aecea4bf80f0485442ebf6474701884e",
+        "span_id": "8b75e70376c7ee20"
+      },
+      "span_kind": "CHAIN",
+      "parent_id": null,
+      "start_time": "2026-10-28T11:56:41.731103+00:00",
+      "end_time": "2026-10-28T11:56:41.814824+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "http.route": "/tickets/{ticket_id}",
+        "http.request.method": "GET",
+        "http.response.status_code": 200,
+        "app.status": "open",
+        "copilot.run_id": "a3a14561-bb72-4622-942b-ebb9e012d9b4"
+      },
+      "events": []
+    },
+    {
+      "id": "U3BhbjoyMzY=",
+      "name": "db.transaction",
+      "context": {
+        "trace_id": "aecea4bf80f0485442ebf6474701884e",
+        "span_id": "b6203ada9da34d6d"
+      },
+      "span_kind": "CHAIN",
+      "parent_id": "8b75e70376c7ee20",
+      "start_time": "2026-10-28T11:56:41.784193+00:00",
+      "end_time": "2026-10-28T11:56:41.814630+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "transaction.state": "committed",
+        "copilot.run_id": "a3a14561-bb72-4622-942b-ebb9e012d9b4",
+        "db.system": "postgresql"
+      },
+      "events": []
+    },
+    {
+      "id": "U3BhbjoyMzU=",
+      "name": "ticket.get",
+      "context": {
+        "trace_id": "aecea4bf80f0485442ebf6474701884e",
+        "span_id": "c1133ce3aa7b9610"
+      },
+      "span_kind": "CHAIN",
+      "parent_id": "8b75e70376c7ee20",
+      "start_time": "2026-10-28T11:56:41.791209+00:00",
+      "end_time": "2026-10-28T11:56:41.813693+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "copilot.run_id": "a3a14561-bb72-4622-942b-ebb9e012d9b4",
+        "ticket.id": "94a6d3b5-59e7-40b3-9e32-43cad9c6fac0"
+      },
+      "events": []
+    },
+    {
+      "id": "U3BhbjoyMzQ=",
+      "name": "GET /health",
+      "context": {
+        "trace_id": "4ca4fde1e64a8b39e78854888d710e7d",
+        "span_id": "850f8dbd53820d10"
+      },
+      "span_kind": "CHAIN",
+      "parent_id": null,
+      "start_time": "2026-10-28T11:56:41.723903+00:00",
+      "end_time": "2026-10-28T11:56:41.724187+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "http.route": "/health",
+        "http.request.method": "GET",
+        "http.response.status_code": 200,
+        "app.status": "ok",
+        "copilot.run_id": "0caf7ae9-2bbb-4912-9f9f-5efa32048a73"
+      },
+      "events": []
+    },
+    {
+      "id": "U3BhbjoyMDk=",
+      "name": "GET /tickets/{ticket_id}",
+      "context": {
+        "trace_id": "6ec4daf0dacc4c07a4fedd6b839e7478",
+        "span_id": "92d8bbd3ff14ff6c"
+      },
+      "span_kind": "CHAIN",
+      "parent_id": null,
+      "start_time": "2026-10-28T11:51:11.147295+00:00",
+      "end_time": "2026-10-28T11:51:11.149966+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "http.response.status_code": 200,
+        "http.route": "/tickets/{ticket_id}",
+        "http.request.method": "GET",
+        "copilot.run_id": "39ec0b84-78bb-429c-9cdd-914fd78c94a9",
+        "app.status": "open"
+      },
+      "events": []
+    },
+    {
+      "id": "U3BhbjoyMDg=",
+      "name": "db.transaction",
+      "context": {
+        "trace_id": "6ec4daf0dacc4c07a4fedd6b839e7478",
+        "span_id": "b02f177723a556c9"
+      },
+      "span_kind": "CHAIN",
+      "parent_id": "92d8bbd3ff14ff6c",
+      "start_time": "2026-10-28T11:51:11.147667+00:00",
+      "end_time": "2026-10-28T11:51:11.149826+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "transaction.state": "committed",
+        "db.system": "postgresql",
+        "copilot.run_id": "39ec0b84-78bb-429c-9cdd-914fd78c94a9"
+      },
+      "events": []
+    },
+    {
+      "id": "U3BhbjoyMDc=",
+      "name": "ticket.get",
+      "context": {
+        "trace_id": "6ec4daf0dacc4c07a4fedd6b839e7478",
+        "span_id": "f4eeb896c56008cd"
+      },
+      "span_kind": "CHAIN",
+      "parent_id": "92d8bbd3ff14ff6c",
+      "start_time": "2026-10-28T11:51:11.148050+00:00",
+      "end_time": "2026-10-28T11:51:11.149226+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "ticket.id": "5a73dbe2-2243-426e-aed1-a2135cb54657",
+        "copilot.run_id": "39ec0b84-78bb-429c-9cdd-914fd78c94a9"
+      },
+      "events": []
+    },
+    {
+      "id": "U3BhbjoyMDY=",
+      "name": "POST /actions/{action_id}/confirm",
+      "context": {
+        "trace_id": "f04625102eadb4adb4656802f42f1126",
+        "span_id": "ea25af325a532306"
+      },
+      "span_kind": "CHAIN",
+      "parent_id": null,
+      "start_time": "2026-10-28T11:51:11.135998+00:00",
+      "end_time": "2026-10-28T11:51:11.141176+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "http.response.status_code": 200,
+        "http.route": "/actions/{action_id}/confirm",
+        "http.request.method": "POST",
+        "copilot.run_id": "1409afe0-bbd0-48f1-9208-a4484436bf88",
+        "app.status": "completed"
+      },
+      "events": []
+    },
+    {
+      "id": "U3BhbjoyMDU=",
+      "name": "db.transaction",
+      "context": {
+        "trace_id": "f04625102eadb4adb4656802f42f1126",
+        "span_id": "3d7ec7bf78c3af83"
+      },
+      "span_kind": "CHAIN",
+      "parent_id": "ea25af325a532306",
+      "start_time": "2026-10-28T11:51:11.136446+00:00",
+      "end_time": "2026-10-28T11:51:11.141013+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "transaction.state": "committed",
+        "db.system": "postgresql",
+        "copilot.run_id": "1409afe0-bbd0-48f1-9208-a4484436bf88"
+      },
+      "events": []
+    },
+    {
+      "id": "U3BhbjoyMDQ=",
+      "name": "approval.confirm",
+      "context": {
+        "trace_id": "f04625102eadb4adb4656802f42f1126",
+        "span_id": "663bc83634fc3de3"
+      },
+      "span_kind": "CHAIN",
+      "parent_id": "ea25af325a532306",
+      "start_time": "2026-10-28T11:51:11.138561+00:00",
+      "end_time": "2026-10-28T11:51:11.139963+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "status": "completed",
+        "copilot.run_id": "1409afe0-bbd0-48f1-9208-a4484436bf88",
+        "transaction.state": "awaiting_commit",
+        "ticket.id": "5a73dbe2-2243-426e-aed1-a2135cb54657",
+        "action.id": "08aec378-cb8d-4051-9fdf-5914ecfe7684"
+      },
+      "events": []
+    },
+    {
+      "id": "U3BhbjoyMDM=",
+      "name": "POST /actions/{action_id}/confirm",
+      "context": {
+        "trace_id": "1a0f6a22d6925ce5553f583e701d933f",
+        "span_id": "04e6ccaf69d9c794"
+      },
+      "span_kind": "CHAIN",
+      "parent_id": null,
+      "start_time": "2026-10-28T11:51:11.117611+00:00",
+      "end_time": "2026-10-28T11:51:11.129489+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "http.response.status_code": 200,
+        "http.route": "/actions/{action_id}/confirm",
+        "http.request.method": "POST",
+        "copilot.run_id": "29065b2d-9487-4b21-b783-1f5282e6938d",
+        "app.status": "completed"
+      },
+      "events": []
+    },
+    {
+      "id": "U3BhbjoyMDI=",
+      "name": "db.transaction",
+      "context": {
+        "trace_id": "1a0f6a22d6925ce5553f583e701d933f",
+        "span_id": "2f581016aa40059a"
+      },
+      "span_kind": "CHAIN",
+      "parent_id": "04e6ccaf69d9c794",
+      "start_time": "2026-10-28T11:51:11.118130+00:00",
+      "end_time": "2026-10-28T11:51:11.129271+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "transaction.state": "committed",
+        "db.system": "postgresql",
+        "copilot.run_id": "29065b2d-9487-4b21-b783-1f5282e6938d"
+      },
+      "events": []
+    },
+    {
+      "id": "U3BhbjoyMDE=",
+      "name": "approval.confirm",
+      "context": {
+        "trace_id": "1a0f6a22d6925ce5553f583e701d933f",
+        "span_id": "e051dbfcfc9328ea"
+      },
+      "span_kind": "CHAIN",
+      "parent_id": "04e6ccaf69d9c794",
+      "start_time": "2026-10-28T11:51:11.120163+00:00",
+      "end_time": "2026-10-28T11:51:11.128070+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "status": "completed",
+        "copilot.run_id": "29065b2d-9487-4b21-b783-1f5282e6938d",
+        "transaction.state": "awaiting_commit",
+        "ticket.id": "5a73dbe2-2243-426e-aed1-a2135cb54657",
+        "action.id": "08aec378-cb8d-4051-9fdf-5914ecfe7684"
+      },
+      "events": []
+    },
+    {
+      "id": "U3BhbjoyMDA=",
+      "name": "ticket.create",
+      "context": {
+        "trace_id": "1a0f6a22d6925ce5553f583e701d933f",
+        "span_id": "c379ea06ff37b85d"
+      },
+      "span_kind": "CHAIN",
+      "parent_id": "e051dbfcfc9328ea",
+      "start_time": "2026-10-28T11:51:11.121637+00:00",
+      "end_time": "2026-10-28T11:51:11.122910+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "ticket.id": "5a73dbe2-2243-426e-aed1-a2135cb54657",
+        "ticket.has_creation_key": true,
+        "status": "flushed",
+        "copilot.run_id": "29065b2d-9487-4b21-b783-1f5282e6938d"
+      },
+      "events": []
+    },
+    {
+      "id": "U3BhbjoxOTk=",
+      "name": "POST /actions/{action_id}/confirm",
+      "context": {
+        "trace_id": "a29652aa2671b57776f5cb4dc59b5900",
+        "span_id": "1f6beef4d94b0c47"
+      },
+      "span_kind": "CHAIN",
+      "parent_id": null,
+      "start_time": "2026-10-28T11:51:11.088992+00:00",
+      "end_time": "2026-10-28T11:51:11.098305+00:00",
+      "status_code": "ERROR",
+      "status_message": "",
+      "attributes": {
+        "http.response.status_code": 409,
+        "http.route": "/actions/{action_id}/confirm",
+        "http.request.method": "POST",
+        "copilot.run_id": "77225348-4b27-4795-90b2-b2c659e5a811"
+      },
+      "events": []
+    },
+    {
+      "id": "U3BhbjoxOTg=",
+      "name": "db.transaction",
+      "context": {
+        "trace_id": "a29652aa2671b57776f5cb4dc59b5900",
+        "span_id": "a82911050b4e711b"
+      },
+      "span_kind": "CHAIN",
+      "parent_id": "1f6beef4d94b0c47",
+      "start_time": "2026-10-28T11:51:11.089868+00:00",
+      "end_time": "2026-10-28T11:51:11.097951+00:00",
+      "status_code": "ERROR",
+      "status_message": "",
+      "attributes": {
+        "db.system": "postgresql",
+        "copilot.run_id": "77225348-4b27-4795-90b2-b2c659e5a811",
+        "transaction.state": "rolled_back",
+        "error.type": "FingerprintMismatch"
+      },
+      "events": []
+    },
+    {
+      "id": "U3BhbjoxOTc=",
+      "name": "approval.confirm",
+      "context": {
+        "trace_id": "a29652aa2671b57776f5cb4dc59b5900",
+        "span_id": "6e1cb7169d9ab798"
+      },
+      "span_kind": "CHAIN",
+      "parent_id": "1f6beef4d94b0c47",
+      "start_time": "2026-10-28T11:51:11.093358+00:00",
+      "end_time": "2026-10-28T11:51:11.095274+00:00",
+      "status_code": "ERROR",
+      "status_message": "",
+      "attributes": {
+        "copilot.run_id": "77225348-4b27-4795-90b2-b2c659e5a811",
+        "action.id": "08aec378-cb8d-4051-9fdf-5914ecfe7684",
+        "error.type": "FingerprintMismatch"
+      },
+      "events": []
+    },
+    {
+      "id": "U3BhbjoxOTY=",
+      "name": "GET /actions/{action_id}",
+      "context": {
+        "trace_id": "dc1842a6cce2bff731075c45cbedc4b9",
+        "span_id": "38889633ff104cae"
+      },
+      "span_kind": "CHAIN",
+      "parent_id": null,
+      "start_time": "2026-10-28T11:51:11.074878+00:00",
+      "end_time": "2026-10-28T11:51:11.083537+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "http.response.status_code": 200,
+        "http.route": "/actions/{action_id}",
+        "http.request.method": "GET",
+        "copilot.run_id": "5164f484-15df-4f77-945d-e3825bf82b89",
+        "app.status": "pending"
+      },
+      "events": []
+    },
+    {
+      "id": "U3BhbjoxOTU=",
+      "name": "db.transaction",
+      "context": {
+        "trace_id": "dc1842a6cce2bff731075c45cbedc4b9",
+        "span_id": "8f65e645ccd52e2f"
+      },
+      "span_kind": "CHAIN",
+      "parent_id": "38889633ff104cae",
+      "start_time": "2026-10-28T11:51:11.075845+00:00",
+      "end_time": "2026-10-28T11:51:11.083376+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "transaction.state": "committed",
+        "db.system": "postgresql",
+        "copilot.run_id": "5164f484-15df-4f77-945d-e3825bf82b89"
+      },
+      "events": []
+    },
+    {
+      "id": "U3BhbjoxOTQ=",
+      "name": "approval.get",
+      "context": {
+        "trace_id": "dc1842a6cce2bff731075c45cbedc4b9",
+        "span_id": "0e2370601bc99fe8"
+      },
+      "span_kind": "CHAIN",
+      "parent_id": "38889633ff104cae",
+      "start_time": "2026-10-28T11:51:11.077794+00:00",
+      "end_time": "2026-10-28T11:51:11.082075+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "status": "pending",
+        "copilot.run_id": "5164f484-15df-4f77-945d-e3825bf82b89",
+        "action.id": "08aec378-cb8d-4051-9fdf-5914ecfe7684"
+      },
+      "events": []
+    },
+    {
+      "id": "U3BhbjoxOTM=",
+      "name": "POST /agent/ask",
+      "context": {
+        "trace_id": "f2627cd3b0db9aa7d167605b68bc4660",
+        "span_id": "26cd0a59f364fda8"
+      },
+      "span_kind": "CHAIN",
+      "parent_id": null,
+      "start_time": "2026-10-28T11:51:09.046448+00:00",
+      "end_time": "2026-10-28T11:51:11.055051+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "http.response.status_code": 200,
+        "http.route": "/agent/ask",
+        "http.request.method": "POST",
+        "copilot.run_id": "ac7cdcff-1d26-4afc-9978-235a5482b19c",
+        "app.status": "pending_confirmation"
+      },
+      "events": []
+    },
+    {
+      "id": "U3BhbjoxOTI=",
+      "name": "agent.run",
+      "context": {
+        "trace_id": "f2627cd3b0db9aa7d167605b68bc4660",
+        "span_id": "37ab3c08ce79b9e4"
+      },
+      "span_kind": "AGENT",
+      "parent_id": "26cd0a59f364fda8",
+      "start_time": "2026-10-28T11:51:09.082445+00:00",
+      "end_time": "2026-10-28T11:51:11.054528+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "status": "pending_confirmation",
+        "copilot.run_id": "ac7cdcff-1d26-4afc-9978-235a5482b19c",
+        "agent.tool_executions": 1,
+        "agent.history_count": 2,
+        "agent.elapsed_ms": 1972.0342800001163,
+        "agent.model_calls": 1,
+        "agent.tool_calls": 1,
+        "agent.source_count": 1,
+        "run_id": "ac7cdcff-1d26-4afc-9978-235a5482b19c"
+      },
+      "events": []
+    },
+    {
+      "id": "U3BhbjoxOTE=",
+      "name": "agent.tools",
+      "context": {
+        "trace_id": "f2627cd3b0db9aa7d167605b68bc4660",
+        "span_id": "5ec2d247413ddd97"
+      },
+      "span_kind": "CHAIN",
+      "parent_id": "37ab3c08ce79b9e4",
+      "start_time": "2026-10-28T11:51:11.005725+00:00",
+      "end_time": "2026-10-28T11:51:11.053901+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "tool.attempt_count": 1,
+        "tool.execution_count": 1,
+        "copilot.run_id": "ac7cdcff-1d26-4afc-9978-235a5482b19c"
+      },
+      "events": []
+    },
+    {
+      "id": "U3BhbjoxOTA=",
+      "name": "agent.tool.result",
+      "context": {
+        "trace_id": "f2627cd3b0db9aa7d167605b68bc4660",
+        "span_id": "94ef5eb2c420c3f2"
+      },
+      "span_kind": "TOOL",
+      "parent_id": "5ec2d247413ddd97",
+      "start_time": "2026-10-28T11:51:11.053885+00:00",
+      "end_time": "2026-10-28T11:51:11.053894+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "status": "ok",
+        "tool.reported_elapsed_ms": 48.0300580002222,
+        "tool.name": "propose_ticket",
+        "tool.call_id": "call_00_vkHuJp2CkY0sC0FCrgHf5032",
+        "copilot.run_id": "ac7cdcff-1d26-4afc-9978-235a5482b19c"
+      },
+      "events": []
+    },
+    {
+      "id": "U3BhbjoxODk=",
+      "name": "agent.tool.execute",
+      "context": {
+        "trace_id": "f2627cd3b0db9aa7d167605b68bc4660",
+        "span_id": "8e5a810f952c63df"
+      },
+      "span_kind": "TOOL",
+      "parent_id": "5ec2d247413ddd97",
+      "start_time": "2026-10-28T11:51:11.006001+00:00",
+      "end_time": "2026-10-28T11:51:11.053685+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "tool.source_count": 1,
+        "tool.name": "propose_ticket",
+        "tool.call_id": "call_00_vkHuJp2CkY0sC0FCrgHf5032",
+        "copilot.run_id": "ac7cdcff-1d26-4afc-9978-235a5482b19c"
+      },
+      "events": []
+    },
+    {
+      "id": "U3BhbjoxODg=",
+      "name": "db.transaction",
+      "context": {
+        "trace_id": "f2627cd3b0db9aa7d167605b68bc4660",
+        "span_id": "8a2f9bf60eda6df6"
+      },
+      "span_kind": "CHAIN",
+      "parent_id": "8e5a810f952c63df",
+      "start_time": "2026-10-28T11:51:11.006854+00:00",
+      "end_time": "2026-10-28T11:51:11.052736+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "transaction.state": "committed",
+        "db.system": "postgresql",
+        "copilot.run_id": "ac7cdcff-1d26-4afc-9978-235a5482b19c"
+      },
+      "events": []
+    },
+    {
+      "id": "U3BhbjoxODc=",
+      "name": "approval.preview",
+      "context": {
+        "trace_id": "f2627cd3b0db9aa7d167605b68bc4660",
+        "span_id": "1afde559d1881160"
+      },
+      "span_kind": "CHAIN",
+      "parent_id": "8e5a810f952c63df",
+      "start_time": "2026-10-28T11:51:11.008484+00:00",
+      "end_time": "2026-10-28T11:51:11.051761+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "status": "pending",
+        "action.id": "08aec378-cb8d-4051-9fdf-5914ecfe7684",
+        "copilot.run_id": "ac7cdcff-1d26-4afc-9978-235a5482b19c"
+      },
+      "events": []
+    },
+    {
+      "id": "U3BhbjoxODY=",
+      "name": "agent.model",
+      "context": {
+        "trace_id": "f2627cd3b0db9aa7d167605b68bc4660",
+        "span_id": "6039ead4f04b66a2"
+      },
+      "span_kind": "LLM",
+      "parent_id": "37ab3c08ce79b9e4",
+      "start_time": "2026-10-28T11:51:09.083480+00:00",
+      "end_time": "2026-10-28T11:51:11.005006+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "status": "ok",
+        "copilot.run_id": "ac7cdcff-1d26-4afc-9978-235a5482b19c",
+        "usage.prompt_tokens": 1334,
+        "usage.prompt_cache_hit_tokens": 768,
+        "usage.prompt_cache_miss_tokens": 566,
+        "usage.total_tokens": 1590,
+        "usage.completion_tokens": 256,
+        "llm.model_name": "deepseek-flash",
+        "llm.token_count.total": 1590,
+        "llm.token_count.prompt": 1334,
+        "llm.token_count.completion": 256,
+        "agent.model.step": 1
+      },
+      "events": []
+    },
+    {
+      "id": "U3BhbjoxODU=",
+      "name": "db.transaction",
+      "context": {
+        "trace_id": "f2627cd3b0db9aa7d167605b68bc4660",
+        "span_id": "1a113362876eaebc"
+      },
+      "span_kind": "CHAIN",
+      "parent_id": "26cd0a59f364fda8",
+      "start_time": "2026-10-28T11:51:09.047885+00:00",
+      "end_time": "2026-10-28T11:51:09.051240+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "transaction.state": "committed",
+        "db.system": "postgresql",
+        "copilot.run_id": "ac7cdcff-1d26-4afc-9978-235a5482b19c"
+      },
+      "events": []
+    },
+    {
+      "id": "U3BhbjoxODQ=",
+      "name": "POST /agent/contexts",
+      "context": {
+        "trace_id": "2a33b8061d568478a742210faac613d1",
+        "span_id": "08425d731d95f5f4"
+      },
+      "span_kind": "CHAIN",
+      "parent_id": null,
+      "start_time": "2026-10-28T11:51:09.016034+00:00",
+      "end_time": "2026-10-28T11:51:09.040520+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "http.response.status_code": 201,
+        "http.route": "/agent/contexts",
+        "http.request.method": "POST",
+        "copilot.run_id": "d6ed3277-f4e7-49ce-9883-3d740b39f269"
+      },
+      "events": []
+    },
+    {
+      "id": "U3BhbjoxODM=",
+      "name": "db.transaction",
+      "context": {
+        "trace_id": "2a33b8061d568478a742210faac613d1",
+        "span_id": "a6cc4ae8c4fc28ad"
+      },
+      "span_kind": "CHAIN",
+      "parent_id": "08425d731d95f5f4",
+      "start_time": "2026-10-28T11:51:09.020107+00:00",
+      "end_time": "2026-10-28T11:51:09.040336+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "transaction.state": "committed",
+        "db.system": "postgresql",
+        "copilot.run_id": "d6ed3277-f4e7-49ce-9883-3d740b39f269"
+      },
+      "events": []
+    },
+    {
+      "id": "U3BhbjoxODI=",
+      "name": "POST /agent/ask",
+      "context": {
+        "trace_id": "4da96f33d9c5ad3e74f0ce39b01a44fa",
+        "span_id": "eaebb937bd6490c2"
+      },
+      "span_kind": "CHAIN",
+      "parent_id": null,
+      "start_time": "2026-10-28T11:51:03.715776+00:00",
+      "end_time": "2026-10-28T11:51:09.008310+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "http.response.status_code": 200,
+        "http.route": "/agent/ask",
+        "http.request.method": "POST",
+        "copilot.run_id": "629c66ec-716a-4646-b098-98b7b503ca0e",
+        "app.status": "answered"
+      },
+      "events": []
+    },
+    {
+      "id": "U3BhbjoxODE=",
+      "name": "agent.run",
+      "context": {
+        "trace_id": "4da96f33d9c5ad3e74f0ce39b01a44fa",
+        "span_id": "6a8fb9806864b807"
+      },
+      "span_kind": "AGENT",
+      "parent_id": "eaebb937bd6490c2",
+      "start_time": "2026-10-28T11:51:03.833181+00:00",
+      "end_time": "2026-10-28T11:51:09.006065+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "status": "answered",
+        "copilot.run_id": "629c66ec-716a-4646-b098-98b7b503ca0e",
+        "agent.tool_executions": 2,
+        "agent.history_count": 0,
+        "agent.elapsed_ms": 5171.248796000327,
+        "agent.model_calls": 2,
+        "agent.tool_calls": 2,
+        "agent.source_count": 2,
+        "run_id": "629c66ec-716a-4646-b098-98b7b503ca0e"
+      },
+      "events": []
+    },
+    {
+      "id": "U3BhbjoxODA=",
+      "name": "agent.model",
+      "context": {
+        "trace_id": "4da96f33d9c5ad3e74f0ce39b01a44fa",
+        "span_id": "e68cec6402365507"
+      },
+      "span_kind": "LLM",
+      "parent_id": "6a8fb9806864b807",
+      "start_time": "2026-10-28T11:51:06.560616+00:00",
+      "end_time": "2026-10-28T11:51:09.003228+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "status": "ok",
+        "copilot.run_id": "629c66ec-716a-4646-b098-98b7b503ca0e",
+        "usage.prompt_tokens": 1846,
+        "usage.prompt_cache_hit_tokens": 896,
+        "usage.prompt_cache_miss_tokens": 950,
+        "usage.total_tokens": 2210,
+        "usage.completion_tokens": 364,
+        "llm.model_name": "deepseek-flash",
+        "llm.token_count.total": 2210,
+        "llm.token_count.prompt": 1846,
+        "llm.token_count.completion": 364,
+        "agent.model.step": 2
+      },
+      "events": []
+    },
+    {
+      "id": "U3BhbjoxNzk=",
+      "name": "agent.tools",
+      "context": {
+        "trace_id": "4da96f33d9c5ad3e74f0ce39b01a44fa",
+        "span_id": "0f1bb04acce90d63"
+      },
+      "span_kind": "CHAIN",
+      "parent_id": "6a8fb9806864b807",
+      "start_time": "2026-10-28T11:51:05.968496+00:00",
+      "end_time": "2026-10-28T11:51:06.559835+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "tool.attempt_count": 2,
+        "tool.execution_count": 2,
+        "copilot.run_id": "629c66ec-716a-4646-b098-98b7b503ca0e"
+      },
+      "events": []
+    },
+    {
+      "id": "U3BhbjoxNzg=",
+      "name": "agent.tool.result",
+      "context": {
+        "trace_id": "4da96f33d9c5ad3e74f0ce39b01a44fa",
+        "span_id": "8f794b907b2879c3"
+      },
+      "span_kind": "TOOL",
+      "parent_id": "0f1bb04acce90d63",
+      "start_time": "2026-10-28T11:51:06.559823+00:00",
+      "end_time": "2026-10-28T11:51:06.559829+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "status": "ok",
+        "tool.reported_elapsed_ms": 575.676050999391,
+        "tool.name": "search_knowledge",
+        "tool.call_id": "call_01_DStJms8KXiTI7bXq9dyO3357",
+        "copilot.run_id": "629c66ec-716a-4646-b098-98b7b503ca0e"
+      },
+      "events": []
+    },
+    {
+      "id": "U3BhbjoxNzc=",
+      "name": "agent.tool.result",
+      "context": {
+        "trace_id": "4da96f33d9c5ad3e74f0ce39b01a44fa",
+        "span_id": "58a6e7b4b913e364"
+      },
+      "span_kind": "TOOL",
+      "parent_id": "0f1bb04acce90d63",
+      "start_time": "2026-10-28T11:51:06.559762+00:00",
+      "end_time": "2026-10-28T11:51:06.559775+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "status": "ok",
+        "tool.reported_elapsed_ms": 9.991494999667339,
+        "tool.name": "search_tickets",
+        "tool.call_id": "call_00_hicPHXP23KgY1b4Vew7r5197",
+        "copilot.run_id": "629c66ec-716a-4646-b098-98b7b503ca0e"
+      },
+      "events": []
+    },
+    {
+      "id": "U3BhbjoxNzY=",
+      "name": "agent.tool.execute",
+      "context": {
+        "trace_id": "4da96f33d9c5ad3e74f0ce39b01a44fa",
+        "span_id": "b98a8c042b90cffa"
+      },
+      "span_kind": "TOOL",
+      "parent_id": "0f1bb04acce90d63",
+      "start_time": "2026-10-28T11:51:05.979911+00:00",
+      "end_time": "2026-10-28T11:51:06.555313+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "tool.source_count": 1,
+        "tool.name": "search_knowledge",
+        "tool.call_id": "call_01_DStJms8KXiTI7bXq9dyO3357",
+        "copilot.run_id": "629c66ec-716a-4646-b098-98b7b503ca0e"
+      },
+      "events": []
+    },
+    {
+      "id": "U3BhbjoxNzU=",
+      "name": "rag.retrieve",
+      "context": {
+        "trace_id": "4da96f33d9c5ad3e74f0ce39b01a44fa",
+        "span_id": "acf2293652f49370"
+      },
+      "span_kind": "RETRIEVER",
+      "parent_id": "b98a8c042b90cffa",
+      "start_time": "2026-10-28T11:51:05.980074+00:00",
+      "end_time": "2026-10-28T11:51:06.554998+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "copilot.run_id": "629c66ec-716a-4646-b098-98b7b503ca0e",
+        "retrieval.fusion_candidates": 10,
+        "retrieval.final_top_k": 5,
+        "retrieval.dense_candidates": 10,
+        "retrieval.bm25_candidates": 10,
+        "retrieval.mode": "HYBRID_RERANK",
+        "retrieval.result_count": 1
+      },
+      "events": []
+    },
+    {
+      "id": "U3BhbjoxNzQ=",
+      "name": "rag.rerank",
+      "context": {
+        "trace_id": "4da96f33d9c5ad3e74f0ce39b01a44fa",
+        "span_id": "4c3f03ca865e5d12"
+      },
+      "span_kind": "RERANKER",
+      "parent_id": "acf2293652f49370",
+      "start_time": "2026-10-28T11:51:06.380020+00:00",
+      "end_time": "2026-10-28T11:51:06.554182+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "copilot.run_id": "629c66ec-716a-4646-b098-98b7b503ca0e",
+        "rerank.revision": "953dc6f6f85a1b2dbfca4c34a2796e7dde08d41e",
+        "rerank.candidate_count": 1,
+        "rerank.model": "BAAI/bge-reranker-v2-m3",
+        "rerank.device": "cuda",
+        "rerank.result_count": 1
+      },
+      "events": []
+    },
+    {
+      "id": "U3BhbjoxNzM=",
+      "name": "rag.rrf",
+      "context": {
+        "trace_id": "4da96f33d9c5ad3e74f0ce39b01a44fa",
+        "span_id": "24e9c428e56635a9"
+      },
+      "span_kind": "CHAIN",
+      "parent_id": "acf2293652f49370",
+      "start_time": "2026-10-28T11:51:06.379944+00:00",
+      "end_time": "2026-10-28T11:51:06.379977+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "fusion.bm25_count": 1,
+        "fusion.rank_constant": 60,
+        "fusion.dense_count": 1,
+        "fusion.result_count": 1,
+        "copilot.run_id": "629c66ec-716a-4646-b098-98b7b503ca0e"
+      },
+      "events": []
+    },
+    {
+      "id": "U3BhbjoxNzI=",
+      "name": "rag.bm25",
+      "context": {
+        "trace_id": "4da96f33d9c5ad3e74f0ce39b01a44fa",
+        "span_id": "a8730d12bcbcf2a9"
+      },
+      "span_kind": "RETRIEVER",
+      "parent_id": "acf2293652f49370",
+      "start_time": "2026-10-28T11:51:06.376795+00:00",
+      "end_time": "2026-10-28T11:51:06.379735+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "copilot.run_id": "629c66ec-716a-4646-b098-98b7b503ca0e",
+        "retrieval.top_k": 10,
+        "retrieval.result_count": 1
+      },
+      "events": []
+    },
+    {
+      "id": "U3BhbjoxNzE=",
+      "name": "rag.dense",
+      "context": {
+        "trace_id": "4da96f33d9c5ad3e74f0ce39b01a44fa",
+        "span_id": "3b15ddf8fa1ba36a"
+      },
+      "span_kind": "RETRIEVER",
+      "parent_id": "acf2293652f49370",
+      "start_time": "2026-10-28T11:51:06.022090+00:00",
+      "end_time": "2026-10-28T11:51:06.376623+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "copilot.run_id": "629c66ec-716a-4646-b098-98b7b503ca0e",
+        "retrieval.top_k": 10,
+        "retrieval.result_count": 1
+      },
+      "events": []
+    },
+    {
+      "id": "U3BhbjoxNzA=",
+      "name": "qdrant.search",
+      "context": {
+        "trace_id": "4da96f33d9c5ad3e74f0ce39b01a44fa",
+        "span_id": "01df72c578e579b8"
+      },
+      "span_kind": "RETRIEVER",
+      "parent_id": "3b15ddf8fa1ba36a",
+      "start_time": "2026-10-28T11:51:06.365857+00:00",
+      "end_time": "2026-10-28T11:51:06.376585+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "copilot.run_id": "629c66ec-716a-4646-b098-98b7b503ca0e",
+        "retrieval.top_k": 10
+      },
+      "events": []
+    },
+    {
+      "id": "U3BhbjoxNjk=",
+      "name": "embedding.query",
+      "context": {
+        "trace_id": "4da96f33d9c5ad3e74f0ce39b01a44fa",
+        "span_id": "43990e29112bb60e"
+      },
+      "span_kind": "EMBEDDING",
+      "parent_id": "3b15ddf8fa1ba36a",
+      "start_time": "2026-10-28T11:51:06.027210+00:00",
+      "end_time": "2026-10-28T11:51:06.365782+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "copilot.run_id": "629c66ec-716a-4646-b098-98b7b503ca0e",
+        "embedding.model": "embedding-3"
+      },
+      "events": []
+    },
+    {
+      "id": "U3BhbjoxNjg=",
+      "name": "embedding.request",
+      "context": {
+        "trace_id": "4da96f33d9c5ad3e74f0ce39b01a44fa",
+        "span_id": "0f88b2001c6c2186"
+      },
+      "span_kind": "EMBEDDING",
+      "parent_id": "43990e29112bb60e",
+      "start_time": "2026-10-28T11:51:06.027245+00:00",
+      "end_time": "2026-10-28T11:51:06.365762+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "copilot.run_id": "629c66ec-716a-4646-b098-98b7b503ca0e",
+        "embedding.model": "embedding-3",
+        "embedding.input_count": 1,
+        "usage.prompt_tokens": 12,
+        "usage.total_tokens": 12,
+        "usage.completion_tokens": 0
+      },
+      "events": []
+    },
+    {
+      "id": "U3BhbjoxNjc=",
+      "name": "rag.rerank.prepare",
+      "context": {
+        "trace_id": "4da96f33d9c5ad3e74f0ce39b01a44fa",
+        "span_id": "126d9ae36bb0c691"
+      },
+      "span_kind": "CHAIN",
+      "parent_id": "acf2293652f49370",
+      "start_time": "2026-10-28T11:51:06.021662+00:00",
+      "end_time": "2026-10-28T11:51:06.021913+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "copilot.run_id": "629c66ec-716a-4646-b098-98b7b503ca0e",
+        "rerank.device": "cuda",
+        "rerank.already_warm": true,
+        "rerank.dtype": "float16"
+      },
+      "events": []
+    },
+    {
+      "id": "U3BhbjoxNjY=",
+      "name": "rag.snapshot",
+      "context": {
+        "trace_id": "4da96f33d9c5ad3e74f0ce39b01a44fa",
+        "span_id": "4a1c2fafb8279013"
+      },
+      "span_kind": "CHAIN",
+      "parent_id": "acf2293652f49370",
+      "start_time": "2026-10-28T11:51:06.021481+00:00",
+      "end_time": "2026-10-28T11:51:06.021608+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "copilot.run_id": "629c66ec-716a-4646-b098-98b7b503ca0e",
+        "snapshot.reused": true,
+        "snapshot.chunk_count": 1
+      },
+      "events": []
+    },
+    {
+      "id": "U3BhbjoxNjU=",
+      "name": "agent.tool.execute",
+      "context": {
+        "trace_id": "4da96f33d9c5ad3e74f0ce39b01a44fa",
+        "span_id": "281d5e92c4cc35e8"
+      },
+      "span_kind": "TOOL",
+      "parent_id": "0f1bb04acce90d63",
+      "start_time": "2026-10-28T11:51:05.969672+00:00",
+      "end_time": "2026-10-28T11:51:05.977483+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "tool.source_count": 1,
+        "tool.name": "search_tickets",
+        "tool.call_id": "call_00_hicPHXP23KgY1b4Vew7r5197",
+        "copilot.run_id": "629c66ec-716a-4646-b098-98b7b503ca0e"
+      },
+      "events": []
+    },
+    {
+      "id": "U3BhbjoxNjQ=",
+      "name": "db.transaction",
+      "context": {
+        "trace_id": "4da96f33d9c5ad3e74f0ce39b01a44fa",
+        "span_id": "2cdd38e9c966e481"
+      },
+      "span_kind": "CHAIN",
+      "parent_id": "281d5e92c4cc35e8",
+      "start_time": "2026-10-28T11:51:05.970529+00:00",
+      "end_time": "2026-10-28T11:51:05.976293+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "transaction.state": "committed",
+        "db.system": "postgresql",
+        "copilot.run_id": "629c66ec-716a-4646-b098-98b7b503ca0e"
+      },
+      "events": []
+    },
+    {
+      "id": "U3BhbjoxNjM=",
+      "name": "ticket.search",
+      "context": {
+        "trace_id": "4da96f33d9c5ad3e74f0ce39b01a44fa",
+        "span_id": "f4327bbf2c392f4d"
+      },
+      "span_kind": "CHAIN",
+      "parent_id": "281d5e92c4cc35e8",
+      "start_time": "2026-10-28T11:51:05.973847+00:00",
+      "end_time": "2026-10-28T11:51:05.976025+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "ticket.offset": 0,
+        "ticket.limit": 5,
+        "ticket.result_count": 1,
+        "ticket.has_keyword": true,
+        "copilot.run_id": "629c66ec-716a-4646-b098-98b7b503ca0e"
+      },
+      "events": []
+    },
+    {
+      "id": "U3BhbjoxNjI=",
+      "name": "agent.model",
+      "context": {
+        "trace_id": "4da96f33d9c5ad3e74f0ce39b01a44fa",
+        "span_id": "739e5df97c25a9f1"
+      },
+      "span_kind": "LLM",
+      "parent_id": "6a8fb9806864b807",
+      "start_time": "2026-10-28T11:51:03.973286+00:00",
+      "end_time": "2026-10-28T11:51:05.965215+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "status": "ok",
+        "copilot.run_id": "629c66ec-716a-4646-b098-98b7b503ca0e",
+        "usage.prompt_tokens": 874,
+        "usage.prompt_cache_hit_tokens": 640,
+        "usage.prompt_cache_miss_tokens": 234,
+        "usage.total_tokens": 952,
+        "usage.completion_tokens": 78,
+        "llm.model_name": "deepseek-flash",
+        "llm.token_count.total": 952,
+        "llm.token_count.prompt": 874,
+        "llm.token_count.completion": 78,
+        "agent.model.step": 1
+      },
+      "events": []
+    },
+    {
+      "id": "U3BhbjoxNjA=",
+      "name": "GET /tickets",
+      "context": {
+        "trace_id": "4793b3d186420c5cd7fb36d398ca1c03",
+        "span_id": "43ac6349c958022c"
+      },
+      "span_kind": "CHAIN",
+      "parent_id": null,
+      "start_time": "2026-10-28T11:51:03.657076+00:00",
+      "end_time": "2026-10-28T11:51:03.710739+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "http.response.status_code": 200,
+        "http.route": "/tickets",
+        "http.request.method": "GET",
+        "copilot.run_id": "127d724b-e53a-4a4f-92c2-780f24c15cfd"
+      },
+      "events": []
+    },
+    {
+      "id": "U3BhbjoxNTk=",
+      "name": "db.transaction",
+      "context": {
+        "trace_id": "4793b3d186420c5cd7fb36d398ca1c03",
+        "span_id": "c6efde620df0caf1"
+      },
+      "span_kind": "CHAIN",
+      "parent_id": "43ac6349c958022c",
+      "start_time": "2026-10-28T11:51:03.659793+00:00",
+      "end_time": "2026-10-28T11:51:03.710505+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "transaction.state": "committed",
+        "db.system": "postgresql",
+        "copilot.run_id": "127d724b-e53a-4a4f-92c2-780f24c15cfd"
+      },
+      "events": []
+    },
+    {
+      "id": "U3BhbjoxNTg=",
+      "name": "ticket.search",
+      "context": {
+        "trace_id": "4793b3d186420c5cd7fb36d398ca1c03",
+        "span_id": "d9737e6a14c03c0f"
+      },
+      "span_kind": "CHAIN",
+      "parent_id": "43ac6349c958022c",
+      "start_time": "2026-10-28T11:51:03.685743+00:00",
+      "end_time": "2026-10-28T11:51:03.709788+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "ticket.offset": 0,
+        "ticket.limit": 20,
+        "ticket.result_count": 1,
+        "ticket.has_keyword": true,
+        "copilot.run_id": "127d724b-e53a-4a4f-92c2-780f24c15cfd"
+      },
+      "events": []
+    },
+    {
+      "id": "U3BhbjoxNTc=",
+      "name": "GET /tickets/{ticket_id}",
+      "context": {
+        "trace_id": "0b53122fb69d2d5d9e2adff7a6a4131e",
+        "span_id": "436d9a75414b8ec8"
+      },
+      "span_kind": "CHAIN",
+      "parent_id": null,
+      "start_time": "2026-10-28T11:51:03.598284+00:00",
+      "end_time": "2026-10-28T11:51:03.651029+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "http.response.status_code": 200,
+        "http.route": "/tickets/{ticket_id}",
+        "http.request.method": "GET",
+        "copilot.run_id": "da450cf2-ce2f-4708-a140-3d2ad5a4b7ee",
+        "app.status": "open"
+      },
+      "events": []
+    },
+    {
+      "id": "U3BhbjoxNTY=",
+      "name": "db.transaction",
+      "context": {
+        "trace_id": "0b53122fb69d2d5d9e2adff7a6a4131e",
+        "span_id": "922f17a8f5743935"
+      },
+      "span_kind": "CHAIN",
+      "parent_id": "436d9a75414b8ec8",
+      "start_time": "2026-10-28T11:51:03.600050+00:00",
+      "end_time": "2026-10-28T11:51:03.650871+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "transaction.state": "committed",
+        "db.system": "postgresql",
+        "copilot.run_id": "da450cf2-ce2f-4708-a140-3d2ad5a4b7ee"
+      },
+      "events": []
+    },
+    {
+      "id": "U3BhbjoxNTU=",
+      "name": "ticket.get",
+      "context": {
+        "trace_id": "0b53122fb69d2d5d9e2adff7a6a4131e",
+        "span_id": "d48a627e31b4deda"
+      },
+      "span_kind": "CHAIN",
+      "parent_id": "436d9a75414b8ec8",
+      "start_time": "2026-10-28T11:51:03.602626+00:00",
+      "end_time": "2026-10-28T11:51:03.649690+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "ticket.id": "94a6d3b5-59e7-40b3-9e32-43cad9c6fac0",
+        "copilot.run_id": "da450cf2-ce2f-4708-a140-3d2ad5a4b7ee"
+      },
+      "events": []
+    },
+    {
+      "id": "U3BhbjoxNTQ=",
+      "name": "POST /tickets",
+      "context": {
+        "trace_id": "16632183b9ee10bcdd640af186e9c0b5",
+        "span_id": "487a744c5de89bce"
+      },
+      "span_kind": "CHAIN",
+      "parent_id": null,
+      "start_time": "2026-10-28T11:51:03.225671+00:00",
+      "end_time": "2026-10-28T11:51:03.592366+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "http.response.status_code": 201,
+        "http.route": "/tickets",
+        "http.request.method": "POST",
+        "copilot.run_id": "a915e72b-93d2-46eb-bfdc-c56d9366afaf",
+        "app.status": "open"
+      },
+      "events": []
+    },
+    {
+      "id": "U3BhbjoxNTM=",
+      "name": "db.transaction",
+      "context": {
+        "trace_id": "16632183b9ee10bcdd640af186e9c0b5",
+        "span_id": "8cad0bc5f4151b00"
+      },
+      "span_kind": "CHAIN",
+      "parent_id": "487a744c5de89bce",
+      "start_time": "2026-10-28T11:51:03.234640+00:00",
+      "end_time": "2026-10-28T11:51:03.592041+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "transaction.state": "committed",
+        "db.system": "postgresql",
+        "copilot.run_id": "a915e72b-93d2-46eb-bfdc-c56d9366afaf"
+      },
+      "events": []
+    },
+    {
+      "id": "U3BhbjoxNTI=",
+      "name": "ticket.create",
+      "context": {
+        "trace_id": "16632183b9ee10bcdd640af186e9c0b5",
+        "span_id": "66f308e6292da4cc"
+      },
+      "span_kind": "CHAIN",
+      "parent_id": "487a744c5de89bce",
+      "start_time": "2026-10-28T11:51:03.260092+00:00",
+      "end_time": "2026-10-28T11:51:03.587119+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "ticket.id": "94a6d3b5-59e7-40b3-9e32-43cad9c6fac0",
+        "ticket.has_creation_key": false,
+        "status": "flushed",
+        "copilot.run_id": "a915e72b-93d2-46eb-bfdc-c56d9366afaf"
+      },
+      "events": []
+    },
+    {
+      "id": "U3BhbjoxNTE=",
+      "name": "POST /rag/ask",
+      "context": {
+        "trace_id": "f3e2e2dc6f6dba7bfac2f7d40ca03905",
+        "span_id": "8a1fddc1556bf9db"
+      },
+      "span_kind": "CHAIN",
+      "parent_id": null,
+      "start_time": "2026-10-28T11:51:00.065171+00:00",
+      "end_time": "2026-10-28T11:51:03.219027+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "http.response.status_code": 200,
+        "http.route": "/rag/ask",
+        "http.request.method": "POST",
+        "copilot.run_id": "cceed27e-ff13-4771-8ebf-1ff91c328456",
+        "app.status": "answered"
+      },
+      "events": []
+    },
+    {
+      "id": "U3BhbjoxNTA=",
+      "name": "rag.answer",
+      "context": {
+        "trace_id": "f3e2e2dc6f6dba7bfac2f7d40ca03905",
+        "span_id": "4f523cd7993ca229"
+      },
+      "span_kind": "CHAIN",
+      "parent_id": "8a1fddc1556bf9db",
+      "start_time": "2026-10-28T11:51:00.089830+00:00",
+      "end_time": "2026-10-28T11:51:03.216080+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "status": "answered",
+        "rag.evidence_count": 1,
+        "rag.citation_count": 1,
+        "copilot.run_id": "cceed27e-ff13-4771-8ebf-1ff91c328456"
+      },
+      "events": []
+    },
+    {
+      "id": "U3BhbjoxNDk=",
+      "name": "rag.answer.validate",
+      "context": {
+        "trace_id": "f3e2e2dc6f6dba7bfac2f7d40ca03905",
+        "span_id": "9f59fb298d1dba6d"
+      },
+      "span_kind": "CHAIN",
+      "parent_id": "4f523cd7993ca229",
+      "start_time": "2026-10-28T11:51:03.213543+00:00",
+      "end_time": "2026-10-28T11:51:03.214860+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "copilot.run_id": "cceed27e-ff13-4771-8ebf-1ff91c328456"
+      },
+      "events": []
+    },
+    {
+      "id": "U3BhbjoxNDg=",
+      "name": "rag.generate",
+      "context": {
+        "trace_id": "f3e2e2dc6f6dba7bfac2f7d40ca03905",
+        "span_id": "ccbf5d2766220ffd"
+      },
+      "span_kind": "LLM",
+      "parent_id": "4f523cd7993ca229",
+      "start_time": "2026-10-28T11:51:02.006522+00:00",
+      "end_time": "2026-10-28T11:51:03.213454+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "copilot.run_id": "cceed27e-ff13-4771-8ebf-1ff91c328456",
+        "usage.prompt_tokens": 412,
+        "usage.prompt_cache_hit_tokens": 0,
+        "usage.prompt_cache_miss_tokens": 412,
+        "usage.total_tokens": 458,
+        "usage.completion_tokens": 46,
+        "llm.model_name": "deepseek-flash",
+        "llm.token_count.total": 458,
+        "llm.token_count.prompt": 412,
+        "llm.token_count.completion": 46,
+        "rag.evidence_count": 1
+      },
+      "events": []
+    },
+    {
+      "id": "U3BhbjoxNDc=",
+      "name": "rag.retrieve",
+      "context": {
+        "trace_id": "f3e2e2dc6f6dba7bfac2f7d40ca03905",
+        "span_id": "54fbd1417435cd54"
+      },
+      "span_kind": "RETRIEVER",
+      "parent_id": "4f523cd7993ca229",
+      "start_time": "2026-10-28T11:51:00.089890+00:00",
+      "end_time": "2026-10-28T11:51:02.006402+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "copilot.run_id": "cceed27e-ff13-4771-8ebf-1ff91c328456",
+        "retrieval.fusion_candidates": 10,
+        "retrieval.final_top_k": 5,
+        "retrieval.dense_candidates": 10,
+        "retrieval.bm25_candidates": 10,
+        "retrieval.mode": "HYBRID_RERANK",
+        "retrieval.result_count": 1
+      },
+      "events": []
+    },
+    {
+      "id": "U3BhbjoxNDY=",
+      "name": "rag.rerank",
+      "context": {
+        "trace_id": "f3e2e2dc6f6dba7bfac2f7d40ca03905",
+        "span_id": "492beadbc6615041"
+      },
+      "span_kind": "RERANKER",
+      "parent_id": "54fbd1417435cd54",
+      "start_time": "2026-10-28T11:51:01.830886+00:00",
+      "end_time": "2026-10-28T11:51:02.005656+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "copilot.run_id": "cceed27e-ff13-4771-8ebf-1ff91c328456",
+        "rerank.revision": "953dc6f6f85a1b2dbfca4c34a2796e7dde08d41e",
+        "rerank.candidate_count": 1,
+        "rerank.model": "BAAI/bge-reranker-v2-m3",
+        "rerank.device": "cuda",
+        "rerank.result_count": 1
+      },
+      "events": []
+    },
+    {
+      "id": "U3BhbjoxNDU=",
+      "name": "rag.rrf",
+      "context": {
+        "trace_id": "f3e2e2dc6f6dba7bfac2f7d40ca03905",
+        "span_id": "35e76c6da770e201"
+      },
+      "span_kind": "CHAIN",
+      "parent_id": "54fbd1417435cd54",
+      "start_time": "2026-10-28T11:51:01.830403+00:00",
+      "end_time": "2026-10-28T11:51:01.830809+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "fusion.bm25_count": 1,
+        "fusion.rank_constant": 60,
+        "fusion.dense_count": 1,
+        "fusion.result_count": 1,
+        "copilot.run_id": "cceed27e-ff13-4771-8ebf-1ff91c328456"
+      },
+      "events": []
+    },
+    {
+      "id": "U3BhbjoxNDQ=",
+      "name": "rag.bm25",
+      "context": {
+        "trace_id": "f3e2e2dc6f6dba7bfac2f7d40ca03905",
+        "span_id": "4e867088470eed16"
+      },
+      "span_kind": "RETRIEVER",
+      "parent_id": "54fbd1417435cd54",
+      "start_time": "2026-10-28T11:51:01.824843+00:00",
+      "end_time": "2026-10-28T11:51:01.830205+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "copilot.run_id": "cceed27e-ff13-4771-8ebf-1ff91c328456",
+        "retrieval.top_k": 10,
+        "retrieval.result_count": 1
+      },
+      "events": []
+    },
+    {
+      "id": "U3BhbjoxNDM=",
+      "name": "rag.dense",
+      "context": {
+        "trace_id": "f3e2e2dc6f6dba7bfac2f7d40ca03905",
+        "span_id": "102e8ab21b068247"
+      },
+      "span_kind": "RETRIEVER",
+      "parent_id": "54fbd1417435cd54",
+      "start_time": "2026-10-28T11:51:00.158671+00:00",
+      "end_time": "2026-10-28T11:51:01.824669+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "copilot.run_id": "cceed27e-ff13-4771-8ebf-1ff91c328456",
+        "retrieval.top_k": 10,
+        "retrieval.result_count": 1
+      },
+      "events": []
+    },
+    {
+      "id": "U3BhbjoxNDI=",
+      "name": "qdrant.search",
+      "context": {
+        "trace_id": "f3e2e2dc6f6dba7bfac2f7d40ca03905",
+        "span_id": "304d14d02b3c042d"
+      },
+      "span_kind": "RETRIEVER",
+      "parent_id": "102e8ab21b068247",
+      "start_time": "2026-10-28T11:51:01.816553+00:00",
+      "end_time": "2026-10-28T11:51:01.824626+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "copilot.run_id": "cceed27e-ff13-4771-8ebf-1ff91c328456",
+        "retrieval.top_k": 10
+      },
+      "events": []
+    },
+    {
+      "id": "U3BhbjoxNDE=",
+      "name": "embedding.query",
+      "context": {
+        "trace_id": "f3e2e2dc6f6dba7bfac2f7d40ca03905",
+        "span_id": "88d01262139cec49"
+      },
+      "span_kind": "EMBEDDING",
+      "parent_id": "102e8ab21b068247",
+      "start_time": "2026-10-28T11:51:00.166697+00:00",
+      "end_time": "2026-10-28T11:51:01.816473+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "copilot.run_id": "cceed27e-ff13-4771-8ebf-1ff91c328456",
+        "embedding.model": "embedding-3"
+      },
+      "events": []
+    },
+    {
+      "id": "U3BhbjoxNDA=",
+      "name": "embedding.request",
+      "context": {
+        "trace_id": "f3e2e2dc6f6dba7bfac2f7d40ca03905",
+        "span_id": "a4ebe12145f5a8d6"
+      },
+      "span_kind": "EMBEDDING",
+      "parent_id": "88d01262139cec49",
+      "start_time": "2026-10-28T11:51:00.166734+00:00",
+      "end_time": "2026-10-28T11:51:01.816446+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "copilot.run_id": "cceed27e-ff13-4771-8ebf-1ff91c328456",
+        "embedding.model": "embedding-3",
+        "embedding.input_count": 1,
+        "usage.prompt_tokens": 23,
+        "usage.total_tokens": 23,
+        "usage.completion_tokens": 0
+      },
+      "events": []
+    },
+    {
+      "id": "U3BhbjoxMzk=",
+      "name": "rag.rerank.prepare",
+      "context": {
+        "trace_id": "f3e2e2dc6f6dba7bfac2f7d40ca03905",
+        "span_id": "cf219b94069a62ec"
+      },
+      "span_kind": "CHAIN",
+      "parent_id": "54fbd1417435cd54",
+      "start_time": "2026-10-28T11:51:00.158285+00:00",
+      "end_time": "2026-10-28T11:51:00.158443+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "copilot.run_id": "cceed27e-ff13-4771-8ebf-1ff91c328456",
+        "rerank.device": "cuda",
+        "rerank.already_warm": true,
+        "rerank.dtype": "float16"
+      },
+      "events": []
+    },
+    {
+      "id": "U3BhbjoxMzg=",
+      "name": "rag.snapshot",
+      "context": {
+        "trace_id": "f3e2e2dc6f6dba7bfac2f7d40ca03905",
+        "span_id": "0c6cc4c396d5bd0f"
+      },
+      "span_kind": "CHAIN",
+      "parent_id": "54fbd1417435cd54",
+      "start_time": "2026-10-28T11:51:00.157876+00:00",
+      "end_time": "2026-10-28T11:51:00.158182+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "copilot.run_id": "cceed27e-ff13-4771-8ebf-1ff91c328456",
+        "snapshot.reused": true,
+        "snapshot.chunk_count": 1
+      },
+      "events": []
+    },
+    {
+      "id": "U3BhbjoxMzc=",
+      "name": "POST /documents/upload",
+      "context": {
+        "trace_id": "49c136c3e2b1d04417b4c2907bc529d6",
+        "span_id": "122b816f632d1791"
+      },
+      "span_kind": "CHAIN",
+      "parent_id": null,
+      "start_time": "2026-10-28T11:50:59.794532+00:00",
+      "end_time": "2026-10-28T11:51:00.059082+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "http.response.status_code": 200,
+        "http.route": "/documents/upload",
+        "http.request.method": "POST",
+        "copilot.run_id": "9b9da0e4-7de6-440c-9e85-c845cd85e358",
+        "app.status": "indexed"
+      },
+      "events": []
+    },
+    {
+      "id": "U3BhbjoxMzY=",
+      "name": "rag.snapshot",
+      "context": {
+        "trace_id": "49c136c3e2b1d04417b4c2907bc529d6",
+        "span_id": "e4b03bb3da562e52"
+      },
+      "span_kind": "CHAIN",
+      "parent_id": "122b816f632d1791",
+      "start_time": "2026-10-28T11:51:00.055552+00:00",
+      "end_time": "2026-10-28T11:51:00.056391+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "copilot.run_id": "9b9da0e4-7de6-440c-9e85-c845cd85e358",
+        "snapshot.reused": true,
+        "snapshot.chunk_count": 1
+      },
+      "events": []
+    },
+    {
+      "id": "U3BhbjoxMzU=",
+      "name": "document.ingest",
+      "context": {
+        "trace_id": "49c136c3e2b1d04417b4c2907bc529d6",
+        "span_id": "54e66670857b4065"
+      },
+      "span_kind": "CHAIN",
+      "parent_id": "122b816f632d1791",
+      "start_time": "2026-10-28T11:50:59.968206+00:00",
+      "end_time": "2026-10-28T11:51:00.054287+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "document.id": "a9b1dcac-aea2-5428-bb5f-97f106dbf523",
+        "document.chunk_count": 1,
+        "copilot.run_id": "9b9da0e4-7de6-440c-9e85-c845cd85e358"
+      },
+      "events": []
+    },
+    {
+      "id": "U3BhbjoxMzQ=",
+      "name": "document.split",
+      "context": {
+        "trace_id": "49c136c3e2b1d04417b4c2907bc529d6",
+        "span_id": "e3d02dd337d63f8f"
+      },
+      "span_kind": "CHAIN",
+      "parent_id": "54e66670857b4065",
+      "start_time": "2026-10-28T11:50:59.976176+00:00",
+      "end_time": "2026-10-28T11:50:59.982201+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "document.chunk_count": 1,
+        "copilot.run_id": "9b9da0e4-7de6-440c-9e85-c845cd85e358"
+      },
+      "events": []
+    },
+    {
+      "id": "U3BhbjoxMzM=",
+      "name": "document.load",
+      "context": {
+        "trace_id": "49c136c3e2b1d04417b4c2907bc529d6",
+        "span_id": "98751f5836efaa83"
+      },
+      "span_kind": "CHAIN",
+      "parent_id": "54e66670857b4065",
+      "start_time": "2026-10-28T11:50:59.971957+00:00",
+      "end_time": "2026-10-28T11:50:59.975853+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "copilot.run_id": "9b9da0e4-7de6-440c-9e85-c845cd85e358"
+      },
+      "events": []
+    },
+    {
+      "id": "U3BhbjoxMzI=",
+      "name": "GET /health",
+      "context": {
+        "trace_id": "f58322f08079231a737679a246d174e1",
+        "span_id": "9fc9a97c5f5b5ba1"
+      },
+      "span_kind": "CHAIN",
+      "parent_id": null,
+      "start_time": "2026-10-28T11:50:59.789122+00:00",
+      "end_time": "2026-10-28T11:50:59.789366+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "http.response.status_code": 200,
+        "http.route": "/health",
+        "http.request.method": "GET",
+        "copilot.run_id": "c50471eb-40f7-4b8e-ae73-ce70a1682282",
+        "app.status": "ok"
+      },
+      "events": []
+    }
+  ]
+}

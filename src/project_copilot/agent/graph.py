@@ -10,7 +10,9 @@ from typing import Protocol
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage, ToolMessage
 from langgraph.graph import END, START, StateGraph
 from pydantic import ValidationError
+from opentelemetry.trace import StatusCode
 
+from project_copilot.infrastructure.tracing import trace_span
 from project_copilot.agent.state import AgentState, GraphLimits
 from project_copilot.agent.tools import ToolRegistry, ToolResult
 from project_copilot.schemas.agent import AgentFinal, AgentQuestion, AgentRun, AgentSource, ToolEvent
@@ -85,6 +87,28 @@ class AgentRunner:
         return "model" if state["status"] == "running" else "end"
 
     async def _model_node(self, state: AgentState) -> dict:
+        with trace_span("agent.model", {"openinference.span.kind": "LLM"}) as span:
+            result = await self._model_step(state)
+            events = result.get("model_events", [])
+            if len(events) > len(state["model_events"]):
+                event = events[-1]
+                span.set_attribute("agent.model.step", event["step"])
+                span.set_attribute("status", event["status"])
+                if event.get("model") in {"deepseek-flash", "deepseek-v4-pro"}:
+                    span.set_attribute("llm.model_name", event["model"])
+                usage = event.get("usage")
+                if usage is not None:
+                    for key, value in usage.items():
+                        span.set_attribute("usage." + key, value)
+                    span.set_attribute("llm.token_count.prompt", usage["prompt_tokens"])
+                    span.set_attribute("llm.token_count.completion", usage["completion_tokens"])
+                    span.set_attribute("llm.token_count.total", usage["total_tokens"])
+            if result.get("failure_type"):
+                span.set_attribute("failure.type", result["failure_type"])
+                span.set_status(StatusCode.ERROR)
+            return result
+
+    async def _model_step(self, state: AgentState) -> dict:
         if self._remaining(state) <= 0:
             return _failure("total_timeout", budget=True)
         if state["model_calls"] >= self.limits.max_model_calls:
@@ -144,6 +168,25 @@ class AgentRunner:
         return {**base, "status": final.status, "answer": final.answer, "sources": sources}
 
     async def _tools_node(self, state: AgentState) -> dict:
+        with trace_span("agent.tools", {"openinference.span.kind": "CHAIN"}) as span:
+            result = await self._execute_tools(state)
+            new_events = result["events"][len(state["events"]):]
+            span.set_attribute("tool.attempt_count", result["tool_calls"] - state["tool_calls"])
+            span.set_attribute("tool.execution_count", result["tool_executions"] - state["tool_executions"])
+            for event in new_events:
+                name = event.name if event.name in {"get_ticket", "search_tickets", "search_knowledge", "propose_ticket"} else "unknown"
+                with trace_span("agent.tool.result", {"openinference.span.kind": "TOOL", "tool.name": name,
+                                "tool.call_id": event.tool_call_id, "status": event.status,
+                                "tool.reported_elapsed_ms": event.elapsed_ms}) as result_span:
+                    if event.failure_type:
+                        result_span.set_attribute("failure.type", event.failure_type)
+                        result_span.set_status(StatusCode.ERROR)
+            if result.get("failure_type"):
+                span.set_attribute("failure.type", result["failure_type"])
+                span.set_status(StatusCode.ERROR)
+            return result
+
+    async def _execute_tools(self, state: AgentState) -> dict:
         message = state["messages"][-1]
         assert isinstance(message, AIMessage)
         calls = [(call, False) for call in message.tool_calls] + [(call, True) for call in message.invalid_tool_calls]
@@ -199,11 +242,14 @@ class AgentRunner:
                     else:
                         try:
                             executions += 1
-                            result = await asyncio.wait_for(
-                                tool.handler(**arguments.model_dump()),
-                                timeout=min(self.limits.tool_timeout_seconds, self._remaining(state)),
-                            )
-                            parsed = ToolResult.model_validate(result)
+                            with trace_span("agent.tool.execute", {"openinference.span.kind": "TOOL",
+                                            "tool.name": tool.name, "tool.call_id": call_id}) as tool_span:
+                                result = await asyncio.wait_for(
+                                    tool.handler(**arguments.model_dump()),
+                                    timeout=min(self.limits.tool_timeout_seconds, self._remaining(state)),
+                                )
+                                parsed = ToolResult.model_validate(result)
+                                tool_span.set_attribute("tool.source_count", len(parsed.sources))
                             output = {"status": "ok", **parsed.model_dump(mode="json")}
                             if len(_json(output)) > self.limits.max_tool_result_chars:
                                 kind = "tool_output_too_large"
@@ -245,6 +291,21 @@ class AgentRunner:
                 "tool_calls": attempts, "tool_executions": executions, **updates}
 
     async def run(self, payload: AgentQuestion, run_id: str) -> AgentRun:
+        with trace_span("agent.run", {"openinference.span.kind": "AGENT", "run_id": run_id,
+                        "agent.history_count": len(payload.history)}) as span:
+            result = await self._run(payload, run_id)
+            span.set_attribute("status", result.status)
+            span.set_attribute("agent.model_calls", result.model_calls)
+            span.set_attribute("agent.tool_calls", result.tool_calls)
+            span.set_attribute("agent.tool_executions", result.tool_executions)
+            span.set_attribute("agent.source_count", len(result.sources))
+            span.set_attribute("agent.elapsed_ms", result.elapsed_ms)
+            if result.failure_type:
+                span.set_attribute("failure.type", result.failure_type)
+                span.set_status(StatusCode.ERROR)
+            return result
+
+    async def _run(self, payload: AgentQuestion, run_id: str) -> AgentRun:
         started = time.monotonic()
         history = [HumanMessage(content=item.content) if item.role == "user" else AIMessage(content=item.content)
                    for item in payload.history]

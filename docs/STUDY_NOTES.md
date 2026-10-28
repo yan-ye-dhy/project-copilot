@@ -448,3 +448,15 @@ MCP作为独立知识补充：[官方架构](https://modelcontextprotocol.io/doc
 ## D29整合批次：受控提案、行锁与幂等
 
 从上下文凭据和Agent `propose_ticket`追踪到pending预览，确认前没有新工单；再追踪明确确认的指纹验证、`SELECT FOR UPDATE`、过期判断、唯一创建键、flush与单事务提交。对照拒绝/过期终态、提交失败回滚和重复/并发确认，注意模型消息及聊天“确认”不能授权数据库写入；上下文bearer能力不是用户登录，不能代表多租户权限。结合[D29报告](reports/DAY_29.md)、[架构图](ARCHITECTURE.md)、[自动数据库证据](evidence/D29_POSTGRES_CONCURRENCY.json)和[本轮分工手测](evidence/D29_MANUAL_VERIFICATION_20261028.json)教学。用户学习状态尚未明确确认。
+
+## D32最终整合批次：部署、Trace和项目复盘（原D32–D34）
+
+用户本批源码学习尚未开始，以下为ChatGPT集中教学提纲。先读[八项报告](reports/DAY_32.md)和[最终架构](ARCHITECTURE.md)，再沿一条已保存的真实Trace定位源码，避免重复学习历史实验运行器。
+
+1. 从Dockerfile锁依赖到Compose的api/migrate/PG/Qdrant/Phoenix；解释服务名、宿主端口、UID/GID、只读.env/权重、可写清单与命名卷。实际重建不能只看config语法或health，需核对旧数据摘要和新工单ID。
+2. 从RequestContextMiddleware建立HTTP根Span，追踪contextvars进入async和线程、Agent模型/工具及RAG各阶段，再看单次OTLP回执与Phoenix REST存储。X-Trace-Exported=true不等于业务成功，503/409等失败Trace也可以成功导出。
+3. 对照db.transaction与approval.confirm、ticket.create：flush拿到ID仍未提交，只有Session.begin正常退出才committed；为什么同步yield依赖的事务Span不能跨线程附着上下文令牌。
+4. 读取真实组合Agent中ticket/knowledge两类source，跟踪独立确认、错误指纹回滚、重复同ID；解释模型请求工具与后端授权/执行的区别。
+5. 对照[最终指标](evidence/D32_FINAL_METRICS.json)的样本、失败分母、usage覆盖和嵌套耗时。已知费用仅按官方价估算，首次失败usage未知，不填零；第二轮温态GPU不当冷启动或生产P95。
+
+[三个本人手测](FINAL_MANUAL_VERIFICATION.md)尚待用户完成源码学习并主动开启。D29学习也仍待明确确认；本批自动测试/真实模型采集由Codex执行，不记成用户本人操作。

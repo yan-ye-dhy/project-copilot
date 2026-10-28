@@ -9,6 +9,7 @@ from typing import Protocol
 
 from pydantic import ValidationError
 
+from project_copilot.infrastructure.tracing import trace_span
 from project_copilot.config import Settings
 from project_copilot.infrastructure.models import ChatGeneration, create_chat_client
 from project_copilot.schemas.rag import (
@@ -137,6 +138,15 @@ class RagAnswerer:
         self.prompt = prompt_info(context_max_chars, template=prompt_template)
 
     def answer(self, question: str) -> RagAnswer:
+        with trace_span("rag.answer", {"openinference.span.kind": "CHAIN", "prompt.version": self.prompt.version,
+                        "prompt.fingerprint": self.prompt.fingerprint}) as span:
+            result = self._answer(question)
+            span.set_attribute("status", result.status)
+            span.set_attribute("rag.evidence_count", result.evidence_count)
+            span.set_attribute("rag.citation_count", len(result.citations))
+            return result
+
+    def _answer(self, question: str) -> RagAnswer:
         question = RagQuestion(question=question).question
         evidence: list[RetrievedChunk] = []
         seen = set()
@@ -153,8 +163,21 @@ class RagAnswerer:
             return RagAnswer(**common, status="insufficient_evidence",
                              answer="当前没有可用的检索证据，无法回答该问题。", citations=(), generation=None)
 
-        generated = self.chat.generate_json(build_messages(question, evidence, template=self._prompt_template))
-        answer = validate_model_answer(generated.content, evidence_count=len(evidence))
+        with trace_span("rag.generate", {"openinference.span.kind": "LLM", "rag.evidence_count": len(evidence)}) as span:
+            generated = self.chat.generate_json(build_messages(question, evidence, template=self._prompt_template))
+            if generated.model in {"deepseek-flash", "deepseek-v4-pro"}:
+                span.set_attribute("llm.model_name", generated.model)
+            if generated.usage is not None:
+                for key in ("prompt_tokens", "completion_tokens", "total_tokens", "prompt_cache_hit_tokens", "prompt_cache_miss_tokens"):
+                    value = generated.usage.get(key)
+                    if type(value) is int and value >= 0:
+                        span.set_attribute("usage." + key, value)
+                for key, suffix in (("prompt_tokens", "prompt"), ("completion_tokens", "completion"), ("total_tokens", "total")):
+                    value = generated.usage.get(key)
+                    if type(value) is int and value >= 0:
+                        span.set_attribute("llm.token_count." + suffix, value)
+        with trace_span("rag.answer.validate", {"openinference.span.kind": "CHAIN"}):
+            answer = validate_model_answer(generated.content, evidence_count=len(evidence))
         citations = tuple(
             Citation(number=number, text=evidence[number - 1].text,
                      metadata=evidence[number - 1].metadata)

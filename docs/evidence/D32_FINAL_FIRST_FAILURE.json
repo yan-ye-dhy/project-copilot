@@ -1,0 +1,86 @@
+{
+  "status": "failed",
+  "executor": "Codex automatic final acceptance",
+  "started_at": "2026-10-28T11:45:28.792737+00:00",
+  "base_url": "http://127.0.0.1:8002",
+  "qdrant_url": "http://127.0.0.1:6433",
+  "automatic_retries": 0,
+  "requests": [
+    {
+      "label": "health",
+      "method": "GET",
+      "path": "/health",
+      "http_status": 200,
+      "elapsed_ms": 6.23498799996014,
+      "run_id": "30fde807-e46b-4778-9cc7-2a879dd56091",
+      "trace_id": "606a722d611cb671458bcb220d6e0853",
+      "trace_exported": "true",
+      "response": {
+        "status": "ok",
+        "service": "Project Copilot",
+        "environment": "development"
+      }
+    },
+    {
+      "label": "upload_chinese",
+      "method": "POST",
+      "path": "/documents/upload",
+      "http_status": 200,
+      "elapsed_ms": 2510.001968999859,
+      "run_id": "f0bca390-1e84-4a3d-95a6-2c1be8754b8f",
+      "trace_id": "0b2eb95c0550a35917618db37c1b6daa",
+      "trace_exported": "true",
+      "response": {
+        "status": "indexed",
+        "mode": "HYBRID_RERANK",
+        "document": {
+          "document_id": "a9b1dcac-aea2-5428-bb5f-97f106dbf523",
+          "content_hash": "42f041599d06be099e5d7c0be6783e6df8515dd26135cc58888ee5f85ec9c054",
+          "source_name": "final-chinese.md",
+          "chunk_ids": [
+            "f0684d2d-9018-5c36-ac6f-7cde6096c95e"
+          ]
+        },
+        "chunk_count": 1,
+        "size_bytes": 508,
+        "index_version": "dense-v1-f6814b474903d6238af98105a1460a4581dce2d4eed0135b4633c38d78c3e88e",
+        "run_id": "f0bca390-1e84-4a3d-95a6-2c1be8754b8f",
+        "trace_exported": true
+      }
+    },
+    {
+      "label": "rag_answer",
+      "method": "POST",
+      "path": "/rag/ask",
+      "http_status": 502,
+      "elapsed_ms": 26524.52207100032,
+      "run_id": "bf1297e3-95e6-4d64-bd7f-374e8e3dba44",
+      "trace_id": "156769016bf6f1f9c5d76f681d274f38",
+      "trace_exported": "true",
+      "response": {
+        "detail": "问答上游服务请求失败，请检查服务状态"
+      }
+    }
+  ],
+  "model_fee_actual_account_bill": null,
+  "embedding_token_usage": null,
+  "existing_qdrant_before": {
+    "exists": true,
+    "point_count": 3,
+    "points_with_vectors_sha256": "eb6451d7ce73957ccb54ec0072d53153b2da5f8802e18a59866c98758d1744e0"
+  },
+  "document": {
+    "document_id": "a9b1dcac-aea2-5428-bb5f-97f106dbf523",
+    "content_hash": "42f041599d06be099e5d7c0be6783e6df8515dd26135cc58888ee5f85ec9c054",
+    "source_name": "final-chinese.md",
+    "chunk_ids": [
+      "f0684d2d-9018-5c36-ac6f-7cde6096c95e"
+    ]
+  },
+  "failed_phase": "run",
+  "error_type": "RuntimeError",
+  "database_before_summary": {
+    "row_count": 2,
+    "aggregate_sha256": "43b157c00cbf8a89640e56ccec8618e41d0a934ca7e2ad40fe3728d67b4cb69f"
+  }
+}

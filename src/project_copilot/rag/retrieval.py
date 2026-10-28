@@ -1,5 +1,6 @@
 """Dense检索只返回完成清单内的文档证据，不生成回答。"""
 
+from project_copilot.infrastructure.tracing import trace_span
 from project_copilot.infrastructure.qdrant import DenseQdrantStore, QdrantResponseError
 from project_copilot.rag.ingestion import Embeddings, ManifestStore, validate_index_binding
 from project_copilot.schemas.retrieval import RetrievedChunk
@@ -19,17 +20,25 @@ class DenseRetriever:
         self.top_k = top_k
 
     def search(self, query: str) -> list[RetrievedChunk]:
+        with trace_span("rag.dense", {"openinference.span.kind": "RETRIEVER", "retrieval.top_k": self.top_k}) as span:
+            result = self._search(query)
+            span.set_attribute("retrieval.result_count", len(result))
+            return result
+
+    def _search(self, query: str) -> list[RetrievedChunk]:
         if not isinstance(query, str) or not query.strip():
             raise ValueError("检索问题必须是非空文本")
         manifest = self.manifest.load()
         if not manifest.documents:
             return []
         self.store.ensure_collection()
-        vector = self.embeddings.embed_query(query)
-        results = self.store.query(
-            vector, document_ids=[d.document_id for d in manifest.documents],
-            dense_index_version=manifest.spec.index_version, limit=self.top_k,
-        )
+        with trace_span("embedding.query", {"openinference.span.kind": "EMBEDDING", "embedding.model": "embedding-3"}):
+            vector = self.embeddings.embed_query(query)
+        with trace_span("qdrant.search", {"openinference.span.kind": "RETRIEVER", "retrieval.top_k": self.top_k}):
+            results = self.store.query(
+                vector, document_ids=[d.document_id for d in manifest.documents],
+                dense_index_version=manifest.spec.index_version, limit=self.top_k,
+            )
         # 完成清单中的精确片段身份再校验，不能把未登记的点当证据。
         allowed = {d.document_id: d for d in manifest.documents}
         for item in results:

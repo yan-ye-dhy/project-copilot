@@ -1,0 +1,18 @@
+# Explicit GPU deployment: add after docker-compose.deploy.yml.
+# Requires Docker's NVIDIA GPU support and a driver compatible with CUDA 13.
+services:
+  migrate:
+    image: ${PROJECT_COPILOT_GPU_API_IMAGE:-project-copilot-api:gpu}
+    build:
+      args:
+        RERANK_GROUP: rerank-gpu
+
+  api:
+    image: ${PROJECT_COPILOT_GPU_API_IMAGE:-project-copilot-api:gpu}
+    build:
+      args:
+        RERANK_GROUP: rerank-gpu
+    environment:
+      PROJECT_COPILOT_FINAL_RERANK_DEVICE: cuda
+      PROJECT_COPILOT_FINAL_RERANK_DTYPE: float16
+    gpus: all
