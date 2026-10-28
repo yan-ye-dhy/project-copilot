@@ -1,0 +1,204 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-28",
+  "batch": "D24.1 final Hybrid + Rerank",
+  "development_commit": "338fdf8fd76313cfe5780332d6ca9ea816f9ac32",
+  "checkout_at_recording": "6cb86f0a43343d29f904772c66a90f143ab78a23",
+  "operator": "user",
+  "guide_and_recorded_by": "Codex",
+  "evidence_origin": "User terminal responses and service logs in this conversation; existing local artifacts read only by Codex. This is a summarized manual record, not a complete provider or shell audit.",
+  "prerequisites_reported": {
+    "qdrant": "healthy",
+    "dependency_sync": "uv sync --frozen --inexact completed",
+    "api": "uvicorn on 127.0.0.1:8002"
+  },
+  "projects": [
+    {
+      "name": "upload and synchronize",
+      "result": "passed",
+      "http_status_reported": 200,
+      "response": {
+        "status": "indexed",
+        "mode": "HYBRID_RERANK",
+        "document": {
+          "document_id": "59cc8966-4bb9-5262-8d4f-c597c6054402",
+          "content_hash": "0213df22ff9d0b9f4e2634a762e1252b635bd87a03acc90f63f2043f97634c62",
+          "source_name": "knowledge.txt",
+          "chunk_ids": [
+            "443d9ae3-8dd4-5552-8b83-3aa5a57a94cc"
+          ]
+        },
+        "chunk_count": 1,
+        "size_bytes": 54,
+        "index_version": "dense-v1-dcd4c24eaf2b4b2294513729d1d04d28b1792df4580351e500b3682868d04746",
+        "run_id": "588008ac-4e07-4191-bae6-5e2e7174fc3a",
+        "trace_exported": false
+      }
+    },
+    {
+      "name": "RAG and Agent sources",
+      "result": "passed",
+      "http_status_reported": [
+        200,
+        200
+      ],
+      "question": "蓝鹤协议的唯一识别码是什么？",
+      "rag_status": "answered",
+      "rag_answer": "蓝鹤协议的唯一识别码是 TICKET-ALPHA-739。",
+      "agent_run_id": "35c92613-7bb4-489f-9568-1aaaf84a1051",
+      "agent_status": "answered",
+      "agent_answer": "根据知识库文档 knowledge.txt 的记载，蓝鹤协议的唯一识别码是 TICKET-ALPHA-739。该内容来自知识库原文，并非工单系统中的实际工单状态或业务确认结果。",
+      "same_document_id": "59cc8966-4bb9-5262-8d4f-c597c6054402",
+      "same_chunk_id": "443d9ae3-8dd4-5552-8b83-3aa5a57a94cc",
+      "same_content_hash": "0213df22ff9d0b9f4e2634a762e1252b635bd87a03acc90f63f2043f97634c62",
+      "same_text": "蓝鹤协议的唯一识别码是 TICKET-ALPHA-739。\n",
+      "rag_evidence_count": 3,
+      "rag_citations_count": 1,
+      "agent_model_calls": 2,
+      "agent_tool_calls": 1,
+      "agent_tool_executions": 1,
+      "agent_events": [
+        {
+          "tool_call_id": "call_00_TQtclVpUWvRWbMnhXEii3152",
+          "name": "search_knowledge",
+          "status": "ok",
+          "failure_type": null,
+          "elapsed_ms": 2892.3888849985815
+        }
+      ],
+      "agent_usage": {
+        "prompt_cache_miss_tokens": 1551,
+        "prompt_cache_hit_tokens": 1408,
+        "total_tokens": 3092,
+        "prompt_tokens": 2959,
+        "completion_tokens": 133
+      },
+      "rag_usage": {
+        "prompt_tokens": 432,
+        "completion_tokens": 30,
+        "total_tokens": 462,
+        "prompt_cache_hit_tokens": 0,
+        "prompt_cache_miss_tokens": 432
+      }
+    },
+    {
+      "name": "restart recovery and explicit failure",
+      "result": "passed",
+      "api_restart": {
+        "pid_before_reported": 37902,
+        "pid_after_reported": 39830,
+        "normal_shutdown_log_supplied": true,
+        "http_status_reported": 200,
+        "answer": "蓝鹤协议的唯一识别码是 TICKET-ALPHA-739。",
+        "citation_matches_before": true,
+        "snapshot_before": {
+          "inode": 451232,
+          "size_bytes": 3308
+        },
+        "snapshot_after": {
+          "inode": 451232,
+          "size_bytes": 3308
+        },
+        "snapshot_contents_hashed_during_manual_test": false,
+        "usage": {
+          "prompt_tokens": 432,
+          "completion_tokens": 30,
+          "total_tokens": 462,
+          "prompt_cache_hit_tokens": 256,
+          "prompt_cache_miss_tokens": 176
+        }
+      },
+      "empty_model_cache": {
+        "precondition": "user created an empty mktemp directory and supplied PROJECT_COPILOT_FINAL_MODEL_CACHE_DIR to a separate uvicorn process",
+        "port": 8003,
+        "pid_reported": 41009,
+        "http_status": 503,
+        "response": {
+          "detail": "问答配置或索引清单不可用，请检查本项目配置"
+        },
+        "run_id": "2bf17c14-ec60-4224-9d6a-9f0315ea51d1",
+        "error_type_from_user_service_log": "FinalRetrievalError",
+        "elapsed_ms_from_user_service_log": 7186.04,
+        "returned_successful_answer": false,
+        "trace_exported": false
+      }
+    }
+  ],
+  "reported_chat_usage": {
+    "prompt_tokens": 3823,
+    "completion_tokens": 193,
+    "total_tokens": 4016,
+    "prompt_cache_hit_tokens": 1664,
+    "prompt_cache_miss_tokens": 2159
+  },
+  "chat_calls_represented_in_saved_responses": 4,
+  "billing_boundary": {
+    "basis": "Two RAG response usages plus the Agent two-call usage; not an independent provider request ledger",
+    "metered_embedding_call_count": null,
+    "embedding_token_usage": null,
+    "actual_account_cost": null
+  },
+  "local_artifacts": [
+    {
+      "path": "data/manual-d24-1/knowledge.txt",
+      "sha256": "0213df22ff9d0b9f4e2634a762e1252b635bd87a03acc90f63f2043f97634c62"
+    },
+    {
+      "path": "data/manual-d24-1/upload.json",
+      "sha256": "5ee5e0eca20438484ce706473621715886b9242bcb1fb52ae81d2ef56b2ae885"
+    },
+    {
+      "path": "data/manual-d24-1/rag.json",
+      "sha256": "8f10d6d9074cee5e9e5975d90ba8308d701ea585aa04d10ddeeefcea64b30322"
+    },
+    {
+      "path": "data/manual-d24-1/agent.json",
+      "sha256": "d3d1e9729e1f36806a118623aedfe8d1d9c1947b5c8465b9df169a6c3bed37d8"
+    },
+    {
+      "path": "data/manual-d24-1/rag-after-restart.json",
+      "sha256": "ed8d0ae61d861dfcbc64a3462b7024ac596a3ddb0c981b8eff18fd1ce0eb39ef"
+    },
+    {
+      "path": "data/manual-d24-1/snapshot-before.txt",
+      "sha256": "93aa08add6319f266068e28abc539c7fbc35a2908d6170377d119264e11cb9af"
+    },
+    {
+      "path": "data/manual-d24-1/snapshot-after.txt",
+      "sha256": "93aa08add6319f266068e28abc539c7fbc35a2908d6170377d119264e11cb9af"
+    },
+    {
+      "path": "data/manual-d24-1/missing-cache.json",
+      "sha256": "ea52a0f84f8e3033b246eeab25010801a5c174d6c810472e9dae2520dedc9f5f"
+    },
+    {
+      "path": "data/manual-d24-1/missing-cache-headers.txt",
+      "sha256": "3a589832609bf0256b3af061b23aaeac933447989c91077bbe33f785c41d0a35"
+    }
+  ],
+  "learning": {
+    "confirmed_by": "user",
+    "statement": "D24.1 最终版 Hybrid + Rerank 的两轮源码学习已经完成。"
+  },
+  "cleanup": {
+    "both_api_processes_closed": "user reported 均已关闭",
+    "independent_shutdown_check": false,
+    "qdrant_shutdown_reported": false,
+    "model_cache_or_database_or_qdrant_data_deleted_by_codex": false
+  },
+  "stage_a": "completed (development previously pushed)",
+  "stage_b": "completed (user learning confirmation and three user-operated manual projects)",
+  "closure_document_git_status": "pending user add/commit/push",
+  "scope": {
+    "codex_reexecuted_manual_commands": false,
+    "codex_model_calls": 0,
+    "pytest_rerun": false,
+    "source_or_dependencies_changed": false,
+    "previous_automatic_receipts_changed": false,
+    "gpu_object_reuse_or_memory_release_measured_in_this_manual_round": false,
+    "per_stage_rankings_or_concurrency_retested": false,
+    "snapshot_inode_size_is_not_a_content_hash": true,
+    "day29_learning_or_manual_completion_inferred": false,
+    "day32_started": false
+  }
+}

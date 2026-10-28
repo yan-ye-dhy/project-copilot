@@ -1,6 +1,6 @@
 # Project Copilot
 
-基于RAG与LangGraph的研发知识及工单协作智能体。D20整合批次阶段A/B均完成，D24只读Agent已推送；D24.1将RAG与Agent知识工具统一为Hybrid＋固定本地BGE Rerank，完成独立验收后再重新实施D29受控创建。Prompt仍为rag-answer-v1；学习及少量手测分别记录。
+基于RAG与LangGraph的研发知识及工单协作智能体。D20整合批次阶段A/B均完成，D24只读Agent已推送；D24.1将RAG与Agent知识工具统一为Hybrid＋固定本地BGE Rerank，已推送且于2026-10-28完成两轮源码学习和用户亲自手测。D29受控创建已开发推送，学习及手测仍待确认；Prompt仍为rag-answer-v1。
 
 协作流程见 [长期协作规则](docs/COLLABORATION_RULES.md)：Codex开发、自动验证、提供报告并指导Git操作；用户亲自提交和推送GitHub，随后通过ChatGPT学习代码/架构，学习后主动要求Codex开始手动测试。以下命令是自助运行参考，Codex仅在用户要求后单步带练。
 
@@ -384,6 +384,8 @@ D24只读模式工具白名单为get_ticket、search_tickets、search_knowledge�
 `/rag/ask`与`/agent/ask`的`search_knowledge`共用[最终检索服务](src/project_copilot/rag/final_retrieval.py)：Dense 10＋BM25 10→RRF c=60取10→本地固定BGE重排取5，embedding-3/2048维、750/150。BM25快照与成功清单绑定，跨进程文件锁保护入库/查询，完整校验临时快照后原子发布；失败后明确报错或重建，不回退单路Dense。
 
 默认CUDA float16、batch 2、512 tokens、固定revision本地缓存；同一进程首次加载并预热、后续复用，超时实例失败关闭。显式CPU需同时配置cpu/float32并准备CPU依赖，不在GPU失败时自动切换。多进程各有模型显存，文件锁要求支持flock/原子rename的共享清单目录；Python线程等待超时不能强杀仍在执行的CUDA工作。完整数据流、边界和运行配置见[架构说明](docs/ARCHITECTURE.md)，学习后执行[三个手测](docs/D24_1_MANUAL_VERIFICATION.md)。
+
+2026-10-28用户亲自完成三项手测：上传返回HYBRID_RERANK；RAG/Agent引用同一原文片段；API进程重启后快照inode/大小保持，空模型缓存进程返回503并记录FinalRetrievalError。用户已确认两轮源码学习完成及两个API进程均已关闭，D24.1阶段A/B均完成；[手测记录](docs/evidence/D24_1_MANUAL_VERIFICATION_20261028.json)与原自动验收分开保留，本次收尾文档待用户提交推送。
 
 
 ## D29：受控工单提案与确认

@@ -440,9 +440,9 @@ MCP作为独立知识补充：[官方架构](https://modelcontextprotocol.io/doc
 
 ## D24.1：统一最终检索
 
-用户学习尚待确认。沿[架构说明](ARCHITECTURE.md)理解两路Top10、RRF 60、固定本地CUDA BGE重排Top5；比较原文/metadata、RRF分数与logit，不将分数解释为可信度。重点分析完成清单与BM25快照的版本绑定、共享文件锁、验证临时文件后原子替换，以及上传失败重试为什么不返回旧快照。
+用户已明确确认两轮源码学习完成，2026-10-28亲自完成三项本机手测。沿[架构说明](ARCHITECTURE.md)理解两路Top10、RRF 60、固定本地CUDA BGE重排Top5；比较原文/metadata、RRF分数与logit，不将分数解释为可信度。重点分析完成清单与BM25快照的版本绑定、共享文件锁、验证临时文件后原子替换，以及上传失败重试为什么不返回旧快照。
 
-同一进程首次加载/预热GPU模型，后续请求复用；多进程各自占显存。超时停止等待不杀CUDA线程，服务关闭等待已运行任务，GPU失败不自动切CPU或Dense。RAG与Agent共用同一FinalRetriever；空清单与检索异常分别是证据不足和显式失败。用户学习后可主动进行[三个手测](D24_1_MANUAL_VERIFICATION.md)，自动验收不计为用户操作。
+同一进程首次加载/预热GPU模型，后续请求复用；多进程各自占显存。超时停止等待不杀CUDA线程，服务关闭等待已运行任务，GPU失败不自动切CPU或Dense。RAG与Agent共用同一FinalRetriever；空清单与检索异常分别是证据不足和显式失败。[三个手测](D24_1_MANUAL_VERIFICATION.md)已由用户执行，来源ID、快照恢复和空缓存503见[本轮记录](evidence/D24_1_MANUAL_VERIFICATION_20261028.json)；本轮没有重新测量显存释放或模型对象复用，不把这些实现和旧自动验收结果写成本次人工观测。
 
 
 ## D29整合批次：受控提案、行锁与幂等
