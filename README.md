@@ -385,13 +385,13 @@ D24只读模式工具白名单为get_ticket、search_tickets、search_knowledge�
 
 默认CUDA float16、batch 2、512 tokens、固定revision本地缓存；同一进程首次加载并预热、后续复用，超时实例失败关闭。显式CPU需同时配置cpu/float32并准备CPU依赖，不在GPU失败时自动切换。多进程各有模型显存，文件锁要求支持flock/原子rename的共享清单目录；Python线程等待超时不能强杀仍在执行的CUDA工作。完整数据流、边界和运行配置见[架构说明](docs/ARCHITECTURE.md)，学习后执行[三个手测](docs/D24_1_MANUAL_VERIFICATION.md)。
 
-2026-10-28用户亲自完成三项手测：上传返回HYBRID_RERANK；RAG/Agent引用同一原文片段；API进程重启后快照inode/大小保持，空模型缓存进程返回503并记录FinalRetrievalError。用户已确认两轮源码学习完成及两个API进程均已关闭，D24.1阶段A/B均完成；[手测记录](docs/evidence/D24_1_MANUAL_VERIFICATION_20261028.json)与原自动验收分开保留，本次收尾文档待用户提交推送。
+2026-10-28用户亲自完成三项手测：上传返回HYBRID_RERANK；RAG/Agent引用同一原文片段；API进程重启后快照inode/大小保持，空模型缓存进程返回503并记录FinalRetrievalError。用户已确认两轮源码学习完成及两个API进程均已关闭，D24.1阶段A/B均完成；[手测记录](docs/evidence/D24_1_MANUAL_VERIFICATION_20261028.json)与原自动验收分开保留，收尾提交68298d4已由用户推送。
 
 
 ## D29：受控工单提案与确认
 
 先`POST /agent/contexts`创建24小时上下文凭据；仅首次返回令牌，保存并保护好它。`POST /agent/ask`带`X-Copilot-Context-ID`与`X-Copilot-Context-Token`时，可使用`propose_ticket`保存15分钟内待确认预览；只有明确`POST /actions/{id}/confirm`并携带相同凭据和预览指纹才能创建真实工单，`reject`拒绝，`GET /actions/{id}`查看。普通聊天确认不会执行工单写入；重复确认同一action返回相同ticket_id。
 
-迁移增加不可变提案、PostgreSQL行锁和工单唯一创建键；模型无法调用确认工具。数据库完成态与实际工单在同一事务提交，过期、拒绝、上下文或指纹不符不创建。上下文令牌是局部bearer能力，不等于完整身份/租户授权；不同提案不去重、聊天历史不持久化。更多信息见[D29报告](docs/reports/DAY_29.md)、[学习后手测](docs/D29_MANUAL_VERIFICATION.md)及[真实PG证据](docs/evidence/D29_POSTGRES_CONCURRENCY.json)。用户学习和手测尚未进行，不自动开始D32。
+迁移增加不可变提案、PostgreSQL行锁和工单唯一创建键；模型无法调用确认工具。数据库完成态与实际工单在同一事务提交，过期、拒绝、上下文或指纹不符不创建。上下文令牌是局部bearer能力，不等于完整身份/租户授权；不同提案不去重、聊天历史不持久化。2026-10-28用户亲自创建Agent提案，随后委托Codex验证过期、新提案重复确认及API重启持久化；见[手测记录](docs/evidence/D29_MANUAL_VERIFICATION_20261028.json)和[D29报告](docs/reports/DAY_29.md)。用户D29学习状态尚未明确确认，不自动开始D32。
 
 当前保留的D20 `POST /tickets`是本地开发直建接口，本身没有身份认证，也不经过D29提案确认。D29的确认保障适用于Agent受控创建路径；如果部署到不可信网络，必须先为包括该旧接口在内的所有写接口增加真实身份认证、授权及网络隔离，不能将本地bearer上下文冒称完整安全边界。

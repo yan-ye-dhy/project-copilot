@@ -1,6 +1,6 @@
 # 【D29 整合开发与验收报告】
 
-日期：2026-10-27；覆盖原D29–D31。D24.1已独立推送，本批从其新架构重新实现，没有恢复旧备份覆盖源码。用户学习和手测尚未确认。
+开发日期：2026-10-27；2026-10-28用户参与并委托完成手测。覆盖原D29–D31，D24.1已独立推送，本批从其新架构重新实现，没有恢复旧备份覆盖源码。功能验证已完成，用户D29学习状态尚未明确确认。
 
 ## 1. 今日开发目标
 
@@ -47,9 +47,13 @@ PROJECT_COPILOT_RUN_POSTGRES_INTEGRATION=1 .venv/bin/python -m pytest -q \
 
 [真实联调](../evidence/D29_LIVE.json)使用真实DeepSeek、embedding-3、Qdrant、CUDA模型和隔离PG，ASGI真实应用内执行search_tickets→search_knowledge→propose_ticket：确认前1张预置工单、1个pending提案；应用重启后确认两次返回同一真实新工单，再次重启可查。2次DeepSeek＋1次Embedding、无重试；DeepSeek输入2774/输出199 tokens（缓存命中1024、未命中1750），实付和Embedding token未采集。没有将受控模型测试冒充真实模型；ASGI重建证明应用生命周期重启，未宣称操作系统进程或数据库重启。
 
+**本轮手测（2026-10-28）：** 用户亲自启动服务、处理未配置数据库URL导致的首次迁移错误，连接检查后迁移成功；通过真实Agent创建pending提案，工具propose_ticket成功，ticket_id为空。用户随后明确委托Codex完成剩余步骤并提交推送。接手时原提案已过期，实际确认返回expired且数据库对应工单0条；Codex通过预览接口以相同内容创建新提案，确认与重复确认均返回同一真实工单ID，数据库该action对应1条。API进程3795正常退出、3970启动后，HTTP详情与之前一致，数据库ID和状态一致；见[分工手测记录](../evidence/D29_MANUAL_VERIFICATION_20261028.json)。
+
+用户执行的原Agent请求记录1次DeepSeek模型调用，usage输入983/输出65 tokens；Codex代执行阶段没有模型或Embedding调用。真实账单未采集，工具调用不等于模型自动获得确认权限。本轮未由用户本人执行确认或重启，也未重测并发、拒绝竞争或GPU检索；这些仍以原自动验收记录为准。Codex停止了本轮启动的API与PostgreSQL容器，保留测试工单及数据卷，Qdrant状态未改变。
+
 ## 6. GitHub 提交信息
 
-前置D24.1提交[338fdf8fd76313cfe5780332d6ca9ea816f9ac32](https://github.com/yan-ye-dhy/project-copilot/commit/338fdf8fd76313cfe5780332d6ca9ea816f9ac32)已推送并通过`git ls-remote`核实。本批独立提交和推送结果以最终交接中实际SHA为准，报告不自引用尚未生成的提交ID。
+前置D24.1提交[338fdf8fd76313cfe5780332d6ca9ea816f9ac32](https://github.com/yan-ye-dhy/project-copilot/commit/338fdf8fd76313cfe5780332d6ca9ea816f9ac32)及D29开发提交[6cb86f0a43343d29f904772c66a90f143ab78a23](https://github.com/yan-ye-dhy/project-copilot/commit/6cb86f0a43343d29f904772c66a90f143ab78a23)已推送。本轮收尾由用户明确委托Codex提交和推送；实际收尾SHA和结果在最终交接中填写，不自引用尚未生成的提交ID。
 
 ## 7. 后续学习提示
 
@@ -57,6 +61,6 @@ PROJECT_COPILOT_RUN_POSTGRES_INTEGRATION=1 .venv/bin/python -m pytest -q \
 
 ## 8. 下一步计划
 
-用户先通过ChatGPT学习，再主动开启[三项手动验证](../D29_MANUAL_VERIFICATION.md)。学习与手测未由自动验收代替；D32–D34未开始。
+用户已主动开启[三项手动验证](../D29_MANUAL_VERIFICATION.md)，其中提案由用户操作，剩余确认和重启由Codex按明确委托执行。D29学习状态仍待用户明确确认，阶段B不预填完成；D32–D34未开始。
 
 当前保留的D20 `POST /tickets`是本地开发直建接口，本身没有身份认证，也不经过D29提案确认。D29的确认保障适用于Agent受控创建路径；如果部署到不可信网络，必须先为包括该旧接口在内的所有写接口增加真实身份认证、授权及网络隔离，不能将本地bearer上下文冒称完整安全边界。

@@ -1,0 +1,234 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-28",
+  "batch": "D29 integrated batch (original D29-D31)",
+  "development_commit": "6cb86f0a43343d29f904772c66a90f143ab78a23",
+  "checkout_at_recording": "68298d4ec1ca572cb15eee0143be0ca53877ec6e",
+  "operator": "user for environment setup, context creation, real Agent request and proposal inspection; Codex for subsequent delegated checks",
+  "evidence_origin": "User terminal output and previously saved agent/proposal files, plus explicit delegated HTTP/PostgreSQL verification. Context bearer token omitted.",
+  "user_steps": {
+    "postgres_qdrant_health": "both healthy per user output",
+    "first_upgrade": "failed; final database URL not configured",
+    "connection_check": {
+      "database": "project_copilot",
+      "postgres_version": "17.11",
+      "status": "ok"
+    },
+    "subsequent_upgrade": {
+      "status": "ok",
+      "migration": "head"
+    },
+    "api_pid_reported": 37062,
+    "context_http_status_reported": 201,
+    "agent_http_status_reported": 200,
+    "agent": {
+      "run_id": "89eb94d0-05ca-4f1a-907c-d219dec18cfd",
+      "status": "pending_confirmation",
+      "model_calls": 1,
+      "tool_calls": 1,
+      "tool_executions": 1,
+      "events": [
+        {
+          "tool_call_id": "call_00_eeBEntcRoaUU3HtjpBu54970",
+          "name": "propose_ticket",
+          "status": "ok",
+          "failure_type": null,
+          "elapsed_ms": 18.67826600027911
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 983,
+        "completion_tokens": 65,
+        "total_tokens": 1048,
+        "prompt_cache_hit_tokens": 768,
+        "prompt_cache_miss_tokens": 215
+      },
+      "model_events": [
+        {
+          "step": 1,
+          "status": "ok",
+          "model": "deepseek-flash",
+          "usage": {
+            "prompt_tokens": 983,
+            "completion_tokens": 65,
+            "total_tokens": 1048,
+            "prompt_cache_hit_tokens": 768,
+            "prompt_cache_miss_tokens": 215
+          },
+          "elapsed_ms": 27312.067437000223
+        }
+      ],
+      "proposal_action_id": "b3cac672-b32c-4f99-a908-a34be392f533",
+      "proposal_payload": {
+        "title": "D29 手测",
+        "description": "验证明确确认后才创建工单。"
+      },
+      "proposal_status": "pending",
+      "proposal_ticket_id": null,
+      "proposal_expires_at": "2026-10-28T09:47:18.107121Z"
+    }
+  },
+  "delegated_steps": {
+    "requested_by_user": true,
+    "new_model_calls": 0,
+    "new_embedding_calls": 0,
+    "automatic_retries": 0,
+    "reason_for_new_proposal": "user-created Agent proposal expired before delegated continuation",
+    "original_ticket_count_before": 0,
+    "original_ticket_count_after": 0,
+    "replacement_ticket_count_before": 0,
+    "replacement_ticket_count_after": 1,
+    "replacement_action_id": "105cc024-df1b-4e69-a26b-43a41b596eb6",
+    "ticket_id": "5b298b98-34b4-40c6-a678-8bb81ca9f51e",
+    "events": [
+      {
+        "name": "confirm_original_expired",
+        "http_status": 200,
+        "run_id": "bffad909-9f75-47df-a83a-31c25aa7e9ee",
+        "response": {
+          "action_id": "b3cac672-b32c-4f99-a908-a34be392f533",
+          "status": "expired",
+          "payload": {
+            "title": "D29 手测",
+            "description": "验证明确确认后才创建工单。"
+          },
+          "payload_fingerprint": "dbadac18e4a8618977c4c47173f095155e5db84b67877e0dc6c25bbef70b7e72",
+          "created_at": "2026-10-28T09:32:18.104650Z",
+          "expires_at": "2026-10-28T09:47:18.107121Z",
+          "ticket_id": null
+        }
+      },
+      {
+        "name": "preview_replacement",
+        "http_status": 201,
+        "run_id": "406f1d21-2b70-47d2-a2d1-76532daad502",
+        "response": {
+          "action_id": "105cc024-df1b-4e69-a26b-43a41b596eb6",
+          "status": "pending",
+          "payload": {
+            "title": "D29 手测",
+            "description": "验证明确确认后才创建工单。"
+          },
+          "payload_fingerprint": "dbadac18e4a8618977c4c47173f095155e5db84b67877e0dc6c25bbef70b7e72",
+          "created_at": "2026-10-28T10:02:52.678298Z",
+          "expires_at": "2026-10-28T10:17:52.682071Z",
+          "ticket_id": null
+        }
+      },
+      {
+        "name": "confirm_replacement",
+        "http_status": 200,
+        "run_id": "a9b1fbf9-b302-4ab2-b27c-7505af160725",
+        "response": {
+          "action_id": "105cc024-df1b-4e69-a26b-43a41b596eb6",
+          "status": "completed",
+          "payload": {
+            "title": "D29 手测",
+            "description": "验证明确确认后才创建工单。"
+          },
+          "payload_fingerprint": "dbadac18e4a8618977c4c47173f095155e5db84b67877e0dc6c25bbef70b7e72",
+          "created_at": "2026-10-28T10:02:52.678298Z",
+          "expires_at": "2026-10-28T10:17:52.682071Z",
+          "ticket_id": "5b298b98-34b4-40c6-a678-8bb81ca9f51e"
+        }
+      },
+      {
+        "name": "repeat_confirm_replacement",
+        "http_status": 200,
+        "run_id": "f30fd7a8-3c8e-4894-bd53-350b529191ca",
+        "response": {
+          "action_id": "105cc024-df1b-4e69-a26b-43a41b596eb6",
+          "status": "completed",
+          "payload": {
+            "title": "D29 手测",
+            "description": "验证明确确认后才创建工单。"
+          },
+          "payload_fingerprint": "dbadac18e4a8618977c4c47173f095155e5db84b67877e0dc6c25bbef70b7e72",
+          "created_at": "2026-10-28T10:02:52.678298Z",
+          "expires_at": "2026-10-28T10:17:52.682071Z",
+          "ticket_id": "5b298b98-34b4-40c6-a678-8bb81ca9f51e"
+        }
+      },
+      {
+        "name": "ticket_detail",
+        "http_status": 200,
+        "run_id": "388cca51-c4de-4d3d-beff-09ed0ad908a9",
+        "response": {
+          "id": "5b298b98-34b4-40c6-a678-8bb81ca9f51e",
+          "title": "D29 手测",
+          "description": "验证明确确认后才创建工单。",
+          "status": "open",
+          "created_at": "2026-10-28T10:02:52.700890Z",
+          "updated_at": "2026-10-28T10:02:52.700890Z"
+        }
+      },
+      {
+        "name": "ticket_after_api_restart",
+        "http_status": 200,
+        "run_id": "2650c96b-7c69-49ee-a92e-f1181a7af617",
+        "response": {
+          "id": "5b298b98-34b4-40c6-a678-8bb81ca9f51e",
+          "title": "D29 手测",
+          "description": "验证明确确认后才创建工单。",
+          "status": "open",
+          "created_at": "2026-10-28T10:02:52.700890Z",
+          "updated_at": "2026-10-28T10:02:52.700890Z"
+        }
+      }
+    ],
+    "api_restart": {
+      "first_api_pid": 3795,
+      "second_api_pid": 3970,
+      "normal_first_shutdown_observed": true,
+      "response_matches_before": true,
+      "database_id_matches": true,
+      "database_row_count": 1
+    },
+    "second_api_normal_shutdown_observed": true,
+    "postgres_container_stopped_after_test": true,
+    "postgres_data_volume_and_created_ticket_retained": true,
+    "qdrant_changed": false
+  },
+  "manual_learning": {
+    "status": "not explicitly confirmed",
+    "not_inferred_from_request_to_start_manual_validation": true
+  },
+  "stage_a": "completed (development commit previously pushed)",
+  "stage_b": "functional verification completed with user and delegated portions; learning confirmation pending",
+  "cost_boundary": {
+    "user_agent_usage": {
+      "prompt_tokens": 983,
+      "completion_tokens": 65,
+      "total_tokens": 1048,
+      "prompt_cache_hit_tokens": 768,
+      "prompt_cache_miss_tokens": 215
+    },
+    "user_model_calls_reported": 1,
+    "codex_additional_model_calls": 0,
+    "actual_account_cost": null
+  },
+  "scope": {
+    "postgres_restart_tested": false,
+    "api_restart_tested": true,
+    "reject_race_or_concurrency_retested": false,
+    "pytest_rerun": false,
+    "business_source_or_dependencies_changed": false,
+    "previous_automatic_receipts_changed": false,
+    "day32_started": false
+  },
+  "local_artifacts": [
+    {
+      "path": "data/manual-d29/run-20261028-172956-37249/agent.json",
+      "sha256": "e75988a53fef6e55d2b809007305ba1593b2eafb3e61e681a222d117bd03fc9b"
+    },
+    {
+      "path": "data/manual-d29/run-20261028-172956-37249/proposal.json",
+      "sha256": "1fe80b79a960fea54b219ad13c60472f523f78fd342fff56d2052b2fc48d2e03"
+    },
+    {
+      "path": "data/manual-d29/delegated-zbn0d6i9/verification.json",
+      "sha256": "a96170c9752d1712a5cf1e5db1a821a126f8cc42490b4bba1b001f561df84654"
+    }
+  ],
+  "closure_git": "user explicitly authorized Codex to commit and push; status to be reported after actual result"
+}

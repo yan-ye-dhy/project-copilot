@@ -447,4 +447,4 @@ MCP作为独立知识补充：[官方架构](https://modelcontextprotocol.io/doc
 
 ## D29整合批次：受控提案、行锁与幂等
 
-从上下文凭据和Agent `propose_ticket`追踪到pending预览，确认前没有新工单；再追踪明确确认的指纹验证、`SELECT FOR UPDATE`、过期判断、唯一创建键、flush与单事务提交。对照拒绝/过期终态、提交失败回滚和重复/并发确认，注意模型消息及聊天“确认”不能授权数据库写入；上下文bearer能力不是用户登录，不能代表多租户权限。结合[D29报告](reports/DAY_29.md)、[架构图](ARCHITECTURE.md)和[实际数据库证据](evidence/D29_POSTGRES_CONCURRENCY.json)教学。用户学习状态尚未确认。
+从上下文凭据和Agent `propose_ticket`追踪到pending预览，确认前没有新工单；再追踪明确确认的指纹验证、`SELECT FOR UPDATE`、过期判断、唯一创建键、flush与单事务提交。对照拒绝/过期终态、提交失败回滚和重复/并发确认，注意模型消息及聊天“确认”不能授权数据库写入；上下文bearer能力不是用户登录，不能代表多租户权限。结合[D29报告](reports/DAY_29.md)、[架构图](ARCHITECTURE.md)、[自动数据库证据](evidence/D29_POSTGRES_CONCURRENCY.json)和[本轮分工手测](evidence/D29_MANUAL_VERIFICATION_20261028.json)教学。用户学习状态尚未明确确认。
