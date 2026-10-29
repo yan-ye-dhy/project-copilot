@@ -1,0 +1,357 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-29",
+  "batch": "D32 integrated batch (original D32-D34)",
+  "operator": "Codex, explicitly delegated by the user",
+  "starting_commit": "5d8e3eec6b1241d85ee6427f162f6daffe468821",
+  "user_learning": "D29 and final-batch ChatGPT learning not explicitly confirmed",
+  "user_manual_execution": "Not performed by user; all steps below were executed by Codex under explicit delegation.",
+  "service_state": {
+    "before": "API and Phoenix healthy; PostgreSQL and Qdrant stopped; migrate previously exited 0",
+    "after": "API, PostgreSQL, Qdrant and Phoenix healthy; migration exited 0",
+    "containers": {
+      "project-copilot-api-1": {
+        "id_changed": true,
+        "mounts_same_by_type_name_destination": true
+      },
+      "project-copilot-postgres-1": {
+        "id_changed": false,
+        "mounts_same_by_type_name_destination": true
+      },
+      "project-copilot-qdrant-1": {
+        "id_changed": false,
+        "mounts_same_by_type_name_destination": true
+      },
+      "project-copilot-phoenix-1": {
+        "id_changed": false,
+        "mounts_same_by_type_name_destination": true
+      }
+    },
+    "persistence_scope": "API recreated; PostgreSQL and Qdrant stopped and restarted with existing container IDs and volumes; Phoenix remained running."
+  },
+  "business": {
+    "all_assertions_passed": true,
+    "request_count": 17,
+    "requests": [
+      {
+        "step": "health",
+        "http_status": 200,
+        "run_id": "6efaaa15-b257-4ad9-8d48-7bbd3207f2c9",
+        "trace_id": "f0f901c9446c12360ab3a6f06a72b753",
+        "trace_exported": "true",
+        "status": "ok"
+      },
+      {
+        "step": "upload_chinese",
+        "http_status": 200,
+        "run_id": "9467492f-4b89-42e6-8806-cd26c7d7c4e0",
+        "trace_id": "d8b2a654583a07966bed39622e7a554e",
+        "trace_exported": "true",
+        "status": "indexed"
+      },
+      {
+        "step": "rag_answer",
+        "http_status": 200,
+        "run_id": "de1f24aa-4ea4-41b6-9d08-a10aba289537",
+        "trace_id": "da96dc55f14be77672f0ffe6f5e2e246",
+        "trace_exported": "true",
+        "status": "answered"
+      },
+      {
+        "step": "create_existing_ticket",
+        "http_status": 201,
+        "run_id": "1e83ad41-0d9a-4a44-a40f-f2a51cb2bf6b",
+        "trace_id": "96f1fe62eba0c1467292d8b00a26cede",
+        "trace_exported": "true",
+        "status": "open"
+      },
+      {
+        "step": "read_existing_ticket",
+        "http_status": 200,
+        "run_id": "abfc6417-cdd4-44aa-a85e-a356107d5c3d",
+        "trace_id": "107ca67a40cd14443027dc7d04dab46e",
+        "trace_exported": "true",
+        "status": "open"
+      },
+      {
+        "step": "search_existing_tickets",
+        "http_status": 200,
+        "run_id": "52ee2cd0-de06-496e-a662-55699bce5132",
+        "trace_id": "cc3635c8027e14bee3a567c39f379285",
+        "trace_exported": "true",
+        "status": null
+      },
+      {
+        "step": "agent_combined",
+        "http_status": 200,
+        "run_id": "5cd5280e-182e-4dd9-afe6-9865aa2e58ef",
+        "trace_id": "63e9b270bc94ca3d6716fbdfb7888ad2",
+        "trace_exported": "true",
+        "status": "answered"
+      },
+      {
+        "step": "create_context",
+        "http_status": 201,
+        "run_id": "a3a93864-515c-46eb-b4ec-2df3b6e1205c",
+        "trace_id": "ea78fbed843d983029cbecf412697840",
+        "trace_exported": "true",
+        "status": null
+      },
+      {
+        "step": "agent_proposal",
+        "http_status": 200,
+        "run_id": "7f7c3d2a-09e9-478b-9225-2abea843d791",
+        "trace_id": "f87468d99822beb82f5a025a087151df",
+        "trace_exported": "true",
+        "status": "pending_confirmation"
+      },
+      {
+        "step": "read_preview",
+        "http_status": 200,
+        "run_id": "d8e3416c-50a6-4a7d-8a31-ef39ca81e226",
+        "trace_id": "c69305a7eac2ec769bf0afa28ecf4f38",
+        "trace_exported": "true",
+        "status": "pending"
+      },
+      {
+        "step": "failed_confirmation",
+        "http_status": 409,
+        "run_id": "875b7f14-3120-4f62-91f1-7066d64800a1",
+        "trace_id": "ef9c1d74fbc44ab81cbc35d9e0dcd39f",
+        "trace_exported": "true",
+        "status": null
+      },
+      {
+        "step": "confirm_proposal",
+        "http_status": 200,
+        "run_id": "807ff5dd-883b-439a-a79d-5a03a93606bd",
+        "trace_id": "3bb16778441a69c6d093aa2df1de580f",
+        "trace_exported": "true",
+        "status": "completed"
+      },
+      {
+        "step": "repeat_confirmation",
+        "http_status": 200,
+        "run_id": "9e953605-34e2-437e-8bb3-c2070e92cbcf",
+        "trace_id": "670c0d604a35b97b7bfaddfd87d84aff",
+        "trace_exported": "true",
+        "status": "completed"
+      },
+      {
+        "step": "read_created_ticket",
+        "http_status": 200,
+        "run_id": "fa8ce539-e0d2-4817-b9d1-bbd76835fab0",
+        "trace_id": "53481a38fa5d397742fb65125d820aa2",
+        "trace_exported": "true",
+        "status": "open"
+      },
+      {
+        "step": "health_after_recreation",
+        "http_status": 200,
+        "run_id": "c242673c-10b6-4b80-acce-1aa3639d4c5c",
+        "trace_id": "d53c2a73e0e2fa1027030dca8a25e043",
+        "trace_exported": "true",
+        "status": "ok"
+      },
+      {
+        "step": "seed_ticket_after_recreation",
+        "http_status": 200,
+        "run_id": "3fdfa694-005e-4b9b-8e3c-20ea4a417237",
+        "trace_id": "445a0c6f0849e9162e4c6da7da76e2bd",
+        "trace_exported": "true",
+        "status": "open"
+      },
+      {
+        "step": "created_ticket_after_recreation",
+        "http_status": 200,
+        "run_id": "7bd59d97-f364-47dc-8430-373e31219920",
+        "trace_id": "f8f13053c8fbb7bb916ab62c1825f0e3",
+        "trace_exported": "true",
+        "status": "open"
+      }
+    ],
+    "document_id": "a9b1dcac-aea2-5428-bb5f-97f106dbf523",
+    "document_source_name": "final-chinese.md",
+    "seed_ticket_id": "ff84690f-1e5c-46c3-9130-3879b9e27d2a",
+    "action_id": "a9238ab3-aa0e-4016-a933-82844f6e3f2c",
+    "pending_status": "pending",
+    "ticket_before_confirmation": null,
+    "confirmed_ticket_id": "30a6536f-b02a-4a7d-aad5-274a2a991df1",
+    "postgres_read_only_check": {
+      "ticket_id": "30a6536f-b02a-4a7d-aad5-274a2a991df1",
+      "status": "open",
+      "creation_key_matches_action": true,
+      "rows_for_action": 1
+    },
+    "wrong_fingerprint_http": 409,
+    "database_unchanged_after_wrong_fingerprint": true,
+    "duplicate_confirmation_same_ticket": true,
+    "existing_database_and_qdrant_unchanged": true,
+    "postgres_and_qdrant_persistent_after_restart": true,
+    "new_test_tickets_created": 2,
+    "test_data_retained": true,
+    "qdrant_collection": "pc_final_demo_532c283ee8a4",
+    "qdrant_point_count": 1,
+    "combined_sources_checked": [
+      "ticket",
+      "knowledge"
+    ],
+    "combined_tool_events_checked": [
+      "search_tickets",
+      "search_knowledge"
+    ],
+    "document_identity_same_as_previous_demo": true,
+    "upload_scope": "Re-upload of the same synthetic document; document_id matches previous demo."
+  },
+  "phoenix": {
+    "ui_http_status": 200,
+    "ui_browser_interaction": "not performed",
+    "collector_data": "actual Phoenix REST response, not application logs",
+    "project": "project-copilot-final-20261028",
+    "collector_trace_count": 17,
+    "collector_span_count": 84,
+    "success_trace_id": "63e9b270bc94ca3d6716fbdfb7888ad2",
+    "failure_trace_id": "ef9c1d74fbc44ab81cbc35d9e0dcd39f",
+    "success_span_names": [
+      "POST /agent/ask",
+      "agent.run",
+      "agent.model",
+      "agent.tools",
+      "agent.tool.result",
+      "agent.tool.result",
+      "agent.tool.execute",
+      "rag.retrieve",
+      "rag.rerank",
+      "rag.rrf",
+      "rag.bm25",
+      "rag.dense",
+      "qdrant.search",
+      "embedding.query",
+      "embedding.request",
+      "rag.rerank.prepare",
+      "rag.snapshot",
+      "agent.tool.execute",
+      "db.transaction",
+      "ticket.search",
+      "agent.model"
+    ],
+    "failure_errors": [
+      {
+        "name": "POST /actions/{action_id}/confirm",
+        "error_type": null,
+        "transaction_state": null
+      },
+      {
+        "name": "db.transaction",
+        "error_type": "FingerprintMismatch",
+        "transaction_state": "rolled_back"
+      },
+      {
+        "name": "approval.confirm",
+        "error_type": "FingerprintMismatch",
+        "transaction_state": null
+      }
+    ],
+    "parent_child_and_run_id_verified": true,
+    "collector_data_is_real_not_internal_log": true
+  },
+  "model_cost": {
+    "automatic_retries": 0,
+    "llm": {
+      "reported_attempts": 4,
+      "calls_with_usage": 4,
+      "usage": {
+        "prompt_tokens": 5452,
+        "completion_tokens": 978,
+        "total_tokens": 6430,
+        "prompt_cache_hit_tokens": 2560,
+        "prompt_cache_miss_tokens": 2892
+      },
+      "usage_complete": true
+    },
+    "embedding": {
+      "request_spans": 2,
+      "calls_with_prompt_usage": 2,
+      "prompt_tokens": 35
+    },
+    "actual_account_bill": null,
+    "currency_estimate": "not recalculated for this run"
+  },
+  "metrics_boundary": {
+    "tool_success": {
+      "successful": 3,
+      "attempt_events": 3,
+      "rate": 1.0,
+      "failure_types": {}
+    },
+    "agent_tasks": {
+      "scope": "Two planned demo scenarios; unobserved scenes are not counted as successes",
+      "tasks": [
+        {
+          "name": "agent_combined",
+          "observed": true,
+          "passed": true
+        },
+        {
+          "name": "agent_proposal",
+          "observed": true,
+          "passed": true
+        }
+      ],
+      "successful": 2,
+      "denominator": 2,
+      "rate": 1.0
+    },
+    "http": {
+      "requests": 17,
+      "by_status": {
+        "200": 14,
+        "201": 2,
+        "409": 1
+      },
+      "latency": {
+        "samples": 17,
+        "median_ms": 14.974778000123479,
+        "p95_nearest_rank_ms": 22616.67169200018
+      }
+    },
+    "scope": "small synthetic sample; not a production SLA"
+  },
+  "raw_artifacts": [
+    {
+      "path": "data/manual-final-delegated-20261029/report.json",
+      "sha256": "94185d20a40e2697952660105ecc4aaf3507d79cf666deca80178988d5a916ed"
+    },
+    {
+      "path": "data/manual-final-delegated-20261029/metrics.json",
+      "sha256": "1d652586c641e8441e959aad1872cd8cd4263f8a20f7a9e435d0be58e8efa1e9"
+    },
+    {
+      "path": "data/manual-final-delegated-20261029/trace_verification.json",
+      "sha256": "3ca207d97cfc5c4859bece2da486d5a92444cb25ce6626cc6ebce2580d86fbc3"
+    },
+    {
+      "path": "data/manual-final-delegated-20261029/phoenix_spans.json",
+      "sha256": "1a99ada3b50b5feddea53f7e9c7278eee10684213f73af272b5e95133b8f8ed2"
+    },
+    {
+      "path": "data/manual-final-delegated-20261029/postgres-check.json",
+      "sha256": "dfbd84e7158a93d0f2f4993bc1e8f50438964efabe953f7b9c31e9521e575714"
+    },
+    {
+      "path": "data/manual-final-delegated-20261029/containers-before.json",
+      "sha256": "370880706a2452669de498acb928e9866a44a2c6fbb80ecfff6752c6666368ab"
+    },
+    {
+      "path": "data/manual-final-delegated-20261029/containers-after.json",
+      "sha256": "300bbc308e9a7cb3d24d6a29bfa82833a8644031a956ab80e9d825b30754b788"
+    }
+  ],
+  "data_exclusions": "No context bearer token, project keys, other ticket bodies, .env, model weights, vector cache or database files are published.",
+  "verification_limits": [
+    "No user-operated or automated browser GUI interaction; Phoenix UI reachability and REST data were checked.",
+    "No PostgreSQL or Qdrant container recreation in this delegated run; those services were restarted.",
+    "No full test-suite rerun or concurrent transaction test in this run; the previous development evidence is separate."
+  ],
+  "git": "The user explicitly requested this verification and GitHub submission; actual final commit is provided after push."
+}

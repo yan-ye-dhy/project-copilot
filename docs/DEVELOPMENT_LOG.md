@@ -1547,3 +1547,13 @@ tracing实现真实OTel SDK与按trace_id隔离的有限Span/JSON响应，单次
 两轮实际5次对话生成/决策尝试，4次usage合计输入4466/输出744，失败一次usage未知；4次Embedding请求有179输入tokens。已知费用按2026-10-28官方价估算DeepSeek约US$0.000778～0.001555、Embedding约¥0.0000895，未包含未知失败费用，不等于账单。第二轮复用已预热模型，不冒称完整冷启动或生产P95。Docker独立GPU探针peak allocated 1,144,796,160字节、释放后8,519,680字节，不等于整卡显存或API worker监控。
 
 交付入口为[八项报告](reports/DAY_32.md)、[最终验收](FINAL_ACCEPTANCE.md)、[部署](DEPLOYMENT.md)、[架构](ARCHITECTURE.md)、[独立审计](evidence/D32_FINAL_ACCEPTANCE.json)和[三项本人手测](FINAL_MANUAL_VERIFICATION.md)。只提交本批源码/部署/测试/脱敏证据及文档，不提交.env、上下文令牌、权重、数据库和运行缓存；Git按本次明确授权在审核后由Codex提交推送，实际SHA在最终交接填写。关键自动验收完成后结束正式开发，等待用户集中学习并主动开启本人手测；D29学习确认仍独立保留。
+
+## D32最终批次：委托功能验证（2026-10-29）
+
+用户主动开始手测后明确要求Codex直接完成并提交GitHub；本轮三项功能验证均由Codex执行，不能登记为用户本人操作。起点main及实际远端均为5d8e3eec6b1241d85ee6427f162f6daffe468821，工作区干净；API/Phoenix健康，PG/Qdrant原先停止，随后复用原卷启动并健康。未更改已有数据或清理卷。
+
+真实中文上传、RAG引用、工单创建/检索、知识与工单组合Agent、上下文和待确认提案均通过；错误指纹返回409且数据库不变，独立确认后重复确认返回同一真实工单，PostgreSQL只读核对该action创建键恰有一条工单。API容器重建，PG/Qdrant停止后重启但容器ID未变；重启后工单DTO、整库摘要及原/验收Qdrant集合点与向量摘要均保持。演示新增两张合成工单并重复上传已有合成文档（document_id与前轮一致），保留记录。
+
+Phoenix REST实际回读本轮17条Trace/84个Span并核对run_id、父子和失败回滚，UI入口HTTP 200；未自动操作浏览器。4次DeepSeek请求返回usage共输入5452/输出978 tokens，2次Embedding请求共35输入tokens，自动重试关闭，实际账单未知。工具事件3/3、预设Agent任务2/2仅代表本轮小样本。原始私有工件留在忽略目录，公开[脱敏验证记录](evidence/D32_DELEGATED_VERIFICATION_20261029.json)不含上下文令牌、密钥或其他工单内容。
+
+本轮未重跑全量测试或并发事务测试，不把此前自动结果冒称本轮人工结果；D29与最终批次的ChatGPT学习均未获用户明确确认。Git按用户本轮明确授权审核后提交推送，最终SHA另行核对；不自动开始新开发。

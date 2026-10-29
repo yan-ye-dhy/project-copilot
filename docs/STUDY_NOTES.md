@@ -451,7 +451,7 @@ MCP作为独立知识补充：[官方架构](https://modelcontextprotocol.io/doc
 
 ## D32最终整合批次：部署、Trace和项目复盘（原D32–D34）
 
-用户本批源码学习尚未开始，以下为ChatGPT集中教学提纲。先读[八项报告](reports/DAY_32.md)和[最终架构](ARCHITECTURE.md)，再沿一条已保存的真实Trace定位源码，避免重复学习历史实验运行器。
+用户本批源码学习状态尚未明确确认，以下为ChatGPT集中教学提纲。先读[八项报告](reports/DAY_32.md)和[最终架构](ARCHITECTURE.md)，再沿一条已保存的真实Trace定位源码，避免重复学习历史实验运行器。
 
 1. 从Dockerfile锁依赖到Compose的api/migrate/PG/Qdrant/Phoenix；解释服务名、宿主端口、UID/GID、只读.env/权重、可写清单与命名卷。实际重建不能只看config语法或health，需核对旧数据摘要和新工单ID。
 2. 从RequestContextMiddleware建立HTTP根Span，追踪contextvars进入async和线程、Agent模型/工具及RAG各阶段，再看单次OTLP回执与Phoenix REST存储。X-Trace-Exported=true不等于业务成功，503/409等失败Trace也可以成功导出。
@@ -459,4 +459,4 @@ MCP作为独立知识补充：[官方架构](https://modelcontextprotocol.io/doc
 4. 读取真实组合Agent中ticket/knowledge两类source，跟踪独立确认、错误指纹回滚、重复同ID；解释模型请求工具与后端授权/执行的区别。
 5. 对照[最终指标](evidence/D32_FINAL_METRICS.json)的样本、失败分母、usage覆盖和嵌套耗时。已知费用仅按官方价估算，首次失败usage未知，不填零；第二轮温态GPU不当冷启动或生产P95。
 
-[三个本人手测](FINAL_MANUAL_VERIFICATION.md)尚待用户完成源码学习并主动开启。D29学习也仍待明确确认；本批自动测试/真实模型采集由Codex执行，不记成用户本人操作。
+2026-10-29用户委托Codex直接完成[三项功能验证](evidence/D32_DELEGATED_VERIFICATION_20261029.json)并提交；该轮并非用户本人操作。D29与最终批次学习均尚待明确确认，可按[手测指南](FINAL_MANUAL_VERIFICATION.md)继续本人实践。

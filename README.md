@@ -2,7 +2,7 @@
 
 基于RAG与LangGraph的研发知识及工单协作智能体。面向“查询研发资料、参考真实工单、分析问题、提出后续工单”的场景，将可核对的知识引用与PostgreSQL业务结果连接起来。模型提出工具调用，后端控制参数、权限、执行预算和事务；创建工单必须经过独立确认。
 
-当前最终D32整合批次覆盖原D32–D34：容器部署、Phoenix真实Trace、七项能力演示和最终文档。D29的源码学习尚待用户明确确认；最终批次的ChatGPT学习与本人手测也未登记完成。开发与自动验收由Codex完成，用户此前参与的实际学习/手测见[协作规范](docs/COLLABORATION_RULES.md)和[开发日志](docs/DEVELOPMENT_LOG.md)。
+当前最终D32整合批次覆盖原D32–D34：容器部署、Phoenix真实Trace、七项能力演示和最终文档。用户于2026-10-29委托Codex直接完成三项功能验证并提交，见[委托验证记录](docs/evidence/D32_DELEGATED_VERIFICATION_20261029.json)；D29与最终批次的ChatGPT学习尚未明确确认，本次验证并非用户本人操作。用户此前参与的实际学习/手测见[协作规范](docs/COLLABORATION_RULES.md)和[开发日志](docs/DEVELOPMENT_LOG.md)。
 
 ## 技术栈和主要职责
 
@@ -102,7 +102,7 @@ PROJECT_COPILOT_RUN_FINAL_QDRANT=1 PROJECT_COPILOT_RUN_FINAL_GPU=1 HF_HUB_OFFLIN
 
 ## 学习交接与限制
 
-[最终八项报告](docs/reports/DAY_32.md)、[学习笔记](docs/STUDY_NOTES.md)、[面试材料](docs/INTERVIEW_NOTES.md)和[仅三项本人手测](docs/FINAL_MANUAL_VERIFICATION.md)为后续集中教学入口。用户完成ChatGPT学习并主动要求后才开始手测。
+[最终八项报告](docs/reports/DAY_32.md)、[学习笔记](docs/STUDY_NOTES.md)、[面试材料](docs/INTERVIEW_NOTES.md)和[三项手测指南](docs/FINAL_MANUAL_VERIFICATION.md)为后续集中教学入口；本轮三项功能检查由Codex受托执行，用户学习状态及本人实践另行记录。
 
 原D20 `POST /tickets`仍是本地未鉴权直建接口；D29 bearer上下文不替代登录、租户和完整授权。GPU模型按进程占显存；Python等待超时不能强杀CUDA线程；文件锁依赖共享文件系统。没有生产压测、持续监控SLA、持久聊天/Graph恢复或完整语义事实裁判。费用估算基于已返回usage，不等于实际账单；首次上游失败未返回usage，未把它从调用记录中删除。
 

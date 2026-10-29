@@ -644,4 +644,4 @@ Codex执行9条CLI：最终配置verify、保留集plan及公开verify退出0；
 
 Docker CPU/GPU镜像实际构建、GPU完整业务、四服务容器重建/存储保持、Phoenix真实成功/失败收存与开关/导出失败行为均通过；最终全量1386 passed、0失败0跳过。七项能力、失败与成本分母见[最终验收](FINAL_ACCEPTANCE.md)、[八项报告](reports/DAY_32.md)和[独立审计](evidence/D32_FINAL_ACCEPTANCE.json)。正式开发到此结束，D35仅在本批用于真实排错缓冲，不额外新增功能。当前24个主批次，原D32–D34映射保持。
 
-D29学习尚待用户明确确认；本批ChatGPT源码学习与[三个本人手测](FINAL_MANUAL_VERIFICATION.md)等待用户主动开启。Git按本次明确授权由Codex审核后提交推送，实际结果另据最终SHA记录；自动验收和代码同步不代表用户学习/本人操作已完成。
+D29与本批ChatGPT源码学习尚待用户明确确认。2026-10-29用户委托Codex直接完成[三项功能验证](evidence/D32_DELEGATED_VERIFICATION_20261029.json)并提交；本次由Codex执行，不登记为用户本人手测。自动验收和代码同步不代表用户学习/本人操作已完成。

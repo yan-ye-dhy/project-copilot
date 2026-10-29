@@ -67,9 +67,13 @@ timeout --signal=INT --kill-after=10s 300s \
 
 第二轮两项Agent任务2/2、工具事件3/3，HTTP17个样本含1个预期409；中位35.924ms、nearest-rank p95 5299.947ms是混合单轮样本，不是生产SLA。首轮中止和温态GPU复用单列，未用第二轮掩盖冷启动失败。完整分母/阶段/费用来源见[指标](../evidence/D32_FINAL_METRICS.json)。用户本人学习与手测没有被自动验收替代。
 
+2026-10-29用户明确委托Codex直接执行三项功能验证并提交，见[委托验证记录](../evidence/D32_DELEGATED_VERIFICATION_20261029.json)。本轮实际上传中文资料、组合知识/真实工单、提案预览与独立确认、错误指纹回滚及重复确认；API容器重建，PostgreSQL和Qdrant停止后重新启动，数据库与向量快照一致。Phoenix REST回读17条Trace/84个Span，UI入口200，未自动操作浏览器。本轮4次DeepSeek请求输入5452/输出978 tokens，2次Embedding共35输入tokens，实际账单未知；自动重试关闭。该记录不声称用户本人操作，也不与开发期自动验收样本合并。
+
 ## 6. GitHub 提交信息
 
 起点main及远端main均[00d08dba737128a162057812dcd4c771ebbfa129](https://github.com/yan-ye-dhy/project-copilot/commit/00d08dba737128a162057812dcd4c771ebbfa129)，工作区原为干净。用户明确授权本批开发/验收/审核后由Codex提交推送；最终实际commit、远端SHA核对结果与链接在交接消息填写，不预填尚未生成的ID。
+
+开发与自动验收提交[5d8e3eec6b1241d85ee6427f162f6daffe468821](https://github.com/yan-ye-dhy/project-copilot/commit/5d8e3eec6b1241d85ee6427f162f6daffe468821)已同步main；2026-10-29委托验证收尾提交的实际SHA与推送结果在本轮交接消息核对。
 
 提交范围仅本批源码、部署、测试和脱敏证据/文档，不含.env、模型权重、缓存、数据库文件或私有上下文令牌。不强推、不重写历史；现有数据库卷和Qdrant数据保留。
 
@@ -85,4 +89,4 @@ timeout --signal=INT --kill-after=10s 300s \
 
 ## 8. 下一步计划
 
-关键自动验收通过后结束正式开发，不新增D35功能。用户先集中学习本批源码，再主动开启[三项本人手动验证](../FINAL_MANUAL_VERIFICATION.md)：Docker健康/持久化、组合Agent/提案确认、Phoenix成功/失败Trace。D29学习状态继续待用户明确确认，最终批次学习和本人手测也不自动登记完成。
+关键自动验收通过后结束正式开发，不新增D35功能。用户委托Codex完成本轮三项功能验证；[手测指南](../FINAL_MANUAL_VERIFICATION.md)仍可用于用户本人实践。D29与最终批次学习状态继续待用户明确确认，本轮不登记为用户本人操作。
