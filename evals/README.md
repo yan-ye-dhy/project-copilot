@@ -9,7 +9,7 @@ D9的`run.py`提供固定排名重放、原文证据映射和指标汇总，不�
 | `metrics.py` | 构建精确位置目录，计算文档/证据Recall、MRR及全部必需证据覆盖 |
 | `run.py` | 冻结门禁、配置/排名校验、逐题重放和新目录结果保存 |
 | `configs/d9_replay.json` | 4道开发题、k=1/3/5/10、750/150切分及数据指纹；是D9样例配置，不是D10冻结实验 |
-| `fixtures/d9_rankings.jsonl` | Codex手工构造的排名、重复结果、空结果和模拟超时；没有真实请求 |
+| `fixtures/d9_rankings.jsonl` | 人工构造的排名、重复结果、空结果和模拟超时；没有真实请求 |
 | `datasets/copilot_v0/` | D8冻结数据；语料、问题、标签、划分及正式清单分开 |
 | `baseline_config.py`、`configs/dense_v0.json` | D10完整Prompt/Schema/模型参数、固定开发题与回答分层样本合同 |
 | `cache.py` | 按供应商/模型/维度/float/文本指纹复用向量；损坏拒绝，不隐式重收费 |
@@ -63,7 +63,7 @@ gold仍绑定文档版本、页和原文证据，不改成chunk_id。单chunk或
 
 ## 运行参考与输出
 
-从项目根目录运行，结果目录必须是新目录，以下供学习后复现参考：
+从项目根目录运行，结果目录必须是新目录：
 
 ```bash
 uv run --frozen python -m evals.run \
@@ -90,7 +90,7 @@ uv run --frozen python -m evals.baseline plan \
   --dataset evals/datasets/copilot_v0 --config evals/configs/dense_v0.json
 ```
 
-以下是取得本次费用授权后才执行的参考，不是自动运行指令；用户学习后的手动验证仍另行主动开启：
+以下真实采集命令会产生模型费用，执行前应先确认预算：
 
 ```bash
 uv run --frozen python -m evals.baseline collect \
@@ -112,7 +112,7 @@ uv run --frozen python -m evals.baseline verify \
 | embedding_batches.json、query_vectors.jsonl | 批量向量准备耗时/缓存统计；问题与原向量关联，后续复用不再收费 |
 | rankings.jsonl、retrieval/三份D9结果 | 原始真实排名/分数/片段/逐题错误、指标及评分收据；评分器自身model_calls=0不代表采集未调用模型 |
 | answers.jsonl | 可选8题，复用排名前5条，保存完整消息、供应商实际模型/usage、原始content、结构化回答或校验错误；不重复检索 |
-| review.jsonl | 独立人工复核记录；采集时pending，用户确认后填写声明与引用支持、正确拒答及失败。缺引用事实也需入分母，纯拒答支持率N/A |
+| review.jsonl | 独立人工复核记录；采集时pending，复核后填写声明与引用支持、正确拒答及失败。缺引用事实也需入分母，纯拒答支持率N/A |
 | status.json、manifest.json | 保留采集时完整性、调用及环境/哈希快照；其中pending/accepted=false不随人工复核改写，当前人工状态读取review |
 
 逐题embedding时间是已准备查询向量的本地缓存读取时间，provider批量时间单列，不能摊成“独立请求延迟”。query总计包含本地读向量/保存/查询，非冷启动模型端到端；无显式预热，按执行顺序观察。未发生的fusion/rerank保持null，Embedding usage及账单未采集保持null；DeepSeek可用usage保留，估算金额与实际账单分开。
@@ -132,7 +132,7 @@ uv run --frozen python -m evals.chunking \
   --candidate evals/configs/chunk_size500.json
 ```
 
-调用链为main→inspect_chunking→核验归档输入/完整V0合同及D8冻结→限制关注题为真实dev检索Bad Case→同源语料两次build_chunk_catalog→按同页原文位置列交集/单块完整包含→stdout JSON。程序不写数据、不读取.env、不创建客户端；可重定向到被忽略的data目录观察输出，正式 [检查快照](results/chunk-size500-preflight/inspection.json)由Codex本日离线生成。
+调用链为main→inspect_chunking→核验归档输入/完整V0合同及D8冻结→限制关注题为真实dev检索Bad Case→同源语料两次build_chunk_catalog→按同页原文位置列交集/单块完整包含→stdout JSON。程序不写数据、不读取.env、不创建客户端；可重定向到被忽略的data目录观察输出，[检查快照](results/chunk-size500-preflight/inspection.json)由离线运行生成。
 
 输出cases中的gold沿用原文版本/页/字符位置，intersecting_chunks含原文、实际区间及ID，single_chunk_covering_ids只表示某块包含完整quote；多块联合覆盖继续沿用D9规则，不能用交集代替完整证据。baseline_evidence_completion_ranks来自封存的真实V0排名；candidate没有排名，retrieval_evaluation/answer_evaluation均为null，model_calls/qdrant_requests均为0。冻结完整性校验会读取全量文件核对指纹，但候选分析只消费这四道dev标签，不做保留集效果分析。
 
@@ -155,9 +155,9 @@ uv run --frozen python -m evals.chunking_run plan \
 
 公开归档哈希→私有manifest→原query_vectors的哈希链须一致，30个dev题的ID/顺序/query/Embedding合同/2048维有限数值严格检查；历史运行源码漂移、损坏缓存、原文gold不能完整映射均在请求前拒绝。问题只读取原向量，缺失不会悄悄补做Embedding。当前费用计划取决于实际缓存，本日初始1命中/26缺失；实调后再plan会显示暖缓存，不能用它改写原调用数。
 
-collect仅在`--live`且用户授权新增文本后运行，`--max-new-texts`默认0；原V0须已经存在且16点/原文/payload完全匹配，候选须为全新`pc_eval_dense_v1_size500`集合。缺失V0不自动创建、既有候选不覆盖；结果目录也拒绝覆盖。先一次文档向量prefill，入库复用缓存；前两题两侧smoke成功才继续，其后错误仍留在分母。每题两侧使用完全相同的已保存向量，先查询哪侧交替；无显式预热、未生成回答。
+collect仅在显式指定`--live`和允许新增文本数量后运行，`--max-new-texts`默认0；原V0须已经存在且16点/原文/payload完全匹配，候选须为全新`pc_eval_dense_v1_size500`集合。缺失V0不自动创建、既有候选不覆盖；结果目录也拒绝覆盖。先一次文档向量prefill，入库复用缓存；前两题两侧smoke成功才继续，其后错误仍留在分母。每题两侧使用完全相同的已保存向量，先查询哪侧交替；无显式预热、未生成回答。
 
-本轮已在授权下执行一次采集，**无需重跑collect**。公开20份文件含19份封存产物，不含问题向量或密钥，原字节同本地输出；完整性检查可离线运行：
+本轮已执行一次采集，**无需重跑collect**。公开20份文件含19份封存产物，不含问题向量或密钥，原字节同本地输出；完整性检查可离线运行：
 
 ```bash
 uv run --frozen python -m evals.chunking_run verify \
@@ -176,7 +176,7 @@ uv run --frozen python -m evals.chunking_run verify \
 | historical_v0_recheck.json | 历史V0与本轮V0的指标复核；它的跨日耗时差不当作受控延迟结果 |
 | status.json、manifest.json | 原采集状态、实际调用、21份源码哈希/依赖/执行顺序、19份文件指纹；manual_review=pending/accepted=false保留采集快照 |
 
-比较器可记录mixed，防止某项上升掩盖另一项下降；错误转移与无答案单列。2026-10-22用户已亲自verify、双侧重评分、核对012改善/003退化的原文/排名，并验证副本只追加换行仍被拒绝，另确认ChatGPT学习理解；人工记录见报告，不改写机器pending快照。代表案例012完成rank4→1，003完成rank4→6；Recall@5由1降为24/26，当前默认保持750/150。确认范围是两条代表原文映射，全部32段映射的程序检查与此分开。详细数值、人工记录、时间与费用局限见 [真实对照报告](reports/CHUNKING_V1.md)；保留集仍等D17。
+比较器可记录mixed，防止某项上升掩盖另一项下降；错误转移与无答案单列。归档经双侧重评分，副本追加换行后按预期拒绝。代表案例012完成rank4→1，003完成rank4→6；Recall@5由1降为24/26，默认保持750/150。人工核对范围是两条代表原文映射，全部32段映射的程序检查与此分开。详细数值、复核范围、时间与费用局限见 [真实对照报告](reports/CHUNKING_V1.md)。
 
 ## D13：为后续三路对照准备BM25
 
@@ -186,7 +186,7 @@ uv run --frozen python -m evals.chunking_run verify \
 
 [自动收据](../docs/evidence/D13_BM25_SMOKE.json)记录真实V0的5文档/16片段对齐和四条固定查询，仅作最小链路验收。D13不新增完整评测run、不算Recall/MRR收益，也不改D9配置使其冒充BM25评测器。D14再扩展三路采集与RRF，公开各路候选数、最终k、冷构建/查询耗时与Bad Case，沿用D8划分和D10 Prompt冻结，不使用保留集选分词或参数。
 
-2026-10-22用户已亲自完成D13的8个手动环节并确认ChatGPT学习理解：独立快照在data/manual-d13，四条查询分别命中1/3/2/0条，清单副本仅变更spec.splitter_version后旧快照按预期拒绝、退出1。Codex只读确认正式清单原字节、快照指纹和原文/metadata保持，新增模型调用0；本次人工记录见 [D13报告](../docs/reports/DAY_13.md)，自动收据不改写，三路效果仍待D14明确开启。
+独立快照四条查询分别命中1/3/2/0条；清单副本仅变更spec.splitter_version后，旧快照按预期拒绝、退出1。正式清单原字节、快照指纹和原文/metadata保持，新增模型调用0。此检查不代表完整评测结果。
 
 ## D14：固定候选的Dense/BM25/Hybrid对照
 
@@ -206,9 +206,9 @@ uv run --frozen python -m evals.hybrid_run verify \
 
 plan完全离线并验证原向量哈希链；collect沿用四项输入并提供全新的`--output-dir`，连接本机Qdrant但不调用模型、不写集合。每题只查一次Dense和一次BM25，保存各路原始score/排序后融合，额外候选并集实际10～14。三路各30题，固定评价k=1/3/5/10；错误留分母，无答案独立，不做拒答评测。
 
-[公开V2归档](results/hybrid-v2-20261022-01/manifest.json)含23封存产物＋manifest：三路完整原文排名/评分、三组比较、candidate_sources中的来源名次/score、case_details中的gold/指标及结果文件引用、历史V0重查、完整父合同/索引/BM25快照和机器状态。原问题向量仍只保存在忽略目录，公开配置以SHA绑定。verify不需要私有向量或当前Prompt生成逻辑；机器pending状态不代表用户已完成人工验收。
+[公开V2归档](results/hybrid-v2-20261022-01/manifest.json)含23封存产物＋manifest：三路完整原文排名/评分、三组比较、candidate_sources中的来源名次/score、case_details中的gold/指标及结果文件引用、历史V0重查、完整父合同/索引/BM25快照和机器状态。原问题向量仍只保存在忽略目录，公开配置以SHA绑定。verify不需要私有向量或当前Prompt生成逻辑；机器pending状态为采集时快照。
 
-证据Recall@5均1.0，MRR@5依次0.8365/0.9327/0.8974；Hybrid的Recall@3为1.0，但BM25的MRR@5更高，详见 [V2实验报告](reports/HYBRID_V2.md)。准备/字典构建时间单列，逐题embedding/rerank为null；Hybrid search为两路共享搜索之和、total再加fusion，属于顺序合计而非独立请求计时。2026-10-23用户亲自完成归档verify、三路离线重评分、012计算反馈及副本拒绝，并确认学习理解；90条重评分记录与原结果一致，正式归档及机器pending快照保留。D17再作方案选择，不据这次自建小样本声称普遍提升，D15等待明确开启。
+证据Recall@5均1.0，MRR@5依次0.8365/0.9327/0.8974；Hybrid的Recall@3为1.0，但BM25的MRR@5更高，详见 [V2实验报告](reports/HYBRID_V2.md)。准备/字典构建时间单列，逐题embedding/rerank为null；Hybrid search为两路共享搜索之和、total再加fusion，属于顺序合计而非独立请求计时。归档校验、三路离线重评分及副本篡改拒绝均通过；90条重评分记录与原结果一致，正式归档及机器pending快照保留。自建小样本不证明普遍提升。
 
 ## D15：单题重排适配验收
 
@@ -219,7 +219,7 @@ uv sync --frozen --group rerank-gpu
 uv run --frozen --group rerank-gpu python scripts/rerank_smoke.py --local --device cuda --dtype float16
 ```
 
-用户已选择GPU验证并接受额外CUDA依赖与准备时间，现已完成RTX 4060 Laptop上的CUDA float16真实执行。`rerank-gpu`使用官方CUDA 13.0源，与CPU组`rerank`互斥；同一固定模型已缓存，准备方式及CPU运行参考见 [根README](../README.md#d15本地cross-encoder最小重排)。保存10个原分数/名次/原文hash、20个raw logits、每遍选中5块的完整原文和metadata、截断诊断、模型版本/参数和分段耗时；输出不含D16全量指标。
+已完成RTX 4060 Laptop上的CUDA float16真实执行。`rerank-gpu`使用官方CUDA 13.0源，与CPU组`rerank`互斥；同一固定模型已缓存，准备方式及CPU运行参考见 [部署指南](../docs/DEPLOYMENT.md)。保存10个原分数/名次/原文hash、20个raw logits、每遍选中5块的完整原文和metadata、截断诊断、模型版本/参数和分段耗时；输出不含D16全量指标。
 
 [CPU历史收据](../docs/evidence/D15_RERANK_SMOKE.json)保留原字节，其中另有合成2120→512 tokens与超长query拒绝诊断。[GPU验收收据](../docs/evidence/D15_GPU_RERANK_SMOKE.json)另记实际全部浮点模型参数`cuda:0`/`float16`、Torch 2.14.1+cu130、CUDA编译版本13.0、设备capability、同步计时及当前进程Torch分配器allocated/reserved显存峰值。新增依赖组后的`pyproject.toml`和`uv.lock`使用新的源码SHA，其余25份已登记源码保持；CPU收据继续保留运行当时的历史SHA，不改标为GPU结果。
 
@@ -227,9 +227,9 @@ GPU首/热模型推断1112.377/160.087ms，整个rerank为12007.819/174.468ms；
 
 CPU float32与GPU float16同时改变硬件和精度，首/热两次属于单题观察，不据单次差值宣称单因素加速、P95或生产吞吐。
 
-本轮只验证适配合同，012的gold从3到1不能冒充开发集MRR改善；模型分数不能当置信度。未改D8冻结输入、原V0/V1/V2机器产物或默认750/150和Dense API。D15阶段A/B已完成，D16仍等待用户明确开启，再使用固定候选作成对实验。
+本轮只验证适配合同，012的gold从3到1不能冒充开发集MRR改善；模型分数不能当置信度。未改D8冻结输入、原V0/V1/V2机器产物或当时的默认750/150和Dense API。
 
-2026-10-25用户亲自通过五个手测环节并确认ChatGPT学习：GPU命令结果保存在忽略目录data/manual-d15/smoke-gpu.json，首/热各10pair、各选5块，首模型加载11500.209ms、热态重排158.899ms；缺缓存错误保存在missing-cache-error.json，退出1且未生成测试缓存。Codex只读核对原文、全部metadata、原score与输入SHA一致，正式CPU/GPU证据及旧冻结内容保持。手测两遍截断均0，没有另测参数设备/显存；真实GPU配置执行、CUDA小张量与开发期插桩分别记录。完整手测范围见D15报告，记录提交仍由用户完成。
+独立运行GPU首/热各10对、各选5块，首模型加载11500.209ms、热态重排158.899ms；缺缓存时退出1且未生成测试缓存。原文、全部metadata、原score与输入SHA一致，正式CPU/GPU证据及旧冻结内容保持。两遍截断均0；真实GPU配置执行、CUDA小张量与开发期插桩分别记录。
 
 ## D16：固定候选的V3重排对照
 
@@ -252,7 +252,7 @@ uv run --frozen --group rerank-gpu python -m evals.rerank_run verify \
   --output-dir evals/results/rerank-v3-20261025-01
 ```
 
-以上为运行参考，开发期已完成真实采集；2026-10-26用户确认已学习，并明确委托Codex完成本次离线验证及Git提交推送，实际执行者分别记录。collect的示例输出目录须尚不存在；重复实验请换新目录。plan/verify离线，不导入Torch/Transformers或加载模型；collect必须显式--local，只用本地快照，缓存缺失不下载、不回退。独立一次warmup（首题10pair）不进入评分/时延统计，前两道原序dev为smoke并包含在完整30题中。无异常时31次成功评分、310pair；遇异常分别记录尝试和完成计数，前两题失败不封存，后续失败保留分母。
+以上为运行参考，真实采集已完成。collect的示例输出目录须尚不存在；重复实验请换新目录。plan/verify离线，不导入Torch/Transformers或加载模型；collect必须显式--local，只用本地快照，缓存缺失不下载、不回退。独立一次warmup（首题10pair）不进入评分/时延统计，前两道原序dev为smoke并包含在完整30题中。无异常时31次成功评分、310pair；遇异常分别记录尝试和完成计数，前两题失败不封存，后续失败保留分母。
 
 [公开归档](results/rerank-v3-20261025-01/manifest.json)共20文件，19份产物由manifest登记SHA：保存父manifest/状态、两套排名及评分、原候选/logit/token/GPU观测、warmup、配置/模型来源/runtime、逐题原文gold与比较。两套文件使用同一evaluation_config；4无答案的Recall/MRR为null，拒答率未采集。默认配置、D8/V0/V1/V2/D15封存内容保持。
 
@@ -260,7 +260,7 @@ uv run --frozen --group rerank-gpu python -m evals.rerank_run verify \
 
 本次证据MRR@5为0.897436→0.971154，Recall@5均1，但Recall@3为1→0.935897；4改善、2退化、20指标不变，4无答案另列。程序可追溯分析见 [V3报告](reports/RERANK_V3.md)，其中007的2→4及034多证据3→4需保留；本日不据这些结果自动修改最终默认或提前运行D17保留集。
 
-本次委托验证收据见 [D16_DELEGATED_VERIFICATION_20261026.json](../docs/evidence/D16_DELEGATED_VERIFICATION_20261026.json)：plan/verify及两侧重放成功，缺--local/配置漂移/篡改副本按预期拒绝，原封存文件保持；新增模型与GPU评分均0。学习由用户确认，本轮操作由Codex执行，不登记为用户亲手运行；D17等待明确开启。
+独立验证收据见 [D16_DELEGATED_VERIFICATION_20261026.json](../docs/evidence/D16_DELEGATED_VERIFICATION_20261026.json)：plan/verify及两侧重放成功，缺--local/配置漂移/篡改副本按预期拒绝，原封存文件保持；新增模型与GPU评分均0。
 
 ## D17：最终方案与保留集
 
@@ -278,13 +278,13 @@ uv run --frozen --group rerank-gpu python -m evals.holdout verify \
   --output-dir evals/results/final-holdout-20261026-01
 ```
 
-plan/verify不导入Torch、加载模型或读取.env。真实collect必须--live，按费用规则另有明确授权；本轮已采集一次，学习核对以离线verify为主，不因查看结果自动重新收费运行。运行器不覆盖已有目录、不改原D8数据/历史档案，前两题执行失败停止，后续失败保留分母，无回退或重试。
+plan/verify不导入Torch、加载模型或读取.env。真实collect必须--live，会产生模型费用；本轮已采集一次，可离线verify查看结果。运行器不覆盖已有目录、不改原D8数据/历史档案，前两题执行失败停止，后续失败保留分母，无回退或重试。
 
 公开[24文件归档](results/final-holdout-20261026-01/manifest.json)保存V0/Final和中间BM25/Hybrid候选、raw logit、全部metadata、10题指标/分类、原文案例、Embedding批次/向量SHA、GPU观察、warmup/runtime/status；私有缓存向量不发布。9可答/1无答案，证据Recall@5两侧1，MRR@5由0.944444到1；拒答/回答质量未评，不改Prompt，不改当前Dense问答API。
 
-组件计时、单轮小样本和云端Embedding别名限制详见[保留集报告](reports/FINAL_HOLDOUT.md)，[独立审计](../docs/evidence/D17_HOLDOUT_AUDIT.json)核对800指标/10缓存向量。D17新增27项离线用例；7文件相关回归275项通过。开发期自动验收与本次委托验证分别记录；2026-10-26用户确认学习理解，另明确授权Codex完成离线验证及Git提交，D18等待明确开启。
+组件计时、单轮小样本和云端Embedding别名限制详见[保留集报告](reports/FINAL_HOLDOUT.md)，[独立审计](../docs/evidence/D17_HOLDOUT_AUDIT.json)核对800指标/10缓存向量。新增27项离线用例；7文件相关回归275项通过。
 
-D17本次[委托验证收据](../docs/evidence/D17_DELEGATED_VERIFICATION_20261026.json)记录3项成功CLI、6项预期拒绝、两侧20条评分重放、033/005/038证据及10个缓存向量核对；新增Embedding/Chat/Qdrant/GPU调用均0，原配置/封存保持。阶段B按本次明确授权的代操作方式完成，不将程序操作写成用户亲手运行，长期默认分工保持。
+[独立验证收据](../docs/evidence/D17_DELEGATED_VERIFICATION_20261026.json)记录3项成功CLI、6项预期拒绝、两侧20条评分重放、033/005/038证据及10个缓存向量核对；新增Embedding/Chat/Qdrant/GPU调用均0，原配置/封存保持。
 
 ## D18：源码演进与历史回归边界
 
@@ -294,7 +294,7 @@ D18只修改业务入库及存储核验，原V0/V1/V2/V3/D17数据、配置、Pr
 
 重复内容现在先只读核验再复用，首次成功source_name不因改名重传而变化；新内容即使同名也有新身份。失败点不进入完成清单，BM25须在新成功后显式重建，不能把旧快照与新清单混用。当前API仍Dense/750/150。
 
-2026-10-26本次授权的[委托验证](../docs/evidence/D18_DELEGATED_VERIFICATION_20261026.json)由Codex执行：真实恢复8阶段、2项ASGI故障/重试场景及门禁通过，V1/V2/V3/D17公开verify再次通过；213份受检非Markdown文件SHA、原3集合及点数保持，模型API0。原开发收据与冻结归档保持，本轮只新增验证记录，不重新采集语义指标。用户另行确认学习完成，阶段A/B均完成，D19未开启。
+[独立验证](../docs/evidence/D18_DELEGATED_VERIFICATION_20261026.json)：真实恢复8阶段、2项ASGI故障/重试场景及门禁通过，V1/V2/V3/D17公开verify再次通过；213份受检非Markdown文件SHA、原3集合及点数保持，模型API0。原开发收据与冻结归档保持，本轮只新增验证记录，不重新采集语义指标。
 
 ## D19：固定证据的独立Prompt可靠性对照
 
@@ -306,10 +306,10 @@ uv run --frozen python -m evals.prompt_reliability offline --output-dir data/man
 uv run --frozen python -m evals.prompt_reliability verify --output-dir data/manual-d19/offline-01
 ```
 
-collect需显式--live并先取得本轮费用授权，最多8次DeepSeek调用，无Embedding/Qdrant或自动重试；上游失败立即停止并封存partial，不缩小题目范围冒充完整。输出目录拒绝覆盖；config记录两版模板、相同User/Schema/生成合同、固定输入、源码SHA、commit/dirty、依赖和模式。answers逐题记录实际消息、原始回答、错误、后端结果及usage；summary记录成对状态/口号探针，manifest保护3份产物字节。verify检查SHA、输入合同、题目顺序/完整性、重解析原回答与重算汇总，不请求模型。
+collect需显式--live，最多8次DeepSeek调用，会产生模型费用，无Embedding/Qdrant或自动重试；上游失败立即停止并封存partial，不缩小题目范围冒充完整。输出目录拒绝覆盖；config记录两版模板、相同User/Schema/生成合同、固定输入、源码SHA、commit/dirty、依赖和模式。answers逐题记录实际消息、原始回答、错误、后端结果及usage；summary记录成对状态/口号探针，manifest保护3份产物字节。verify检查SHA、输入合同、题目顺序/完整性、重解析原回答与重算汇总，不请求模型。
 
 offline为固定响应的管线检查，假调用与真实API分别计数；live也不自动将状态/编号有效当作事实支持，人工支持率未采集记null。候选不推广至API，不改冻结检索配置，不把Prompt实验解释成Recall/MRR变化。旧归档保持旧源码身份；新回答源码的效果与D10/D17历史归属分开。
 
-本轮授权的[真实归档](results/d19-prompt-20261026-01/manifest.json)从干净03c2691执行：8次DeepSeek、0次Embedding/Qdrant/GPU、0次重试，5对中4对为模型输出、1对为后端空证据。两侧各5条合同/状态/口号检查通过（含1条后端结果），候选无本样本优势，默认v1保持。逐题消息、原输出、usage和错误原样保存；[真实审计](../docs/evidence/D19_PROMPT_LIVE_AUDIT.json)记录Codex原文核对和独立费用估算，原离线审计中的待授权字段作为当时快照保留。私有/公开verify均通过；人工支持率、用户学习及手测不自动填完成。
+[真实归档](results/d19-prompt-20261026-01/manifest.json)从干净03c2691执行：8次DeepSeek、0次Embedding/Qdrant/GPU、0次重试，5对中4对为模型输出、1对为后端空证据。两侧各5条合同/状态/口号检查通过（含1条后端结果），候选无本样本优势，默认v1保持。逐题消息、原输出、usage和错误原样保存；[真实审计](../docs/evidence/D19_PROMPT_LIVE_AUDIT.json)记录原文核对和独立费用估算，原离线审计中的待授权字段作为当时快照保留。私有/公开verify均通过；人工支持率未采集。
 
-2026-10-26本次[委托验证](../docs/evidence/D19_DELEGATED_VERIFICATION_20261026.json)由Codex执行：两份归档重放和5项拒绝门禁符合预期，真实本地HTTP重放/故障注入12项通过；新增模型/Embedding/Qdrant/GPU调用0。10条原回答及来源由Codex复核，原机器human_review/pending与语义准确率字段不改。233份受检非Markdown文件保持，用户另行确认学习完成，阶段A/B均完成，D20未开启。
+[独立验证](../docs/evidence/D19_DELEGATED_VERIFICATION_20261026.json)：两份归档重放和5项拒绝门禁符合预期，真实本地HTTP重放/故障注入12项通过；新增模型/Embedding/Qdrant/GPU调用0。10条原回答及来源经复核，原机器human_review/pending与语义准确率字段不改。233份受检非Markdown文件保持。

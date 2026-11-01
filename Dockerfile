@@ -20,11 +20,12 @@ RUN apt-get update && apt-get install --no-install-recommends -y libgomp1 \
     && rm -rf /var/lib/apt/lists/* \
     && pip install --no-cache-dir uv==0.11.32
 
-COPY pyproject.toml uv.lock README.md ./
+COPY pyproject.toml uv.lock ./
 RUN --mount=type=cache,target=/root/.cache/uv \
     case "$RERANK_GROUP" in rerank|rerank-gpu) ;; *) exit 2 ;; esac \
     && uv sync --frozen --no-default-groups --group "$RERANK_GROUP" --no-install-project
 
+COPY README.md ./
 COPY src/ src/
 COPY scripts/ scripts/
 COPY migrations/ migrations/

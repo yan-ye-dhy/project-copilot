@@ -1,0 +1,365 @@
+{
+  "schema_version": 1,
+  "executor": "Codex automatic validation; not user manual testing",
+  "completed_at": "2026-10-31T20:29:17.907815+08:00",
+  "test_types": {
+    "python_default_regression": {
+      "passed": 1336,
+      "failed": 0,
+      "skipped": 63,
+      "seconds": 78.77,
+      "boundary": "Default suite; opt-in real service/GPU tests skipped. Prior full backend integration results are not relabelled as new frontend results."
+    },
+    "client_unit": {
+      "passed": 25,
+      "failed": 0,
+      "real_model_calls": 0
+    },
+    "controlled_chromium": {
+      "passed": 15,
+      "failed": 0,
+      "real_model_calls": 0,
+      "real_database_calls": 0
+    },
+    "real_chromium": {
+      "status": "passed_after_explicit_script_continuation",
+      "first_run": "stopped at ambiguous dialog-close locator after successful upload/RAG; not a backend error",
+      "continuation": "reused uploaded document; did not repeat upload/RAG; six remaining assertions passed",
+      "desktop_width": 1440,
+      "mobile_width": 390,
+      "page_errors": 0
+    }
+  },
+  "deployment": {
+    "base_url": "http://127.0.0.1:8002/",
+    "api_health": "healthy",
+    "image_id": "sha256:7435c5ee21d57805f84c9b34310ebd09c39f3348c634200b87e22855848747dc",
+    "image_matches_current_runtime_sources": true,
+    "runtime_source_sha256": {
+      "src/project_copilot/main.py": "aaf37f4a0bb88f654293f1d709d7dda91e1b85d40ca93124c731e2f7cb31131c",
+      "src/project_copilot/api/web.py": "f7ea595b30059459dcfa4ca88debe95e7d2748b452f91a1713be5ed096566bfa",
+      "src/project_copilot/web/index.html": "2fa7fc4ed668f6eb69ee7120fd54562f2faaf983e7fb35332816e1b27df94c9a",
+      "src/project_copilot/web/assets/app.js": "eebbc7240418e727ca04a687a751b132513c92e5f56e9dbf0d2afe6739231193",
+      "src/project_copilot/web/assets/mark.svg": "213d9f01b10a9abce9f418a0e20ff0c3345c12ac8a4fd5a65c6483b991f9ddd2",
+      "src/project_copilot/web/assets/styles.css": "96360af428bfb5cdc83d332f84204e474a72275d809dedfefa0a3dbcd3e0ab28",
+      "src/project_copilot/web/assets/api.js": "f306d397db5cb8c6fbc589e8bee9266a8a29319d0c320b18aeb74fc4e5146450"
+    },
+    "model_path": "Existing readonly fixed-revision cache; CUDA/float16 hybrid rerank retained",
+    "stored_data_deleted": false
+  },
+  "database": {
+    "postgresql": "actual project PostgreSQL via psycopg readonly verification",
+    "tickets_before": 6,
+    "tickets_after": 7,
+    "all_old_ticket_row_hashes_unchanged": true,
+    "new_ticket_id": "8a14f0c2-79d7-476e-b04e-9f5ff206a21c",
+    "confirmed_action_id": "43a63fa0-7bd2-43ea-8a13-4f037ffcb290",
+    "tickets_with_confirmed_creation_key": 1,
+    "cancelled_action_id": "199b8541-c09b-448d-b164-be4e8167a991",
+    "tickets_with_cancelled_creation_key": 0,
+    "states": {
+      "43a63fa0-7bd2-43ea-8a13-4f037ffcb290": {
+        "status": "completed",
+        "ticket_id": "8a14f0c2-79d7-476e-b04e-9f5ff206a21c"
+      },
+      "199b8541-c09b-448d-b164-be4e8167a991": {
+        "status": "cancelled",
+        "ticket_id": null
+      }
+    },
+    "boundary": "One synthetic confirmed ticket retained; this run does not repeat concurrency or storage-container recreation tests."
+  },
+  "qdrant": {
+    "original_collection_unchanged": true,
+    "original_point_count": 3,
+    "demo_collection": "pc_final_demo_532c283ee8a4",
+    "demo_points_before": 1,
+    "demo_points_after": 2,
+    "new_document_id": "8de6a329-6bd3-5bd6-84fb-bc93a4b3776b",
+    "boundary": "Original collection payload/vector aggregate unchanged; demo collection gains one point. No deletion or cache cleanup."
+  },
+  "models": {
+    "automatic_retries": 0,
+    "deepseek_calls": 4,
+    "usage": {
+      "prompt_tokens": 5609,
+      "completion_tokens": 1012,
+      "total_tokens": 6621,
+      "prompt_cache_hit_tokens": 2688,
+      "prompt_cache_miss_tokens": 2921
+    },
+    "embedding_calls": 3,
+    "embedding_prompt_tokens": 157,
+    "actual_account_bill": null,
+    "boundary": "Counts cross-checked with actual Phoenix model/embedding spans; no pricing or invoice claim."
+  },
+  "trace": {
+    "collector": "actual Phoenix REST readback",
+    "project": "project-copilot-final-20261028",
+    "trace_count": 7,
+    "span_count": 65,
+    "parent_child_and_run_id_verified": true,
+    "span_name_counts": {
+      "POST /actions/{action_id}/reject": 1,
+      "db.transaction": 7,
+      "approval.reject": 1,
+      "POST /agent/ask": 2,
+      "agent.run": 2,
+      "agent.tools": 2,
+      "agent.tool.result": 3,
+      "agent.tool.execute": 3,
+      "approval.preview": 2,
+      "agent.model": 3,
+      "rag.retrieve": 2,
+      "rag.rerank": 2,
+      "rag.rrf": 2,
+      "rag.bm25": 2,
+      "rag.dense": 2,
+      "qdrant.search": 2,
+      "embedding.query": 2,
+      "embedding.request": 3,
+      "rag.rerank.prepare": 2,
+      "rag.snapshot": 3,
+      "ticket.search": 1,
+      "POST /actions/{action_id}/confirm": 1,
+      "approval.confirm": 1,
+      "ticket.create": 1,
+      "POST /actions/preview": 1,
+      "POST /rag/ask": 1,
+      "rag.answer": 1,
+      "rag.answer.validate": 1,
+      "rag.generate": 1,
+      "POST /documents/upload": 1,
+      "document.ingest": 1,
+      "index.manifest.publish": 1,
+      "qdrant.verify": 1,
+      "qdrant.upsert": 1,
+      "embedding.documents": 1,
+      "document.split": 1,
+      "document.load": 1
+    },
+    "stages_ms": {
+      "POST /actions/preview": {
+        "samples": 1,
+        "median_ms": 94.229,
+        "p95_nearest_rank_ms": 94.229
+      },
+      "POST /actions/{action_id}/confirm": {
+        "samples": 1,
+        "median_ms": 29.761,
+        "p95_nearest_rank_ms": 29.761
+      },
+      "POST /actions/{action_id}/reject": {
+        "samples": 1,
+        "median_ms": 9.513,
+        "p95_nearest_rank_ms": 9.513
+      },
+      "POST /agent/ask": {
+        "samples": 2,
+        "median_ms": 3342.6535,
+        "p95_nearest_rank_ms": 4761.763
+      },
+      "POST /documents/upload": {
+        "samples": 1,
+        "median_ms": 3186.4159999999997,
+        "p95_nearest_rank_ms": 3186.4159999999997
+      },
+      "POST /rag/ask": {
+        "samples": 1,
+        "median_ms": 28160.129,
+        "p95_nearest_rank_ms": 28160.129
+      },
+      "agent.model": {
+        "samples": 3,
+        "median_ms": 1885.838,
+        "p95_nearest_rank_ms": 3130.183
+      },
+      "agent.run": {
+        "samples": 2,
+        "median_ms": 3291.6584999999995,
+        "p95_nearest_rank_ms": 4688.380999999999
+      },
+      "agent.tool.execute": {
+        "samples": 3,
+        "median_ms": 6.551,
+        "p95_nearest_rank_ms": 592.857
+      },
+      "agent.tool.result": {
+        "samples": 3,
+        "median_ms": 0.008,
+        "p95_nearest_rank_ms": 0.012
+      },
+      "agent.tools": {
+        "samples": 2,
+        "median_ms": 303.92549999999994,
+        "p95_nearest_rank_ms": 601.5129999999999
+      },
+      "approval.confirm": {
+        "samples": 1,
+        "median_ms": 17.044,
+        "p95_nearest_rank_ms": 17.044
+      },
+      "approval.preview": {
+        "samples": 2,
+        "median_ms": 38.6455,
+        "p95_nearest_rank_ms": 75.42
+      },
+      "approval.reject": {
+        "samples": 1,
+        "median_ms": 4.316000000000001,
+        "p95_nearest_rank_ms": 4.316000000000001
+      },
+      "db.transaction": {
+        "samples": 7,
+        "median_ms": 5.411,
+        "p95_nearest_rank_ms": 91.41199999999999
+      },
+      "document.ingest": {
+        "samples": 1,
+        "median_ms": 1500.902,
+        "p95_nearest_rank_ms": 1500.902
+      },
+      "document.load": {
+        "samples": 1,
+        "median_ms": 0.641,
+        "p95_nearest_rank_ms": 0.641
+      },
+      "document.split": {
+        "samples": 1,
+        "median_ms": 0.6579999999999999,
+        "p95_nearest_rank_ms": 0.6579999999999999
+      },
+      "embedding.documents": {
+        "samples": 1,
+        "median_ms": 1408.01,
+        "p95_nearest_rank_ms": 1408.01
+      },
+      "embedding.query": {
+        "samples": 2,
+        "median_ms": 326.8535,
+        "p95_nearest_rank_ms": 362.438
+      },
+      "embedding.request": {
+        "samples": 3,
+        "median_ms": 362.328,
+        "p95_nearest_rank_ms": 1407.928
+      },
+      "index.manifest.publish": {
+        "samples": 1,
+        "median_ms": 2.434,
+        "p95_nearest_rank_ms": 2.434
+      },
+      "qdrant.search": {
+        "samples": 2,
+        "median_ms": 54.289500000000004,
+        "p95_nearest_rank_ms": 80.15
+      },
+      "qdrant.upsert": {
+        "samples": 1,
+        "median_ms": 37.1,
+        "p95_nearest_rank_ms": 37.1
+      },
+      "qdrant.verify": {
+        "samples": 1,
+        "median_ms": 9.041,
+        "p95_nearest_rank_ms": 9.041
+      },
+      "rag.answer": {
+        "samples": 1,
+        "median_ms": 28133.365999999998,
+        "p95_nearest_rank_ms": 28133.365999999998
+      },
+      "rag.answer.validate": {
+        "samples": 1,
+        "median_ms": 0.448,
+        "p95_nearest_rank_ms": 0.448
+      },
+      "rag.bm25": {
+        "samples": 2,
+        "median_ms": 16.438000000000002,
+        "p95_nearest_rank_ms": 32.505
+      },
+      "rag.dense": {
+        "samples": 2,
+        "median_ms": 426.4585,
+        "p95_nearest_rank_ms": 519.996
+      },
+      "rag.generate": {
+        "samples": 1,
+        "median_ms": 983.2030000000001,
+        "p95_nearest_rank_ms": 983.2030000000001
+      },
+      "rag.rerank": {
+        "samples": 2,
+        "median_ms": 347.453,
+        "p95_nearest_rank_ms": 541.0279999999999
+      },
+      "rag.rerank.prepare": {
+        "samples": 2,
+        "median_ms": 12994.500999999998,
+        "p95_nearest_rank_ms": 25988.807999999997
+      },
+      "rag.retrieve": {
+        "samples": 2,
+        "median_ms": 13870.3205,
+        "p95_nearest_rank_ms": 27149.055
+      },
+      "rag.rrf": {
+        "samples": 2,
+        "median_ms": 0.08950000000000001,
+        "p95_nearest_rank_ms": 0.134
+      },
+      "rag.snapshot": {
+        "samples": 3,
+        "median_ms": 0.301,
+        "p95_nearest_rank_ms": 1628.456
+      },
+      "ticket.create": {
+        "samples": 1,
+        "median_ms": 7.341,
+        "p95_nearest_rank_ms": 7.341
+      },
+      "ticket.search": {
+        "samples": 1,
+        "median_ms": 1.8090000000000002,
+        "p95_nearest_rank_ms": 1.8090000000000002
+      }
+    },
+    "boundary": "Seven selected business POST requests only; static, health and read-only UI GETs are excluded. Nested stage durations must not be summed."
+  },
+  "git": {
+    "branch": "main",
+    "base_commit": "6eb49bb649793c53df1cc7b4d6c102db38933b48",
+    "frontend_commit": null,
+    "frontend_pushed": false,
+    "reason": "Current frontend task does not authorize delegated Git writes; ready for user commit."
+  },
+  "user_learning": "unconfirmed",
+  "user_manual_validation": "not started; automatic checks executed by Codex",
+  "limitations": [
+    "Local single-user demo; no complete authentication or tenant isolation.",
+    "Conversation capability and history live only in page memory; refresh loses them.",
+    "No document inventory, ticket edit/delete or persistent chat.",
+    "No new full PostgreSQL/Qdrant/GPU test suite or concurrency benchmark claim."
+  ],
+  "artifacts": {
+    "controlled_summary_sha256": "b344554216d4e373f34a7e5b9cddfe54fc7e80773fa88933b45e20ade908e3ea",
+    "first_live_summary_sha256": "b087648476e78110806aa5d06bef95889f347f70e75af21292960f5c335cd388",
+    "continued_live_summary_sha256": "7fb260af0fa24384fc212b4d6664a92f4bf225d37a1b3efa6656483cca1e2fb4",
+    "private_artifacts": "Ignored local data/ui-* folders; no context credentials stored in the public receipt.",
+    "desktop_screenshot": "FRONTEND_DESKTOP_20261031.png",
+    "mobile_screenshot": "FRONTEND_MOBILE_20261031.png"
+  },
+  "review": {
+    "git_diff_check": "passed",
+    "markdown_links_and_fences": "passed",
+    "report_sections": 8,
+    "changed_files_scanned_for_actual_env_secret_values": true,
+    "historical_protected_files_unchanged": 155,
+    "temporary_preview_8004": "stopped",
+    "formal_api_8002": "running HTTP 200",
+    "production_dependencies_added": 0,
+    "tests_run_by": "Codex",
+    "github_writes": 0
+  }
+}

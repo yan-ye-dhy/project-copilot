@@ -4,7 +4,10 @@ Project Copilot把中文研发知识检索和真实工单业务连接起来：�
 
 ```mermaid
 flowchart TD
-    U[本机 HTTP 客户端] --> API[FastAPI / run_id]
+    U[浏览器工作台 / 本机 HTTP 客户端] --> API[FastAPI / run_id]
+    API --> UI[HTML / CSS / JavaScript Modules]
+    UI --> HTTP[同域请求 / 当前页面会话]
+    HTTP --> API
     API --> RAG[/rag/ask]
     API --> G[LangGraph Agent]
     G --> M[DeepSeek 生成 Tool Call]
@@ -36,6 +39,7 @@ flowchart TD
 
 | 组件 | 职责与持久化 |
 | --- | --- |
+| 浏览器工作台 | 智能协作、资料上传、工单列表/详情与提案确认；当前页内存保存历史/凭据/上传记录，服务端持久化仍由既有业务模块负责 |
 | FastAPI | 请求校验、独立Session、返回实际结果；服务端生成run_id |
 | LangGraph | model/tools节点、条件路由、消息历史、工具调用ID配对、确定性预算与终止 |
 | DeepSeek | 非思考模式生成回答或Tool Call；不执行SQL、不拥有确认工具 |
@@ -45,6 +49,14 @@ flowchart TD
 | BGE重排 | 固定本地revision，query/passage成对评分后保留原文；logit不是概率或可信度 |
 | PostgreSQL | 实际工单、上下文哈希和提案；postgres_data卷保存业务状态 |
 | Phoenix | 接收真实OTLP/protobuf Trace，独立phoenix_data卷保存本机追踪数据库；不替代业务PostgreSQL |
+
+## 浏览器界面与API边界
+
+`api/web.py`在`/`返回包内`web/index.html`，仅将`web/assets`挂到`/ui-assets`；`/ui/config`只返回当前上传大小限制。界面与API在同一来源运行，无独立前端服务、跨域代理或Node运行时。HTML设置严格CSP及no-store，应用代码通过外部JavaScript Modules加载；模型回答、引用及错误文字以文本节点渲染。
+
+`web/assets/api.js`负责同域请求、有限历史及页面内存中的上下文凭据；`app.js`负责对话、上传、工单和提案视图。浏览器不取得供应商密钥、不访问PostgreSQL或Qdrant。提案按钮先读取后端不可变预览，再向独立确认/拒绝API发送对应上下文与指纹；界面按钮禁用只改善重复点击体验，真实幂等与权限约束仍由数据库事务和后端校验保证。
+
+页面刷新后不恢复对话、凭据或本页上传记录，既有入库资料和已提交工单仍在服务端；这不构成持久聊天或LangGraph恢复。列表仅显示当前页条数，未推算后端未提供的总量。网络/超时后的写入结果可能不明确，界面查询提案状态而不自动重发确认请求。前端没有增加普通工单直建捷径、编辑/删除、账户或多人授权。
 
 ## 最终检索与索引一致性
 

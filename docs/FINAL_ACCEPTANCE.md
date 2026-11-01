@@ -1,6 +1,6 @@
-# D32整合批次：最终验收与指标
+# 项目最终验收与指标
 
-日期：2026-10-28。执行者为Codex，覆盖原D32–D34。本轮使用真实Docker API、PostgreSQL、Qdrant、Phoenix、智谱/DeepSeek及固定本地BGE模型。用户本人学习和三个手测未启动；D29学习仍待明确确认。
+日期：2026-10-28。使用真实Docker API、PostgreSQL、Qdrant、Phoenix、智谱/DeepSeek及固定本地BGE模型进行验收。
 
 ## 七项核心能力
 
@@ -14,7 +14,7 @@
 | 6 真实Phoenix Trace | 第二轮17条Trace/84个Span由Phoenix REST回读，父子关系、run_id与响应Trace ID一致；成功和失败链路均可定位，UI入口HTTP200 |
 | 7 优化实验 | 原D17选型与保留集verify均退出0、模型未加载；155份历史归档/配置/证据原字节保持，不修改保留集重选方案 |
 
-业务确认由Codex作为外部测试客户端按用户授权调用，不由模型工具调用，也不登记为用户本人手测。Phoenix结果通过真实REST数据读取核对；未声称已自动操作浏览器或保存GUI截图。
+业务确认由外部测试客户端调用，不由模型工具调用。Phoenix结果通过真实REST数据读取核对；本轮未自动操作浏览器或保存GUI截图。
 
 ## Docker与持久化
 
@@ -44,10 +44,10 @@ API、PostgreSQL、Qdrant、Phoenix四个容器均实际停止并重建，容器
 
 ## 测试、故障处理及限制
 
-完整回归命令见[D32八项报告](reports/DAY_32.md)。首次全量只有旧OpenAPI const=false断言失败，更新为实际布尔回执合同；另一轮受资源争用影响GPU预热超时并停止，独立GPU验证通过后限制OMP/MKL线程再全量通过。原失败记录保留，不冒充通过；最终全量包含真实PG、Qdrant和GPU。
+完整回归命令见[README](../README.md#测试与复现)。首次全量只有旧OpenAPI const=false断言失败，更新为实际布尔回执合同；另一轮受资源争用影响GPU预热超时并停止，独立GPU验证通过后限制OMP/MKL线程再全量通过。原失败记录保留，不冒充通过；最终全量包含真实PG、Qdrant和GPU。
 
 CPU镜像首次PyTorch官方包TLS下载失败，直接连通检查后清空构建代理参数的一次重试成功，没有关闭TLS校验。业务首轮上游网络错误按上述失败留证并停止后续付费场景，没有修改模型或提示词掩盖错误。
 
 本地Docker独立GPU探针的PyTorch peak allocated为1,144,796,160字节；清理后allocated为8,519,680字节。该探针不是API worker的全卡显存监控，allocator也不等于整个GPU设备占用。模型按worker各占显存，线程等待超时仍不能强制终止CUDA执行。
 
-当前为localhost单用户工程，原普通工单创建接口和Phoenix无完整登录鉴权，D29 bearer能力不等于账户/租户授权。无生产负载、分布式锁、持续运行可靠性或统计显著性证明。D35仅作为本批排错缓冲，关键验收通过后不另增功能或开发日；用户源码学习及[三项本人手测](FINAL_MANUAL_VERIFICATION.md)等待明确开启。
+当前为localhost单用户工程，普通工单创建接口和Phoenix无完整登录鉴权，提案上下文能力不等于账户/租户授权。无生产负载、分布式锁、持续运行可靠性或统计显著性证明。

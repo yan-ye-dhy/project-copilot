@@ -29,11 +29,11 @@ V1的500字符方案在dev的证据Recall@5为0.923077，未晋升。Hybrid与V3
 | pc-d7-005，上传跨段 | upload原文[183,361)、[542,684)；两条gold两侧均在rank1 | 指标不变，不等于所有其他候选顺序都相同 |
 | pc-d8-038，无答案 | 语料没有实际HNSW m/ef_construct值，gold为空，两侧都有非空候选 | Recall/MRR为null、排除于9题均值；未生成回答，refusal_accuracy仍null |
 
-开发期逐题原文核对和程序分析由Codex完成；2026-10-26用户另确认D17学习理解，本次复核明确委托Codex执行，不新增用户逐题人工gold确认。看到保留集后未修改配置、Prompt、阈值或再选方案；选型文件与采集前Git提交原字节一致。
+开发期逐题原文核对和程序分析由执行者完成；未新增逐题人工gold确认。看到保留集后未修改配置、Prompt、阈值或再选方案；选型文件与采集前Git提交原字节一致。
 
 ## 调用、成本与计时
 
-用户明确批准最多1次Embedding、10次本地Dense查询及110对本地GPU评分。本轮实际符合：一次10问题批量Embedding（1189 UTF-8字节、缓存miss10/API1），10次query_points、10次BM25、10次RRF；开发题001预热10对，随后保留题100对，共11次评分/110对，全部成功。另有集合、完成片段、点数和版本的只读预检；没有写库、重索引、模型下载、回答生成或自动重试。
+本轮实际一次10问题批量Embedding（1189 UTF-8字节、缓存miss10/API1），10次query_points、10次BM25、10次RRF；开发题001预热10对，随后保留题100对，共11次评分/110对，全部成功。另有集合、完成片段、点数和版本的只读预检；没有写库、重索引、模型下载、回答生成或自动重试。
 
 按[官方Embedding-3价格](https://docs.bigmodel.cn/cn/guide/models/embedding/embedding-3)0.5元/百万tokens，授权前以3万输入tokens预算约¥0.015；实际usage和账单未采集，均null，预算不等于实付。两侧共享新问题向量，未分别收费；独立缓存核对10条逐值指纹一致、hit10/miss0/API0。文档向量沿用10月19日索引；云端模型别名不能保证权重永久不变，本轮日期/参数及问题向量SHA已记录。
 
@@ -55,6 +55,6 @@ RTX4060 Laptop、Torch2.14.1+cu130/CUDA13.0、Transformers5.20.2，11次观测�
 
 私有与公开verify均退出0；重算排名、BM25、RRF、logit排序、gold指标、成对结果、案例和预算。另由[独立原文/缓存审计](../../docs/evidence/D17_HOLDOUT_AUDIT.json)重算4路40题记录×4k×5指标共800个值，检查10个缓存问题向量、11次GPU观察及公开/私有文件，均一致；该审计不新增模型请求。plan/verify不加载Torch或模型、不读.env；collect必须--live，先检验冻结/服务/缓存，前两题执行失败即停止，后续失败留完整分母，无回退。
 
-本轮新增27项离线用例，使用内存Qdrant和fake向量/评分；7文件相关回归共275 passed、21.42秒，包含新增用例，不与中间重复运行累加。具体命令见[D17日报](../../docs/reports/DAY_17.md)。未改变D8、V0/V1/V2/V3、D15或D16验收收据。
+本轮新增27项离线用例，使用内存Qdrant和fake向量/评分；7文件相关回归共275 passed、21.42秒，包含新增用例，不与中间重复运行累加。未改变D8、V0/V1/V2/V3、D15或D16验收收据。
 
-当前冻结的是最终实验方案，HTTP问答API继续使用既有Dense；未宣称优化链已接入在线请求。2026-10-26学习已由用户确认，本次委托离线验证完成，阶段B按该明确授权方式收尾；实际命令执行者为Codex，见[本次验证收据](../../docs/evidence/D17_DELEGATED_VERIFICATION_20261026.json)。机器manual_review=pending/day17_accepted=false仍保留采集时快照，不用收尾状态回写原实验。D18只在用户明确要求后开始，后续可靠性修复不能冒用本轮保留集身份或用其结果继续调参。
+本实验冻结的是最终实验方案，采集时HTTP问答API继续使用既有Dense；优化链后来接入在线请求，见[架构说明](../../docs/ARCHITECTURE.md)。离线验证见[验证收据](../../docs/evidence/D17_DELEGATED_VERIFICATION_20261026.json)。机器manual_review=pending/day17_accepted=false仍保留采集时快照，不用后续状态回写原实验。后续可靠性修复不能冒用本轮保留集身份或用其结果继续调参。

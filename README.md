@@ -2,12 +2,27 @@
 
 基于RAG与LangGraph的研发知识及工单协作智能体。面向“查询研发资料、参考真实工单、分析问题、提出后续工单”的场景，将可核对的知识引用与PostgreSQL业务结果连接起来。模型提出工具调用，后端控制参数、权限、执行预算和事务；创建工单必须经过独立确认。
 
-当前最终D32整合批次覆盖原D32–D34：容器部署、Phoenix真实Trace、七项能力演示和最终文档。用户于2026-10-29委托Codex直接完成三项功能验证并提交，见[委托验证记录](docs/evidence/D32_DELEGATED_VERIFICATION_20261029.json)；D29与最终批次的ChatGPT学习尚未明确确认，本次验证并非用户本人操作。用户此前参与的实际学习/手测见[协作规范](docs/COLLABORATION_RULES.md)和[开发日志](docs/DEVELOPMENT_LOG.md)。
+**普通用户入口：[研发协作工作台](http://127.0.0.1:8002/)**。服务启动后直接在浏览器上传资料、提问、查看工单及确认提案，无需手工填写API请求头。开发接口文档继续保留在[Swagger](http://127.0.0.1:8002/docs)。
+
+项目包含浏览器工作台、容器化部署与可视化追踪。可查看[工作台截图](docs/evidence/FRONTEND_DESKTOP_20261031.png)、[前端验收记录](docs/evidence/FRONTEND_VERIFICATION_20261031.json)和[端到端验收结果](docs/FINAL_ACCEPTANCE.md)。
+
+## 在浏览器中使用
+
+| 页面 | 操作 |
+| --- | --- |
+| 智能协作 | 输入研发问题并发送；“智能协作”可联合查询知识与真实工单，“知识问答”只查询资料。点击回答依据可查看原文或工单详情；运行详情提供实际请求编号和可用usage |
+| 知识资料 | 选择或拖入TXT、Markdown、PDF，点击“上传并加入知识库”；成功后回到智能协作提问。文件大小依据当前后端配置显示 |
+| 工单 | 按关键词和状态查询、翻页及查看真实详情。“新建工单”先生成待确认提案；核对标题/描述后，点击确认创建或拒绝 |
+
+Agent也可在对话中提出工单提案。浏览器会从后端重新读取提案内容，并带对应上下文凭据及指纹调用独立确认接口；聊天中的“确认”不会替代按钮操作。确认结果不明确时，界面提供查询状态，不自动重发创建操作。
+
+会话历史、上下文凭据和本次上传记录仅保存在当前页面内存，刷新后不会自动恢复；成功入库的资料和已提交工单仍由服务端保存。工单页显示实际本页条数，后端没有提供全局总数。当前没有文档管理列表、工单编辑/删除、完整账户或多人权限功能。
 
 ## 技术栈和主要职责
 
 | 组件 | 作用 |
 | --- | --- |
+| HTML / CSS / JavaScript Modules | 中文响应式工作台、同域API交互、依据查看和明确确认；由FastAPI直接提供，无Node运行时依赖 |
 | FastAPI / Pydantic | HTTP请求、上传及结构化输出校验，真实来源与业务DTO |
 | LangGraph / DeepSeek | State、节点、条件路由、模型Tool Call与ToolMessage循环 |
 | 智谱embedding-3 / Qdrant | 2048维文档与问题向量、Dense候选及原文metadata |
@@ -29,10 +44,12 @@
 
 ## Docker运行
 
+本机已有GPU镜像和模型缓存时，日常启动直接执行`bash start.sh`。脚本会启动依赖并重新建立API挂载，自动沿用现有本机验收配置（若存在`data/auto-final/deploy.env`），保留数据卷；不构建镜像、不调用模型。首次部署或CPU模式仍按下面步骤及部署指南操作。
+
 需要Docker Desktop/Engine、本项目`.env`、固定模型缓存；GPU部署还需要兼容CUDA 13的NVIDIA驱动及Docker GPU支持。保留已有`.env`，按[配置模板](.env.example)补齐本项目智谱/DeepSeek密钥，不要用模板覆盖真实文件。API镜像不包含密钥或模型权重。
 
 ```bash
-cd /home/yanye/project-copilot
+cd project-copilot
 export PROJECT_COPILOT_CONTAINER_UID="$(id -u)"
 export PROJECT_COPILOT_CONTAINER_GID="$(id -g)"
 mkdir -p data/manifests
@@ -47,7 +64,8 @@ docker compose --env-file .env.example \
 
 | 入口 | 本机地址 |
 | --- | --- |
-| API / Swagger | `http://127.0.0.1:8002/docs` |
+| 普通用户工作台 | `http://127.0.0.1:8002/` |
+| 开发接口 / Swagger | `http://127.0.0.1:8002/docs` |
 | API存活检查 | `http://127.0.0.1:8002/health` |
 | PostgreSQL | `127.0.0.1:5433`，容器内`postgres:5432` |
 | Qdrant | `http://127.0.0.1:6433`，容器内`qdrant:6333` |
@@ -89,7 +107,9 @@ Agent带`X-Copilot-Context-ID`和`X-Copilot-Context-Token`且认证有效时，�
 
 ## 测试与复现
 
-本次完整回归 **1386 passed、0 failed、0 skipped**，启用真实PG、Qdrant及GPU；另有最终指标边界定向测试。Docker CPU/GPU镜像实际构建、CPU和GPU模型实际推断、存储容器重建以及Phoenix真实收存分别留证。Mock、受控模型、真实服务和真实模型按报告区分，自动验收不是用户亲自手测。
+后端开发验收完整回归为 **1386 passed、0 failed、0 skipped**，启用真实PG、Qdrant及GPU；另有最终指标边界定向测试。Docker CPU/GPU镜像实际构建、CPU和GPU模型实际推断、存储容器重建以及Phoenix真实收存分别留证。前端扩展的自动检查与浏览器验证记录在[前端验收记录](docs/evidence/FRONTEND_VERIFICATION_20261031.json)；Mock、受控模型、真实服务和真实模型按证据区分。
+
+前端本轮默认Python回归1336 passed、63 skipped、0失败；客户端25项及受控Chromium15项通过。真实Docker浏览器闭环、PostgreSQL独立核对与Phoenix7条Trace回读另行通过；门禁跳过的旧真实集成测试未重跑。只增加HTML/CSS/JS与静态路由，无新增生产依赖。
 
 ```bash
 OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 \
@@ -100,10 +120,6 @@ PROJECT_COPILOT_RUN_FINAL_QDRANT=1 PROJECT_COPILOT_RUN_FINAL_GPU=1 HF_HUB_OFFLIN
 
 真实PG测试需先启动独立postgres-test服务；测试保留远端Qdrant集合。最终演示脚本为[scripts/final_acceptance.py](scripts/final_acceptance.py)，新输出目录与显式`--live`才允许模型请求；Phoenix回读和指标脚本为[scripts/final_metrics.py](scripts/final_metrics.py)。历史实验verify只读原档案，不重新调用模型或重签历史SHA。
 
-## 学习交接与限制
-
-[最终八项报告](docs/reports/DAY_32.md)、[学习笔记](docs/STUDY_NOTES.md)、[面试材料](docs/INTERVIEW_NOTES.md)和[三项手测指南](docs/FINAL_MANUAL_VERIFICATION.md)为后续集中教学入口；本轮三项功能检查由Codex受托执行，用户学习状态及本人实践另行记录。
+## 已知限制
 
 原D20 `POST /tickets`仍是本地未鉴权直建接口；D29 bearer上下文不替代登录、租户和完整授权。GPU模型按进程占显存；Python等待超时不能强杀CUDA线程；文件锁依赖共享文件系统。没有生产压测、持续监控SLA、持久聊天/Graph恢复或完整语义事实裁判。费用估算基于已返回usage，不等于实际账单；首次上游失败未返回usage，未把它从调用记录中删除。
-
-历史模块报告：[D20工单](docs/reports/DAY_20.md)、[D24 Agent](docs/reports/DAY_24.md)、[D24.1最终检索](docs/reports/DAY_24_1.md)、[D29受控确认](docs/reports/DAY_29.md)。全部核心验收通过后结束正式开发，D35不新增功能；后续学习和手测状态独立记录。

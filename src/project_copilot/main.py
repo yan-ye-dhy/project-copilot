@@ -13,6 +13,7 @@ from project_copilot.api.rag import router as rag_router
 from project_copilot.api.tickets import router as tickets_router
 from project_copilot.api.agent import router as agent_router
 from project_copilot.api.actions import router as actions_router
+from project_copilot.api.web import install_web
 from project_copilot.config import Settings, load_settings
 from project_copilot.db.session import Database
 from project_copilot.infrastructure.tracing import RequestContextMiddleware, create_trace_runtime
@@ -54,6 +55,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     application.include_router(tickets_router)
     application.include_router(agent_router)
     application.include_router(actions_router)
+    install_web(application)
 
     @application.exception_handler(Exception)
     async def unexpected_error(request: Request, exc: Exception) -> JSONResponse:

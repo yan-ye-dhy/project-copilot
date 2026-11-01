@@ -25,3 +25,16 @@ models/
 .agents/
 .codex/
 .aws/
+
+# Personal study plans, notes and collaboration records stay in the local workspace.
+AGENTS.md
+docs/COLLABORATION_RULES.md
+docs/DEVELOPMENT_PLAN.md
+docs/DEVELOPMENT_LOG.md
+docs/STUDY_NOTES.md
+docs/INTERVIEW_NOTES.md
+docs/D1_WALKTHROUGH.md
+docs/REFERENCE_AUDIT.md
+docs/D*_MANUAL_VERIFICATION.md
+docs/FINAL_MANUAL_VERIFICATION.md
+docs/reports/

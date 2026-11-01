@@ -2,12 +2,16 @@
 
 本机完整栈包括API、一次性Alembic迁移、PostgreSQL、Qdrant和Phoenix。业务检索始终为Dense 10＋BM25 10→RRF 10→固定BGE重排5；CPU与GPU只是同一重排模型的显式运行方式。源码位于项目容器镜像，真实密钥、索引快照和模型缓存仅在运行时挂载。
 
+普通用户工作台位于`http://127.0.0.1:8002/`，开发接口文档仍为`/docs`。前端HTML/CSS/JavaScript Modules放在`src/project_copilot/web`，随现有Dockerfile的`COPY src/ src/`进入API镜像，由同一个FastAPI进程提供；无需另装Node、启动前端服务或配置跨域。
+
+当前本机已有GPU镜像时，在项目根目录运行`bash start.sh`即可日常启动。它封装三层Compose、当前本机验收配置（文件存在时）及依赖就绪，重建migrate/API以恢复Docker Desktop重启后可能失效的WSL绑定挂载；不删除数据卷、不构建或下载镜像、不调用模型。没有本机验收配置时使用默认业务集合，并按当前用户UID/GID运行。首次构建和CPU部署继续使用下方完整步骤。
+
 ## 1. 运行前准备
 
 在项目根目录操作。Docker Desktop需启用当前WSL集成。保留现有`.env`，仅补充缺少的智谱和DeepSeek变量，参考[配置模板](../.env.example)，不要用模板覆盖真实文件。
 
 ```bash
-cd /home/yanye/project-copilot
+cd project-copilot
 test -f .env
 mkdir -p data/manifests
 test -d models/huggingface
@@ -55,7 +59,7 @@ docker compose --env-file .env.example \
 
 | 服务 | 宿主地址 | 容器地址与用途 |
 | --- | --- | --- |
-| API | `127.0.0.1:8002` | `/health`用于存活检查；首次模型加载在实际检索时发生 |
+| API与工作台 | `127.0.0.1:8002` | `/`为用户界面、`/docs`为开发文档、`/health`用于存活检查；首次模型加载在实际检索时发生 |
 | PostgreSQL | `127.0.0.1:5433` | `postgres:5432`，真实工单与提案 |
 | Qdrant | `127.0.0.1:6433` | `qdrant:6333`，`/readyz`用于就绪检查 |
 | Phoenix | `127.0.0.1:6007` | `phoenix:6006`，`/healthz`和`/v1/traces` |
