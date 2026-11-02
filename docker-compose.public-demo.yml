@@ -123,13 +123,20 @@ services:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
+      # Do not start queued jobs while the public gateway hard gate causes
+      # the API readiness probe to fail. This is a startup dependency only:
+      # Compose does not stop an already running worker if health later fails.
+      api:
+        condition: service_healthy
     healthcheck:
       disable: true
     stop_grace_period: 360s
 
   # Never start without explicit user authorization and completed safety checks.
   cloudflared:
-    image: cloudflare/cloudflared:latest
+    # Official 2026.10.3 multi-platform manifest, verified against Docker Hub.
+    # Version and digest updates require review before any public release.
+    image: cloudflare/cloudflared:2026.10.3@sha256:faa8e0a1475f137c910be6025f43c8e4092fdd35461b31e19fd1390657a1ff39
     profiles: ["tunnel"]
     command: ["tunnel", "--no-autoupdate", "--url", "http://api:8002"]
     networks: [egress]

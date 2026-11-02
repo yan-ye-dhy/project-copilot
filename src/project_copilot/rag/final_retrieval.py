@@ -201,6 +201,17 @@ class FinalRetriever:
                 return []
             with create_embedding_client(self.settings) as embeddings, create_qdrant_store(self.settings) as store:
                 index = self.snapshots.get_locked(store._client)
+                # A matching manifest/snapshot alone cannot detect a Qdrant
+                # volume restored from an older backup or externally damaged.
+                # Validate all completed points while holding the same index
+                # lock, before spending resources on embedding or reranking.
+                current_chunks = read_completed_chunks(store._client, index.snapshot.manifest)
+                # Chunk identity, not the order of a backend response, defines
+                # equality. Keep duplicates visible by sorting rather than
+                # collapsing records into a dictionary.
+                by_chunk_id = lambda chunk: str(chunk.metadata.chunk_id)
+                if sorted(current_chunks, key=by_chunk_id) != sorted(index.snapshot.chunks, key=by_chunk_id):
+                    raise BM25Error("Qdrant完成片段与BM25快照不一致；拒绝检索")
                 self.reranker.prepare()
                 dense = DenseRetriever(embeddings, store, self.manifest, top_k=10)
                 hybrid = HybridRetriever(dense, index, dense_candidates=10, bm25_candidates=10,

@@ -15,6 +15,23 @@
 
 不得将密钥、Tunnel 地址、`.env.public-demo` 或模型密钥写入前端代码、仓库、截图、日志或聊天。后端还需要 `PROJECT_COPILOT_AUTH_PUBLIC_ORIGIN` 指向实际 EdgeOne 站点 HTTPS origin，用于 Origin/CSRF 验证。默认邀请码注册；不要设置默认管理员密码。
 
+### 后续控制台配置清单（现在不要执行发布）
+
+| 项目设置 | 应填写的内容 |
+| --- | --- |
+| Git 仓库、分支 | 由用户授权连接 `yan-ye-dhy/project-copilot`，选择准备发布的已审核提交和 `main`；先核对自动部署是否会立即发布。 |
+| 根目录 | 仓库根目录。 |
+| 框架预设 | 通用/自定义静态站；以控制台当前选项为准。 |
+| 安装命令 | 无第三方前端 npm 依赖；若控制台要求填写，以其当前行为核实，不添加未审计安装脚本。 |
+| 构建命令 | `node scripts/build_edgeone.mjs`。 |
+| 输出目录 | `dist`；构建脚本拒绝覆盖已有目录，重复部署须确保平台构建工作目录干净。 |
+| Functions 目录 | 仓库根下 `cloud-functions/`，确认平台实际识别 `api/[[default]].js`；它不是 Edge Functions。 |
+| Node 运行时 | 官方文档当前为 Node.js 20.x；在实际部署验证此版本以及 `getSetCookie()` 行为。 |
+| 域名及 HTTPS | 用户确认平台分配的域名、证书和大陆可访问性，实际 origin 同步设置到本地后端。 |
+| 服务端变量 | `PROJECT_COPILOT_BACKEND_ORIGIN`、`PROJECT_COPILOT_PROXY_SECRET`；不要使用客户端构建变量或将值写入 Git。 |
+
+平台可能调整字段、套餐或功能；这些配置是待验证方案，不是已部署事实。官方文档的 catch-all 函数位于仓库根的 `cloud-functions`，动态 API 请求不能缓存；本地 115 秒代理超时短于平台当前 120 秒上限，但平台实际计时、流式响应、Cookie 和传输上限仍须实测。
+
 Quick Tunnel 是临时演示方案，电脑、WSL 和 Docker 必须持续运行；其地址会变化，且官方注明不支持 SSE。当前项目没有已验收的 SSE 路由，不能将其声称为支持。公网可用性与中国大陆访问稳定性仍需真实测试；EdgeOne 默认域名在中国大陆可能需要时效为 3 小时的预览链接，具体以平台当时规则为准。参考 [Cloud Functions 限制](https://pages.edgeone.ai/zh/document/cloud-functions)、[EdgeOne 域名说明](https://pages.edgeone.ai/zh/document/domain-overview)和 [Cloudflare Quick Tunnels](https://developers.cloudflare.com/tunnel/get-started/quick-tunnels/)。
 
 ## 本地已实现的限制

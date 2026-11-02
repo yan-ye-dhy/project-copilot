@@ -101,11 +101,96 @@ def test_snapshot_reused_then_rebuilt_after_successful_ingestion(system, tmp_pat
     retriever.search("上传")
     identity = retriever.snapshots.path.stat().st_ino
     retriever.search("上传")
-    assert calls == [1] and retriever.snapshots.path.stat().st_ino == identity
+    # The on-disk snapshot is reused; its completed points are independently
+    # checked against Qdrant on each query.
+    assert calls == [1, 1, 1] and retriever.snapshots.path.stat().st_ino == identity
     second = ingest(system, tmp_path, "two.txt", "新的工单数据和文档。")
     hits = retriever.search("工单")
-    assert calls == [1, 2]
+    assert calls == [1, 1, 1, 2, 2]
     assert second.document_id in {hit.metadata.document_id for hit in hits}
+
+
+def test_missing_completed_qdrant_point_never_serves_stale_bm25(system, tmp_path):
+    from qdrant_client import models
+
+    completed = ingest(system, tmp_path, "lost.txt", "故障回归标识 STALE-729。")
+    settings, store, _, retriever = system
+    assert retriever.search("STALE-729")
+    before_prepares = retriever.reranker.prepares
+    store._client.delete(collection_name=settings.qdrant_collection_name,
+                         points_selector=models.PointIdsList(points=[str(completed.chunk_ids[0])]), wait=True)
+
+    with pytest.raises(BM25Error):
+        retriever.search("STALE-729")
+    assert retriever.reranker.prepares == before_prepares
+
+
+def test_completed_qdrant_points_can_arrive_in_a_different_order(system, tmp_path, monkeypatch):
+    ingest(system, tmp_path, "first.txt", "知识条目 ALPHA-102。")
+    ingest(system, tmp_path, "second.txt", "知识条目 BETA-204。")
+    retriever = system[3]
+    expected = retriever.search("知识条目")
+    assert len(expected) == 2
+    original = final.read_completed_chunks
+
+    def reversed_points(client, manifest):
+        return list(reversed(original(client, manifest)))
+
+    monkeypatch.setattr(final, "read_completed_chunks", reversed_points)
+    actual = retriever.search("知识条目")
+    assert actual == expected
+
+
+def test_corrupt_qdrant_payload_never_serves_stale_bm25(system, tmp_path):
+    completed = ingest(system, tmp_path, "damaged.txt", "故障回归标识 DAMAGED-438。")
+    settings, store, _, retriever = system
+    assert retriever.search("DAMAGED-438")
+    before_prepares = retriever.reranker.prepares
+    store._client.set_payload(collection_name=settings.qdrant_collection_name,
+                              payload={"text": "被更改的原文"}, points=[str(completed.chunk_ids[0])], wait=True)
+
+    with pytest.raises(BM25Error):
+        retriever.search("DAMAGED-438")
+    assert retriever.reranker.prepares == before_prepares
+
+
+def test_qdrant_read_failure_never_serves_cached_bm25(system, tmp_path, monkeypatch):
+    import httpx
+
+    ingest(system, tmp_path, "offline.txt", "故障回归标识 OFFLINE-359。")
+    _, store, _, retriever = system
+    assert retriever.search("OFFLINE-359")
+    before_prepares = retriever.reranker.prepares
+
+    def unavailable(*_args, **_kwargs):
+        raise httpx.ConnectError("controlled Qdrant outage")
+
+    monkeypatch.setattr(store._client, "retrieve", unavailable)
+    with pytest.raises(BM25Error):
+        retriever.search("OFFLINE-359")
+    assert retriever.reranker.prepares == before_prepares
+
+
+def test_completed_point_verification_batches_large_manifest(system, tmp_path, monkeypatch):
+    import math
+
+    document = ingest(system, tmp_path, "large.txt", "\n\n".join(
+        f"batch{i:03d} " + "a" * 690 for i in range(129)
+    ))
+    assert len(document.chunk_ids) > 128
+    _, store, _, retriever = system
+    retriever.search("batch064")  # Build the snapshot before counting checks.
+    calls = []
+    original = store._client.retrieve
+
+    def counted(*args, **kwargs):
+        calls.append(len(kwargs["ids"]))
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(store._client, "retrieve", counted)
+    retriever.search("batch064")
+    assert len(calls) == math.ceil(len(document.chunk_ids) / 64)
+    assert max(calls) <= 64 and sum(calls) == len(document.chunk_ids)
 
 
 def test_stale_snapshot_failure_never_falls_back_and_retry_repairs(system, tmp_path, monkeypatch):

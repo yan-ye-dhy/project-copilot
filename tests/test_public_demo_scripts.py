@@ -3,8 +3,30 @@ import os
 from pathlib import Path
 import subprocess
 
+import yaml
+
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+def test_public_compose_pins_tunnel_and_keeps_datastores_internal():
+    config = yaml.safe_load((ROOT / "docker-compose.public-demo.yml").read_text(encoding="utf-8"))
+    services = config["services"]
+    assert services["cloudflared"]["image"] == (
+        "cloudflare/cloudflared:2026.10.3@sha256:"
+        "faa8e0a1475f137c910be6025f43c8e4092fdd35461b31e19fd1390657a1ff39"
+    )
+    assert services["cloudflared"]["profiles"] == ["tunnel"]
+    assert services["cloudflared"]["depends_on"]["api"]["condition"] == "service_healthy"
+    assert services["worker"]["depends_on"]["api"]["condition"] == "service_healthy"
+    assert services["cloudflared"]["networks"] == ["egress"]
+    assert config["networks"]["backend"]["internal"] is True
+    for name in ("postgres", "qdrant", "phoenix"):
+        assert services[name]["networks"] == ["backend"]
+        assert not services[name].get("ports")
+    assert not services["api"].get("ports")
+    assert "/health" in services["api"]["healthcheck"]["test"][-1]
+    assert "X-Project-Copilot-Proxy-Secret" in services["api"]["healthcheck"]["test"][-1]
 
 
 def test_start_remains_fail_closed():
