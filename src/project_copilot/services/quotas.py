@@ -1,0 +1,122 @@
+"""Atomic durable reservations for logical AI requests, not a billing ledger.
+
+All methods participate in the caller's transaction. Commit a reservation and
+its job together before contacting an upstream provider. A process crash leaves
+reserved/running work occupying its slot; neither is automatically retried.
+"""
+from datetime import timezone
+import re
+from uuid import UUID
+
+from sqlalchemy import func, select, text, update
+from sqlalchemy.orm import Session
+
+from project_copilot.db.models import AiRequestReservation
+
+
+class QuotaExceeded(ValueError):
+    def __init__(self, reason: str):
+        self.reason = reason
+        super().__init__("AI request quota exceeded")
+
+
+class IdempotencyConflict(ValueError):
+    pass
+
+
+class QuotaStateError(ValueError):
+    pass
+
+
+_KEY = re.compile(r"[A-Za-z0-9_-]{8,128}\Z", re.ASCII)
+_FINGERPRINT = re.compile(r"[0-9a-f]{64}\Z", re.ASCII)
+_USAGE_KEYS = frozenset({"prompt_tokens", "completion_tokens", "total_tokens", "prompt_cache_hit_tokens", "prompt_cache_miss_tokens", "reasoning_tokens"})
+_ACTIVE_STATES = ("reserved", "running", "unknown")
+
+
+class QuotaService:
+    def __init__(self, session: Session, *, user_daily_limit: int = 5, global_daily_limit: int = 30,
+                 user_concurrency_limit: int = 1):
+        limits = (user_daily_limit, global_daily_limit, user_concurrency_limit)
+        if any(type(value) is not int or value < 1 or value > 1_000_000 for value in limits):
+            raise ValueError("invalid AI quota configuration")
+        self.session = session
+        self.user_daily_limit, self.global_daily_limit, self.user_concurrency_limit = limits
+
+    def reserve(self, user_id: UUID, idempotency_key: str, payload_fingerprint: str,
+                kind: str) -> tuple[AiRequestReservation, bool]:
+        if not isinstance(user_id, UUID) or not isinstance(idempotency_key, str) or not _KEY.fullmatch(idempotency_key):
+            raise ValueError("invalid reservation identity")
+        if not isinstance(payload_fingerprint, str) or not _FINGERPRINT.fullmatch(payload_fingerprint):
+            raise ValueError("invalid request fingerprint")
+        if kind not in {"agent", "rag", "upload"}:
+            raise ValueError("invalid request kind")
+        # One database-wide lock serializes the global and per-user limits across
+        # processes. It is transaction-scoped and cannot outlive rollback/commit.
+        self.session.execute(text("SELECT pg_advisory_xact_lock(576572591122)"))
+        existing = self.session.scalar(select(AiRequestReservation).where(
+            AiRequestReservation.user_id == user_id,
+            AiRequestReservation.idempotency_key == idempotency_key,
+        ))
+        if existing is not None:
+            if existing.payload_fingerprint != payload_fingerprint or existing.kind != kind:
+                raise IdempotencyConflict("idempotency key was used for another request")
+            return existing, True
+
+        # Read wall-clock time *after* the lock wait; PostgreSQL now() is fixed at
+        # transaction start and would give the wrong day around UTC midnight.
+        now = self.session.scalar(select(func.clock_timestamp()))
+        day = now.astimezone(timezone.utc).date()
+        count = lambda *criteria: self.session.scalar(select(func.count()).select_from(AiRequestReservation).where(*criteria))
+        if count(AiRequestReservation.user_id == user_id, AiRequestReservation.state.in_(_ACTIVE_STATES)) >= self.user_concurrency_limit:
+            raise QuotaExceeded("user_concurrency")
+        if count(AiRequestReservation.user_id == user_id, AiRequestReservation.utc_day == day) >= self.user_daily_limit:
+            raise QuotaExceeded("user_daily")
+        if count(AiRequestReservation.utc_day == day) >= self.global_daily_limit:
+            raise QuotaExceeded("global_daily")
+        reservation = AiRequestReservation(user_id=user_id, idempotency_key=idempotency_key,
+                                           payload_fingerprint=payload_fingerprint, kind=kind,
+                                           utc_day=day, created_at=now, state="reserved")
+        self.session.add(reservation)
+        self.session.flush()
+        return reservation, False
+
+    def claim(self, user_id: UUID, reservation_id: UUID) -> bool:
+        """Claim once; neither duplicate submissions nor crashes restart work."""
+        result = self.session.execute(update(AiRequestReservation).where(
+            AiRequestReservation.id == reservation_id, AiRequestReservation.user_id == user_id,
+            AiRequestReservation.state == "reserved",
+        ).values(state="running").returning(AiRequestReservation.id))
+        return result.scalar_one_or_none() is not None
+
+    def _running(self, user_id: UUID, reservation_id: UUID) -> AiRequestReservation:
+        row = self.session.scalar(select(AiRequestReservation).where(
+            AiRequestReservation.id == reservation_id, AiRequestReservation.user_id == user_id,
+        ).with_for_update().execution_options(populate_existing=True))
+        if row is None or row.state != "running":
+            raise QuotaStateError("reservation is not running")
+        return row
+
+    def mark_provider_attempt(self, user_id: UUID, reservation_id: UUID, *, max_attempts: int | None = None) -> int:
+        """Record only an actually intercepted upstream attempt, before sending."""
+        if max_attempts is not None and (type(max_attempts) is not int or not 1 <= max_attempts <= 1_000_000):
+            raise ValueError("invalid provider attempt limit")
+        row = self._running(user_id, reservation_id)
+        if max_attempts is not None and row.provider_attempts >= max_attempts:
+            raise QuotaExceeded("provider_attempts")
+        row.provider_attempts += 1
+        self.session.flush()
+        return row.provider_attempts
+
+    def finish(self, user_id: UUID, reservation_id: UUID, *, outcome: str,
+               usage: dict[str, int] | None = None) -> None:
+        if outcome not in {"succeeded", "failed", "unknown"}:
+            raise ValueError("invalid reservation outcome")
+        if usage is not None and (not isinstance(usage, dict) or not set(usage).issubset(_USAGE_KEYS) or
+                                  any(type(value) is not int or value < 0 or value > 2**63 - 1 for value in usage.values())):
+            raise ValueError("invalid usage")
+        row = self._running(user_id, reservation_id)
+        row.state = outcome
+        row.usage = dict(usage) if usage is not None else None
+        row.finished_at = self.session.scalar(select(func.clock_timestamp())) if outcome != "unknown" else None
+        self.session.flush()

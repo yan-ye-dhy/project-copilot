@@ -5,17 +5,20 @@ import tempfile
 import unicodedata
 from pathlib import Path
 from threading import Lock
+from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Request
 from starlette.concurrency import run_in_threadpool
 from starlette.datastructures import UploadFile
+from sqlalchemy.exc import SQLAlchemyError
 
+from project_copilot.api.access import public_identity, public_mode
 from project_copilot.config import Settings
 from project_copilot.infrastructure.models import (
     EmbeddingConfigError, EmbeddingRequestError, EmbeddingResponseError,
 )
 from project_copilot.infrastructure.qdrant import (
-    QdrantConfigError, QdrantRequestError, QdrantResponseError,
+    QdrantConfigError, QdrantRequestError, QdrantResponseError, create_qdrant_store,
 )
 from project_copilot.rag.ingestion import (
     EmptyDocumentError, IngestionError, ManifestError, create_ingestion_service,
@@ -23,7 +26,12 @@ from project_copilot.rag.ingestion import (
 from project_copilot.rag.loaders import DocumentLoadError
 from project_copilot.rag.bm25 import BM25Error
 from project_copilot.rag.index_lock import IndexLockError
+from project_copilot.rag.index_lock import index_lock
 from project_copilot.rag.final_retrieval import FinalRetrievalError
+from project_copilot.rag.deletion import DeletionError, DocumentDeletion, DocumentNotFound
+from project_copilot.rag.ingestion import ManifestStore
+from project_copilot.rag.splitters import SplitConfig
+from project_copilot.schemas.retrieval import DenseIndexSpec
 from project_copilot.schemas.uploads import DocumentUploadResult
 
 
@@ -72,7 +80,8 @@ def _ingest_upload(upload: UploadFile, settings: Settings, run_id: str) -> Docum
             size_bytes = 0
             while data := upload.file.read(_COPY_CHUNK_BYTES):
                 size_bytes += len(data)
-                if size_bytes > settings.upload_max_bytes:
+                max_bytes = min(settings.upload_max_bytes, 4 * 1024 * 1024) if public_mode(settings) else settings.upload_max_bytes
+                if size_bytes > max_bytes:
                     raise HTTPException(status_code=413, detail="上传文件超过允许的大小")
                 target.write(data)
         if size_bytes == 0:
@@ -104,6 +113,62 @@ def _ingest_upload(upload: UploadFile, settings: Settings, run_id: str) -> Docum
                 logger.warning("Upload cleanup failed: %s", type(exc).__name__)
 
 
+def _with_public_access(request: Request, operation, *, admin: bool = False, write: bool = False):
+    if not public_mode(request.app.state.settings):
+        return operation()
+    database = request.app.state.database
+    if database is None:
+        raise HTTPException(status_code=503, detail="认证服务暂不可用")
+    # Hold the user/session locks for sensitive mutations until the operation ends,
+    # so logout or demotion cannot race an in-flight privileged write.
+    with database.transaction() as session:
+        principal = public_identity(request, session, write=write)
+        if admin and principal.role != "admin":
+            raise HTTPException(status_code=403, detail="仅管理员可管理公共知识库")
+        return operation()
+
+
+def _manifest(settings):
+    spec = DenseIndexSpec(collection_name=settings.qdrant_collection_name,
+                          embedding_model=settings.embedding_model,
+                          dimensions=settings.embedding_expected_dimensions,
+                          splitter_version=SplitConfig().index_version)
+    return ManifestStore(settings.manifest_dir, spec)
+
+
+@router.get("")
+async def list_documents(request: Request):
+    def operation():
+        manifest = _manifest(request.app.state.settings)
+        with index_lock(manifest.path):
+            current = manifest.load()
+            return {"documents": [{"document_id": str(document.document_id),
+                                    "source_name": document.source_name,
+                                    "chunk_count": len(document.chunk_ids)}
+                                   for document in current.documents],
+                    "index_version": current.spec.index_version}
+    try:
+        return await run_in_threadpool(_with_public_access, request, operation)
+    except (ManifestError, IndexLockError, SQLAlchemyError):
+        raise HTTPException(status_code=503, detail="知识库暂不可用，请检查索引或认证配置") from None
+
+
+@router.delete("/{document_id}")
+async def delete_document(document_id: UUID, request: Request):
+    def operation():
+        settings = request.app.state.settings
+        with create_qdrant_store(settings) as store:
+            document = DocumentDeletion(_manifest(settings), store._client).delete(document_id)
+        return {"status": "deleted", "document_id": str(document.document_id)}
+    try:
+        return await run_in_threadpool(_with_public_access, request, operation, admin=True, write=True)
+    except DocumentNotFound:
+        raise HTTPException(status_code=404, detail="文档不存在") from None
+    except (DeletionError, ManifestError, IndexLockError, QdrantConfigError, QdrantRequestError,
+            QdrantResponseError, SQLAlchemyError):
+        raise HTTPException(status_code=503, detail="知识库删除未完成或不可用，请根据run_id排查") from None
+
+
 @router.post(
     "/upload",
     response_model=DocumentUploadResult,
@@ -124,6 +189,14 @@ def _ingest_upload(upload: UploadFile, settings: Settings, run_id: str) -> Docum
     },
 )
 async def upload_document(request: Request) -> DocumentUploadResult:
+    if public_mode(request.app.state.settings):
+        # Do not enter a paid embedding path until upload jobs are covered by
+        # the durable quota/timeout mechanism.  Public gateway remains closed.
+        try:
+            await run_in_threadpool(_with_public_access, request, lambda: None, admin=True, write=True)
+        except SQLAlchemyError:
+            raise HTTPException(status_code=503, detail="认证服务暂不可用") from None
+        raise HTTPException(status_code=503, detail="公开上传暂不可用，请在配额保护完成后使用")
     media_type = request.headers.get("content-type", "").split(";", 1)[0].strip().lower()
     if media_type != "multipart/form-data":
         raise HTTPException(status_code=415, detail="上传请求必须使用multipart/form-data")
@@ -154,3 +227,5 @@ async def upload_document(request: Request) -> DocumentUploadResult:
     except OSError as exc:
         logger.warning("Upload temporary I/O failed: %s", type(exc).__name__)
         raise HTTPException(status_code=500, detail="上传文件临时处理失败，请稍后重试") from None
+    except SQLAlchemyError:
+        raise HTTPException(status_code=503, detail="认证服务暂不可用") from None

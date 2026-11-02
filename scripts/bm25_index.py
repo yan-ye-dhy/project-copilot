@@ -4,6 +4,7 @@ import argparse
 from collections.abc import Sequence
 from contextlib import closing
 import json
+import os
 from pathlib import Path
 import sys
 
@@ -13,12 +14,16 @@ from qdrant_client import QdrantClient
 from project_copilot.rag.bm25 import (
     BM25Error, BM25Index, ChineseTokenizer, read_completed_chunks,
 )
+from project_copilot.rag.index_lock import index_lock
 from project_copilot.schemas.retrieval import IndexManifest
 
 
 def _read_manifest(path: Path) -> IndexManifest:
     # 不沿用ManifestStore的“文件不存在即空清单”，避免错误地建出空索引。
     try:
+        # A deletion journal means Qdrant/manifest/snapshot may be mid-commit.
+        if os.path.lexists(path.with_name(path.stem + ".delete.json")):
+            raise BM25Error("存在未完成的文档删除；必须先恢复删除")
         return IndexManifest.model_validate_json(path.read_text(encoding="utf-8"))
     except (OSError, UnicodeError, ValidationError):
         raise BM25Error("无法读取有效的索引完成清单") from None
@@ -45,35 +50,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         if args.command == "tokenize":
             result = {"tokens": tokenizer.tokenize(args.text), "tokenizer": tokenizer.spec}
         else:
-            manifest = _read_manifest(args.manifest)
-            if args.command == "build":
-                if args.output.exists():
-                    raise BM25Error("BM25快照已存在，不能覆盖")
-                with closing(QdrantClient(
-                    url=args.qdrant_url, check_compatibility=False, trust_env=False,
-                    timeout=10, prefer_grpc=False,
-                )) as client:
-                    chunks = read_completed_chunks(client, manifest)
-                index = BM25Index.build(manifest, chunks)
-                index.save(args.output)
-                snapshot = index.snapshot.model_dump(mode="json")
-                result = {
-                    "documents": len(manifest.documents), "chunks": len(chunks),
-                    "collection": manifest.spec.collection_name,
-                    "dense_index_version": manifest.spec.index_version,
-                    "tokenizer": snapshot["tokenizer"], "config": snapshot["config"],
-                    "fingerprint": index.fingerprint,
-                }
-            else:
-                index = BM25Index.load(args.index, manifest)
-                hits = index.search(args.query, top_k=args.top_k)
-                result = {
-                    "query": args.query, "query_tokens": tokenizer.tokenize(args.query),
-                    "top_k": args.top_k, "hit_count": len(hits),
-                    "hits": [hit.model_dump(mode="json") for hit in hits],
-                    "fingerprint": index.fingerprint,
-                    "score_note": "BM25分数是词项相关度，不是Dense分数或答案置信度",
-                }
+            with index_lock(args.manifest):
+                result = _run_index_operation(args, tokenizer)
     except Exception:
         # 不回显SDK响应、URL凭据或损坏文件中的原始内容。
         print(json.dumps({
@@ -84,6 +62,37 @@ def main(argv: Sequence[str] | None = None) -> int:
     print(json.dumps({"status": "ok", "mode": "local_bm25", "model_calls": 0, **result},
                      ensure_ascii=False, indent=2))
     return 0
+
+
+def _run_index_operation(args, tokenizer):
+    manifest = _read_manifest(args.manifest)
+    if args.command == "build":
+        if args.output.exists():
+            raise BM25Error("BM25快照已存在，不能覆盖")
+        with closing(QdrantClient(
+            url=args.qdrant_url, check_compatibility=False, trust_env=False,
+            timeout=10, prefer_grpc=False,
+        )) as client:
+            chunks = read_completed_chunks(client, manifest)
+        index = BM25Index.build(manifest, chunks)
+        index.save(args.output)
+        snapshot = index.snapshot.model_dump(mode="json")
+        return {
+            "documents": len(manifest.documents), "chunks": len(chunks),
+            "collection": manifest.spec.collection_name,
+            "dense_index_version": manifest.spec.index_version,
+            "tokenizer": snapshot["tokenizer"], "config": snapshot["config"],
+            "fingerprint": index.fingerprint,
+        }
+    index = BM25Index.load(args.index, manifest)
+    hits = index.search(args.query, top_k=args.top_k)
+    return {
+        "query": args.query, "query_tokens": tokenizer.tokenize(args.query),
+        "top_k": args.top_k, "hit_count": len(hits),
+        "hits": [hit.model_dump(mode="json") for hit in hits],
+        "fingerprint": index.fingerprint,
+        "score_note": "BM25分数是词项相关度，不是Dense分数或答案置信度",
+    }
 
 
 if __name__ == "__main__":

@@ -9,14 +9,25 @@ from project_copilot.config import Settings
 from project_copilot.db.session import Database
 from project_copilot.schemas.tickets import TicketFilters
 from project_copilot.services.tickets import TicketService
+from project_copilot.services.auth import AuthService
 
 
 class ReadOnlyBackend:
-    def __init__(self, settings: Settings, database: Database | None, *, knowledge_search=None):
+    def __init__(self, settings: Settings, database: Database | None, *, knowledge_search=None, auth_token=None, auth_session_id=None):
         self.settings = settings
         self.database = database
         # Explicit dependency injection for real-service integration; production uses existing retriever.
         self._knowledge_search = knowledge_search
+        self._auth_token = auth_token
+        self._auth_session_id = auth_session_id
+
+    def _principal(self, session):
+        if self.settings.public_demo or self.settings.environment == 'production':
+            auth = AuthService(session)
+            principal, _ = (auth.authenticate_session_id(self._auth_session_id) if self._auth_session_id is not None
+                            else auth.authenticate(self._auth_token))
+            return principal
+        return None
 
     def _tickets(self, operation):
         if self.database is None:
@@ -24,7 +35,9 @@ class ReadOnlyBackend:
         with self.database.transaction() as session:
             session.execute(text("SET TRANSACTION READ ONLY"))
             session.execute(text("SELECT set_config('statement_timeout', '5000', true)"))
-            return operation(TicketService(session))
+            principal = self._principal(session)
+            return operation(TicketService(session, principal=principal,
+                                           enforce_ownership=principal is not None))
 
     @staticmethod
     def _ticket_result(tickets):
@@ -44,6 +57,11 @@ class ReadOnlyBackend:
         return self._ticket_result(result.items)
 
     def _knowledge(self, query):
+        if self.settings.public_demo or self.settings.environment == 'production':
+            if self.database is None:
+                raise RuntimeError('数据库未配置')
+            with self.database.transaction() as session:
+                self._principal(session)
         if self._knowledge_search is not None:
             return self._knowledge_search(query)
         from project_copilot.rag.final_retrieval import get_final_retriever

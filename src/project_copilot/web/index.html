@@ -11,12 +11,44 @@
     <script type="module" src="/ui-assets/app.js"></script>
   </head>
   <body>
-    <a class="skip-link" href="#question-input">跳转到提问输入框</a>
-    <div class="app-shell">
+    <a id="workspace-skip" class="skip-link" href="#question-input" hidden>跳转到提问输入框</a>
+    <main id="auth-screen" class="auth-screen" aria-labelledby="auth-title" hidden>
+      <section class="auth-panel">
+        <div class="auth-brand"><img src="/ui-assets/mark.svg" alt="" width="72" height="40"><span>Project Copilot</span><small>项目 · 知识 · 协作</small></div>
+        <p class="auth-kicker">研发协作工作台</p>
+        <h1 id="auth-title">登录工作空间</h1>
+        <p id="auth-intro" class="auth-intro">登录后查阅知识、分析工单，并由你决定下一步。</p>
+        <div class="auth-tabs" role="group" aria-label="账号操作">
+          <button id="auth-show-login" class="auth-tab active" type="button" aria-pressed="true">登录</button>
+          <button id="auth-show-register" class="auth-tab" type="button" aria-pressed="false">注册</button>
+        </div>
+        <form id="login-form" class="auth-form">
+          <label for="login-username">账号</label>
+          <input id="login-username" name="username" autocomplete="username" minlength="3" maxlength="32" required>
+          <label for="login-password">密码</label>
+          <input id="login-password" name="password" type="password" autocomplete="current-password" maxlength="1024" required>
+          <button id="login-submit" class="button button-primary" type="submit">登录</button>
+        </form>
+        <form id="register-form" class="auth-form" hidden>
+          <label for="register-username">账号</label>
+          <input id="register-username" name="username" autocomplete="username" minlength="3" maxlength="32" pattern="[A-Za-z0-9][A-Za-z0-9_.-]{2,31}" required>
+          <small>3–32 个字符，使用字母、数字、点、下划线或连字符。</small>
+          <label for="register-password">密码</label>
+          <input id="register-password" name="password" type="password" autocomplete="new-password" minlength="12" maxlength="1024" required>
+          <small>至少 12 个字符。</small>
+          <label for="register-invitation">邀请码</label>
+          <input id="register-invitation" name="invitation" autocomplete="off" maxlength="128" aria-describedby="invitation-help">
+          <small id="invitation-help">是否需要邀请码由服务配置决定。</small>
+          <button id="register-submit" class="button button-primary" type="submit">创建账号</button>
+        </form>
+        <p id="auth-feedback" class="auth-feedback" role="status" aria-live="polite"></p>
+      </section>
+    </main>
+    <div id="app-shell" class="app-shell" hidden>
       <aside class="sidebar" aria-label="工作区导航">
         <a class="brand" href="/" aria-label="Project Copilot 首页">
-          <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none"><path d="M9 8h8a8 8 0 1 1 0 16H9V8Z" stroke="currentColor" stroke-width="2.5"/><path d="M15 12h3a4 4 0 0 1 0 8h-3v-8Z" fill="currentColor"/><path d="M6 13h5M6 19h5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg></span>
-          <span><strong>Project Copilot</strong><small>研发协作工作台</small></span>
+          <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 76 36" fill="none"><path d="M2 29c8-1 13-7 18-13l5-7 5 3 4-6 6 7 3-1 7 9 5 2 4-4 5 5 10 5H2Z" fill="currentColor" opacity=".8"/><path d="M3 30c11 0 20-4 29-11 5 3 9 8 16 10 7 3 14 2 25 1" stroke="currentColor" stroke-width="1.4"/><path d="M13 31h50" stroke="currentColor" stroke-opacity=".5"/></svg></span>
+          <span><strong>Project Copilot</strong><small>项目 · 知识 · 协作 · 智能助理</small></span>
         </a>
 
         <div class="sidebar-section-label">工作空间</div>
@@ -28,15 +60,15 @@
 
         <div class="sidebar-bottom">
           <div class="workspace-note"><span class="workspace-note-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3 4 6v6c0 4.4 8 9 8 9s8-4.6 8-9V6l-8-3Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="m8.5 12 2.5 2.5 4.5-5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span><strong>你的决定，才是行动</strong><p>创建工单前，始终先预览并由你明确确认。</p></div>
-          <a class="docs-link" aria-label="打开接口文档" href="/docs" target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m8 8-4 4 4 4M16 8l4 4-4 4M14 5l-4 14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>接口文档</span><span aria-hidden="true">↗</span></a>
-          <div class="sidebar-footer"><span class="avatar avatar-small">PC</span><div><strong>本地工作空间</strong><small>Project Copilot</small></div></div>
+          <a id="api-docs-link" class="docs-link" aria-label="打开接口文档" href="/docs" target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m8 8-4 4 4 4M16 8l4 4-4 4M14 5l-4 14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>接口文档</span><span aria-hidden="true">↗</span></a>
+          <div id="workspace-local-footer" class="sidebar-footer"><span class="avatar avatar-small">PC</span><div><strong>本地工作空间</strong><small>Project Copilot</small></div></div>
         </div>
       </aside>
 
       <main class="workspace">
         <header class="workspace-header">
           <div class="page-heading"><div class="eyebrow">WORKSPACE <span>/</span> PROJECT COPILOT</div><h1 id="view-title">智能协作</h1><p id="view-description">把知识与工单串起来，推进下一步。</p></div>
-          <div class="header-actions"><span id="service-status" class="connection-status" role="status">正在连接服务</span><button id="new-chat" class="button button-secondary" type="button"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span>新对话</span></button></div>
+          <div class="header-actions"><div id="account-panel" class="account-panel" hidden><div><strong id="account-name"></strong><small id="account-role"></small></div><button id="logout-button" class="button button-secondary button-small" type="button">退出登录</button></div><span id="service-status" class="connection-status" role="status">正在连接服务</span><button id="new-chat" class="button button-secondary" type="button"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span>新对话</span></button></div>
         </header>
 
         <section id="view-chat" class="view chat-view" aria-labelledby="view-title">
@@ -46,11 +78,13 @@
               <div id="chat-welcome" class="chat-welcome">
                 <div class="welcome-emblem" aria-hidden="true"><svg viewBox="0 0 36 36" fill="none"><path d="m18 5 3.6 9.4L31 18l-9.4 3.6L18 31l-3.6-9.4L5 18l9.4-3.6L18 5Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="m29 4 1.1 2.9L33 8l-2.9 1.1L29 12l-1.1-2.9L25 8l2.9-1.1L29 4Z" fill="currentColor"/></svg></div>
                 <div class="welcome-kicker">从一个问题开始</div>
-                <h2>让研发问题，<br>有依据，也有下一步。</h2>
-                <p class="welcome-description">查阅团队资料、了解真实工单，<br class="desktop-break">把分析转化为经过你确认的行动。</p>
+                <h2>您好，<br>欢迎使用 Project Copilot</h2>
+                <p class="welcome-description">基于知识资料与真实工单，梳理问题、寻找思路。<br class="desktop-break">每一步行动，都由你核对与确认。</p>
+                <div class="prompt-heading"><span aria-hidden="true">✦</span> 您可以尝试这样提问</div>
                 <div class="prompt-grid">
                   <button class="prompt-card" type="button" data-prompt="请结合知识库资料，告诉我数据库连接失败时应该如何排查。"><span class="prompt-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="m21 21-4.5-4.5M19 11a8 8 0 1 1-16 0 8 8 0 0 1 16 0Z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></span><strong>从资料中找答案</strong><span>基于原文，梳理问题与解决思路</span><span class="prompt-arrow" aria-hidden="true">↗</span></button>
                   <button class="prompt-card" type="button" data-prompt="请查询标题包含蓝鹤的工单，结合知识库中的相关资料，说明当前问题和下一步建议。"><span class="prompt-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M8 4H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3M14 4h6v6M20 4l-9 9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span><strong>结合工单做分析</strong><span>了解处理现状，参考已有经验</span><span class="prompt-arrow" aria-hidden="true">↗</span></button>
+                  <button class="prompt-card" type="button" data-prompt="请结合知识库资料，给出数据库连接失败的排查思路和下一步建议。"><span class="prompt-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M9 18h6m-5 3h4m-2-18a7 7 0 0 0-4 12.7c.7.5 1 1.3 1 2.3h6c0-1 .3-1.8 1-2.3A7 7 0 0 0 12 3Z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span><strong>寻找解决思路</strong><span>梳理原因与可执行的下一步</span><span class="prompt-arrow" aria-hidden="true">↗</span></button>
                 </div>
                 <div class="welcome-hint"><span aria-hidden="true">✦</span> 也可以直接描述你遇到的问题</div>
               </div>
@@ -61,9 +95,11 @@
         </section>
 
         <section id="view-documents" class="view documents-view" aria-labelledby="view-title" hidden>
-          <div class="section-intro"><span class="section-overline">KNOWLEDGE</span><h2>把团队资料，变成可用的知识。</h2><p>上传研发文档后，即可在对话中提问，并查看答案引用的原文。</p></div>
-          <div class="documents-layout"><div class="surface upload-surface"><div id="upload-zone" class="upload-zone"><div class="upload-icon" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none"><path d="M16 22V5m0 0-6 6m6-6 6 6M6 21v5a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></div><h3>把文件拖到这里</h3><p>或选择本机的研发资料</p><input id="file-input" type="file" accept=".txt,.md,.pdf" hidden><button id="choose-file" class="button button-secondary" type="button">选择文件</button><span id="upload-limit" class="upload-limit">支持 TXT、Markdown、PDF</span></div><div id="selected-file" class="selected-file" hidden></div><div class="upload-actions"><button id="clear-file" class="button button-quiet" type="button" hidden>重新选择</button><button id="upload-button" class="button button-primary" type="button" disabled><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 16V4m0 0L7 9m5-5 5 5M4 16v4h16v-4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>上传并加入知识库</button></div><div id="upload-feedback" class="feedback" role="status" aria-live="polite"></div></div><aside class="upload-guide"><span class="guide-badge">使用提示</span><h3>好的资料，让回答更有依据。</h3><ol><li><span>01</span><div><strong>选择清晰的原始文档</strong><p>适合上传规范、排障记录、设计说明等文字资料。</p></div></li><li><span>02</span><div><strong>等待加入知识库完成</strong><p>成功后再提问，系统会检索可用的文档片段。</p></div></li><li><span>03</span><div><strong>在答案中核对原文</strong><p>引用会显示来源名称与实际文本，便于判断建议是否适用。</p></div></li></ol></aside></div>
-          <div class="section-heading"><div><h3>本次上传记录</h3><p>记录仅显示在当前页面；刷新后，成功入库的资料仍会保留在知识库。</p></div><span class="subtle-label">当前页面</span></div><div id="upload-records" class="upload-records"><div class="empty-state"><span class="empty-icon" aria-hidden="true">↑</span><h3>还没有上传文件</h3><p>先添加一份资料，再到智能协作中开始提问。</p></div></div>
+          <div class="section-intro"><span class="section-overline">KNOWLEDGE</span><h2>把团队资料，变成可用的知识。</h2><p id="documents-description">上传研发文档后，即可在对话中提问，并查看答案引用的原文。</p></div>
+          <p id="upload-public-info" class="surface public-knowledge-note" hidden>公共知识资料由管理员维护。你可以在智能协作中使用“知识问答”查询。</p>
+          <div id="document-admin-controls" class="documents-layout"><div class="surface upload-surface"><div id="upload-zone" class="upload-zone"><div class="upload-icon" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none"><path d="M16 22V5m0 0-6 6m6-6 6 6M6 21v5a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></div><h3>把文件拖到这里</h3><p>或选择本机的研发资料</p><input id="file-input" type="file" accept=".txt,.md,.pdf" hidden><button id="choose-file" class="button button-secondary" type="button">选择文件</button><span id="upload-limit" class="upload-limit">支持 TXT、Markdown、PDF</span></div><div id="selected-file" class="selected-file" hidden></div><div class="upload-actions"><button id="clear-file" class="button button-quiet" type="button" hidden>重新选择</button><button id="upload-button" class="button button-primary" type="button" disabled><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 16V4m0 0L7 9m5-5 5 5M4 16v4h16v-4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>上传并加入知识库</button></div><div id="upload-feedback" class="feedback" role="status" aria-live="polite"></div></div><aside class="upload-guide"><span class="guide-badge">使用提示</span><h3>好的资料，让回答更有依据。</h3><ol><li><span>01</span><div><strong>选择清晰的原始文档</strong><p>适合上传规范、排障记录、设计说明等文字资料。</p></div></li><li><span>02</span><div><strong>等待加入知识库完成</strong><p>成功后再提问，系统会检索可用的文档片段。</p></div></li><li><span>03</span><div><strong>在答案中核对原文</strong><p>引用会显示来源名称与实际文本，便于判断建议是否适用。</p></div></li></ol></aside></div>
+          <section id="public-documents" hidden><div class="section-heading"><div><h3>公共知识资料</h3><p>列表来自当前已完成入库的资料。</p></div><button id="refresh-documents" class="button button-quiet" type="button">刷新</button></div><div id="public-documents-list" class="upload-records" aria-live="polite"></div></section>
+          <div id="upload-records-heading" class="section-heading"><div><h3>本次上传记录</h3><p>记录仅显示在当前页面；刷新后，成功入库的资料仍会保留在知识库。</p></div><span class="subtle-label">当前页面</span></div><div id="upload-records" class="upload-records"><div class="empty-state"><span class="empty-icon" aria-hidden="true">↑</span><h3>还没有上传文件</h3><p>先添加一份资料，再到智能协作中开始提问。</p></div></div>
         </section>
 
         <section id="view-tickets" class="view tickets-view" aria-labelledby="view-title" hidden>

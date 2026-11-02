@@ -20,8 +20,9 @@ def graph_limits(settings: Settings) -> GraphLimits:
 
 
 @asynccontextmanager
-async def create_agent_service(settings: Settings, database: Database | None, *, context=None):
-    backend = ProposalBackend(settings, database, *context) if context else ReadOnlyBackend(settings, database)
+async def create_agent_service(settings: Settings, database: Database | None, *, context=None, auth_token=None, auth_session_id=None):
+    backend = (ProposalBackend(settings, database, *context, auth_token=auth_token, auth_session_id=auth_session_id) if context
+               else ReadOnlyBackend(settings, database, auth_token=auth_token, auth_session_id=auth_session_id))
     if context:
         backend.authenticate()
     async with create_agent_model(settings) as model:

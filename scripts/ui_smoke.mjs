@@ -82,7 +82,8 @@ function count(f, pathname, method = null) {
 }
 
 async function installControlledRoutes(context, baseUrl, f) {
-  const staticPaths = new Set(["/", "/ui-assets/styles.css", "/ui-assets/app.js", "/ui-assets/api.js"]);
+  const staticPaths = new Set(["/", "/ui-assets/styles.css", "/ui-assets/app.js", "/ui-assets/api.js",
+    "/ui-assets/mark.svg", "/ui-assets/ink-mountains.svg", "/ui-assets/bamboo.svg"]);
   await context.route("**/*", async (route) => {
     const request = route.request();
     const url = new URL(request.url());
@@ -216,7 +217,7 @@ async function main() {
   await mkdir(options.outputDir, { recursive: true });
   const summary = { schema_version: 1, mode: "controlled_browser_routes", executor: "Codex",
     base_url: options.baseUrl, started_at: timestamp(), real_model_calls: 0, real_database_calls: 0,
-    business_api_policy: "All business and configuration APIs fulfilled by browser routes; only same-origin HTML/CSS/JS reach the preview server.",
+    business_api_policy: "All business and configuration APIs fulfilled by browser routes; only allowlisted same-origin HTML/CSS/JS/SVG reach the preview server.",
     cases: [] };
   const browser = await chromium.launch({ headless: true });
   const runCase = async (name, verify, { mobile = false, expectedNetworkError = false } = {}) => {
@@ -477,6 +478,29 @@ async function main() {
       assert.equal(count(f, "/agent/contexts", "POST"), 1);
     });
 
+    await runCase("keyboard-navigation-and-reduced-motion", async (page) => {
+      await page.emulateMedia({ reducedMotion: "reduce" });
+      assert.equal(await page.evaluate(() => matchMedia("(prefers-reduced-motion: reduce)").matches), true);
+      const documents = page.locator('#app-nav [data-view="documents"]');
+      await documents.focus();
+      await page.keyboard.press("Enter");
+      await page.locator("#view-documents").waitFor({ state: "visible" });
+      const tickets = page.locator('#app-nav [data-view="tickets"]');
+      await tickets.focus();
+      await page.keyboard.press("Enter");
+      await page.locator("#view-tickets").waitFor({ state: "visible" });
+      await page.locator("#new-ticket").focus();
+      await page.keyboard.press("Enter");
+      assert.equal(await page.locator("#proposal-dialog").evaluate((dialog) => dialog.open), true);
+      await page.keyboard.press("Escape");
+      assert.equal(await page.locator("#proposal-dialog").evaluate((dialog) => dialog.open), false);
+      const transition = await tickets.evaluate((node) => getComputedStyle(node).transitionDuration);
+      assert.ok(transition.split(",").every((duration) => parseFloat(duration) === 0),
+        `Reduced motion must disable navigation transitions: ${transition}`);
+      await page.setViewportSize({ width: 320, height: 700 });
+      await noHorizontalOverflow(page);
+    });
+
     await runCase("mobile-layout-and-evidence-drawer", async (page, f, output) => {
       const checkNavigationNames = async () => {
         for (const name of ["智能协作", "知识资料", "工单"]) {
@@ -492,6 +516,7 @@ async function main() {
       await page.setViewportSize({ width: 390, height: 844 });
       await checkNavigationNames();
       await noHorizontalOverflow(page);
+      await page.screenshot({ path: path.join(output, "mobile-welcome.png"), fullPage: true });
       await send(page, "请根据蓝鹤资料提供建议。");
       await noHorizontalOverflow(page);
       assert.equal(await page.locator("#evidence-panel").isVisible(), false);

@@ -34,16 +34,16 @@ class SnapshotManager:
         self._cached: BM25Index | None = None
         self._stat: tuple[int, int, int] | None = None
 
-    def get_locked(self, client) -> BM25Index:
+    def get_locked(self, client, *, _pending_delete_ok: bool = False) -> BM25Index:
         with trace_span("rag.snapshot", {"openinference.span.kind": "CHAIN"}) as span:
             previous = self._stat
-            result = self._get_locked(client)
+            result = self._get_locked(client, _pending_delete_ok=_pending_delete_ok)
             span.set_attribute("snapshot.reused", previous is not None and previous == self._stat)
             span.set_attribute("snapshot.chunk_count", len(result.snapshot.chunks))
             return result
 
-    def _get_locked(self, client) -> BM25Index:
-        current = self.manifest.load()
+    def _get_locked(self, client, *, _pending_delete_ok: bool = False) -> BM25Index:
+        current = self.manifest.load(_pending_delete_ok=_pending_delete_ok)
         try:
             st = self.path.stat()
             identity = (st.st_ino, st.st_mtime_ns, st.st_size)

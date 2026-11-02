@@ -35,7 +35,8 @@ def _load_pdf_pages(data: bytes) -> tuple[DocumentPage, ...]:
         raise DocumentLoadError("无法解析PDF；请确认文件完整且没有需要密码的加密。") from None
 
 
-def load_document(path: str | Path) -> LoadedDocument:
+def load_document(path: str | Path, *, isolated_pdf: bool = False,
+                  pdf_max_pages: int = 100, pdf_max_chars: int = 32000) -> LoadedDocument:
     """读取受控本地TXT/MD/PDF；对同一次读取的字节做身份哈希和解析。"""
     source = Path(path)
     suffix = source.suffix.lower()
@@ -44,14 +45,28 @@ def load_document(path: str | Path) -> LoadedDocument:
     if not source.is_file():
         raise DocumentLoadError("文档路径必须指向存在的本地普通文件。")
     try:
-        data = source.read_bytes()
+        if suffix == ".pdf" and isolated_pdf:
+            # Do not read an unbounded attacker-controlled file into the parent.
+            from project_copilot.rag.pdf_sandbox import MAX_INPUT_BYTES
+            with source.open("rb") as stream:
+                data = stream.read(MAX_INPUT_BYTES + 1)
+        else:
+            data = source.read_bytes()
     except OSError:
         raise DocumentLoadError("无法读取文档文件，请检查路径与权限。") from None
 
     content_hash = sha256(data).hexdigest()
     document_id = uuid5(NAMESPACE_URL, f"project-copilot:document:sha256:{content_hash}")
     if suffix == ".pdf":
-        pages = _load_pdf_pages(data)
+        if isolated_pdf:
+            from project_copilot.rag.pdf_sandbox import IsolatedPdfError, extract_pdf
+            try:
+                texts = extract_pdf(data, max_pages=pdf_max_pages, max_chars=pdf_max_chars)
+            except IsolatedPdfError:
+                raise DocumentLoadError("PDF 解析失败、超时或超过公开资源限制。") from None
+            pages = tuple(DocumentPage(text=text, page=index) for index, text in enumerate(texts))
+        else:
+            pages = _load_pdf_pages(data)
     else:
         try:
             text = data.decode("utf-8")

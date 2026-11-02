@@ -8,20 +8,33 @@ from project_copilot.services.approvals import ApprovalService
 
 
 class ProposalBackend(ReadOnlyBackend):
-    def __init__(self, settings, database, context_id, token):
-        super().__init__(settings, database)
+    def __init__(self, settings, database, context_id, token, *, auth_token=None, auth_session_id=None):
+        super().__init__(settings, database, auth_token=auth_token, auth_session_id=auth_session_id)
         self._context_id, self._token = context_id, token
+
+    def _context(self, service):
+        if self._auth_session_id is not None:
+            return service.authenticate_owned(self._context_id)
+        return service.authenticate(self._context_id, self._token)
 
     def authenticate(self):
         if self.database is None:
             raise RuntimeError('数据库未配置')
         with self.database.transaction() as session:
-            ApprovalService(session).authenticate(self._context_id, self._token)
+            principal = self._principal(session)
+            self._context(ApprovalService(session, principal=principal, enforce_ownership=principal is not None))
 
     def _create_proposal(self, payload, cancelled):
         with self.database.transaction() as session:
-            service = ApprovalService(session)
-            context = service.authenticate(self._context_id, self._token)
+            if self.settings.public_demo or self.settings.environment == 'production':
+                from project_copilot.services.auth import AuthService
+                auth = AuthService(session)
+                principal, _ = (auth.authenticate_session_id(self._auth_session_id, for_update=True)
+                                if self._auth_session_id is not None else auth.authenticate(self._auth_token, for_update=True))
+            else:
+                principal = None
+            service = ApprovalService(session, principal=principal, enforce_ownership=principal is not None)
+            context = self._context(service)
             result = service.preview(context, payload)
             if cancelled.is_set():
                 raise RuntimeError('request cancelled')

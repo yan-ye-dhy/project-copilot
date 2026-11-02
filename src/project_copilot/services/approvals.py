@@ -14,6 +14,7 @@ from project_copilot.db.models import AgentContext, PendingAction
 from project_copilot.schemas.approvals import ActionRead, ContextCredentials
 from project_copilot.schemas.tickets import TicketCreate
 from project_copilot.services.tickets import TicketService
+from project_copilot.services.auth import AuthService, AuthenticationRejected
 
 
 class ContextRejected(PermissionError):
@@ -34,10 +35,14 @@ def fingerprint(payload: TicketCreate) -> str:
 
 
 class ApprovalService:
-    def __init__(self, session: Session, ttl_seconds: int = 900):
+    def __init__(self, session: Session, ttl_seconds: int = 900, *, principal=None, enforce_ownership=False, auth_token=None):
         if type(ttl_seconds) is not int or not 1 <= ttl_seconds <= 86400:
             raise ValueError('invalid approval ttl')
+        if enforce_ownership and principal is None:
+            raise ValueError('authenticated principal required')
         self.session, self.ttl_seconds = session, ttl_seconds
+        self.principal, self.enforce_ownership = principal, enforce_ownership
+        self.auth_token = auth_token
 
     def now(self):
         return self.session.scalar(select(func.clock_timestamp()))
@@ -45,7 +50,8 @@ class ApprovalService:
     def create_context(self):
         token = secrets.token_urlsafe(32)
         context = AgentContext(token_hash=sha256(token.encode('ascii')).hexdigest(),
-                               expires_at=self.now() + timedelta(hours=24))
+                               expires_at=self.now() + timedelta(hours=24),
+                               owner_user_id=self.principal.id if self.enforce_ownership else None)
         self.session.add(context)
         self.session.flush()
         return ContextCredentials(context_id=context.id, context_token=token, expires_at=context.expires_at)
@@ -56,7 +62,17 @@ class ApprovalService:
         context = self.session.get(AgentContext, context_id)
         supplied = sha256(token.encode('ascii')).hexdigest()
         matches = hmac.compare_digest(context.token_hash if context else '0' * 64, supplied)
-        if not context or not matches or context.expires_at <= self.now():
+        if (not context or not matches or context.expires_at <= self.now() or
+                (self.enforce_ownership and context.owner_user_id != self.principal.id)):
+            raise ContextRejected()
+        return context
+
+    def authenticate_owned(self, context_id: UUID):
+        """Internal worker path after the capability was verified at job submission."""
+        if not self.enforce_ownership or not isinstance(context_id, UUID):
+            raise ContextRejected()
+        context = self.session.get(AgentContext, context_id)
+        if context is None or context.owner_user_id != self.principal.id or context.expires_at <= self.now():
             raise ContextRejected()
         return context
 
@@ -81,7 +97,8 @@ class ApprovalService:
             raise ContextRejected()
         action = PendingAction(context_id=context.id, title=payload.title, description=payload.description,
                                payload_fingerprint=fingerprint(payload),
-                               expires_at=min(now + timedelta(seconds=self.ttl_seconds), context.expires_at))
+                               expires_at=min(now + timedelta(seconds=self.ttl_seconds), context.expires_at),
+                               owner_user_id=context.owner_user_id)
         self.session.add(action)
         self.session.flush()
         return self.read(action)
@@ -92,6 +109,11 @@ class ApprovalService:
                                       PendingAction.context_id == context.id).with_for_update())
         if action is None:
             raise ActionNotFound()
+        if self.enforce_ownership and self.auth_token is not None:
+            # A session may have expired while waiting for the action row lock.
+            principal, _ = AuthService(self.session).authenticate(self.auth_token, for_update=True)
+            if principal.id != self.principal.id:
+                raise AuthenticationRejected()
         now = self.now()
         if context.expires_at <= now:
             raise ContextRejected()
@@ -116,8 +138,9 @@ class ApprovalService:
             action.status = 'expired'
         if action.status == 'pending':
             if approve:
-                result = TicketService(self.session).create(TicketCreate(title=action.title, description=action.description),
-                                                            creation_key=action.id)
+                result = TicketService(self.session, principal=self.principal,
+                                       enforce_ownership=self.enforce_ownership).create(
+                    TicketCreate(title=action.title, description=action.description), creation_key=action.id)
                 action.ticket_id = result.id
                 action.status = 'completed'
             else:

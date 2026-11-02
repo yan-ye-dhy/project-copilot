@@ -3,6 +3,7 @@
 from project_copilot.infrastructure.tracing import trace_span
 from project_copilot.infrastructure.qdrant import DenseQdrantStore, QdrantResponseError
 from project_copilot.rag.ingestion import Embeddings, ManifestStore, validate_index_binding
+from project_copilot.rag.index_lock import index_lock
 from project_copilot.schemas.retrieval import RetrievedChunk
 
 
@@ -21,7 +22,8 @@ class DenseRetriever:
 
     def search(self, query: str) -> list[RetrievedChunk]:
         with trace_span("rag.dense", {"openinference.span.kind": "RETRIEVER", "retrieval.top_k": self.top_k}) as span:
-            result = self._search(query)
+            with index_lock(self.manifest.path):
+                result = self._search(query)
             span.set_attribute("retrieval.result_count", len(result))
             return result
 

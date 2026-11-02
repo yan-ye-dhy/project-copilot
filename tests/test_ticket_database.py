@@ -1,10 +1,11 @@
 """阶段B真实PG：空库迁移、ORM一致性、约束及连接释放，无SQLite/Mock替代。"""
 
 import pytest
+from alembic.script import ScriptDirectory
 from sqlalchemy import inspect, select, text
 from sqlalchemy.exc import SQLAlchemyError
 
-from project_copilot.db.migrations import check_model_drift, upgrade
+from project_copilot.db.migrations import check_model_drift, migration_config, upgrade
 from project_copilot.db.models import Ticket
 
 
@@ -16,16 +17,22 @@ def test_empty_postgres_migrates_to_model_and_upgrade_is_repeatable(postgres_dat
         assert session.scalar(text("SELECT current_database()")).startswith("pc_test_d20_")
     upgrade(db)
     upgrade(db)
-    assert set(inspect(db.engine).get_table_names()) == {"alembic_version", "tickets", "agent_contexts", "pending_actions"}
+    assert set(inspect(db.engine).get_table_names()) == {
+        "alembic_version", "tickets", "agent_contexts", "pending_actions",
+        "user_accounts", "login_sessions", "registration_invites",
+        "ai_request_reservations", "auth_rate_buckets", "ai_jobs", "ai_job_uploads", "ai_request_attempts",
+        "ai_audit_rate_buckets",
+    }
     check_model_drift(db)
     columns = {c["name"]: c for c in inspect(db.engine).get_columns("tickets")}
-    assert set(columns) == {"id", "title", "description", "status", "created_at", "updated_at", "creation_key"}
-    assert all(not col["nullable"] for name, col in columns.items() if name != "creation_key") and columns["creation_key"]["nullable"]
+    assert set(columns) == {"id", "title", "description", "status", "created_at", "updated_at", "creation_key", "owner_user_id"}
+    assert all(not col["nullable"] for name, col in columns.items() if name not in {"creation_key", "owner_user_id"})
+    assert columns["creation_key"]["nullable"] and columns["owner_user_id"]["nullable"]
     assert columns["title"]["type"].length == 200
     assert columns["created_at"]["type"].timezone is True
     assert "gen_random_uuid" in columns["id"]["default"]
     with db.transaction() as session:
-        assert session.scalar(text("SELECT version_num FROM alembic_version")) == "0002_approvals"
+        assert session.scalar(text("SELECT version_num FROM alembic_version")) == ScriptDirectory.from_config(migration_config()).get_current_head()
     assert db.engine.pool.checkedout() == 0
 
 

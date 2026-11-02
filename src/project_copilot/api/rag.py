@@ -4,6 +4,7 @@ import logging
 
 from fastapi import APIRouter, HTTPException, Request
 
+from project_copilot.api.access import public_mode
 from project_copilot.infrastructure.models import (
     ChatConfigError, ChatRequestError, ChatResponseError,
     EmbeddingConfigError, EmbeddingRequestError, EmbeddingResponseError,
@@ -25,6 +26,8 @@ router = APIRouter(prefix="/rag", tags=["rag"])
 @router.post("/ask", response_model=RagAnswer)
 def ask(payload: RagQuestion, request: Request) -> RagAnswer:
     # 同步SDK在FastAPI线程池中执行，不在async路由里阻塞事件循环。
+    if public_mode(request.app.state.settings):
+        raise HTTPException(status_code=410, detail="公开问答请使用受控任务接口")
     try:
         with create_answer_service(request.app.state.settings) as service:
             return service.answer(payload.question)

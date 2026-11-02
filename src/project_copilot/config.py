@@ -1,6 +1,7 @@
 """只读取新项目的配置，不在模块导入时实例化 Settings。"""
 
 from pathlib import Path
+import re
 from typing import Literal
 
 from pydantic import Field, HttpUrl, SecretStr, field_validator, model_validator
@@ -27,6 +28,21 @@ class Settings(BaseSettings):
 
     app_name: str = Field(default="Project Copilot", min_length=1, max_length=80)
     environment: Literal["development", "test", "production"] = "development"
+
+    # Public mode is opt-in and remains locked until the complete security gate
+    # (identity, ownership, quotas and integration tests) is implemented.
+    public_demo: bool = False
+    public_proxy_secret: SecretStr | None = None
+    auth_public_origin: HttpUrl | None = None
+    auth_open_registration: bool = False
+    auth_session_ttl_seconds: int = Field(default=86400, ge=300, le=30 * 86400)
+    max_daily_requests_per_user: int = Field(default=5, ge=1, le=1_000_000)
+    max_daily_requests_global: int = Field(default=30, ge=1, le=1_000_000)
+    max_concurrent_requests_per_user: int = Field(default=1, ge=1, le=1_000_000)
+    max_provider_attempts_per_job: int = Field(default=16, ge=1, le=100)
+    public_job_queue_ttl_seconds: int = Field(default=86400, ge=60, le=30 * 86400)
+    public_upload_max_chunks: int = Field(default=64, ge=1, le=1000)
+    public_upload_max_chars: int = Field(default=32000, ge=1, le=500000)
 
     zhipu_api_key: SecretStr | None = None
     zhipu_base_url: HttpUrl = "https://open.bigmodel.cn/api/paas/v4/"
@@ -78,7 +94,19 @@ class Settings(BaseSettings):
             raise ValueError("最终重排须显式选择cuda/float16或cpu/float32")
         if self.agent_tool_timeout_seconds <= self.final_rerank_timeout_seconds:
             raise ValueError("Agent工具时限必须长于最终重排时限，确保首次加载有预算")
+        if self.public_demo or self.environment == "production":
+            secret = self.public_proxy_secret.get_secret_value() if self.public_proxy_secret else ""
+            if not re.fullmatch(r"[A-Za-z0-9_-]{32,128}", secret) or self.auth_public_origin is None:
+                raise ValueError("公开模式必须配置有效的代理共享密钥和HTTPS站点来源")
         return self
+
+    @field_validator("auth_public_origin")
+    @classmethod
+    def validate_auth_public_origin(cls, value: HttpUrl | None) -> HttpUrl | None:
+        if value is not None and (value.scheme != "https" or value.username or value.password or
+                                  value.query or value.fragment or value.path not in (None, "", "/")):
+            raise ValueError("公开站点来源必须为不含凭据、路径或查询的HTTPS地址")
+        return value
 
     @field_validator("database_url")
     @classmethod

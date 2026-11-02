@@ -7,6 +7,9 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.exc import SQLAlchemyError
 
+from project_copilot.api.access import public_identity, public_mode
+from project_copilot.api.auth import _token_from_cookie
+from project_copilot.services.auth import AuthenticationRejected
 from project_copilot.schemas.approvals import ActionRead, ContextCredentials, Decision
 from project_copilot.schemas.tickets import TicketCreate
 from project_copilot.services.approvals import ActionNotFound, ApprovalService, ContextRejected, FingerprintMismatch
@@ -34,7 +37,12 @@ def service(request: Request) -> Iterator[ApprovalService]:
         raise HTTPException(503, '工单数据库未配置')
     try:
         with database.transaction() as session:
-            yield ApprovalService(session)
+            principal = public_identity(request, session, write=request.method != 'GET', lock=True)
+            yield ApprovalService(session, principal=principal,
+                                  enforce_ownership=public_mode(request.app.state.settings),
+                                  auth_token=_token_from_cookie(request) if principal else None)
+    except AuthenticationRejected:
+        raise HTTPException(401, '账号或会话无效') from None
     except ContextRejected:
         raise HTTPException(403, '上下文凭据无效或已过期') from None
     except ActionNotFound:

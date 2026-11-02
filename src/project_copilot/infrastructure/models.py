@@ -6,6 +6,7 @@ from math import isfinite
 from typing import Self
 
 import httpx
+from project_copilot.infrastructure.call_accounting import record_provider_attempt
 from openai import (
     APIConnectionError,
     APIResponseValidationError,
@@ -67,6 +68,7 @@ class ZhipuEmbeddings:
             with trace_span("embedding.request", {"openinference.span.kind": "EMBEDDING",
                     "embedding.model": self.model, "embedding.input_count": len(batch)}) as span:
                 try:
+                    record_provider_attempt()
                     raw_response = self._client.embeddings.with_raw_response.create(
                         model=self.model,
                         input=batch,
@@ -234,6 +236,7 @@ class DeepSeekChat:
                 raise ValueError("对话消息必须依次为System和User，且仅含角色与非空文本")
 
         try:
+            record_provider_attempt()
             raw_response = self._client.chat.completions.with_raw_response.create(
                 model=self.model,
                 messages=[dict(message) for message in messages],

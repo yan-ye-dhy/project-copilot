@@ -4,6 +4,7 @@ from alembic import context
 
 from project_copilot.config import load_settings
 from project_copilot.db.models import Base
+from project_copilot.db import jobs  # noqa: F401 - register job metadata for migration drift checks
 from project_copilot.db.session import Database
 
 

@@ -30,7 +30,12 @@ SOURCE_PATHS = (
     "src/project_copilot/db/models.py", "src/project_copilot/db/migrations.py",
     "src/project_copilot/schemas/tickets.py", "src/project_copilot/services/tickets.py",
     "src/project_copilot/services/ticket_checks.py", "src/project_copilot/api/tickets.py",
-    "migrations/env.py", "migrations/versions/0001_create_tickets.py", "alembic.ini",
+    "migrations/env.py", "migrations/versions/0001_create_tickets.py", "migrations/versions/0002_approvals.py",
+    "migrations/versions/0003_accounts.py", "migrations/versions/0004_resource_owners.py",
+    "migrations/versions/0005_ai_quotas.py", "migrations/versions/0006_auth_rate_limits.py",
+    "migrations/versions/0007_ai_jobs.py", "migrations/versions/0008_ai_upload_jobs.py",
+    "migrations/versions/0009_ai_attempts.py",
+    "src/project_copilot/db/jobs.py", "alembic.ini",
     "scripts/postgres_support.py", "scripts/ticket_db.py", "scripts/postgres_smoke.py", "uv.lock",
 )
 
@@ -115,10 +120,11 @@ def run(output):
                 upgrade(database)
                 upgrade(database)
                 check_model_drift(database)
-                report["migration"] = {"empty_database": True, "revision": "0002_approvals",
-                                       "second_upgrade_ok": True, "model_drift": False}
                 with database.transaction() as session:
+                    revision = session.scalar(text("SELECT version_num FROM alembic_version"))
                     report["postgresql_version"] = session.scalar(text("SHOW server_version"))
+                report["migration"] = {"empty_database": True, "revision": revision,
+                                       "second_upgrade_ok": True, "model_drift": False}
                 payload = {"title": "D20自编中文上传问题", "description": "真实PG验收：HTTP422错误需要排查。"}
                 with api_process(url, output / "api-first.log") as (client, first_pid, health):
                     record("first-health", health, 200)

@@ -66,20 +66,24 @@ def test_alembic_offline_ddl_works_without_database_or_env():
                             cwd=root, capture_output=True, text=True)
     assert result.returncode == 0, result.stderr
     assert "CREATE TABLE tickets" in result.stdout and "0001_tickets" in result.stdout
-    assert "DROP" not in result.stdout
+    # Replacing a CHECK constraint is safe; migration must never drop tables,
+    # columns, schemas, functions or databases containing existing data.
+    assert all(f"DROP {kind}" not in result.stdout for kind in ("TABLE", "COLUMN", "SCHEMA", "FUNCTION", "DATABASE"))
 
 
 def test_alembic_can_generate_a_followup_revision_in_an_isolated_copy(tmp_path):
     from alembic import command
     from alembic.config import Config
+    from alembic.script import ScriptDirectory
 
     root = Path(__file__).resolve().parents[1]
     target = tmp_path / "migrations"
     shutil.copytree(root / "migrations", target)
     config = Config()
     config.set_main_option("script_location", str(target))
+    previous_head = ScriptDirectory.from_config(config).get_current_head()
     generated = command.revision(config, message="local template probe", rev_id="local_probe")
     content = Path(generated.path).read_text()
     ast.parse(content)
-    assert generated.down_revision == "0002_approvals"
+    assert generated.down_revision == previous_head
     assert "local template probe" in content

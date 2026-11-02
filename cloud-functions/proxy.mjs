@@ -1,0 +1,250 @@
+/*
+ * Same-origin, fixed-destination EdgeOne proxy.
+ * Public use also requires the backend's separate proxy-secret, session,
+ * ownership, CSRF and quota enforcement; this module is not that enforcement.
+ */
+
+const DEFAULT_TIMEOUT_MS = 115_000;
+const DEFAULT_REQUEST_LIMIT = 4 * 1024 * 1024 + 64 * 1024;
+const DEFAULT_RESPONSE_LIMIT = 5_900_000;
+const UUID = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}';
+const ROUTES = [
+  ['GET', /^\/health$/],
+  ['GET', /^\/ui\/config$/],
+  ['GET', /^\/auth\/me$/],
+  ['POST', /^\/auth\/(?:register|login|logout)$/],
+  ['GET', /^\/tickets$/],
+  ['GET', new RegExp(`^/tickets/${UUID}$`)],
+  ['POST', /^\/agent\/contexts$/],
+  ['GET', /^\/documents$/],
+  ['DELETE', new RegExp(`^/documents/${UUID}$`)],
+  ['POST', /^\/actions\/preview$/],
+  ['GET', new RegExp(`^/actions/${UUID}$`)],
+  ['POST', new RegExp(`^/actions/${UUID}/(?:confirm|reject)$`)],
+  ['POST', /^\/jobs$/],
+  ['POST', /^\/jobs\/upload$/],
+  ['GET', new RegExp(`^/jobs/${UUID}$`)],
+];
+const REQUEST_HEADERS = [
+  'accept', 'content-type', 'cookie', 'origin', 'x-csrf-token',
+  'x-copilot-context-id', 'x-copilot-context-token', 'idempotency-key',
+];
+const RESPONSE_HEADERS = [
+  'content-type', 'x-run-id', 'x-trace-id', 'x-trace-exported',
+  'retry-after', 'allow',
+];
+
+class ProxyFailure extends Error {
+  constructor(status) { super('Proxy request failed'); this.status = status; }
+}
+
+function errorResponse(status, extra = {}) {
+  const messages = {
+    400: '请求格式无效。', 404: '请求地址不存在。', 413: '请求内容过大。',
+    499: '请求已取消。', 502: '上游服务暂时不可用。',
+    503: '服务暂时不可用。', 504: '服务响应超时，请查询操作状态。',
+  };
+  return Response.json({ detail: messages[status] || messages[502] }, {
+    status, headers: { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', ...extra },
+  });
+}
+
+function validConfiguration(env) {
+  const raw = env?.PROJECT_COPILOT_BACKEND_ORIGIN;
+  const secret = env?.PROJECT_COPILOT_PROXY_SECRET;
+  if (typeof raw !== 'string' || typeof secret !== 'string' ||
+      !/^[A-Za-z0-9_-]{32,128}$/.test(secret) || raw !== raw.trim()) return null;
+  let url;
+  try { url = new URL(raw); } catch { return null; }
+  const host = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.trycloudflare\.com$/;
+  if (url.protocol !== 'https:' || !host.test(url.hostname) || url.port ||
+      url.username || url.password || url.pathname !== '/' || url.search || url.hash ||
+      (raw !== url.origin && raw !== `${url.origin}/`)) return null;
+  return { origin: url.origin, secret };
+}
+
+function resolveRoute(request) {
+  let url;
+  try { url = new URL(request.url); } catch { return null; }
+  const path = url.pathname;
+  if (!path.startsWith('/api/') || path.includes('%') || path.includes('\\') ||
+      path.includes('//') || !/^\/[a-z0-9_/-]+$/.test(path) || url.search.length > 4096) return null;
+  const target = path.slice(4);
+  if (!ROUTES.some(([method, pattern]) => method === request.method && pattern.test(target))) return null;
+  return { target, search: url.search };
+}
+
+function connectionTokens(headers) {
+  return new Set((headers.get('connection') || '').split(',').map((value) => value.trim().toLowerCase()).filter(Boolean));
+}
+
+function forwardedRequestHeaders(request, secret) {
+  const result = new Headers();
+  const excluded = connectionTokens(request.headers);
+  for (const name of REQUEST_HEADERS) {
+    const value = request.headers.get(name);
+    if (value !== null && !excluded.has(name)) result.set(name, value);
+  }
+  result.set('Accept-Encoding', 'identity');
+  result.set('Cache-Control', 'no-store');
+  // Never use the untrusted client's value of this header.
+  result.set('X-Project-Copilot-Proxy-Secret', secret);
+  return result;
+}
+
+function responseHeaders(upstream) {
+  const headers = new Headers({ 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' });
+  const excluded = connectionTokens(upstream.headers);
+  for (const name of RESPONSE_HEADERS) {
+    const value = upstream.headers.get(name);
+    if (value !== null && !excluded.has(name)) headers.set(name, value);
+  }
+  if (!excluded.has('set-cookie')) {
+    // Set-Cookie cannot be split on commas: Expires itself contains commas.
+    if (typeof upstream.headers.getSetCookie !== 'function') {
+      if (upstream.headers.has('set-cookie')) throw new ProxyFailure(502);
+    } else {
+      for (const cookie of upstream.headers.getSetCookie()) {
+        // The session must be host-only for the public site, not the tunnel.
+        if (/(?:^|;)\s*domain\s*=/i.test(cookie)) throw new ProxyFailure(502);
+        headers.append('Set-Cookie', cookie);
+      }
+    }
+  }
+  return headers;
+}
+
+function boundedLength(headers, limit, invalidStatus, oversizedStatus) {
+  const raw = headers.get('content-length');
+  if (raw === null) return;
+  if (!/^(?:0|[1-9][0-9]*)$/.test(raw) || !Number.isSafeInteger(Number(raw))) {
+    throw new ProxyFailure(invalidStatus);
+  }
+  if (Number(raw) > limit) throw new ProxyFailure(oversizedStatus);
+}
+
+// Promise.race alone leaves listeners on a long-lived stream; remove each one.
+function withAbort(promise, signal) {
+  if (signal.aborted) return Promise.reject(new Error('aborted'));
+  return new Promise((resolve, reject) => {
+    const stop = () => { signal.removeEventListener('abort', stop); reject(new Error('aborted')); };
+    signal.addEventListener('abort', stop, { once: true });
+    Promise.resolve(promise).then(
+      (value) => { signal.removeEventListener('abort', stop); resolve(value); },
+      (error) => { signal.removeEventListener('abort', stop); reject(error); },
+    );
+  });
+}
+
+function stopReader(reader) {
+  try { Promise.resolve(reader.cancel()).catch(() => {}); } catch { /* already closed */ }
+}
+
+async function readRequestBody(request, limit, signal) {
+  boundedLength(request.headers, limit, 400, 413);
+  if (!request.body) return undefined;
+  const reader = request.body.getReader();
+  const chunks = [];
+  let total = 0;
+  try {
+    while (true) {
+      const part = await withAbort(reader.read(), signal);
+      if (part.done) break;
+      if (!(part.value instanceof Uint8Array)) throw new ProxyFailure(400);
+      total += part.value.byteLength;
+      if (total > limit) throw new ProxyFailure(413);
+      chunks.push(part.value);
+    }
+    const body = new Uint8Array(total);
+    let offset = 0;
+    for (const chunk of chunks) { body.set(chunk, offset); offset += chunk.byteLength; }
+    return body;
+  } catch (error) {
+    stopReader(reader);
+    throw error;
+  }
+}
+
+function forwardBody(body, signal, limit, cleanup, abort) {
+  const reader = body.getReader();
+  let total = 0;
+  return new ReadableStream({
+    async pull(controller) {
+      try {
+        const part = await withAbort(reader.read(), signal);
+        if (part.done) { cleanup(); controller.close(); return; }
+        if (!(part.value instanceof Uint8Array)) throw new Error('invalid chunk');
+        total += part.value.byteLength;
+        if (total > limit) throw new Error('response too large');
+        controller.enqueue(part.value);
+      } catch {
+        stopReader(reader);
+        abort(); cleanup();
+        // Headers may already be sent; end the body instead of inventing a new status.
+        controller.error(new Error('Upstream response interrupted'));
+      }
+    },
+    cancel() { stopReader(reader); abort(); cleanup(); },
+  });
+}
+
+/** Injection is exclusively for local tests; the production entry uses defaults. */
+export function createProxyHandler({
+  fetchImpl = globalThis.fetch,
+  timeoutMs = DEFAULT_TIMEOUT_MS,
+  maxRequestBytes = DEFAULT_REQUEST_LIMIT,
+  maxResponseBytes = DEFAULT_RESPONSE_LIMIT,
+} = {}) {
+  if (typeof fetchImpl !== 'function' || !Number.isSafeInteger(timeoutMs) || timeoutMs < 1 ||
+      !Number.isSafeInteger(maxRequestBytes) || maxRequestBytes < 1 ||
+      !Number.isSafeInteger(maxResponseBytes) || maxResponseBytes < 1) throw new TypeError('Invalid proxy limits');
+  return async function proxy({ request, env }) {
+    const config = validConfiguration(env);
+    if (!config) return errorResponse(503);
+    const route = resolveRoute(request);
+    if (!route) return errorResponse(404);
+
+    const controller = new AbortController();
+    let timedOut = false;
+    const timer = setTimeout(() => { timedOut = true; controller.abort(); }, timeoutMs);
+    timer.unref?.();
+    const onAbort = () => controller.abort();
+    if (request.signal.aborted) onAbort();
+    else request.signal.addEventListener('abort', onAbort, { once: true });
+    const cleanup = () => { clearTimeout(timer); request.signal.removeEventListener('abort', onAbort); };
+    let upstream;
+    try {
+      const body = await readRequestBody(request, maxRequestBytes, controller.signal);
+      if (controller.signal.aborted) throw new Error('aborted');
+      upstream = await withAbort(fetchImpl(`${config.origin}${route.target}${route.search}`, {
+        method: request.method, headers: forwardedRequestHeaders(request, config.secret),
+        body, redirect: 'manual', signal: controller.signal,
+      }), controller.signal);
+      if (upstream.status < 200 || (upstream.status >= 300 && upstream.status < 400)) throw new ProxyFailure(502);
+      const headers = responseHeaders(upstream);
+      // fetch may transparently decompress while retaining the original headers.
+      // Reject unexpected encoding rather than forwarding contradictory metadata.
+      const encoding = upstream.headers.get('content-encoding');
+      if (encoding && encoding.toLowerCase() !== 'identity') throw new ProxyFailure(502);
+      boundedLength(upstream.headers, maxResponseBytes, 502, 502);
+      if (upstream.status >= 500) {
+        if (upstream.body) stopReader(upstream.body.getReader());
+        cleanup();
+        return errorResponse(upstream.status, Object.fromEntries(
+          ['x-run-id', 'x-trace-id', 'x-trace-exported'].filter((key) => headers.has(key)).map((key) => [key, headers.get(key)]),
+        ));
+      }
+      if (!upstream.body || upstream.status === 204 || upstream.status === 205) {
+        cleanup();
+        return new Response(null, { status: upstream.status, headers });
+      }
+      return new Response(forwardBody(upstream.body, controller.signal, maxResponseBytes, cleanup,
+        () => controller.abort()), { status: upstream.status, headers });
+    } catch (error) {
+      if (upstream?.body && !upstream.body.locked) stopReader(upstream.body.getReader());
+      const status = timedOut ? 504 : request.signal.aborted ? 499 : error instanceof ProxyFailure ? error.status : 502;
+      controller.abort(); cleanup();
+      return errorResponse(status);
+    }
+  };
+}

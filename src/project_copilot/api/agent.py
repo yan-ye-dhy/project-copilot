@@ -6,6 +6,7 @@ from fastapi import APIRouter, HTTPException, Request
 
 from project_copilot.agent.service import create_agent_service
 from project_copilot.api.actions import credentials
+from project_copilot.api.access import public_mode
 from project_copilot.services.approvals import ContextRejected
 from sqlalchemy.exc import SQLAlchemyError
 from project_copilot.infrastructure.models import ChatConfigError
@@ -18,6 +19,8 @@ logger = logging.getLogger(__name__)
 
 @router.post("/ask", response_model=AgentRun)
 async def ask_agent(payload: AgentQuestion, request: Request) -> AgentRun:
+    if public_mode(request.app.state.settings):
+        raise HTTPException(status_code=410, detail="公开问答请使用受控任务接口")
     context = credentials(request, optional=True)
     try:
         options = {"context": context} if context else {}

@@ -6,6 +6,7 @@ import re
 from typing import Self
 
 import httpx
+from project_copilot.infrastructure.call_accounting import record_provider_attempt
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage, ToolMessage
 from openai import (
     APIConnectionError, APIResponseValidationError, APIStatusError, APITimeoutError, AsyncOpenAI,
@@ -157,6 +158,7 @@ class DeepSeekToolModel:
         encoded = encode_messages(messages)
         tools = _validate_tools(tools)
         try:
+            record_provider_attempt()
             raw_response = await self._client.chat.completions.with_raw_response.create(
                 model=self.model, messages=encoded, tools=tools,
                 temperature=self.temperature, max_tokens=self.max_tokens, stream=False,

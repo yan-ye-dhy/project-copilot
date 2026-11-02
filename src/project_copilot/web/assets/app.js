@@ -1,18 +1,143 @@
-import { apiRequest, ApiError, ContextSession, boundHistory, validateAction } from "./api.js";
+import { apiRequest, ApiError, ContextSession, boundHistory, validateAction, runPublicJob,
+  PUBLIC_BUILD, setCsrfToken, onAuthenticationFailure } from "./api.js";
 
 const $ = (id) => document.getElementById(id);
 const session = new ContextSession();
 const state = {
   view: "chat", busy: false, proposalBusy: false, history: [], selectedFile: null,
   uploading: false, uploadLimit: null, ticketOffset: 0, ticketLimit: 10,
-  ticketsLoaded: false, ticketsBusy: false, ticketsRequest: 0, detailRequest: 0, proposals: new Map(),
+  ticketsLoaded: false, ticketsBusy: false, ticketsRequest: 0, detailRequest: 0, proposals: new Map(), epoch: 0,
 };
+const auth = { user: null, busy: false };
 const views = {
   chat: ["智能协作", "从一个问题开始，让资料与业务连接起来。"],
   documents: ["知识资料", "上传研发资料，让每一次回答都有据可查。"],
   tickets: ["工单", "查看真实处理记录，让问题有迹可循。"],
 };
 const statusLabels = { open: "待处理", in_progress: "处理中", closed: "已关闭", pending: "待你确认", completed: "已创建工单", cancelled: "已拒绝", expired: "已过期" };
+
+function unresolvedProposals() {
+  return [...state.proposals.values()].some((record) => record.uncertain || !record.action ||
+    (record.action.status === "pending" && Date.parse(record.action.expires_at) > Date.now()));
+}
+
+function showAuth(mode = "login", message = "", success = false) {
+  $("app-shell").hidden = true; $("workspace-skip").hidden = true;
+  $("auth-screen").hidden = false;
+  $("login-form").hidden = mode !== "login"; $("register-form").hidden = mode !== "register";
+  $("auth-title").textContent = mode === "login" ? "登录工作空间" : "创建账号";
+  $("auth-show-login").classList.toggle("active", mode === "login");
+  $("auth-show-register").classList.toggle("active", mode === "register");
+  $("auth-show-login").setAttribute("aria-pressed", String(mode === "login"));
+  $("auth-show-register").setAttribute("aria-pressed", String(mode === "register"));
+  $("auth-feedback").textContent = message;
+  $("auth-feedback").classList.toggle("success", success);
+}
+
+function clearCredentialInputs() {
+  $("login-password").value = "";
+  $("register-password").value = "";
+  $("register-invitation").value = "";
+}
+
+function resetWorkspace() {
+  // Late responses from a previous account must not populate the next one.
+  state.epoch += 1; state.ticketsRequest += 1; state.detailRequest += 1;
+  session.clear(); setCsrfToken(null); auth.user = null;
+  state.history = []; state.proposals.clear(); state.selectedFile = null;
+  state.busy = false; state.proposalBusy = false; state.uploading = false;
+  state.ticketsLoaded = false; state.ticketsBusy = false; state.ticketOffset = 0;
+  $("chat-messages").querySelectorAll(".message").forEach((node) => node.remove());
+  $("chat-welcome").hidden = false; $("question-input").value = ""; $("chat-mode").value = "agent";
+  $("upload-records").replaceChildren(element("div", "empty-state", "本页暂无上传记录。"));
+  $("upload-feedback").replaceChildren(); $("file-input").value = "";
+  $("tickets-list").replaceChildren(element("div", "empty-state", "准备查询工单。"));
+  $("tickets-feedback").replaceChildren(); $("ticket-query").value = ""; $("ticket-status").value = "";
+  $("tickets-page").textContent = "第 1 页"; $("tickets-prev").disabled = $("tickets-next").disabled = true;
+  $("proposal-form").reset(); $("proposal-form").querySelector(".proposal-feedback")?.remove();
+  $("proposal-submit").disabled = false; $("detail-content").replaceChildren();
+  for (const id of ["proposal-dialog", "detail-dialog"]) if ($(id).open) $(id).close();
+  $("account-name").textContent = ""; $("account-role").textContent = "";
+  $("account-panel").hidden = true; $("toast-root").replaceChildren();
+  $("public-documents-list").replaceChildren();
+  showEvidence([]); toggleEvidence(false); setView("chat"); updateComposer(); renderFile();
+}
+
+function setAuthenticationBusy(busy) {
+  auth.busy = busy;
+  for (const id of ["login-submit", "register-submit", "auth-show-login", "auth-show-register", "logout-button"]) $(id).disabled = busy;
+}
+
+function authenticationError(error) {
+  if (error.status === 401) return "账号、密码或会话无效，请检查后重试。";
+  if (error.status === 400 || error.status === 422) return "账号、密码或邀请码不符合要求。";
+  if (error.status === 403) return "请求未通过安全校验，请刷新页面后重试。";
+  if (error.status === 429) return "请求过于频繁，请稍后再试。";
+  return "认证服务暂不可用，请检查网络或稍后刷新页面。";
+}
+
+function activateUser(data) {
+  const user = data?.user;
+  if (!user || typeof user.id !== "string" || !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(user.id) ||
+      typeof user.username !== "string" || !user.username.trim() || typeof data.csrf_token !== "string" ||
+      !["user", "admin"].includes(user.role)) throw new ApiError("登录结果无效。", { kind: "response" });
+  try { setCsrfToken(data.csrf_token); }
+  catch { throw new ApiError("登录结果无效。", { kind: "response" }); }
+  auth.user = Object.freeze({ id: user.id, username: user.username, role: user.role });
+  $("account-name").textContent = user.username;
+  $("account-role").textContent = user.role === "admin" ? "管理员" : "普通用户";
+  $("account-panel").hidden = false;
+  const canUpload = user.role === "admin";
+  $("document-admin-controls").hidden = !canUpload;
+  $("upload-records-heading").hidden = !canUpload;
+  $("upload-records").hidden = !canUpload;
+  $("upload-public-info").hidden = canUpload;
+  $("upload-public-info").textContent = "公共知识资料由管理员维护。你可以在智能协作中使用“知识问答”查询。";
+  $("public-documents").hidden = false;
+  $("documents-description").textContent = "使用公共知识库提问，并查看答案引用的原文。";
+  $("file-input").accept = ".txt,.md";
+  $("auth-screen").hidden = true; $("app-shell").hidden = false; $("workspace-skip").hidden = false;
+  clearCredentialInputs();
+  initializeServices();
+}
+
+async function submitAuthentication(event, register) {
+  event.preventDefault();
+  if (auth.busy) return;
+  const prefix = register ? "register" : "login";
+  const username = $(`${prefix}-username`).value.trim();
+  const password = $(`${prefix}-password`).value;
+  const invitation = register ? $("register-invitation").value : "";
+  const body = { username, password, ...(register && invitation ? { invitation } : {}) };
+  clearCredentialInputs(); setAuthenticationBusy(true); $("auth-feedback").textContent = "正在处理…";
+  try {
+    const { data } = await apiRequest(register ? "/auth/register" : "/auth/login", { method: "POST", body, timeoutMs: 30000 });
+    if (register) {
+      if (typeof data?.id !== "string" || typeof data.username !== "string" || data.role !== "user") throw new ApiError("注册结果无效。", { kind: "response" });
+      $("register-form").reset(); $("login-username").value = data.username;
+      showAuth("login", "账号已创建，请登录。", true); $("login-password").focus();
+    } else activateUser(data);
+  } catch (error) { $("auth-feedback").textContent = authenticationError(error); $("auth-feedback").classList.remove("success"); }
+  finally { clearCredentialInputs(); setAuthenticationBusy(false); }
+}
+
+async function logout() {
+  if (auth.busy) return;
+  if (state.busy || state.proposalBusy || state.uploading || state.ticketsBusy || [...state.proposals.values()].some((record) => record.busy)) {
+    notify("请等待当前操作完成后再退出。", "error"); return;
+  }
+  if (unresolvedProposals() && !window.confirm("当前有待处理或结果未确认的提案。退出会清除本页上下文，可能无法从本页恢复该提案；请先核实工单状态。仍要退出吗？")) return;
+  setAuthenticationBusy(true);
+  let message = "已退出登录。";
+  try {
+    await apiRequest("/auth/logout", { method: "POST", timeoutMs: 15000 });
+  } catch (error) {
+    message = error.status === 401 ? "会话已失效，请重新登录。" : "退出结果尚未确认，本页数据已清除；请关闭浏览器或稍后核对登录状态。";
+  } finally {
+    resetWorkspace(); $("login-form").reset(); $("register-form").reset();
+    clearCredentialInputs(); setAuthenticationBusy(false); showAuth("login", message);
+  }
+}
 
 function element(tag, className, text) {
   const node = document.createElement(tag);
@@ -73,6 +198,41 @@ function setView(view) {
   $("evidence-panel").hidden = view !== "chat";
   $("evidence-toggle").hidden = view !== "chat";
   if (view === "tickets" && !state.ticketsLoaded) loadTickets();
+  if (view === "documents" && PUBLIC_BUILD && auth.user) loadDocuments();
+}
+
+async function loadDocuments() {
+  const epoch = state.epoch;
+  const target = $("public-documents-list");
+  target.replaceChildren(element("div", "empty-state", "正在读取资料…"));
+  try {
+    const { data } = await apiRequest("/documents", { timeoutMs: 15000 });
+    if (epoch !== state.epoch) return;
+    if (!Array.isArray(data.documents)) throw new ApiError("资料列表格式无效。", { kind: "response" });
+    target.replaceChildren();
+    if (!data.documents.length) target.append(element("div", "empty-state", "知识库暂无资料。"));
+    for (const doc of data.documents) {
+      if (typeof doc.source_name !== "string" || !/^[a-f0-9-]{36}$/i.test(doc.document_id || "") || !Number.isSafeInteger(doc.chunk_count)) {
+        throw new ApiError("资料列表格式无效。", { kind: "response" });
+      }
+      const row = element("article", "upload-record");
+      row.append(element("strong", "", doc.source_name), element("span", "", `${doc.chunk_count} 个片段`));
+      if (auth.user?.role === "admin") {
+        const remove = actionButton("删除资料", "button button-quiet", async () => {
+          if (!window.confirm(`确认删除“${doc.source_name}”及其索引？`)) return;
+          remove.disabled = true;
+          try {
+            await apiRequest(`/documents/${doc.document_id}`, { method: "DELETE", timeoutMs: 90000 });
+            if (epoch === state.epoch) await loadDocuments();
+          } catch (error) {
+            if (epoch === state.epoch) { notify(error.message || "删除未完成，请检查后再试。", "error"); remove.disabled = false; }
+          }
+        });
+        row.append(remove);
+      }
+      target.append(row);
+    }
+  } catch (error) { if (epoch === state.epoch) target.replaceChildren(errorNode(error)); }
 }
 
 function toggleEvidence(open) {
@@ -180,6 +340,7 @@ function updateComposer() {
 
 async function sendQuestion(event) {
   event.preventDefault();
+  const epoch = state.epoch;
   const question = $("question-input").value.trim();
   if (!question || state.busy || question.length > 2000) return;
   const mode = $("chat-mode").value;
@@ -191,11 +352,15 @@ async function sendQuestion(event) {
   let context = null;
   try {
     if (mode === "agent") context = await session.ensure();
-    const { data, meta } = await apiRequest(mode === "agent" ? "/agent/ask" : "/rag/ask", {
-      method: "POST", body: mode === "agent" ? { question, history } : { question },
-      headers: context ? ContextSession.headers(context) : {},
-      timeoutMs: mode === "agent" ? 330000 : 180000,
-    });
+    if (epoch !== state.epoch) return;
+    const payload = mode === "agent" ? { question, history } : { question };
+    const headers = context ? ContextSession.headers(context) : {};
+    const { data, meta } = PUBLIC_BUILD
+      ? await runPublicJob(mode, payload, { headers, isCurrent: () => epoch === state.epoch })
+      : await apiRequest(mode === "agent" ? "/agent/ask" : "/rag/ask", {
+          method: "POST", body: payload, headers, timeoutMs: mode === "agent" ? 330000 : 180000,
+        });
+    if (epoch !== state.epoch) return;
     if (typeof data.answer !== "string" || typeof data.status !== "string") throw new ApiError("服务未返回可识别的回答。", { meta, kind: "response" });
     message.body.replaceChildren(element("div", "message-text", data.answer));
     if (["failed", "budget_exhausted"].includes(data.status)) {
@@ -213,13 +378,15 @@ async function sendQuestion(event) {
     showEvidence(sources, data, meta);
     if (context) for (const source of sources.filter((item) => item.kind === "proposal")) {
       await attachProposal(message.body, source.data, context);
+      if (epoch !== state.epoch) return;
     }
     if (meta.runId) message.meta.append(renderRunDetails(data, meta));
   } catch (error) {
+    if (epoch !== state.epoch) return;
     message.body.replaceChildren(errorNode(error));
     if (error.status === 403) session.clear();
   } finally {
-    state.busy = false; updateComposer(); scrollChat(); $("question-input").focus();
+    if (epoch === state.epoch) { state.busy = false; updateComposer(); scrollChat(); $("question-input").focus(); }
   }
 }
 
@@ -244,19 +411,23 @@ async function attachProposal(container, source, context) {
 }
 
 async function refreshProposal(record) {
+  const epoch = state.epoch;
   record.busy = true; record.error = null; renderProposal(record);
   try {
     const { data } = await apiRequest(`/actions/${encodeURIComponent(record.id)}`, { headers: ContextSession.headers(record.context), timeoutMs: 15000 });
+    if (epoch !== state.epoch) return;
     if (data.action_id !== record.id) throw new ApiError("提案编号与请求不一致。", { kind: "response" });
     applyAction(record, data);
     if (data.status === "completed") state.ticketsLoaded = false;
   } catch (error) {
+    if (epoch !== state.epoch) return;
     record.error = error;
     if (error.status === 403 || error.kind === "response") record.blocked = true;
-  } finally { record.busy = false; renderProposal(record); }
+  } finally { if (epoch === state.epoch) { record.busy = false; renderProposal(record); } }
 }
 
 async function decideProposal(record, approve) {
+  const epoch = state.epoch;
   if (record.busy || record.blocked || record.uncertain || record.action?.status !== "pending" || Date.parse(record.action.expires_at) <= Date.now()) return;
   record.busy = true; record.error = null; renderProposal(record);
   try {
@@ -264,16 +435,18 @@ async function decideProposal(record, approve) {
       method: "POST", headers: ContextSession.headers(record.context),
       body: { payload_fingerprint: record.action.payload_fingerprint }, timeoutMs: 20000,
     });
+    if (epoch !== state.epoch) return;
     applyAction(record, data);
     if (data.status === "completed") {
       state.ticketsLoaded = false;
       notify("工单已创建，可以查看实际记录。", "success");
     } else notify(statusLabels[data.status] || "已更新提案状态。");
   } catch (error) {
+    if (epoch !== state.epoch) return;
     record.error = error;
     record.uncertain = ["network", "timeout", "response"].includes(error.kind);
     if (error.status === 403 || error.status === 409 || error.kind === "response") record.blocked = true;
-  } finally { record.busy = false; renderProposal(record); }
+  } finally { if (epoch === state.epoch) { record.busy = false; renderProposal(record); } }
 }
 
 function renderProposal(record) {
@@ -314,9 +487,11 @@ function renderProposal(record) {
 }
 
 function setFile(file) {
+  if (PUBLIC_BUILD && auth.user?.role !== "admin") return;
   if (state.uploading) return;
   if (!file) { state.selectedFile = null; renderFile(); return; }
   const suffix = file.name.split(".").pop()?.toLowerCase();
+  if (PUBLIC_BUILD && suffix === "pdf") { notify("公开 PDF 上传尚未完成安全验收，请先使用 TXT 或 Markdown。", "error"); return; }
   if (!["txt", "md", "pdf"].includes(suffix)) { notify("请选择 TXT、Markdown 或 PDF 文件。", "error"); return; }
   if (!file.size) { notify("文件内容不能为空。", "error"); return; }
   if (state.uploadLimit && file.size > state.uploadLimit) { notify("文件超过当前服务允许的大小。", "error"); return; }
@@ -334,12 +509,17 @@ function renderFile() {
 }
 
 async function uploadFile() {
+  const epoch = state.epoch;
+  if (PUBLIC_BUILD && auth.user?.role !== "admin") return;
   if (!state.selectedFile || state.uploading) return;
   state.uploading = true; renderFile(); $("upload-feedback").replaceChildren();
   const file = state.selectedFile;
   const form = new FormData(); form.append("file", file);
   try {
-    const { data } = await apiRequest("/documents/upload", { method: "POST", body: form, timeoutMs: 300000 });
+    const { data } = PUBLIC_BUILD
+      ? await runPublicJob("upload", form, { isCurrent: () => epoch === state.epoch })
+      : await apiRequest("/documents/upload", { method: "POST", body: form, timeoutMs: 300000 });
+    if (epoch !== state.epoch) return;
     if (data.status !== "indexed" || !data.document?.document_id || data.mode !== "HYBRID_RERANK") throw new ApiError("入库结果未通过校验，请核对服务状态。", { kind: "response" });
     $("upload-records").querySelector(".empty-state")?.remove();
     const record = element("article", "upload-record");
@@ -349,10 +529,11 @@ async function uploadFile() {
     }));
     $("upload-records").prepend(record);
     $("upload-feedback").append(element("p", "success-note", "资料已入库，现在可以在智能协作中提问。"));
+    if (PUBLIC_BUILD) await loadDocuments();
     state.selectedFile = null; $("file-input").value = "";
     notify("资料已加入知识库。", "success");
-  } catch (error) { $("upload-feedback").append(errorNode(error)); }
-  finally { state.uploading = false; renderFile(); }
+  } catch (error) { if (epoch === state.epoch) $("upload-feedback").append(errorNode(error)); }
+  finally { if (epoch === state.epoch) { state.uploading = false; renderFile(); } }
 }
 
 async function loadTickets() {
@@ -408,6 +589,7 @@ async function openTicket(id) {
 
 async function submitProposal(event) {
   event.preventDefault();
+  const epoch = state.epoch;
   if (state.proposalBusy || !$("proposal-form").reportValidity()) return;
   const payload = { title: $("proposal-title").value.trim(), description: $("proposal-description").value.trim() };
   if (!payload.title || !payload.description) { notify("请填写有效的工单标题和详细描述。", "error"); return; }
@@ -417,32 +599,44 @@ async function submitProposal(event) {
   feedback.replaceChildren();
   try {
     const context = await session.ensure();
+    if (epoch !== state.epoch) return;
     const { data, meta } = await apiRequest("/actions/preview", { method: "POST", body: payload, headers: ContextSession.headers(context), timeoutMs: 15000 });
+    if (epoch !== state.epoch) return;
     validateAction(data, context);
     $("proposal-dialog").close(); $("proposal-form").reset(); setView("chat");
     addMessage("user", `提出工单：${payload.title}`);
     const message = addMessage("assistant", "工单提案已准备好，请核对内容后决定是否创建。");
     await attachProposal(message.body, data, context);
+    if (epoch !== state.epoch) return;
     message.meta.append(renderRunDetails({}, meta));
     scrollChat();
-  } catch (error) { feedback.append(errorNode(error)); if (error.status === 403) session.clear(); }
-  finally { state.proposalBusy = false; $("proposal-submit").disabled = false; updateComposer(); }
+  } catch (error) { if (epoch === state.epoch) { feedback.append(errorNode(error)); if (error.status === 403) session.clear(); } }
+  finally { if (epoch === state.epoch) { state.proposalBusy = false; $("proposal-submit").disabled = false; updateComposer(); } }
 }
 
 async function checkService() {
+  const epoch = state.epoch;
   try {
     const { data } = await apiRequest("/health", { timeoutMs: 10000 });
+    if (epoch !== state.epoch) return;
     if (data.status !== "ok") throw new Error();
     $("service-status").textContent = "服务已连接";
     $("service-status").classList.add("connected");
   } catch {
+    if (epoch !== state.epoch) return;
     $("service-status").textContent = "服务暂未连接";
     $("service-status").classList.remove("connected");
   }
 }
 
 function bindEvents() {
+  $("auth-show-login").addEventListener("click", () => { if (!auth.busy) { clearCredentialInputs(); showAuth("login"); } });
+  $("auth-show-register").addEventListener("click", () => { if (!auth.busy) { clearCredentialInputs(); showAuth("register"); } });
+  $("login-form").addEventListener("submit", (event) => submitAuthentication(event, false));
+  $("register-form").addEventListener("submit", (event) => submitAuthentication(event, true));
+  $("logout-button").addEventListener("click", logout);
   document.querySelectorAll("[data-view]").forEach((button) => button.addEventListener("click", () => setView(button.dataset.view)));
+  $("refresh-documents").addEventListener("click", loadDocuments);
   document.querySelectorAll("[data-prompt]").forEach((button) => button.addEventListener("click", () => {
     if (state.busy) return;
     $("question-input").value = button.dataset.prompt; updateComposer(); $("question-input").focus();
@@ -487,16 +681,44 @@ function bindEvents() {
   }, 15000);
 }
 
-async function start() {
-  bindEvents(); updateComposer(); renderFile();
+async function initializeServices() {
+  const epoch = state.epoch;
   checkService();
   try {
     const { data } = await apiRequest("/ui/config", { timeoutMs: 10000 });
+    if (epoch !== state.epoch) return;
     if (Number.isInteger(data.upload_max_bytes) && data.upload_max_bytes > 0) {
-      state.uploadLimit = data.upload_max_bytes;
-      $("upload-limit").textContent = `支持 TXT、Markdown、PDF · 单文件最多 ${new Intl.NumberFormat("zh-CN", { maximumFractionDigits: 1 }).format(state.uploadLimit / 1024 / 1024)} MB`;
+      state.uploadLimit = PUBLIC_BUILD ? Math.min(data.upload_max_bytes, 4 * 1024 * 1024) : data.upload_max_bytes;
+      $("upload-limit").textContent = `支持 ${PUBLIC_BUILD ? "TXT、Markdown" : "TXT、Markdown、PDF"} · 单文件最多 ${new Intl.NumberFormat("zh-CN", { maximumFractionDigits: 1 }).format(state.uploadLimit / 1024 / 1024)} MB`;
     }
-  } catch { $("upload-limit").textContent = "支持 TXT、Markdown、PDF · 文件大小由服务校验"; }
+  } catch { if (epoch === state.epoch) $("upload-limit").textContent = `支持 ${PUBLIC_BUILD ? "TXT、Markdown" : "TXT、Markdown、PDF"} · 文件大小由服务校验`; }
+}
+
+async function start() {
+  bindEvents(); updateComposer(); renderFile();
+  if (!PUBLIC_BUILD) {
+    $("app-shell").hidden = false; $("workspace-skip").hidden = false;
+    initializeServices();
+    return;
+  }
+  $("api-docs-link").hidden = true;
+  $("workspace-local-footer").hidden = true;
+  onAuthenticationFailure(() => {
+    if (!auth.user) return;
+    const unresolved = unresolvedProposals();
+    resetWorkspace(); clearCredentialInputs();
+    showAuth("login", unresolved ?
+      "登录已失效。本页提案已清除，请重新登录后核对工单状态；系统没有自动重复确认。" :
+      "登录已失效，请重新登录。");
+  });
+  showAuth("login", "正在检查登录状态…"); setAuthenticationBusy(true);
+  try {
+    const { data } = await apiRequest("/auth/me", { timeoutMs: 15000 });
+    activateUser(data);
+  } catch (error) {
+    setCsrfToken(null);
+    showAuth("login", error.status === 401 ? "请登录或注册后继续。" : authenticationError(error));
+  } finally { clearCredentialInputs(); setAuthenticationBusy(false); }
 }
 
 start();

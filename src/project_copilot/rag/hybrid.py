@@ -1,9 +1,11 @@
 """同一成功清单内编排Dense与BM25，以排名融合；不改变现有问答默认路由。"""
 
 from project_copilot.infrastructure.tracing import trace_span
+from contextlib import nullcontext
 from project_copilot.rag.bm25 import BM25Index
 from project_copilot.rag.fusion import reciprocal_rank_fusion
 from project_copilot.rag.retrieval import DenseRetriever
+from project_copilot.rag.index_lock import index_lock
 from project_copilot.schemas.retrieval import RetrievedChunk
 
 
@@ -38,6 +40,12 @@ class HybridRetriever:
             raise HybridError("Dense成功清单与BM25快照不一致，请显式重建词项索引")
 
     def search(self, query: str) -> list[RetrievedChunk]:
+        # In-memory test doubles do not have a filesystem manifest or a competing writer.
+        path = getattr(self.dense.manifest, "path", None)
+        with index_lock(path) if path is not None else nullcontext():
+            return self._search_locked(query)
+
+    def _search_locked(self, query: str) -> list[RetrievedChunk]:
         if not isinstance(query, str) or not query.strip():
             raise HybridError("Hybrid查询必须是非空文本")
         # 请求前检查，防止快照构建后新增文档仍静默混用两套语料。

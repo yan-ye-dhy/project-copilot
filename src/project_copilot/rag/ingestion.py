@@ -46,8 +46,11 @@ class ManifestStore:
     def __init__(self, directory: Path, spec: DenseIndexSpec) -> None:
         self.spec = spec
         self.path = directory / f"{spec.collection_name}.json"
+        self.deletion_journal_path = directory / f"{spec.collection_name}.delete.json"
 
-    def load(self) -> IndexManifest:
+    def load(self, *, _pending_delete_ok: bool = False) -> IndexManifest:
+        if not _pending_delete_ok and os.path.lexists(self.deletion_journal_path):
+            raise ManifestError("存在未完成的文档删除；必须先恢复删除")
         try:
             raw = self.path.read_text(encoding="utf-8")
         except FileNotFoundError:
@@ -60,6 +63,8 @@ class ManifestStore:
             raise ManifestError("索引完成清单格式不合法") from None
         if manifest.spec != self.spec:
             raise ManifestError("索引配置与完成清单不一致，请使用新集合重新索引")
+        if not _pending_delete_ok and os.path.lexists(self.deletion_journal_path):
+            raise ManifestError("存在未完成的文档删除；必须先恢复删除")
         return manifest
 
     def record(self, manifest: IndexManifest, document: CompletedDocument) -> None:
@@ -67,6 +72,11 @@ class ManifestStore:
             raise ManifestError("不能向不同配置的完成清单写入")
         documents = tuple(d for d in manifest.documents if d.document_id != document.document_id)
         updated = IndexManifest(spec=self.spec, documents=documents + (document,))
+        self._publish(updated)
+
+    def _publish(self, updated: IndexManifest) -> None:
+        if updated.spec != self.spec:
+            raise ManifestError("不能写入不同配置的完成清单")
         temporary: Path | None = None
         try:
             self.path.parent.mkdir(parents=True, exist_ok=True)
@@ -80,6 +90,11 @@ class ManifestStore:
                 os.fsync(handle.fileno())
             # 同一文件系统原子替换，避免读到半份JSON；不是跨存储事务。
             temporary.replace(self.path)
+            directory = os.open(self.path.parent, os.O_RDONLY | os.O_DIRECTORY)
+            try:
+                os.fsync(directory)
+            finally:
+                os.close(directory)
         except OSError:
             raise ManifestError("无法保存索引完成清单；本次不登记入库成功") from None
         finally:
@@ -106,11 +121,14 @@ class IngestionService:
     def __init__(
         self, embeddings: Embeddings, store: DenseQdrantStore,
         manifest: ManifestStore, *, split_config: SplitConfig | None = None,
+        max_chunks: int | None = None, max_chars: int | None = None, isolated_pdf: bool = False,
     ) -> None:
         self.embeddings = embeddings
         self.store = store
         self.manifest = manifest
         self.split_config = split_config or SplitConfig()
+        self.max_chunks, self.max_chars = max_chunks, max_chars
+        self.isolated_pdf = isolated_pdf
         validate_index_binding(embeddings, store, manifest.spec)
         if self.split_config.index_version != manifest.spec.splitter_version:
             raise IngestionError("切分配置与当前索引不一致，请使用新集合")
@@ -128,7 +146,10 @@ class IngestionService:
         if source_name is not None and (not isinstance(source_name, str) or not source_name.strip()):
             raise IngestionError("文档展示名称必须是非空字符串")
         with trace_span("document.load", {"openinference.span.kind": "CHAIN"}):
-            document = load_document(path)
+            if self.isolated_pdf and Path(path).suffix.lower() == ".pdf":
+                document = load_document(path, isolated_pdf=True, pdf_max_chars=self.max_chars or 32000)
+            else:
+                document = load_document(path)
         if source_name is not None:
             # 上传使用服务端临时路径；展示名称不参与文件或片段的稳定身份。
             document = document.model_copy(update={"source_name": source_name})
@@ -137,6 +158,9 @@ class IngestionService:
             span.set_attribute("document.chunk_count", len(chunks))
         if not chunks:
             raise EmptyDocumentError("文档没有可索引的非空文本，未发Embedding请求")
+        if ((self.max_chunks is not None and len(chunks) > self.max_chunks) or
+                (self.max_chars is not None and sum(len(chunk.text) for chunk in chunks) > self.max_chars)):
+            raise IngestionError("文档超过公开演示的片段或文字预算，未发Embedding请求")
         previous = self.manifest.load()
         # 先验证存储契约，避免集合不兼容时仍产生Embedding费用。
         self.store.ensure_collection()
@@ -190,4 +214,8 @@ def create_ingestion_service(settings: Settings) -> Iterator[IngestionService]:
                 get_final_retriever(settings).synchronize(store._client)
                 return completed
 
-        yield PublishedIngestionService(embeddings, store, manifest, split_config=split_config)
+        limited = settings.public_demo or settings.environment == "production"
+        yield PublishedIngestionService(embeddings, store, manifest, split_config=split_config,
+                                        max_chunks=settings.public_upload_max_chunks if limited else None,
+                                        max_chars=settings.public_upload_max_chars if limited else None,
+                                        isolated_pdf=limited)

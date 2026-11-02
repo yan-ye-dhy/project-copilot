@@ -13,10 +13,13 @@ from project_copilot.api.rag import router as rag_router
 from project_copilot.api.tickets import router as tickets_router
 from project_copilot.api.agent import router as agent_router
 from project_copilot.api.actions import router as actions_router
+from project_copilot.api.auth import router as auth_router
+from project_copilot.api.jobs import router as jobs_router
 from project_copilot.api.web import install_web
 from project_copilot.config import Settings, load_settings
 from project_copilot.db.session import Database
 from project_copilot.infrastructure.tracing import RequestContextMiddleware, create_trace_runtime
+from project_copilot.infrastructure.public_gateway import PublicGatewayMiddleware
 
 
 logger = logging.getLogger(__name__)
@@ -49,12 +52,15 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             logger.info("Stopping %s", application.state.settings.app_name)
 
     application = FastAPI(title="Project Copilot", version="0.1.0", lifespan=lifespan)
+    application.add_middleware(PublicGatewayMiddleware)
     application.add_middleware(RequestContextMiddleware)
     application.include_router(documents_router)
     application.include_router(rag_router)
     application.include_router(tickets_router)
     application.include_router(agent_router)
     application.include_router(actions_router)
+    application.include_router(auth_router)
+    application.include_router(jobs_router)
     install_web(application)
 
     @application.exception_handler(Exception)
