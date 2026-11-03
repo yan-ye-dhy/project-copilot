@@ -38,7 +38,10 @@ class Ticket(Base):
 
 class AgentContext(Base):
     __tablename__ = "agent_contexts"
-    __table_args__ = (Index("ix_agent_contexts_owner_user_id", "owner_user_id"),)
+    __table_args__ = (
+        Index("ix_agent_contexts_owner_user_id", "owner_user_id"),
+        Index("ix_agent_contexts_owner_created", "owner_user_id", "created_at"),
+    )
     id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, server_default=text("gen_random_uuid()"))
     owner_user_id: Mapped[UUID | None] = mapped_column(Uuid, ForeignKey("user_accounts.id"), nullable=True)
     token_hash: Mapped[str] = mapped_column(String(64), nullable=False)
@@ -54,6 +57,7 @@ class PendingAction(Base):
         CheckConstraint("length(title) > 0 AND length(description) BETWEEN 1 AND 10000", name="ck_action_payload"),
         CheckConstraint("expires_at > created_at", name="ck_action_expiry"),
         Index("ix_pending_actions_owner_user_id", "owner_user_id"),
+        Index("ix_pending_actions_owner_created", "owner_user_id", "created_at"),
     )
     id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, server_default=text("gen_random_uuid()"))
     context_id: Mapped[UUID] = mapped_column(Uuid, ForeignKey("agent_contexts.id"), nullable=False)

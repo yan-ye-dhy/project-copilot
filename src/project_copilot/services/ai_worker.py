@@ -18,6 +18,7 @@ from project_copilot.schemas.agent import AgentQuestion
 from project_copilot.schemas.rag import RagQuestion
 from project_copilot.services.auth import AuthService, AuthenticationRejected
 from project_copilot.services.quotas import QuotaService
+from project_copilot.services.release_control import ReleaseClosed, dependencies_ready, execution_lease, require_open
 
 
 @dataclass(frozen=True)
@@ -61,7 +62,7 @@ def expire_unclaimed(database, *, ttl_seconds: int, batch_size: int = 100) -> in
         return len(rows)
 
 
-def claim_one(database, *, ttl_seconds: int | None = None) -> ClaimedJob | None:
+def claim_one(database, *, ttl_seconds: int | None = None, settings=None) -> ClaimedJob | None:
     # One transaction binds the job payload to the reservation claim.
     with database.transaction() as session:
         statement = select(AiJob, AiRequestReservation).join(AiRequestReservation).where(AiRequestReservation.state == "reserved")
@@ -77,6 +78,8 @@ def claim_one(database, *, ttl_seconds: int | None = None) -> ClaimedJob | None:
         if row is None:
             return None
         job, reservation = row
+        if settings is not None:
+            require_open(session, settings, user_id=reservation.user_id, worker=True)
         if not QuotaService(session).claim(reservation.user_id, reservation.id):
             return None
         attachment = session.get(AiJobUpload, job.id) if reservation.kind == "upload" else None
@@ -127,11 +130,24 @@ def execute(settings, database, job):
 
 
 def process_one(database, settings, *, runner=execute) -> bool:
-    job = claim_one(database, ttl_seconds=settings.public_job_queue_ttl_seconds)
+    # The lease covers the synchronous runner. Recovery additionally requires
+    # proof the entire worker process ended, since a timed-out thread can live on.
+    with execution_lease(database):
+        try:
+            with database.transaction() as session:
+                require_open(session, settings, worker=True)
+            dependencies_ready(settings)
+            return _process_one(database, settings, runner=runner)
+        except ReleaseClosed:
+            return False
+
+
+def _process_one(database, settings, *, runner):
+    job = claim_one(database, ttl_seconds=settings.public_job_queue_ttl_seconds, settings=settings)
     if job is None:
         return False
     try:
-        with account_job(database, job.user_id, job.id, max_attempts=settings.max_provider_attempts_per_job):
+        with account_job(database, job.user_id, job.id, max_attempts=settings.max_provider_attempts_per_job, settings=settings):
             result = runner(settings, database, job)
         serialized = result.model_dump(mode="json")
         # A timed-out tool may still be running in a thread; do not free its slot.

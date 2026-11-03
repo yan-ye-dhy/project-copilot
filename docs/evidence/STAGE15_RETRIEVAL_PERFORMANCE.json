@@ -1,0 +1,221 @@
+{
+  "mode": "real-http-qdrant-synthetic-models",
+  "model_provider_calls": 0,
+  "limitations": [
+    "Embedding and BGE are deterministic stubs; no real inference latency",
+    "tracemalloc measures Python allocations, excluding server/RSS/CUDA memory",
+    "snapshot warmup excluded; shared index lock serializes queries"
+  ],
+  "sizes": [
+    {
+      "requested_paragraphs": 10,
+      "actual_chunks": 10,
+      "phases": {
+        "1": {
+          "requests": 4,
+          "workers": 1,
+          "latency_ms": {
+            "samples": 4,
+            "median": 24.848058999850764,
+            "p95": 25.575444000423886,
+            "max": 25.575444000423886
+          },
+          "lock_wait_ms": {
+            "samples": 4,
+            "median": 0.4373019996819494,
+            "p95": 0.5492159998539137,
+            "max": 0.5492159998539137
+          },
+          "lock_hold_ms": {
+            "samples": 4,
+            "median": 24.278549500195368,
+            "p95": 25.103459999627376,
+            "max": 25.103459999627376
+          },
+          "qdrant_retrieve_batches": 4,
+          "completed_verification_ms": {
+            "samples": 4,
+            "median": 6.986824999785313,
+            "p95": 7.171076999838988,
+            "max": 7.171076999838988
+          },
+          "expected_batches_per_request": 1,
+          "python_tracemalloc_peak_bytes": 716695,
+          "requests_per_second": 39.97895467853957
+        },
+        "4": {
+          "requests": 4,
+          "workers": 4,
+          "latency_ms": {
+            "samples": 4,
+            "median": 103.93159199975344,
+            "p95": 178.36380500011728,
+            "max": 178.36380500011728
+          },
+          "lock_wait_ms": {
+            "samples": 4,
+            "median": 76.38459949976095,
+            "p95": 151.62820600016857,
+            "max": 151.62820600016857
+          },
+          "lock_hold_ms": {
+            "samples": 4,
+            "median": 26.98346050010514,
+            "p95": 27.601918999607733,
+            "max": 27.601918999607733
+          },
+          "qdrant_retrieve_batches": 4,
+          "completed_verification_ms": {
+            "samples": 4,
+            "median": 8.04465249984787,
+            "p95": 8.103386000584578,
+            "max": 8.103386000584578
+          },
+          "expected_batches_per_request": 1,
+          "python_tracemalloc_peak_bytes": 693712,
+          "requests_per_second": 21.938447670292216
+        }
+      }
+    },
+    {
+      "requested_paragraphs": 100,
+      "actual_chunks": 100,
+      "phases": {
+        "1": {
+          "requests": 4,
+          "workers": 1,
+          "latency_ms": {
+            "samples": 4,
+            "median": 42.21680599994215,
+            "p95": 43.92704500060063,
+            "max": 43.92704500060063
+          },
+          "lock_wait_ms": {
+            "samples": 4,
+            "median": 0.3720605000125943,
+            "p95": 0.5630010000459151,
+            "max": 0.5630010000459151
+          },
+          "lock_hold_ms": {
+            "samples": 4,
+            "median": 41.54540250010541,
+            "p95": 43.18222799975047,
+            "max": 43.18222799975047
+          },
+          "qdrant_retrieve_batches": 8,
+          "completed_verification_ms": {
+            "samples": 4,
+            "median": 20.48818699995536,
+            "p95": 22.009865000654827,
+            "max": 22.009865000654827
+          },
+          "expected_batches_per_request": 2,
+          "python_tracemalloc_peak_bytes": 1710794,
+          "requests_per_second": 23.493476143535627
+        },
+        "4": {
+          "requests": 4,
+          "workers": 4,
+          "latency_ms": {
+            "samples": 4,
+            "median": 117.65997649990823,
+            "p95": 197.14248000036605,
+            "max": 197.14248000036605
+          },
+          "lock_wait_ms": {
+            "samples": 4,
+            "median": 76.47585750009966,
+            "p95": 155.09704499982035,
+            "max": 155.09704499982035
+          },
+          "lock_hold_ms": {
+            "samples": 4,
+            "median": 41.160825999668305,
+            "p95": 41.728973999852315,
+            "max": 41.728973999852315
+          },
+          "qdrant_retrieve_batches": 8,
+          "completed_verification_ms": {
+            "samples": 4,
+            "median": 20.338867000191385,
+            "p95": 20.880579999356996,
+            "max": 20.880579999356996
+          },
+          "expected_batches_per_request": 2,
+          "python_tracemalloc_peak_bytes": 1505768,
+          "requests_per_second": 20.097871408344133
+        }
+      }
+    },
+    {
+      "requested_paragraphs": 500,
+      "actual_chunks": 500,
+      "phases": {
+        "1": {
+          "requests": 4,
+          "workers": 1,
+          "latency_ms": {
+            "samples": 4,
+            "median": 120.3106109996952,
+            "p95": 126.00121299965394,
+            "max": 126.00121299965394
+          },
+          "lock_wait_ms": {
+            "samples": 4,
+            "median": 0.49364099959348096,
+            "p95": 0.5703080005332595,
+            "max": 0.5703080005332595
+          },
+          "lock_hold_ms": {
+            "samples": 4,
+            "median": 117.77246200017544,
+            "p95": 123.83515399960743,
+            "max": 123.83515399960743
+          },
+          "qdrant_retrieve_batches": 32,
+          "completed_verification_ms": {
+            "samples": 4,
+            "median": 82.61446149981566,
+            "p95": 88.05511500031571,
+            "max": 88.05511500031571
+          },
+          "expected_batches_per_request": 8,
+          "python_tracemalloc_peak_bytes": 3987665,
+          "requests_per_second": 8.230060392285933
+        },
+        "4": {
+          "requests": 4,
+          "workers": 4,
+          "latency_ms": {
+            "samples": 4,
+            "median": 355.64515450005274,
+            "p95": 590.9555140005978,
+            "max": 590.9555140005978
+          },
+          "lock_wait_ms": {
+            "samples": 4,
+            "median": 234.3327375001536,
+            "p95": 469.39928399933706,
+            "max": 469.39928399933706
+          },
+          "lock_hold_ms": {
+            "samples": 4,
+            "median": 119.45596500027023,
+            "p95": 119.56979500064335,
+            "max": 119.56979500064335
+          },
+          "qdrant_retrieve_batches": 32,
+          "completed_verification_ms": {
+            "samples": 4,
+            "median": 83.41004149997389,
+            "p95": 83.91372400001273,
+            "max": 83.91372400001273
+          },
+          "expected_batches_per_request": 8,
+          "python_tracemalloc_peak_bytes": 4170652,
+          "requests_per_second": 6.733090908965629
+        }
+      }
+    }
+  ]
+}

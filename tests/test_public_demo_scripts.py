@@ -20,7 +20,8 @@ def test_public_compose_pins_tunnel_and_keeps_datastores_internal():
     assert services["cloudflared"]["depends_on"]["api"]["condition"] == "service_healthy"
     assert services["worker"]["depends_on"]["api"]["condition"] == "service_healthy"
     assert services["cloudflared"]["networks"] == ["egress"]
-    assert config["networks"]["backend"]["internal"] is True
+    assert config["networks"]["backend"] == {"name": "pc-public-v2-backend", "external": True}
+    assert config["networks"]["egress"] == {"name": "pc-public-v2-egress", "external": True}
     for name in ("postgres", "qdrant", "phoenix"):
         assert services[name]["networks"] == ["backend"]
         assert not services[name].get("ports")

@@ -5,7 +5,10 @@ isolation and quota controls have all been integrated and verified.
 """
 
 import hmac
+from project_copilot.services.auth import AuthenticationRejected
 
+from starlette.concurrency import run_in_threadpool
+from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.types import ASGIApp, Receive, Scope, Send
 
@@ -13,6 +16,27 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 class PublicGatewayMiddleware:
     def __init__(self, app: ASGIApp) -> None:
         self.app = app
+
+    @staticmethod
+    def _admit(scope):
+        from project_copilot.api.auth import _token_from_cookie
+        from project_copilot.services.auth import AuthService
+        from project_copilot.services.release_control import ReleaseClosed, dependencies_ready, require_open
+        database = scope["app"].state.database
+        settings = scope["app"].state.settings
+        if database is None:
+            raise ReleaseClosed()
+        path = scope.get("path", "")
+        # Operational/debug/synchronous legacy endpoints are never opened.
+        if path in {"/docs", "/redoc", "/openapi.json", "/agent/ask", "/rag/ask", "/documents/upload"}:
+            raise ReleaseClosed()
+        with database.transaction() as session:
+            require_open(session, settings)
+            if path not in {"/health", "/auth/login", "/auth/register"}:
+                principal, _ = AuthService(session).authenticate(_token_from_cookie(Request(scope)))
+                if path not in {"/auth/me", "/auth/logout"}:
+                    require_open(session, settings, user_id=principal.id)
+        dependencies_ready(settings)
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] not in {"http", "websocket"}:
@@ -34,7 +58,20 @@ class PublicGatewayMiddleware:
             response = JSONResponse({"detail": "请求未获授权"}, status_code=403,
                                     headers={"Cache-Control": "no-store"})
         else:
-            # Do not expose the old single-user APIs during staged development.
+            try:
+                await run_in_threadpool(self._admit, scope)
+            except AuthenticationRejected:
+                response = JSONResponse({"detail": "登录状态已失效"}, status_code=401,
+                                        headers={"Cache-Control": "no-store"})
+                await response(scope, receive, send)
+                return
+            except Exception:
+                # The explicit CLOSED hard gate remains the default. Missing
+                # migration, expired evidence or unavailable dependencies close it.
+                pass
+            else:
+                await self.app(scope, receive, send)
+                return
             response = JSONResponse({"detail": "公开服务尚未完成安全验收"}, status_code=503,
                                     headers={"Cache-Control": "no-store"})
         await response(scope, receive, send)

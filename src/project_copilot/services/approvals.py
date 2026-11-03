@@ -7,6 +7,7 @@ import secrets
 from uuid import UUID
 
 from sqlalchemy import func, select, text
+from sqlalchemy.exc import DBAPIError
 from sqlalchemy.orm import Session
 
 from project_copilot.infrastructure.tracing import trace_span
@@ -27,6 +28,24 @@ class ActionNotFound(LookupError):
 
 class FingerprintMismatch(ValueError):
     pass
+
+
+class PublicOperationLimit(ValueError):
+    """The database rejected a public context or proposal admission."""
+
+
+def _flush_admission(session):
+    try:
+        session.flush()
+    except DBAPIError as exc:
+        # The caller owns rollback. Never expose arbitrary database diagnostics.
+        original = getattr(exc.orig, "diag", None)
+        message = getattr(original, "message_primary", "")
+        if message.startswith("public_operation_limit:"):
+            raise PublicOperationLimit() from None
+        if message == "public_context_expired":
+            raise ContextRejected() from None
+        raise
 
 
 def fingerprint(payload: TicketCreate) -> str:
@@ -53,7 +72,9 @@ class ApprovalService:
                                expires_at=self.now() + timedelta(hours=24),
                                owner_user_id=self.principal.id if self.enforce_ownership else None)
         self.session.add(context)
-        self.session.flush()
+        _flush_admission(self.session)
+        if self.enforce_ownership:
+            self.session.refresh(context)
         return ContextCredentials(context_id=context.id, context_token=token, expires_at=context.expires_at)
 
     def authenticate(self, context_id: UUID, token: str):
@@ -93,17 +114,21 @@ class ApprovalService:
 
     def _preview(self, context, payload):
         now = self.now()
-        if context.expires_at <= now:
+        if context.expires_at <= now or (self.enforce_ownership and context.owner_user_id != self.principal.id):
             raise ContextRejected()
         action = PendingAction(context_id=context.id, title=payload.title, description=payload.description,
                                payload_fingerprint=fingerprint(payload),
                                expires_at=min(now + timedelta(seconds=self.ttl_seconds), context.expires_at),
                                owner_user_id=context.owner_user_id)
         self.session.add(action)
-        self.session.flush()
+        _flush_admission(self.session)
+        if self.enforce_ownership:
+            self.session.refresh(action)
         return self.read(action)
 
     def locked(self, context, action_id):
+        if self.enforce_ownership and context.owner_user_id != self.principal.id:
+            raise ContextRejected()
         self.session.execute(text("SET LOCAL lock_timeout = '5s'"))
         action = self.session.scalar(select(PendingAction).where(PendingAction.id == action_id,
                                       PendingAction.context_id == context.id).with_for_update())

@@ -1,0 +1,90 @@
+{
+  "format": 1,
+  "executor": "Codex automated local verification",
+  "environment": "fresh synthetic Docker Compose derivatives of docker-compose.public-demo.yml",
+  "date": "2026-11-03",
+  "scope": "cold-backup-fresh-volume-restore",
+  "real_services": [
+    "PostgreSQL",
+    "HTTP Qdrant"
+  ],
+  "model_api_calls": 0,
+  "tunnel_started": false,
+  "cloud_resources_created": false,
+  "source_business_rows": {
+    "tickets": 1
+  },
+  "source_documents": 1,
+  "source_chunks": 1,
+  "capture": {
+    "files": {
+      "postgres_data.tar.gz": {
+        "sha256": "b56d88587977026b24c9078e95b8da123f7810bf0dc6ab0917312c471609387d",
+        "bytes": 6836554
+      },
+      "qdrant_data.tar.gz": {
+        "sha256": "0c99ffa003c79563b76ddd9d5f896c027075d844236518ae690603b73348d12f",
+        "bytes": 390249
+      },
+      "manifests.tar.gz": {
+        "sha256": "617202e8bbbeb254104e434afbecef3ddf70006bcdbf995385c2f60a6651275a",
+        "bytes": 1150
+      }
+    },
+    "images": {
+      "postgres": "sha256:858bb5e98eed02eb8cafbcdc007f9a65d1b613972028944a8ec2133ccaf80d27",
+      "qdrant": "sha256:b7b0444c4c351c970b98e90a6f89c2ee4287c65b44e52b4cb503fa5b2aa927ad"
+    },
+    "consistency": {
+      "bm25_probe_ids": [
+        "cdb807cf-d7f6-58c5-898c-565d9774d451"
+      ],
+      "chunk_count": 1,
+      "database_digest": "0ab82ba3c7c638e03a616d776c11a9a6e8766e52cbcff7e99bb9fec96c537187",
+      "dense_probe_ids": [
+        "cdb807cf-d7f6-58c5-898c-565d9774d451"
+      ],
+      "document_count": 1,
+      "index_digest": "d8a6573590026d0920fdcd3ee6b05dd2603b22cb0e0be78f6ca790220cb5af80"
+    }
+  },
+  "restore": {
+    "resource_id": "pc-restore-458f924f962d419d850c4d76742e1848",
+    "consistency": {
+      "bm25_probe_ids": [
+        "cdb807cf-d7f6-58c5-898c-565d9774d451"
+      ],
+      "chunk_count": 1,
+      "database_digest": "0ab82ba3c7c638e03a616d776c11a9a6e8766e52cbcff7e99bb9fec96c537187",
+      "dense_probe_ids": [
+        "cdb807cf-d7f6-58c5-898c-565d9774d451"
+      ],
+      "document_count": 1,
+      "index_digest": "d8a6573590026d0920fdcd3ee6b05dd2603b22cb0e0be78f6ca790220cb5af80"
+    },
+    "verified_at": "2026-11-03T05:58:59.027860+00:00"
+  },
+  "status": "verified",
+  "source_and_restore_containers_stopped": true,
+  "all_test_volumes_retained": true,
+  "diagnostic_hold_retained": true,
+  "limitations": [
+    "Fixed physical names were mapped to fresh random test names in the synthetic harness; no live fixed public-demo resources were accessed.",
+    "One controlled ticket and one synthetic document; not a production-size durability claim.",
+    "A Docker address-pool exhaustion was diagnosed; only two newly-created empty test networks were removed; no volume was deleted.",
+    "No real model, BGE inference, EdgeOne or Cloudflare execution occurred."
+  ],
+  "source_sha256": {
+    "scripts/public_backup.py": "f2e3c0fbd2d1655269fb760620482787766dc197228c85983263aa991bff59d1",
+    "scripts/public_resources.py": "79a05dcb78c5b0c2e79bdd4a0d98a119737b815163981dfff6b097a0dff59031",
+    "docker-compose.public-demo.yml": "bfde6478688409c6b7bebbca6afb4782184f0adeb3f2e1e403f88cd4eb84fbcc"
+  },
+  "post_drill_changes": [
+    "Private env and rendered project rejection tightened; cold archive/restore protocol unchanged; corresponding safety tests rerun."
+  ],
+  "safety_tests": {
+    "passed": 23,
+    "failed": 0,
+    "command": ".venv/bin/python -m pytest -q tests/test_public_resource_safety.py tests/test_public_backup_safety.py tests/test_public_demo_scripts.py"
+  }
+}

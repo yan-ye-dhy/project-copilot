@@ -46,6 +46,9 @@ export async function runPublicJob(kind, payload, { headers = {}, request = apiR
   for (let i = 0; i < maxPolls; i += 1) {
     if (!isCurrent()) throw new ApiError("会话已切换。", { kind: "aborted" });
     const current = await request(`/jobs/${id}`, { timeoutMs: 15000 });
+    if (current.data?.result_expired === true) {
+      throw new ApiError(`任务内容已超过保留期限，请勿重复提交。任务编号：${id}`, { kind: "job" });
+    }
     if (current.data?.status === "succeeded" && current.data.result) return { data: current.data.result, meta: current.meta };
     if (["failed", "unknown"].includes(current.data?.status)) {
       throw new ApiError(`任务未完成（${current.data.status === "unknown" ? "结果待核实" : "处理失败"}），请勿重复提交。任务编号：${id}`, { kind: "job" });

@@ -4,6 +4,8 @@
 name: project-copilot-public-demo
 
 x-app: &app
+  labels:
+    io.project-copilot.scope: public-demo-v2
   image: ${PROJECT_COPILOT_PUBLIC_API_IMAGE:-project-copilot-api:public-demo}
   build:
     context: .
@@ -35,6 +37,12 @@ x-app: &app
     - type: bind
       source: ${PROJECT_COPILOT_MODEL_CACHE_HOST_DIR:-./models/huggingface}
       target: /app/models/huggingface
+      read_only: true
+      bind:
+        create_host_path: false
+    - type: bind
+      source: ${PROJECT_COPILOT_RELEASE_EVIDENCE_HOST_DIR:-./data/release-evidence}
+      target: /app/release
       read_only: true
       bind:
         create_host_path: false
@@ -146,11 +154,22 @@ services:
 
 volumes:
   postgres_data:
+    name: pc-public-v2-postgres
+    external: true
   qdrant_data:
+    name: pc-public-v2-qdrant
+    external: true
   phoenix_data:
+    name: pc-public-v2-phoenix
+    external: true
   manifests:
+    name: pc-public-v2-manifests
+    external: true
 
 networks:
   backend:
-    internal: true
+    name: pc-public-v2-backend
+    external: true
   egress:
+    name: pc-public-v2-egress
+    external: true

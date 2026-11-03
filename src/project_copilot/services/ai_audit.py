@@ -41,6 +41,9 @@ def record_attempt(session: Session, user_id, kind: str, outcome: str, reservati
         DELETE FROM ai_request_attempts WHERE ctid IN (
           SELECT ctid FROM ai_request_attempts
           WHERE created_at < clock_timestamp() - (:days * interval '1 day')
+            AND NOT EXISTS (SELECT 1 FROM ai_request_reservations r
+              WHERE r.id = ai_request_attempts.reservation_id AND r.state IN ('running', 'unknown'))
+            AND NOT EXISTS (SELECT 1 FROM job_recovery_audits a WHERE a.job_id = ai_request_attempts.reservation_id)
           ORDER BY created_at LIMIT 1000
         )
     """), {"days": RETENTION_DAYS})

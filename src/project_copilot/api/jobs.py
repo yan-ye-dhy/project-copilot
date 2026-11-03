@@ -8,6 +8,7 @@ from uuid import UUID
 from fastapi import APIRouter, HTTPException, Request, Response
 from pydantic import BaseModel, ConfigDict, ValidationError
 from sqlalchemy import select
+from sqlalchemy.orm import object_session
 from sqlalchemy.exc import SQLAlchemyError
 from starlette.concurrency import run_in_threadpool
 from starlette.datastructures import UploadFile
@@ -18,6 +19,7 @@ from project_copilot.api.auth import _token_from_cookie
 from project_copilot.api.documents import _validate_file
 from project_copilot.db.jobs import AiJob, AiJobUpload
 from project_copilot.db.models import AiRequestReservation
+from project_copilot.db.operations import JobContentTombstone
 from project_copilot.schemas.agent import AgentQuestion
 from project_copilot.schemas.rag import RagQuestion
 from project_copilot.services.approvals import ApprovalService, ContextRejected
@@ -43,8 +45,11 @@ def _quota(session, settings):
 
 
 def _response(job, reservation):
+    session = object_session(job)
+    result_expired = session is not None and session.get(JobContentTombstone, job.id) is not None
     return {"job_id": str(job.id), "kind": reservation.kind, "status": reservation.state,
-            "result": job.result if reservation.state == "succeeded" else None}
+            "result": job.result if reservation.state == "succeeded" and not result_expired else None,
+            "result_expired": result_expired}
 
 
 def _record_rejected(database, user_id, kind, outcome):

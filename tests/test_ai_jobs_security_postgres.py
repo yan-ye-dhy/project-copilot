@@ -29,6 +29,10 @@ PASSWORD = "test-password-86420"
 ORIGIN = "https://demo.example"
 
 
+def worker_settings():
+    return Settings(_env_file=None, public_demo=True, public_proxy_secret="a" * 32, auth_public_origin=ORIGIN)
+
+
 def seed(db):
     with db.transaction() as session:
         auth = AuthService(session)
@@ -119,7 +123,7 @@ def test_revoked_session_never_calls_model_and_stays_unknown(ticket_database, mo
         auth.logout(login)
     invoked = []
     monkeypatch.setattr(worker, "create_answer_service", lambda *args: invoked.append(True))
-    assert process_one(db, Settings(_env_file=None))
+    assert process_one(db, worker_settings())
     assert invoked == []
     with db.transaction() as session:
         reservation = session.get(AiRequestReservation, job_id)
@@ -184,10 +188,10 @@ def test_controlled_success_is_persisted_and_never_replayed(ticket_database):
             record_provider_attempt()
             return FakeResult()
 
-        assert process_one(db, Settings(_env_file=None), runner=runner)
-        assert not process_one(db, Settings(_env_file=None), runner=runner)
+        assert process_one(db, worker_settings(), runner=runner)
+        assert not process_one(db, worker_settings(), runner=runner)
         assert client.get(f"/jobs/{job_id}", cookies=cookies(tokens["alice"])).json() == {
-            "job_id": str(job_id), "kind": "rag", "status": "succeeded",
+            "job_id": str(job_id), "kind": "rag", "status": "succeeded", "result_expired": False,
             "result": {"status": "answered", "answer": "受控测试结果"},
         }
         assert submit(client, tokens["alice"]).json()["job_id"] == str(job_id)
@@ -216,7 +220,7 @@ def test_timed_out_tool_keeps_user_slot_and_does_not_store_answer(ticket_databas
             def model_dump(self, *, mode):
                 return {"status": self.status}
 
-        assert process_one(db, Settings(_env_file=None), runner=lambda *_: FakeResult())
+        assert process_one(db, worker_settings(), runner=lambda *_: FakeResult())
         status = client.get(f"/jobs/{job_id}", cookies=cookies(tokens["alice"])).json()
         assert status["status"] == "unknown" and status["result"] is None
         assert submit(client, tokens["alice"], key="another-key").status_code == 429

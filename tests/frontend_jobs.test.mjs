@@ -2,6 +2,19 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { runPublicJob } from "../src/project_copilot/web/assets/api.js";
 
+test("expired retained result never submits a replacement request", async () => {
+  let posts = 0;
+  const request = async (path, options = {}) => {
+    if (options.method === "POST") {
+      posts += 1;
+      return { data: { job_id: "00000000-0000-0000-0000-000000000001", status: "succeeded" } };
+    }
+    return { data: { status: "succeeded", result: null, result_expired: true } };
+  };
+  await assert.rejects(runPublicJob("rag", { question: "q" }, { request, createId: () => "fixed-key", delay: async () => {} }), /保留期限/);
+  assert.equal(posts, 1);
+});
+
 const id = "00000000-0000-4000-8000-000000000001";
 const opts = { createId: () => "a-valid-idempotency-key", delay: async () => {}, maxPolls: 3 };
 

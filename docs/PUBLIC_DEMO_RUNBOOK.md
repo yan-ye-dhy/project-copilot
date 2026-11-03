@@ -1,72 +1,120 @@
-# 公开演示运维准备
+# 公开演示运行手册（阶段1.5）
 
-**不要启动公网服务或隧道。** 当前配置仍处于开发与安全验证阶段：公网后端硬闸返回 503，异步上传代码尚未对公网开放，真实 EdgeOne/Tunnel 连通尚未测试。`scripts/start_public_demo.sh` 是会返回非零状态的安全占位入口，不创建容器或资源。
+默认 **CLOSED**，真实资源未切换STAGING/PUBLIC。以下资源初始化、账号、启动、Tunnel及发布命令仅供用户后续明确授权后使用。本轮测试只使用合成数据和新资源，保留原有数据卷、模型缓存及实验记录。
 
-## 隔离边界
+## Windows与WSL准备
 
-`docker-compose.public-demo.yml` 使用独立 Compose 项目名 `project-copilot-public-demo`、独立 PostgreSQL/Qdrant/Phoenix/清单命名卷，不挂载现有业务数据库或 Qdrant 卷。PostgreSQL、Qdrant、Phoenix 均未发布宿主端口，仅在内部 `backend` 网络；Cloudflare 容器只在手动选择的 `tunnel` profile 中，并且只能连接 API 所在的 egress 网络。API 不发布宿主端口；原有 `start.sh` 及本地开发 Compose 不被修改。
+Windows启动Docker Desktop并启用当前Ubuntu的WSL Integration。在WSL进入`~/project-copilot`，核对Git提交、`docker version`、磁盘及固定版本BGE缓存。原`start.sh`只用于原本机环境。安装锁定Python依赖供宿主预检使用。
 
-注意：卷名当前依赖 Compose 项目前缀，`-p` 或 `COMPOSE_PROJECT_NAME` 覆盖可能使其碰撞原项目卷；这是开放前必须整改和演练的阻塞项。不要通过修改项目名或重新建卷猜测解决，也不要对已有卷执行删除或迁移。
+将`public-demo.env.example`复制为`.env.public-demo`，`chmod 600 .env.public-demo`，用编辑器填写[变量表](EDGEONE_DEPLOYMENT.md)。秘密不放命令参数、截图、日志、聊天或Git。随机密码建议base64url，不用`$`插值；预检会拒绝冲突宿主变量。
 
-Cloudflare 镜像使用固定版本和摘要；取得授权后仍需核对官方发布、系统架构和漏洞状态，并在隔离环境验收。Compose 配置的语法检查不代表镜像存在、服务就绪或平台链路可用。
+本人在本机创建`data/release-evidence`并设为700，只放脱敏且已审核的工件；按模板只读挂到`/app/release`。不要把模型缓存、数据库目录或整个家目录用作证据目录。
 
-这一隔离堆栈初始没有已有知识和工单，不能自动继承现有业务数据；本阶段不会创建或迁移这些卷，也不会自动从旧卷复制。模型缓存按 `PROJECT_COPILOT_MODEL_CACHE_HOST_DIR` 只读挂载且不自动下载。示例当前使用 CPU/float32，GPU 需要宿主 NVIDIA 驱动、Docker GPU 支持、匹配的镜像及进一步验证；不能仅因主机 GPU 可用就宣称容器 GPU 可用。
+## 独立资源与CLOSED准备
 
-`public-demo.env.example` 不含密钥；今后如获授权，可复制为仅本机保存的 `.env.public-demo` 并填写随机数据库密码、与之相符的 SQLAlchemy URL、代理共享密钥、实际站点 HTTPS origin 和模型 API Key。URL 中密码必须经过 URL 编码。**不要提交实际 `.env.public-demo`，也不要在聊天或日志中展示。** 调试 Compose 时不要打印展开后的完整配置，因为其中可能包含密钥。
-
-Compose 包含用于领取任务的 `worker`。当前代码中的管理员 TXT/Markdown 上传先提交任务：文件限制 4 MiB、multipart 限制 4 MiB + 64 KiB；默认最多 64 个片段、32,000 字符。公开 PDF 上传目前返回 503，需先完成隔离解析的资源安全验收；本机 PDF 功能不受此公开模式限制。逻辑请求默认每用户每日 5 次、全站每日 30 次、每用户并发 1 次；单任务默认最多 16 次供应商请求发起。请求发起次数、供应商实际收到次数、返回 token usage 和实际账单不等同，真实费用未取得账单前为未知。
-
-worker 现在以 API 健康为启动依赖，因此当前 503 硬闸会阻止常规 Compose 启动 worker；该依赖只在启动时检查，API 随后不健康不会自动停止已经运行的 worker，手工 `--no-deps` 也会绕过依赖，禁止以此规避发布门禁。
-
-未领取的任务附件保存在隔离 PostgreSQL；领取事务提交后删除附件行。worker 运行时默认清理超过 24 小时仍未领取的任务及附件；worker 停止期间不执行清理。强制杀死进程可能留下上传临时文件，数据库日志或备份也可能保留历史字节。发布前需完成保留与受控清理运维方案；不要自行删除现有数据库或卷。后台捕获到不确定结果时标为 `unknown` 并占用并发额度，进程被强制终止时可能停留在 `running`；已领取任务不自动重试，也不要为了恢复直接重复提交。
-
-## 关闭与故障排查
-
-今后若已获授权启动隔离演示，可使用：
-
-```bash
-./scripts/stop_public_demo.sh
-```
-
-脚本只选择带 `com.docker.compose.project=project-copilot-public-demo` 标签的运行中容器，未找到时不会影响其他服务；Docker 不可用时明确报错。它不删除容器或卷，不执行 `down -v`。检查实际状态时，应核对该项目名和容器健康状态；不要把当前本地 `project-copilot` 项目的服务误当作公开演示容器。
-
-以下情况均不能视为上线成功：公开探针返回 503、浏览器无法登录、模型缓存缺失、数据库迁移失败、隧道地址更换但函数变量未更新、平台预览链接过期或代理发生 502/504。检查顺序为：先核对公网硬闸和发布授权状态，再看对应容器状态、后端脱敏日志及平台函数配置；不要输出密码、Cookie、模型密钥或代理密钥。出现未知工单确认结果时先查询实际状态，不自动重复确认。
-
-完整发布流程只有在安全验收及用户明确授权后才能补齐并执行。当前未创建云资源、未启动 Quick Tunnel，也未验证公网访问。
-
-## Windows + WSL 后续部署步骤（只供获授权后的准备）
-
-以下是预期操作顺序，不是当前可用的上线命令：**当前 `start_public_demo.sh` 会拒绝启动，API 健康检查会失败，隧道依赖 API 健康状态，切勿绕过。** 需要先完成 [发布清单](RELEASE_CHECKLIST.md) 中的整改和独立验收，再由用户明确同意第二阶段。
-
-1. Windows 启动 Docker Desktop，启用当前 Ubuntu 的 WSL 集成；在 WSL 进入项目目录，检查 `docker version` 和磁盘空间。不要修改原有 Compose 或其数据卷。
-2. 用户在 WSL 本机将 `public-demo.env.example` 复制为 `.env.public-demo`，设置文件权限 `chmod 600 .env.public-demo`，并用编辑器填写：数据库随机密码、与之匹配的内部 PostgreSQL URL、后端代理密钥、站点 HTTPS origin、DeepSeek/智谱密钥和只读 BGE 缓存路径。不要把值发到聊天、写入终端历史或提交 Git。URL 的密码应进行 URL 编码。
-3. 用户核对独立 Compose 项目名、命名卷、模型目录、备份及恢复策略；确认不会连接原数据库。预期通过 `docker compose --env-file .env.public-demo -f docker-compose.public-demo.yml` 管理本堆栈；`PROJECT_COPILOT_PUBLIC_ENV_FILE` 未覆盖时应用读取同一文件。
-4. 在未来硬闸安全开放方案完成并获得授权后，按届时更新并验收过的脚本启动数据库、Qdrant、Phoenix、迁移、API 和 worker；确认数据库迁移、模型加载和依赖健康。仅在隔离数据库上用交互式 `python -m scripts.bootstrap_admin` 初始化管理员，不通过命令行参数、重定向或日志传递密码。
-5. 未来明确授权隧道后，才启用 Compose 的 `tunnel` profile 并在本机私下读取临时 HTTPS origin；将 origin 和共享密钥填入 EdgeOne **服务端**环境变量。隧道重启换地址时更新函数配置并核实部署生效；不要在浏览器或日志中公开隧道地址。
-6. 用户在 EdgeOne 导入仓库，按 [控制台配置清单](EDGEONE_DEPLOYMENT.md) 填写构建和函数设置，核对是否自动发布。完成独立用户、真实问答、工单确认、Cookie、限额、超时、断线和关闭后的离线提示验收，再公开分享网址。
-
-在发布门禁整改、用户授权及隔离检查全部完成后，预计使用以下命令；现阶段执行启动会因硬闸导致 worker 和隧道依赖不满足，绝不使用 `--no-deps` 强行绕过：
+用户批准创建新本机资源后：
 
 ```bash
 cd ~/project-copilot
-# 确认没有通过 -p 或 COMPOSE_PROJECT_NAME 把项目名覆盖为已有项目。
-docker compose --env-file .env.public-demo -f docker-compose.public-demo.yml \
-  up -d --build postgres qdrant phoenix migrate api worker
-docker compose --env-file .env.public-demo -f docker-compose.public-demo.yml ps
-# 在 API 与数据库已准备好后，以交互方式创建初始管理员。
+.venv/bin/python -m scripts.public_resources initialize
+.venv/bin/python -m scripts.public_resources check
+./scripts/start_public_demo.sh --prepare
+```
+
+专用卷为pc-public-v2-postgres、pc-public-v2-qdrant、pc-public-v2-phoenix、pc-public-v2-manifests，专用网络也采用固定外部名字和归属标签。项目名覆盖不能改变这些物理名；发现已存在但归属不明的资源时拒绝接管，不迁移、覆盖或删除。禁止绕过预检使用旧数据库URL。
+
+`--prepare`仅启动存储、迁移和API；新库默认CLOSED，此时API unhealthy/503是预期，不启动Worker/Tunnel。它不主动关闭已有授权状态，已有演示堆栈须先inspect并由用户显式CLOSED，再进入准备/维护流程。不要降低健康检查或用`--no-deps`绕过。初始管理员及一次性邀请由本人交互输入：
+
+```bash
 docker compose --env-file .env.public-demo -f docker-compose.public-demo.yml \
   exec api python -m scripts.bootstrap_admin
-# 最后，只有明确授权启用公网隧道后才执行。
+# 现有管理员创建一次性邀请：同一命令后加 --create-invite
+```
+
+## 获授权的阶段二STAGING
+
+用户在EdgeOne连接仓库前确认自动部署行为，设置函数、服务端变量、HTTPS和[入口规则](EDGEONE_SECURITY_RULES.md)。准备本地验收工件及实际控制台防护/受限身份记录。普通环境变量不会开放。
+
+```bash
+# 证据文件须以只读挂载在容器中可见；路径仅为占位。
+docker compose --env-file .env.public-demo -f docker-compose.public-demo.yml \
+  exec api python -m scripts.release_control inspect
+docker compose --env-file .env.public-demo -f docker-compose.public-demo.yml \
+  exec api python -m scripts.release_control STAGING --evidence /app/release/staging.json
+docker compose --env-file .env.public-demo -f docker-compose.public-demo.yml \
+  exec api python -m scripts.release_control worker-enable
+./scripts/start_public_demo.sh --serve
+# 仅用户另外明确授权启动隧道后才执行；本轮没有执行。
 docker compose --env-file .env.public-demo -f docker-compose.public-demo.yml \
   --profile tunnel up -d cloudflared
 ```
 
-获取地址时可在本人终端运行 `docker compose --env-file .env.public-demo -f docker-compose.public-demo.yml logs cloudflared`，仅将其中的 `https://…trycloudflare.com` 私下填入 EdgeOne 服务端变量；不要将完整日志、域名、密钥或 Cookie 粘贴到聊天。实际上线操作必须以届时完成整改并重新验收的脚本为准。
+状态变更要求管理员密码、AUTHORIZE <操作>短语和无秘密的原因；STAGING限指定身份并有短有效期。缺工件、过期、代码/资源不匹配、依赖不健康或模型缓存缺失都失败关闭。Worker在每次领取和外呼前复查，Compose启动依赖只是辅助。`--serve`不启动隧道。
 
-### 故障处理边界
+实际Quick Tunnel域名只在本人终端私下读取并填EdgeOne服务端变量，不发浏览器或聊天。域名变化后更新并重验。CLOSED时隧道依赖API健康不能启动；先授权受限STAGING后才按批准流程进行网络测试，不能伪造公网成功工件。
 
-- **API 不健康 / 503**：当前是预期的发布硬闸；检查清单和后端脱敏日志，不要绕过或重启隧道当作修复。
-- **迁移或数据库连接失败**：检查隔离项目名、数据库 URL 与密码一致性、容器健康及迁移状态；不要删除卷或指向原数据库。
-- **静态页面正常但 `/api` 失败**：确认函数已在实际平台识别、服务端变量已更新、域名及 Origin 匹配，检查隧道和上游状态；不要输出秘密值。
-- **`running` / `unknown`**：先停止新增请求，确认 worker 已终止并核对模型供应商和工单实际状态；目前没有经过验收的一键恢复，禁止直接释放配额或重试。
-- **停止公开入口**：在获授权的未来部署中运行 `./scripts/stop_public_demo.sh`，先停隧道再停 API、worker 和存储；脚本只针对独立项目标签，不删除卷。保留备份及恢复需单独按用户批准的策略执行。
+## 业务策略与受控保留
+
+| 对象 | 实际策略 |
+| --- | --- |
+| AI | 用户UTC日5、全站30、并发1；供应商发起默认16，失败不自动重试 |
+| Context | 24h，用户滚动1h最多5、活跃3；PostgreSQL触发器和锁执行 |
+| 提案 | 最长15min且不超过Context；用户UTC日10、未过期pending3 |
+| 未领取附件 | 24h，Worker有界检查；停机不自动清理，维护工具可处理 |
+| 终态任务 | 超过7d受控清输入/结果，保留任务及幂等stub；result_expired不触发重新提交 |
+| 请求审计 | 超过7d按正常活动或维护清理；不确定/人工恢复调查证据保留 |
+| Context清理 | 过期7d且无任务/提案外键引用才删，有引用继续保留 |
+| 业务记录 | 提案/确认至少30d，本轮保留全部；工单、知识和恢复审计不自动删 |
+| 备份 | 最多最近7份已验证非调查保留集，默认总容量2GiB；未验证/失败证据不自动删 |
+
+清理是明确执行的维护窗口，不承诺无人运行时按时删除。WAL、日志、备份和强停遗留临时文件另受运维策略约束，删除数据库一行不抹除全部历史字节。不要截断WAL或删除持久卷。
+
+## 异常任务调查与恢复
+
+```bash
+.venv/bin/python -m scripts.public_maintenance inspect-job --job-id <任务UUID>
+# 用户主动授权CLOSED并确认无执行后：
+.venv/bin/python -m scripts.public_maintenance cleanup --apply
+```
+
+只读调查输出编号、归属、状态、尝试数、usage及业务绑定，不输出问题/模型原文/凭据。同Context提案是核对线索，不代表精确任务归因。真实计费以供应商账单为准。
+
+running/unknown不能自动重跑或直接释放。先CLOSED，停止入口/API/Worker/迁移；核对供应商最终结果与数据库提案/工单。准备权限600的审查工件和回执，绑定任务、最新inspection哈希、已核实供应商结果和terminal_no_retry决定，再执行：
+
+```bash
+.venv/bin/python -m scripts.public_maintenance resolve-job --job-id <任务UUID> \
+  --evidence <私有回执JSON> --review-artifact <实际审查工件>
+```
+
+宿主核验固定卷全部消费者，API/Worker/migrate须真正退出，且能证明Worker在任务开始后终止；短时签名绑定任务、资源和审查工件。内部核验管理员、CLOSED、禁用Worker、执行排他锁、业务绑定与回执，原子写不可变审计。恢复仅终结本地交付、禁止重放，不推断远端成功或账单；保留原尝试、usage及调查证据。无法证明时继续占槽。
+
+## 一致性冷备与新资源恢复
+
+```bash
+.venv/bin/python -m scripts.public_backup backup --path data/public-backups/<新备份名>
+.venv/bin/python -m scripts.public_backup restore --path data/public-backups/<备份名>
+.venv/bin/python -m scripts.public_backup verify-restored \
+  --path data/public-backups/<备份名> --restore-plan <上步输出私有plan路径>
+.venv/bin/python -m scripts.public_backup prune --path data/public-backups
+```
+
+先由用户授权CLOSED/禁用Worker。工具停止入口和写进程，检查租约、实际业务表、Qdrant原文/向量、Manifest与BM25，再冷停存储归档；不分别复制运行中目录。备份目录700/文件600，包含敏感数据，不提交或分享。备份不含权重和Phoenix历史。
+
+恢复只创建全新pc-restore-UUID卷与无宿主端口堆栈，核验归档与计划绑定，使用一致镜像身份比对全部业务和索引摘要后才标verified。没有覆盖正式卷的恢复命令；失败保留诊断和新卷，源服务不自动重启。容量不足拒绝新备份；prune只删合规的已验证旧集，不删除调查保留/未验证资料。
+
+## 紧急关闭与重新准入
+
+```bash
+# 本人交互授权；若数据库不可用，直接先停止入口和进程。
+docker compose --env-file .env.public-demo -f docker-compose.public-demo.yml \
+  exec api python -m scripts.release_control CLOSED
+./scripts/stop_public_demo.sh
+```
+
+停止顺序为Tunnel、API、Worker、存储，不删除卷。CLOSED阻新工作，已发出的上游请求可能收尾；取消HTTP不证明远端取消。恢复前核对健康、任务调查、备份、一致性与证据期限，再由用户重新授权；没有自动回切PUBLIC。
+
+## 受控公网端到端验收
+
+用户按已授权环境验证：中文及移动页面；Cookie/多Set-Cookie/Session/退出/过期/CSRF；代理403与非白名单拒绝、跨用户工单及确认拒绝；管理员TXT/MD上传/原文查询/删除，PDF503；真实RAG与Agent联合查询、提案预览和独立确认幂等；AI与Context/提案限额；GET轮询不误限；平台请求限制、115s代理、断线与后端离线；Phoenix仅内网；换隧道域名后重配；紧急关闭后停止新领取/外呼。
+
+实际公网、控制台和必要小规模真实模型验收分别留证，无自动重试。任一关键失败回CLOSED；PUBLIC必须先STAGING验收并再次用户授权。当前状态见[发布清单](RELEASE_CHECKLIST.md)。

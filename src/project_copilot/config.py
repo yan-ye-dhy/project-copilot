@@ -32,6 +32,8 @@ class Settings(BaseSettings):
     # Public mode is opt-in and remains locked until the complete security gate
     # (identity, ownership, quotas and integration tests) is implemented.
     public_demo: bool = False
+    # Non-secret resource identity; persistent release authorization must match.
+    public_resource_id: str = Field(default="public-demo-v2", pattern=r"^[a-z0-9][a-z0-9-]{2,79}$")
     public_proxy_secret: SecretStr | None = None
     auth_public_origin: HttpUrl | None = None
     auth_open_registration: bool = False

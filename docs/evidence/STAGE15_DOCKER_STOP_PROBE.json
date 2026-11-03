@@ -1,0 +1,12 @@
+{
+  "mode": "real-docker-synthetic-worker-stop-collector",
+  "running_worker_rejected": true,
+  "stopped_worker_accepted": true,
+  "worker_exit_code": 0,
+  "network": "none",
+  "model_calls": 0,
+  "new_test_volume_retained": true,
+  "limitations": [
+    "Collector only; no real public job was retired and no provider outcome was inferred."
+  ]
+}

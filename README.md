@@ -8,6 +8,8 @@
 
 公网演示改造正在进行：新界面参考[桌面预览](docs/evidence/PUBLIC_WEB_DESKTOP.png)和[移动端预览](docs/evidence/PUBLIC_WEB_MOBILE.png)。公开入口目前保持关闭；EdgeOne 和隧道尚未完成真实部署及安全验收。准备工作和限制见[部署准备](docs/EDGEONE_DEPLOYMENT.md)、[安全模型](docs/SECURITY_MODEL.md)与[运行手册](docs/PUBLIC_DEMO_RUNBOOK.md)。
 
+阶段1.5已增加持久发布状态、Worker门禁、数据库创建限额、异常任务调查及新资源冷备恢复；当前默认CLOSED。测试边界和下一步受控STAGING条件见[阶段报告](docs/STAGE15_REPORT.md)与[发布清单](docs/RELEASE_CHECKLIST.md)。
+
 ## 在浏览器中使用
 
 | 页面 | 操作 |

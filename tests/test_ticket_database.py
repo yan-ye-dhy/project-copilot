@@ -22,6 +22,7 @@ def test_empty_postgres_migrates_to_model_and_upgrade_is_repeatable(postgres_dat
         "user_accounts", "login_sessions", "registration_invites",
         "ai_request_reservations", "auth_rate_buckets", "ai_jobs", "ai_job_uploads", "ai_request_attempts",
         "ai_audit_rate_buckets",
+        "release_control", "release_events", "job_recovery_audits", "maintenance_audits", "job_content_tombstones",
     }
     check_model_drift(db)
     columns = {c["name"]: c for c in inspect(db.engine).get_columns("tickets")}

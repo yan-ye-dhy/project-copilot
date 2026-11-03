@@ -12,7 +12,7 @@ from project_copilot.api.auth import _token_from_cookie
 from project_copilot.services.auth import AuthenticationRejected
 from project_copilot.schemas.approvals import ActionRead, ContextCredentials, Decision
 from project_copilot.schemas.tickets import TicketCreate
-from project_copilot.services.approvals import ActionNotFound, ApprovalService, ContextRejected, FingerprintMismatch
+from project_copilot.services.approvals import ActionNotFound, ApprovalService, ContextRejected, FingerprintMismatch, PublicOperationLimit
 
 router = APIRouter(tags=['actions'])
 logger = logging.getLogger(__name__)
@@ -49,6 +49,8 @@ def service(request: Request) -> Iterator[ApprovalService]:
         raise HTTPException(404, '提案不存在') from None
     except FingerprintMismatch:
         raise HTTPException(409, '提案指纹不匹配') from None
+    except PublicOperationLimit:
+        raise HTTPException(429, '上下文或提案已达限额，请稍后再试') from None
     except SQLAlchemyError as exc:
         logger.warning('approval database error run_id=%s type=%s', request.state.run_id, type(exc).__name__)
         raise HTTPException(503, '数据库操作失败，请根据run_id排查') from None

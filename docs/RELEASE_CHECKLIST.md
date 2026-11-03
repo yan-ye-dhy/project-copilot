@@ -1,42 +1,40 @@
-# 公网发布验收清单（阶段一）
+# 阶段1.5发布验收清单
 
-**当前结论：未达到开放条件。** `PublicGatewayMiddleware` 对携带正确代理密钥的请求仍返回 503；`start_public_demo.sh` 拒绝启动；Compose 的 API 健康检查因此不会健康，依赖其健康状态的隧道不会启动。不得通过放宽健康检查、修改代码或直接运行隧道绕过这些保护。公开 PDF 入口继续返回 503。
+基准`717f66a588f4d5eb09d71d1e1203f9fd695e1dd7`。本轮清除可本地验证的阻塞项，真实默认CLOSED；未登录平台、启动Tunnel、调用付费模型、切换真实STAGING/PUBLIC或删除现有卷。公开PDF503保留。
 
-## 已完成和已验证
+## 本地整改
 
-- [x] 公开模式账号密码、Cookie、Session、Origin/CSRF、普通用户权限和资源归属已实现，并具有自动测试；具体证据参见 [阶段报告](PUBLIC_WEB_IMPLEMENTATION_REPORT.md)。
-- [x] 工单提案确认使用数据库事务、归属校验和行锁；失败和重复提交有自动测试。配额、任务幂等、账户限流使用 PostgreSQL；供应商调用尝试、返回 usage 和费用分别统计，费用未知不猜测。
-- [x] 文件大小与公开 TXT/Markdown 上传限制、删除日志和 Qdrant/清单/BM25 流程有自动测试；公开 PDF 未启用。
-- [x] Node Cloud Function 的 catch-all 路由和 `cloudFunctions.nodejs.maxDuration` 配置与 [Makers 文档](https://pages.edgeone.ai/zh/document/node-functions)、[配置文档](https://pages.edgeone.ai/zh/document/edgeone-json) 的结构一致。本地代理测试不能证明云端运行时行为。
-- [x] Cloud Functions 文档记载请求/响应 body 6 MB、最大 120 秒、默认 30 秒；本项目代理限制低于这些上限，且将长任务转为轮询。上线前必须在实际项目再次验证，见 [官方限制](https://pages.edgeone.ai/zh/document/cloud-functions)。
-- [x] Tunnel 镜像由 `latest` 改为 [Cloudflare 2026.10.3 正式版本](https://github.com/cloudflare/cloudflared/releases/tag/2026.10.3)及固定的多架构摘要；未启动或验证该镜像的真实联网行为。
-- [x] 常规 Compose 启动时 worker 和 cloudflared 均依赖 API 健康；当前 503 硬闸会阻止它们启动。依赖并非持续运行时的安全开关，见下方 P1。
+| 领域 | 实现与边界 | 证据 |
+| --- | --- | --- |
+| 资源隔离 | 固定独立卷/网络、external与归属标签、实际挂载和变量预检，不接管不明资源 | 安全单测及随机新Compose资源演练 |
+| 备份恢复 | 停写、CLOSED/租约、存储一致性检查后冷备，新卷恢复核验业务/向量/原文/清单快照 | 真实PG与HTTP Qdrant、新恢复堆栈 |
+| 状态控制 | 持久CLOSED/STAGING/PUBLIC、交互管理员授权、代码/资源/站点/期限/工件绑定、STAGING白名单 | 合成测试库、真实ASGI网关；真实状态未切 |
+| Worker | 独立开关，每次领取/外呼复查准入与健康，执行共享租约 | 关闭不再新领取/外呼，原请求可能收尾 |
+| Context/提案 | PG触发器及锁执行24h/小时5/活跃3；提案15min/UTC日10/pending3 | 真实PG并发及API429 |
+| 保留清理 | 终态7d清正文但保幂等stub；不确定证据保留；无引用过期Context安全清理 | PG维护及前端过期结果不重提 |
+| 异常恢复 | 只读调查、机器Docker停机证明、实际审查工件、最新inspection与不可变审计 | PG、租约、签名/篡改/时效测试；不重跑 |
+| 性能 | 保留每次完整回读和Hybrid+Rerank | HTTP Qdrant 10/100/500片段、顺序与4并发；模型替身，见[性能记录](STAGE15_PERFORMANCE.md) |
+| 入口保护 | 持久后端配额/登录限流，设计外层规则排除轮询 | 本地后端验证；真实控制台待用户完成 |
 
-## P0：开放前必须解决
+## 阶段二必须实测
 
-- [ ] 制定并评审显式发布控制及失败关闭机制；独立验证后再修改硬闸。现有硬闸不可用配置开关直接开启。
-- [ ] 在用户明确授权后，以独立环境验证真实 EdgeOne → Quick Tunnel → 后端的端到端链路，包括 Cookie、多 Set-Cookie、CSRF、代理共享密钥、请求大小、断线、超时、错误脱敏及真实 Agent/RAG/工单路径；目前均未在真实平台验收。
-- [ ] 在公开入口实施可验证的外层防滥用和频率控制。应用内限额不能阻止全部网络请求及数据库锁压力；不能信任浏览器自带的转发 IP。
-- [ ] 解决 Compose 项目名覆盖可能造成的卷名碰撞：当前 `postgres_data` / `qdrant_data` 等卷名依赖 Compose 项目前缀，`-p` 或 `COMPOSE_PROJECT_NAME` 若被覆盖成原项目名可能访问旧卷。上线前需先只读核对实际卷、制定迁移方案并验证隔离；不自行更换、删除或覆盖卷。
-- [ ] 针对独立 PostgreSQL、Qdrant 和完成清单完成一致性备份、隔离恢复演练和回滚预案；不得覆盖任何原有数据或卷。
+- [ ] 用户明确授权创建受限EdgeOne站点与Quick Tunnel，亲自连接GitHub、填服务端变量/HTTPS，核对免费额度、域名及地区可用性。
+- [ ] 按[入口规则方案](EDGEONE_SECURITY_RULES.md)核实1条精准频控/4条自定义规则的真实字段、范围和动作，验证写请求拒绝且GET轮询不误伤。
+- [ ] 真实浏览器→EdgeOne→Tunnel的Cookie、多Set-Cookie、CSRF、白名单、直接Tunnel拒绝、脱敏、multipart、限制、超时及断线。
+- [ ] 固定BGE缓存及CPU/GPU运行条件、真实模型冷启动与端到端耗时、并发、磁盘和超过500片段的容量，替身数据不代表模型SLO。
+- [ ] 小规模真实模型/真实工单的RAG、Agent及受控确认流程和usage；必要调用另按用户授权，关闭自动重试。
+- [ ] CLOSED后新工作停止、在途核查、离线提示、安全停止、隧道换址及恢复。PUBLIC需独立复核和再次主动授权。
 
-## P1：开放前需要解决或明确接受
+这些项目需要真实公网/运行环境，属于STAGING验收边界。未通过时保持CLOSED，不以无限追加模拟替代，也不进入PUBLIC。
 
-- [ ] 明确已完成任务的问题/结果、未领取附件、审计、数据库 WAL、备份及临时文件的保存期限、访问权限、清理和恢复职责；当前并非所有数据都有保留期。
-- [ ] 为已认证用户创建 Agent context 和预览提案确定用户/全站频率、活跃数量及历史保留策略，并补充持久化防滥用和并发测试；当前这两条写路径不受 AI 任务配额约束，不应擅自清理历史提案以免破坏幂等和审计。
-- [ ] 明确 worker 运维门禁：Compose 的 `service_healthy` 只限制启动，API 后续变成不健康不会自动停止已有 worker，`run --no-deps` 等手工操作也可能绕过；关闭时应先停止入口，再按运行手册停止 worker 并检查状态。
-- [ ] 确定 `running` / `unknown` 任务的人工调查与受控恢复流程：先确认 worker 和远端调用均已结束、核对业务写入，再决定处理；不能自动重试或直接清除占槽状态。
-- [ ] 跨卷故障/恢复后验证 Qdrant points、成功清单和 BM25 快照的一致性，以及中断期间删除/入库的可恢复性；当前查询会在索引锁内回读完成片段并对比快照，缺失、原文篡改或存储故障时失败关闭，但每次非空查询增加分批读取，需验证大语料延迟，且不能单凭该检查证明向量数值未变或防止绕锁外部写入。
-- [ ] 公开 PDF 需要真正的进程权限及网络隔离、资源上限与恶意样本测试；未通过前继续返回 503，本机原 PDF 不受影响。
-- [ ] 完成镜像供应链复核、固定 digest 与平台兼容验证；Quick Tunnel 为临时测试用途，没有 SLA、不支持 SSE、重启换地址，见 [Cloudflare 官方限制](https://developers.cloudflare.com/tunnel/get-started/quick-tunnels/)。
-- [ ] 审核上线时账号注册策略、邀请码分发、管理员初始化和密钥轮换；确认免费额度、预览域名有效期及实际地区可达性。
+## 保守保留与限制
 
-## 执行者与后续
+PDF真正权限/网络沙箱尚未开启，继续503。提案及确认至少30天，本轮保留全部；工单、知识、任务幂等和恢复审计不自动删除。Context有外键时继续保留。运行/不确定任务不得按年龄释放。WAL、日志、备份历史字节独立受控，不承诺删一行即可抹除全部副本。
 
-本阶段为本地审计与自动化验证，未登录平台、创建云资源、启动隧道或上线。随机独立 public-demo Compose 项目使用合成凭据和新卷验证真实 PostgreSQL：空库迁移、模型与表结构一致、CSRF、两用户及管理员归属、4 路并发确认只产生一张工单、10 路并发预留的配额约束均通过；数据库重启后合成工单和预留记录仍存在。路由通过 FastAPI TestClient 验证，有意未经过仍关闭的公网硬闸；没有调用模型。一次性合成断言脚本位于本机 `/tmp`，不随仓库交付；测试容器停止，新建卷保留。这不是用户手动验收，也不是实际公网测试。
+工件摘要不自动证明证据语义，管理员必须审核。Docker宿主权限是受信运维权限，应用无法阻止root故意绕过脚本；正常操作必须走预检及授权工具。真实状态变更不能靠普通环境变量完成。
 
-在 Qdrant 内存测试替身上注入缺失、篡改和读取失败，验证完成清单与 BM25 快照不一致时检索失败关闭；原有 RAG HTTP 请求与最终检索专项回归 17 项通过。此项不是 HTTP Qdrant 故障恢复演练。Cloud Function 本地构建与回环代理测试 52 项通过，不代表 EdgeOne 云端测试。
+## 验收记录与交接
 
-本阶段代码稳定后的 `OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 .venv/bin/python -m pytest -q`：1403 项通过、126 项跳过、0 项失败；未启用真实 PostgreSQL pytest 集成，因此上面单独记录的隔离 Compose 数据库验证不可视为这些跳过项的全部替代。公网网关与部署脚本专项 34 项通过。`docker compose -f docker-compose.public-demo.yml config --no-interpolate --no-env-resolution -q` 仅证明配置可解析，不代表服务启动或健康。
+本轮PG/HTTP Qdrant来自public-demo Compose派生的新随机资源，合成数据；回环测试端口不属于正式配置。备份源和恢复为另组无宿主端口堆栈。合成证据仅在专用测试库使用，不代表真实发布授权；结束后停测试容器，保留新卷。
 
-具体控制台字段、变量位置、故障排查和仅在后续获授权才执行的候选命令见 [EdgeOne 部署准备](EDGEONE_DEPLOYMENT.md) 与 [运行手册](PUBLIC_DEMO_RUNBOOK.md)。完成上述清单并由用户明确授权前，不进入实际公网部署。
+具体测试命令、数量、失败修复和限制见[阶段报告](STAGE15_REPORT.md)。配置、变量、授权、关闭与恢复见[EdgeOne部署](EDGEONE_DEPLOYMENT.md)与[运行手册](PUBLIC_DEMO_RUNBOOK.md)。

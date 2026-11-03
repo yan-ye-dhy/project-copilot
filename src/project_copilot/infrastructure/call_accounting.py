@@ -5,15 +5,18 @@ from contextvars import ContextVar
 from project_copilot.services.quotas import QuotaService
 
 _current = ContextVar("project_copilot_provider_accounting", default=None)
+_settings = ContextVar("project_copilot_provider_release_settings", default=None)
 
 
 @contextmanager
-def account_job(database, user_id, reservation_id, *, max_attempts=16, prelocked_admin=False):
+def account_job(database, user_id, reservation_id, *, max_attempts=16, prelocked_admin=False, settings=None):
     token = _current.set((database, user_id, reservation_id, max_attempts, prelocked_admin))
+    setting_token = _settings.set(settings if settings is not None else _settings.get())
     try:
         yield
     finally:
         _current.reset(token)
+        _settings.reset(setting_token)
 
 
 def record_provider_attempt():
@@ -24,6 +27,13 @@ def record_provider_attempt():
     # Commit before invoking a provider. This is an initiation count; a crash
     # immediately afterward can overcount requests that reached the provider.
     with database.transaction() as session:
+        from project_copilot.services.release_control import dependencies_ready, require_open
+        # Public mode is checked again at each provider boundary; a live worker
+        # cannot keep initiating requests after an operator closes admission.
+        settings = _settings.get()
+        if settings is not None:
+            require_open(session, settings, user_id=user_id, worker=True)
+            dependencies_ready(settings)
         from project_copilot.db.jobs import AiJob
         from project_copilot.db.models import AiRequestReservation
         from project_copilot.services.auth import AuthService, AuthenticationRejected
