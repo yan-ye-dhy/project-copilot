@@ -230,7 +230,7 @@ test('multipart binary body is forwarded intact under limit without losing its b
   const response = await handler(context('/api/jobs/upload', { method: 'POST', body: bytes, headers: {
     'content-type': 'multipart/form-data; boundary=example-boundary',
   } }));
-  assert.deepEqual(call.body, bytes);
+  assert.deepEqual(new Uint8Array(call.body.buffer, call.body.byteOffset, call.body.byteLength), bytes);
   assert.equal(call.headers.get('content-type'), 'multipart/form-data; boundary=example-boundary');
   await response.body.cancel();
 });

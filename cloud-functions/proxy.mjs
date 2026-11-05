@@ -3,6 +3,7 @@
  * Public use also requires the backend's separate proxy-secret, session,
  * ownership, CSRF and quota enforcement; this module is not that enforcement.
  */
+import { Buffer } from 'node:buffer';
 
 const DEFAULT_TIMEOUT_MS = 115_000;
 const DEFAULT_REQUEST_LIMIT = 4 * 1024 * 1024 + 64 * 1024;
@@ -265,27 +266,63 @@ function stopReader(reader) {
 
 async function readRequestBody(request, limit, signal) {
   boundedLength(request.headers, limit, 400, 413);
-  if (!request.body) return undefined;
-  const reader = request.body.getReader();
+  if (signal.aborted) throw new Error('aborted');
+  const source = request.body;
+  if (source === null || source === undefined) return undefined;
   const chunks = [];
   let total = 0;
+  const append = (value) => {
+    let bytes;
+    if (typeof value === 'string') {
+      // Check UTF-8 size before allocating; never parse/re-serialize JSON.
+      if (Buffer.byteLength(value, 'utf8') > limit - total) throw new ProxyFailure(413);
+      bytes = Buffer.from(value, 'utf8');
+    } else if (ArrayBuffer.isView(value)) {
+      bytes = Buffer.from(value.buffer, value.byteOffset, value.byteLength);
+    } else if (value instanceof ArrayBuffer) {
+      bytes = Buffer.from(value);
+    } else {
+      throw new ProxyFailure(400); // A parsed object cannot recover original bytes.
+    }
+    total += bytes.byteLength;
+    if (total > limit) throw new ProxyFailure(413);
+    chunks.push(bytes);
+  };
+  // Web Request uses getReader(); Node-backed Request adapters may expose a
+  // Readable/async iterator instead. Choose once: never reread a failed body.
+  let reader;
+  if (typeof source.getReader === 'function') {
+    reader = source.getReader();
+  } else if (typeof source[Symbol.asyncIterator] === 'function') {
+    const iterator = source[Symbol.asyncIterator]();
+    reader = { read: () => iterator.next(), cancel() {
+      try { source.destroy?.(); } finally { return iterator.return?.(); }
+    } };
+  } else {
+    append(source);
+    return Buffer.concat(chunks, total);
+  }
   try {
     while (true) {
       const part = await withAbort(reader.read(), signal);
       if (part.done) break;
-      if (!(part.value instanceof Uint8Array)) throw new ProxyFailure(400);
-      total += part.value.byteLength;
-      if (total > limit) throw new ProxyFailure(413);
-      chunks.push(part.value);
+      append(part.value);
     }
-    const body = new Uint8Array(total);
-    let offset = 0;
-    for (const chunk of chunks) { body.set(chunk, offset); offset += chunk.byteLength; }
-    return body;
+    // Buffer is a byte-preserving BodyInit in Node fetch implementations.
+    return Buffer.concat(chunks, total);
   } catch (error) {
     stopReader(reader);
     throw error;
   }
+}
+
+function reportProxyStage(stage, error) {
+  // Temporary runtime diagnosis: no messages, stacks, URLs, headers or bodies.
+  let name;
+  try { name = error?.name; } catch { /* Unknown thrown values stay generic. */ }
+  const errorType = error instanceof ProxyFailure ? 'ProxyFailure' :
+    ['Error', 'TypeError', 'RangeError', 'AbortError'].includes(name) ? name : 'Error';
+  console.warn(JSON.stringify({ event: 'pc_proxy_body_v1', stage, error_type: errorType }));
 }
 
 function forwardBody(body, signal, limit, cleanup, abort) {
@@ -344,13 +381,16 @@ export function createProxyHandler({
     else clientSignal?.addEventListener('abort', onAbort, { once: true });
     const cleanup = () => { clearTimeout(timer); clientSignal?.removeEventListener('abort', onAbort); };
     let upstream;
+    let stage = 'read_body';
     try {
       const body = await readRequestBody(request, requestLimit, controller.signal);
       if (controller.signal.aborted) throw new Error('aborted');
+      stage = 'fetch_upstream';
       upstream = await withAbort(fetchImpl(`${config.origin}${route.target}${route.search}`, {
         method: request.method, headers: forwardedRequestHeaders(request, config.secret),
         body, redirect: 'manual', signal: controller.signal,
       }), controller.signal);
+      stage = 'response';
       if (upstream.status < 200 || (upstream.status >= 300 && upstream.status < 400)) throw new ProxyFailure(502);
       const headers = responseHeaders(upstream);
       // fetch may transparently decompress while retaining the original headers.
@@ -372,6 +412,7 @@ export function createProxyHandler({
       return new Response(forwardBody(upstream.body, controller.signal, maxResponseBytes, cleanup,
         () => controller.abort()), { status: upstream.status, headers });
     } catch (error) {
+      if (!timedOut && !clientSignal?.aborted && (!(error instanceof ProxyFailure) || error.status === 502)) reportProxyStage(stage, error);
       if (upstream?.body && !upstream.body.locked) stopReader(upstream.body.getReader());
       const status = timedOut ? 504 : clientSignal?.aborted ? 499 : error instanceof ProxyFailure ? error.status : 502;
       controller.abort(); cleanup();
