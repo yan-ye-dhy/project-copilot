@@ -2,7 +2,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, LargeBinary, String, Uuid, text
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, Integer, LargeBinary, String, Uuid, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -13,6 +13,7 @@ class AiJob(Base):
     __tablename__ = "ai_jobs"
 
     id: Mapped[UUID] = mapped_column(Uuid, ForeignKey("ai_request_reservations.id"), primary_key=True)
+    event_sequence: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
     login_session_id: Mapped[UUID] = mapped_column(Uuid, ForeignKey("login_sessions.id"), nullable=False)
     context_id: Mapped[UUID | None] = mapped_column(Uuid, ForeignKey("agent_contexts.id"), nullable=True)
     payload: Mapped[dict] = mapped_column(JSONB, nullable=False)
@@ -74,3 +75,20 @@ class AiAuditRateBucket(Base):
     bucket_key: Mapped[str] = mapped_column(String(64), primary_key=True)
     window_started: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     attempts: Mapped[int] = mapped_column(nullable=False)
+
+
+class AiJobEvent(Base):
+    """Owner-authenticated, bounded content journal, not raw provider payloads."""
+    __tablename__ = "ai_job_events"
+    __table_args__ = (
+        CheckConstraint("sequence > 0", name="ck_job_event_sequence"),
+        CheckConstraint("kind IN ('progress','delta','terminal','diagnostic')", name="ck_job_event_kind"),
+        CheckConstraint("octet_length(data::text) <= 8192", name="ck_job_event_size"),
+        Index("ix_job_events_created", "created_at"),
+    )
+    job_id: Mapped[UUID] = mapped_column(Uuid, ForeignKey("ai_jobs.id"), primary_key=True)
+    sequence: Mapped[int] = mapped_column(Integer, primary_key=True)
+    kind: Mapped[str] = mapped_column(String(12), nullable=False)
+    data: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False,
+                                               server_default=text("clock_timestamp()"))

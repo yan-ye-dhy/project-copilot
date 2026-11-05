@@ -133,3 +133,10 @@ SITE_ORIGIN仍是唯一受审HTTPS浏览器Origin：显式Origin必须精确匹�
 同项目别名被平台映射后，Node无法独立区分原始Host；浏览器host-only Secure/HttpOnly/SameSite=Lax会话Cookie、无CORS开放、所有响应no-store、资源归属及发布门禁继续保护业务。代理额外拒绝缺少这些安全属性的`__Host-pc_session`响应Cookie（502），保留正常多Set-Cookie和注销清除。GET提案读取可能物化已到期状态，不能称所有GET纯读，见[最终报告](EDGEONE_ORIGIN_FINAL_FIX.md)。
 
 无需新增变量，不调整本地Docker、数据库或模型。用户审核PR后才决定合并/部署；保持BACKEND空、CLOSED、禁Worker、无Tunnel，真实health/me预期503；该503只证明本次前置校验通过且没有上游，不代表STAGING/PUBLIC验收完成。全部实际命令及边界见[最终报告](EDGEONE_ORIGIN_FINAL_FIX.md)。
+
+
+## 聊天 SSE 升级
+
+[聊天体验说明](CHAT_EXPERIENCE.md)提供完整协议和最小验证步骤。新增精确只读`GET /api/jobs/{uuid}/events`，Cloud Function转发到同名后端路径，允许`after`/`Last-Event-ID`整数游标；不增加云变量或写权限。后端每20秒结束连接，代理25秒上限；前端只读重连，失败自动查询原任务。不要把SSE重连转换成POST任务。
+
+上线前必须同时部署前端/Node函数与API/Worker/Nginx新代码，并显式升级`0013_job_events`。保持原卷和PERSONAL_DEMO授权边界；不通过旧发布证据签名新源码。真实EdgeOne与Cloudflare是否缓冲必须由用户授权部署后，用浏览器观察多帧在完成前到达来确认；本轮只证明localhost代理和隔离Nginx增量透传。没有公网实测不得宣布公网流式成功。

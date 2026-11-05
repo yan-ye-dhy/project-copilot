@@ -13,6 +13,7 @@ from pydantic import ValidationError
 from opentelemetry.trace import StatusCode
 
 from project_copilot.infrastructure.tracing import trace_span
+from project_copilot.infrastructure.job_progress import progress
 from project_copilot.agent.state import AgentState, GraphLimits
 from project_copilot.agent.tools import ToolRegistry, ToolResult
 from project_copilot.schemas.agent import AgentFinal, AgentQuestion, AgentRun, AgentSource, ToolEvent
@@ -119,6 +120,7 @@ class AgentRunner:
         count = state["model_calls"] + 1
         event = {"step": count, "status": "ok", "model": None, "usage": None}
         base = {"model_calls": count}
+        progress("model")
         try:
             message = await asyncio.wait_for(
                 self.model.ainvoke(list(state["messages"]), self.registry.schemas()),
@@ -153,6 +155,7 @@ class AgentRunner:
         calls = [*message.tool_calls, *message.invalid_tool_calls]
         if calls:
             return base
+        progress("validate")
         try:
             if not isinstance(message.content, str):
                 raise ValueError("最终回答必须为JSON文本")
@@ -241,6 +244,7 @@ class AgentRunner:
                         kind = "arguments_invalid"
                     else:
                         try:
+                            progress(name if name in {"get_ticket", "search_tickets", "search_knowledge", "propose_ticket"} else "tool")
                             executions += 1
                             with trace_span("agent.tool.execute", {"openinference.span.kind": "TOOL",
                                             "tool.name": tool.name, "tool.call_id": call_id}) as tool_span:
@@ -281,6 +285,7 @@ class AgentRunner:
             assert output is not None
             messages.append(ToolMessage(content=_json(output), tool_call_id=call_id, name=event_name,
                                         status="error" if kind else "success"))
+            progress("tool_done")
             events.append(ToolEvent(tool_call_id=call_id, name=event_name,
                                     status="error" if kind else "ok", failure_type=kind,
                                     elapsed_ms=(time.monotonic() - started) * 1000))

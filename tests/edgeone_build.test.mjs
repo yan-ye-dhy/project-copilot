@@ -31,7 +31,7 @@ test("static build ships complete assets and sends same-origin API requests thro
   await run(script, output, { env: { ...process.env, ...sentinels } });
   assert.deepEqual((await readdir(output)).sort(), ["index.html", "ui-assets"]);
   const assets = (await readdir(path.join(output, "ui-assets"))).sort();
-  assert.deepEqual(assets, ["api.js", "app.js", "bamboo.svg", "ink-mountains.svg", "mark.svg", "styles.css"]);
+  assert.deepEqual(assets, ["api.js", "app.js", "bamboo.svg", "ink-mountains.svg", "mark.svg", "markdown.js", "styles.css"]);
   const index = await readFile(path.join(output, "index.html"), "utf8");
   assert.match(index, /\/ui-assets\/styles\.css/);
   assert.match(index, /\/ui-assets\/app\.js/);

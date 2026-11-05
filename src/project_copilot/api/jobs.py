@@ -13,6 +13,8 @@ from sqlalchemy.exc import SQLAlchemyError
 from starlette.concurrency import run_in_threadpool
 from starlette.datastructures import UploadFile
 
+from project_copilot.api.job_events import stream_events
+from project_copilot.services.job_events import latest_progress
 from project_copilot.api.access import public_identity, public_mode
 from project_copilot.api.actions import credentials
 from project_copilot.api.auth import _token_from_cookie
@@ -48,7 +50,8 @@ def _quota(session, settings):
 def _response(job, reservation):
     session = object_session(job)
     result_expired = session is not None and session.get(JobContentTombstone, job.id) is not None
-    return {"job_id": str(job.id), "kind": reservation.kind, "status": reservation.state,
+    progress = latest_progress(session, job.id) if session is not None and not result_expired else None
+    return {"progress": progress, "event_cursor": job.event_sequence, "job_id": str(job.id), "kind": reservation.kind, "status": reservation.state,
             "result": job.result if reservation.state == "succeeded" and not result_expired else None,
             "result_expired": result_expired}
 
@@ -299,3 +302,8 @@ def status(job_id: UUID, request: Request, response: Response):
         raise HTTPException(503, "服务暂不可用") from None
     response.headers["Cache-Control"] = "no-store"
     return result
+
+
+@router.get("/{job_id}/events")
+async def events(job_id: UUID, request: Request):
+    return await stream_events(request, job_id)

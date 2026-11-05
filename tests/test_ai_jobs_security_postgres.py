@@ -192,6 +192,7 @@ def test_controlled_success_is_persisted_and_never_replayed(ticket_database):
         assert not process_one(db, worker_settings(), runner=runner)
         assert client.get(f"/jobs/{job_id}", cookies=cookies(tokens["alice"])).json() == {
             "job_id": str(job_id), "kind": "rag", "status": "succeeded", "result_expired": False,
+            "progress": {"stage": "running", "label": "任务开始执行"}, "event_cursor": 2,
             "result": {"status": "answered", "answer": "受控测试结果"},
         }
         assert submit(client, tokens["alice"]).json()["job_id"] == str(job_id)

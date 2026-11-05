@@ -12,7 +12,7 @@ from uuid import UUID
 
 from sqlalchemy import exists, func, select, text
 
-from project_copilot.db.jobs import AiJob, AiJobUpload, AiRequestAttempt
+from project_copilot.db.jobs import AiJob, AiJobUpload, AiRequestAttempt, AiJobEvent
 from project_copilot.db.models import AgentContext, AiRequestReservation, PendingAction, Ticket, UserAccount
 from project_copilot.db.operations import JobContentTombstone, JobRecoveryAudit, MaintenanceAudit
 
@@ -95,6 +95,17 @@ def cleanup(session, actor_user_id: UUID, *, batch_size: int = 100):
                 session.delete(attachment)
             session.add(JobContentTombstone(job_id=job.id, cleared_at=now))
             counts["terminal_content"] += 1
+
+        # Expiring display drafts is distinct from deleting uncertain execution evidence.
+        old_events = session.scalars(select(AiJobEvent).join(AiJob).join(AiRequestReservation).where(
+            AiJobEvent.created_at < now - timedelta(days=7),
+            AiRequestReservation.state.in_(("succeeded", "failed")),
+            ~exists().where(JobRecoveryAudit.job_id == AiJobEvent.job_id),
+        ).order_by(AiJobEvent.created_at).with_for_update(of=AiJobEvent, skip_locked=True)
+            .limit(batch_size)).all()
+        for event in old_events:
+            session.delete(event)
+        counts["event_content"] = len(old_events)
 
         old_audits = session.scalars(select(AiRequestAttempt).where(
             AiRequestAttempt.created_at < now - timedelta(days=7),

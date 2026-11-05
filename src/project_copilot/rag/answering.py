@@ -10,6 +10,8 @@ from typing import Protocol
 from pydantic import ValidationError
 
 from project_copilot.infrastructure.tracing import trace_span
+from project_copilot.infrastructure.job_progress import active, emit, progress
+from project_copilot.rag.streaming import AnswerDraft
 from project_copilot.config import Settings
 from project_copilot.infrastructure.models import ChatGeneration, create_chat_client
 from project_copilot.schemas.rag import (
@@ -148,6 +150,7 @@ class RagAnswerer:
 
     def _answer(self, question: str) -> RagAnswer:
         question = RagQuestion(question=question).question
+        progress("retrieval")
         evidence: list[RetrievedChunk] = []
         seen = set()
         remaining = self.prompt.context_max_chars
@@ -164,7 +167,13 @@ class RagAnswerer:
                              answer="当前没有可用的检索证据，无法回答该问题。", citations=(), generation=None)
 
         with trace_span("rag.generate", {"openinference.span.kind": "LLM", "rag.evidence_count": len(evidence)}) as span:
-            generated = self.chat.generate_json(build_messages(question, evidence, template=self._prompt_template))
+            progress("model")
+            messages = build_messages(question, evidence, template=self._prompt_template)
+            if active() and callable(getattr(self.chat, "generate_json_stream", None)):
+                draft = AnswerDraft(lambda text: emit("delta", {"text": text}))
+                generated = self.chat.generate_json_stream(messages, draft.feed)
+            else:
+                generated = self.chat.generate_json(messages)
             if generated.model in {"deepseek-flash", "deepseek-v4-pro"}:
                 span.set_attribute("llm.model_name", generated.model)
             if generated.usage is not None:
@@ -177,6 +186,7 @@ class RagAnswerer:
                     if type(value) is int and value >= 0:
                         span.set_attribute("llm.token_count." + suffix, value)
         with trace_span("rag.answer.validate", {"openinference.span.kind": "CHAIN"}):
+            progress("validate")
             answer = validate_model_answer(generated.content, evidence_count=len(evidence))
         citations = tuple(
             Citation(number=number, text=evidence[number - 1].text,

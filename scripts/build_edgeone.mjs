@@ -14,7 +14,7 @@ if (args.length && (args.length !== 2 || args[0] !== "--output-dir" || !args[1])
 const output = path.resolve(args[1] || path.join(projectRoot, "dist"));
 // Only known frontend files may enter the public output. New assets must be
 // deliberately added here rather than silently copying private files.
-const requiredAssets = ["api.js", "app.js", "styles.css", "mark.svg", "ink-mountains.svg", "bamboo.svg"];
+const requiredAssets = ["api.js", "app.js", "markdown.js", "styles.css", "mark.svg", "ink-mountains.svg", "bamboo.svg"];
 const localMarker = 'const API_PREFIX = ""; // EDGEONE_API_PREFIX';
 const deployedMarker = 'const API_PREFIX = "/api"; // EDGEONE_API_PREFIX';
 

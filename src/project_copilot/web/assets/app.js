@@ -1,10 +1,12 @@
-import { apiRequest, ApiError, ContextSession, boundHistory, validateAction, runPublicJob,
+import { apiRequest, ApiError, ContextSession, boundHistory, validateAction, runPublicJob, resumePublicJob,
   PUBLIC_BUILD, setCsrfToken, onAuthenticationFailure } from "./api.js";
+
+import { renderMarkdown } from "./markdown.js";
 
 const $ = (id) => document.getElementById(id);
 const session = new ContextSession();
 const state = {
-  view: "chat", busy: false, proposalBusy: false, history: [], selectedFile: null,
+  view: "chat", busy: false, activeWait: null, jobContexts: new Map(), proposalBusy: false, history: [], selectedFile: null,
   uploading: false, uploadLimit: null, ticketOffset: 0, ticketLimit: 10,
   ticketsLoaded: false, ticketsBusy: false, ticketsRequest: 0, detailRequest: 0, proposals: new Map(), epoch: 0,
 };
@@ -42,9 +44,11 @@ function clearCredentialInputs() {
 
 function resetWorkspace() {
   // Late responses from a previous account must not populate the next one.
+  state.activeWait?.controller.abort(); state.activeWait = null;
+  clearSavedJobs();
   state.epoch += 1; state.ticketsRequest += 1; state.detailRequest += 1;
   session.clear(); setCsrfToken(null); auth.user = null;
-  state.history = []; state.proposals.clear(); state.selectedFile = null;
+  state.history = []; state.proposals.clear(); state.jobContexts.clear(); state.selectedFile = null;
   state.busy = false; state.proposalBusy = false; state.uploading = false;
   state.ticketsLoaded = false; state.ticketsBusy = false; state.ticketOffset = 0;
   $("chat-messages").querySelectorAll(".message").forEach((node) => node.remove());
@@ -98,7 +102,7 @@ function activateUser(data) {
   $("file-input").accept = ".txt,.md";
   $("auth-screen").hidden = true; $("app-shell").hidden = false; $("workspace-skip").hidden = false;
   clearCredentialInputs();
-  initializeServices();
+  initializeServices(); renderRecovery();
 }
 
 async function submitAuthentication(event, register) {
@@ -243,7 +247,10 @@ function toggleEvidence(open) {
   $("evidence-toggle").setAttribute("aria-expanded", String(shouldOpen));
 }
 
-function scrollChat() { $("chat-messages").scrollTop = $("chat-messages").scrollHeight; }
+function scrollChat(force = false) {
+  const chat = $("chat-messages");
+  if (force || chat.scrollHeight - chat.clientHeight - chat.scrollTop < 180) chat.scrollTop = chat.scrollHeight;
+}
 
 function addMessage(role, content, pending = false) {
   $("chat-welcome").hidden = true;
@@ -257,9 +264,9 @@ function addMessage(role, content, pending = false) {
   if (pending) {
     body.setAttribute("aria-live", "polite");
     body.append(element("span", "loading", "正在整理资料与处理结果，请稍候…"));
-  } else body.append(element("div", "message-text", content));
+  } else body.append(role === "assistant" ? renderMarkdown(content) : element("div", "message-text", content));
   block.append(label, body, meta); article.append(avatar, block);
-  $("chat-messages").append(article); scrollChat();
+  $("chat-messages").append(article); scrollChat(true);
   return { article, body, meta };
 }
 
@@ -331,6 +338,8 @@ function showEvidence(sources, data = {}, meta = {}) {
 }
 
 function updateComposer() {
+  $("stop-wait").hidden = !state.busy;
+  $("send-button").hidden = state.busy;
   $("send-button").disabled = state.busy || !$("question-input").value.trim();
   $("question-input").disabled = state.busy;
   $("chat-mode").disabled = state.busy;
@@ -338,35 +347,90 @@ function updateComposer() {
   $("input-count").textContent = `${$("question-input").value.length} / 2000`;
 }
 
-async function sendQuestion(event) {
-  event.preventDefault();
-  const epoch = state.epoch;
-  const question = $("question-input").value.trim();
-  if (!question || state.busy || question.length > 2000) return;
-  const mode = $("chat-mode").value;
-  const history = boundHistory(state.history);
-  addMessage("user", question);
-  const message = addMessage("assistant", "", true);
-  $("question-input").value = "";
-  state.busy = true; updateComposer();
-  let context = null;
+// Browser persistence contains identifiers only; never questions, answers or bearer credentials.
+function recoveryKey() { return PUBLIC_BUILD && auth.user ? `pc.jobs.v1.${auth.user.id}` : null; }
+function savedJobs() {
   try {
-    if (mode === "agent") context = await session.ensure();
-    if (epoch !== state.epoch) return;
-    const payload = mode === "agent" ? { question, history } : { question };
-    const headers = context ? ContextSession.headers(context) : {};
-    const { data, meta } = PUBLIC_BUILD
-      ? await runPublicJob(mode, payload, { headers, isCurrent: () => epoch === state.epoch })
-      : await apiRequest(mode === "agent" ? "/agent/ask" : "/rag/ask", {
-          method: "POST", body: payload, headers, timeoutMs: mode === "agent" ? 330000 : 180000,
-        });
-    if (epoch !== state.epoch) return;
+    const key = recoveryKey(); if (!key) return [];
+    const parsed = JSON.parse(localStorage.getItem(key) || "[]");
+    return Array.isArray(parsed) ? parsed.filter((item) => item && /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(item.id) &&
+      ["agent", "rag"].includes(item.kind) && Number.isSafeInteger(item.createdAt) && item.createdAt > Date.now() - 7 * 86400000).slice(-8) : [];
+  } catch { return []; }
+}
+function saveJob(record) {
+  try {
+    const key = recoveryKey(); if (!key) return;
+    const list = savedJobs().filter((item) => item.id !== record.id);
+    // Do not persist streamed text, context tokens or an unverified answer.
+    list.push({ id: record.id, kind: record.kind, createdAt: record.createdAt, lastSequence: 0 });
+    localStorage.setItem(key, JSON.stringify(list.slice(-8)));
+  } catch { /* Private browsing can disable storage; the current page still works. */ }
+  renderRecovery();
+}
+function removeSavedJob(id) {
+  try {
+    const key = recoveryKey(); if (!key) return;
+    const list = savedJobs().filter((record) => record.id !== id);
+    if (list.length) localStorage.setItem(key, JSON.stringify(list)); else localStorage.removeItem(key);
+  } catch {}
+  renderRecovery();
+}
+function clearSavedJobs() { try { const key = recoveryKey(); if (key) localStorage.removeItem(key); } catch {} }
+function renderRecovery() {
+  const target = $("job-recovery"); if (!target) return;
+  target.replaceChildren(); const jobs = savedJobs(); target.hidden = !jobs.length;
+  if (!jobs.length) return;
+  target.append(element("strong", "", "可恢复的任务"), element("p", "", "停止等待或刷新不会重新执行。以下操作只查询原任务。"));
+  for (const record of jobs) {
+    const row = element("div", "job-recovery-row");
+    row.append(element("span", "job-identifier", `${record.kind === "rag" ? "知识问答" : "智能协作"} · ${record.id}`));
+    const resume = actionButton("查询 / 恢复等待", "button button-quiet", () => resumeWaiting(record));
+    resume.disabled = state.busy; row.append(resume); target.append(row);
+  }
+}
+function startWaiting(message, mode) {
+  const wait = { controller: new AbortController(), message, mode, sequence: 0, draft: "" };
+  state.activeWait = wait; state.busy = true; updateComposer(); renderRecovery();
+  message.body.replaceChildren();
+  wait.progress = element("p", "job-progress", "任务正在提交…"); wait.progress.setAttribute("role", "status");
+  wait.preview = element("div", "stream-preview");
+  wait.preview.hidden = true;
+  message.body.append(wait.progress, wait.preview);
+  return wait;
+}
+function updateJobEvent(wait, event) {
+  if (state.activeWait !== wait || wait.controller.signal.aborted) return;
+  if (Number.isSafeInteger(event.id)) {
+    if (event.id <= wait.sequence && !(event.event === "reset" && event.data.cursor_reset === true)) return;
+    wait.sequence = event.id;
+  }
+  if (["progress", "transport"].includes(event.event) && typeof event.data.label === "string") wait.progress.textContent = event.data.label;
+  if (["reset", "snapshot"].includes(event.event) && event.data.cursor_reset) {
+    wait.draft = ""; wait.preview.replaceChildren(); wait.preview.hidden = true;
+    wait.progress.textContent = "部分实时内容已过期，继续查询最终结果";
+  }
+  if (event.event === "delta" && wait.mode === "rag" && typeof event.data.text === "string") {
+    // Plain text while incomplete: no reparsing partial Markdown on each token.
+    wait.draft = (wait.draft + event.data.text).slice(0, 100000);
+    wait.preview.hidden = false; wait.preview.textContent = wait.draft;
+    wait.progress.textContent = "正在生成回答草稿 · 最终校验尚未完成";
+    scrollChat();
+  }
+  if (event.event === "terminal") wait.progress.textContent = "正在核对最终任务结果…";
+}
+function stopWaiting() {
+  const wait = state.activeWait; if (!wait) return;
+  wait.controller.abort(); state.activeWait = null; state.busy = false;
+  wait.message.body.replaceChildren(element("p", "waiting-stopped", "已停止等待，后台任务可能继续执行。请从“可恢复的任务”查询原任务，不要重复提交。"));
+  updateComposer(); renderRecovery();
+}
+async function displayAnswer(message, data, meta, mode, context, question, epoch) {
     if (typeof data.answer !== "string" || typeof data.status !== "string") throw new ApiError("服务未返回可识别的回答。", { meta, kind: "response" });
-    message.body.replaceChildren(element("div", "message-text", data.answer));
+    message.body.replaceChildren(renderMarkdown(data.answer));
     if (["failed", "budget_exhausted"].includes(data.status)) {
       message.body.append(element("p", "error-note", data.status === "budget_exhausted" ? "本次处理达到执行预算，未完成的操作不会被视为成功。" : "本次处理未完成，可查看运行详情定位原因。"));
     } else {
-      state.history.push({ role: "user", content: question }, { role: "assistant", content: data.answer });
+      if (question) state.history.push({ role: "user", content: question }, { role: "assistant", content: data.answer });
       state.history = boundHistory(state.history);
     }
     const sources = sourcesFor(data, mode);
@@ -376,17 +440,64 @@ async function sendQuestion(event) {
     message.meta.append(sourceControl);
     if (typeof data.elapsed_ms === "number") message.meta.append(element("span", "", `${(data.elapsed_ms / 1000).toFixed(1)} 秒`));
     showEvidence(sources, data, meta);
+    if (!context && sources.some((item) => item.kind === "proposal")) message.body.append(element("p", "proposal-note", "此回答包含待确认提案。刷新后上下文凭据已清除，请先核对工单与提案状态；系统不会自动确认或重新创建。"));
     if (context) for (const source of sources.filter((item) => item.kind === "proposal")) {
       await attachProposal(message.body, source.data, context);
       if (epoch !== state.epoch) return;
     }
     if (meta.runId) message.meta.append(renderRunDetails(data, meta));
+}
+async function resumeWaiting(record) {
+  if (state.busy) return;
+  const epoch = state.epoch;
+  const message = addMessage("assistant", "", true), wait = startWaiting(message, record.kind);
+  try {
+    const { data, meta } = await resumePublicJob(record.id, { signal: wait.controller.signal,
+      isCurrent: () => epoch === state.epoch, onEvent: (event) => updateJobEvent(wait, event) });
+    if (state.activeWait !== wait || epoch !== state.epoch) return;
+    await displayAnswer(message, data, meta, record.kind, state.jobContexts.get(record.id) || null, null, epoch);
+    state.jobContexts.delete(record.id);
+    removeSavedJob(record.id);
   } catch (error) {
-    if (epoch !== state.epoch) return;
+    if (state.activeWait === wait && epoch === state.epoch) message.body.replaceChildren(errorNode(error));
+  } finally {
+    if (state.activeWait === wait && epoch === state.epoch) { state.activeWait = null; state.busy = false; updateComposer(); renderRecovery(); scrollChat(); }
+  }
+}
+async function sendQuestion(event) {
+  event.preventDefault();
+  const epoch = state.epoch;
+  const question = $("question-input").value.trim();
+  if (!question || state.busy || question.length > 2000) return;
+  const mode = $("chat-mode").value, history = boundHistory(state.history);
+  addMessage("user", question);
+  const message = addMessage("assistant", "", true), wait = startWaiting(message, mode);
+  $("question-input").value = ""; updateComposer();
+  let context = null, submitted = null;
+  try {
+    if (mode === "agent") context = await session.ensure();
+    if (epoch !== state.epoch || state.activeWait !== wait) return;
+    const payload = mode === "agent" ? { question, history } : { question };
+    const headers = context ? ContextSession.headers(context) : {};
+    const { data, meta } = PUBLIC_BUILD
+      ? await runPublicJob(mode, payload, { headers, signal: wait.controller.signal,
+          isCurrent: () => epoch === state.epoch,
+          onSubmitted: (record) => { if (epoch === state.epoch) { submitted = record; if (context) state.jobContexts.set(record.id, context); saveJob(record); } },
+          onEvent: (event) => updateJobEvent(wait, event) })
+      : await apiRequest(mode === "agent" ? "/agent/ask" : "/rag/ask", {
+          method: "POST", body: payload, headers, signal: wait.controller.signal, timeoutMs: mode === "agent" ? 330000 : 180000,
+        });
+    if (epoch !== state.epoch || state.activeWait !== wait) return;
+    await displayAnswer(message, data, meta, mode, context, question, epoch);
+    if (submitted) { removeSavedJob(submitted.id); state.jobContexts.delete(submitted.id); }
+  } catch (error) {
+    if (epoch !== state.epoch || state.activeWait !== wait) return;
     message.body.replaceChildren(errorNode(error));
     if (error.status === 403) session.clear();
   } finally {
-    if (epoch === state.epoch) { state.busy = false; updateComposer(); scrollChat(); $("question-input").focus(); }
+    if (epoch === state.epoch && state.activeWait === wait) {
+      state.activeWait = null; state.busy = false; updateComposer(); renderRecovery(); scrollChat(); $("question-input").focus();
+    }
   }
 }
 
@@ -643,6 +754,7 @@ function bindEvents() {
   }));
   document.querySelectorAll("[data-close-dialog]").forEach((button) => button.addEventListener("click", () => $(button.dataset.closeDialog).close()));
   $("composer-form").addEventListener("submit", sendQuestion);
+  $("stop-wait").addEventListener("click", stopWaiting);
   $("question-input").addEventListener("input", updateComposer);
   $("question-input").addEventListener("keydown", (event) => {
     if (event.key === "Enter" && !event.shiftKey && !event.isComposing) { event.preventDefault(); $("composer-form").requestSubmit(); }

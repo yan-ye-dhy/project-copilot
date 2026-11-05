@@ -6,6 +6,8 @@
 import { Blob, Buffer } from 'node:buffer';
 
 const DEFAULT_TIMEOUT_MS = 115_000;
+// Reconnect a read-only event tail well below Makers' 120s invocation limit.
+const DEFAULT_EVENT_TIMEOUT_MS = 25_000;
 const DEFAULT_REQUEST_LIMIT = 4 * 1024 * 1024 + 64 * 1024;
 const DEFAULT_RESPONSE_LIMIT = 5_900_000;
 const JSON_REQUEST_LIMIT = 256 * 1024;
@@ -27,6 +29,7 @@ const ROUTES = [
   ['POST', /^\/jobs$/],
   ['POST', /^\/jobs\/upload$/],
   ['GET', new RegExp(`^/jobs/${UUID}$`)],
+  ['GET', new RegExp(`^/jobs/${UUID}/events$`)],
 ];
 const REQUEST_HEADERS = [
   'accept', 'content-type', 'cookie', 'origin', 'x-csrf-token',
@@ -114,7 +117,10 @@ function resolveRoute(request) {
       if (name !== 'eo_token' && name !== 'eo_time') forwarded.push(field);
     }
   } catch { return null; } // Invalid UTF-8 must not be silently repaired.
-  return { target, search: forwarded.length ? `?${forwarded.join('&')}` : '' };
+  const eventStream = new RegExp(`^/jobs/${UUID}/events$`).test(target);
+  if (eventStream && (forwarded.length > 1 || forwarded.some(field =>
+    !/^after=(?:0|[1-9][0-9]{0,9})$/.test(field) || Number(field.slice(6)) > 2147483647))) return null;
+  return { target, search: forwarded.length ? `?${forwarded.join('&')}` : '', eventStream };
 }
 
 // Makers routes this project's /api/* to its own handler. Its Node URL can be
@@ -149,6 +155,9 @@ function requestPolicy(request, route, config, requestLimit) {
       (request.method !== 'GET' && origin !== config.siteOrigin)) throw new ProxyFailure(403);
   const fetchSite = request.headers.get('sec-fetch-site');
   if (fetchSite !== null && !['same-origin', 'none'].includes(fetchSite)) throw new ProxyFailure(403);
+  const eventId = request.headers.get('last-event-id');
+  if (route.eventStream && eventId !== null &&
+      (!/^(?:0|[1-9][0-9]{0,9})$/.test(eventId) || Number(eventId) > 2147483647)) throw new ProxyFailure(400);
 
   const limit = route.target === '/jobs/upload' ? requestLimit : Math.min(requestLimit, JSON_REQUEST_LIMIT);
   // Declared oversize/malformed bodies are rejected before getting a reader.
@@ -180,7 +189,7 @@ function withoutPreviewCookies(value) {
   return retained.length === fields.length ? value : retained.map(field => field.trim()).filter(Boolean).join('; ');
 }
 
-function forwardedRequestHeaders(request, secret) {
+function forwardedRequestHeaders(request, secret, route) {
   const result = new Headers();
   const excluded = connectionTokens(request.headers);
   for (const name of REQUEST_HEADERS) {
@@ -192,6 +201,9 @@ function forwardedRequestHeaders(request, secret) {
   }
   result.set('Accept-Encoding', 'identity');
   result.set('Cache-Control', 'no-store');
+  if (route.eventStream && request.headers.has('last-event-id') && !excluded.has('last-event-id')) {
+    result.set('Last-Event-ID', request.headers.get('last-event-id'));
+  }
   // Never use the untrusted client's value of this header.
   result.set('X-Project-Copilot-Proxy-Secret', secret);
   return result;
@@ -249,7 +261,12 @@ function boundedLength(headers, limit, invalidStatus, oversizedStatus) {
 
 // Promise.race alone leaves listeners on a long-lived stream; remove each one.
 function withAbort(promise, signal) {
-  if (signal.aborted) return Promise.reject(new Error('aborted'));
+  if (signal.aborted) {
+    // read()/fetch() may already have returned a rejecting promise before this
+    // check; observe it even when cancellation won the race.
+    Promise.resolve(promise).catch(() => {});
+    return Promise.reject(new Error('aborted'));
+  }
   return new Promise((resolve, reject) => {
     const stop = () => { signal.removeEventListener('abort', stop); reject(new Error('aborted')); };
     signal.addEventListener('abort', stop, { once: true });
@@ -437,10 +454,12 @@ function forwardBody(body, signal, limit, cleanup, abort) {
 export function createProxyHandler({
   fetchImpl = globalThis.fetch,
   timeoutMs = DEFAULT_TIMEOUT_MS,
+  eventTimeoutMs = DEFAULT_EVENT_TIMEOUT_MS,
   maxRequestBytes = DEFAULT_REQUEST_LIMIT,
   maxResponseBytes = DEFAULT_RESPONSE_LIMIT,
 } = {}) {
   if (typeof fetchImpl !== 'function' || !Number.isSafeInteger(timeoutMs) || timeoutMs < 1 ||
+      !Number.isSafeInteger(eventTimeoutMs) || eventTimeoutMs < 1 || eventTimeoutMs > DEFAULT_EVENT_TIMEOUT_MS ||
       !Number.isSafeInteger(maxRequestBytes) || maxRequestBytes < 1 ||
       !Number.isSafeInteger(maxResponseBytes) || maxResponseBytes < 1) throw new TypeError('Invalid proxy limits');
   return async function proxy({ request, env }) {
@@ -457,7 +476,8 @@ export function createProxyHandler({
 
     const controller = new AbortController();
     let timedOut = false;
-    const timer = setTimeout(() => { timedOut = true; controller.abort(); }, timeoutMs);
+    const timer = setTimeout(() => { timedOut = true; controller.abort(); },
+      route.eventStream ? Math.min(timeoutMs, eventTimeoutMs) : timeoutMs);
     timer.unref?.();
     // Makers may omit the client signal; our own deadline remains mandatory.
     const clientSignal = request.signal;
@@ -477,12 +497,17 @@ export function createProxyHandler({
       if (request.method === 'GET') body = undefined; // Empty arrayBuffer() is not a GET BodyInit.
       stage = 'fetch_upstream';
       upstream = await withAbort(fetchImpl(`${config.origin}${route.target}${route.search}`, {
-        method: request.method, headers: forwardedRequestHeaders(request, config.secret),
+        method: request.method, headers: forwardedRequestHeaders(request, config.secret, route),
         body, redirect: 'manual', signal: controller.signal,
       }), controller.signal);
       stage = 'response';
       if (upstream.status < 200 || (upstream.status >= 300 && upstream.status < 400)) throw new ProxyFailure(502);
       const headers = responseHeaders(upstream);
+      if (route.eventStream && upstream.status === 200) {
+        if (!/^text\/event-stream(?:;\s*charset=utf-8)?$/i.test(headers.get('content-type') || '')) throw new ProxyFailure(502);
+        headers.set('Cache-Control', 'no-store, no-transform');
+        headers.set('X-Accel-Buffering', 'no');
+      }
       // fetch may transparently decompress while retaining the original headers.
       // Reject unexpected encoding rather than forwarding contradictory metadata.
       const encoding = upstream.headers.get('content-encoding');

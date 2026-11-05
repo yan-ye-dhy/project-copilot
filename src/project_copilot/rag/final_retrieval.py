@@ -8,6 +8,7 @@ from threading import Lock
 from uuid import uuid4
 
 from project_copilot.infrastructure.tracing import trace_span
+from project_copilot.infrastructure.job_progress import progress
 from project_copilot.config import Settings
 from project_copilot.infrastructure.models import create_embedding_client
 from project_copilot.infrastructure.qdrant import create_qdrant_store
@@ -217,6 +218,7 @@ class FinalRetriever:
                 hybrid = HybridRetriever(dense, index, dense_candidates=10, bm25_candidates=10,
                                          top_k=10, rank_constant=60)
                 candidates = hybrid.search(query)
+                progress("rerank")
                 ranked = self.reranker.rerank(query, candidates)
                 return [RetrievedChunk(text=item.hit.text, metadata=item.hit.metadata, score=item.rerank_score)
                         for item in ranked]

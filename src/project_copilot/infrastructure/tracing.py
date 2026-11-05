@@ -299,7 +299,14 @@ class RequestContextMiddleware:
             nonlocal status, buffered_bytes, passthrough
             if message['type'] == 'http.response.start':
                 status = message['status']
-                MutableHeaders(scope=message)['X-Run-ID'] = run_id
+                headers = MutableHeaders(scope=message)
+                headers['X-Run-ID'] = run_id
+                if runtime is not None and headers.get('content-type', '').split(';', 1)[0] == 'text/event-stream':
+                    # Export acknowledgement is only available AFTER the stream closes.
+                    # Never buffer SSE or claim an export that hasn't happened yet.
+                    passthrough = True
+                    headers['X-Trace-ID'] = trace_id
+                    headers['X-Trace-Exported'] = 'false'
             if runtime is None or passthrough:
                 await send(message)
                 return
