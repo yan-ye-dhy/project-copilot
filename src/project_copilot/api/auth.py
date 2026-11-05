@@ -17,6 +17,7 @@ from project_copilot.db.models import LoginSession
 from project_copilot.schemas.auth import LoginInput, LoginRead, RegisterInput, UserRead
 from project_copilot.services.auth import AuthService, AuthenticationRejected, Principal, RegistrationRejected, csrf_matches, csrf_token
 from project_copilot.services.auth_rate import consume_auth_attempt
+from project_copilot.services.release_control import ReleaseClosed
 
 
 logger = logging.getLogger(__name__)
@@ -120,6 +121,11 @@ def service(request: Request) -> Iterator[AuthService]:
         raise HTTPException(401, "账号、密码或会话无效") from None
     except RegistrationRejected:
         raise HTTPException(400, "注册信息或邀请码无效") from None
+    except ReleaseClosed:
+        # Let the admission failure leave database.transaction first. Converting
+        # it in the endpoint can be caught by _RedactedAuthRoute before a
+        # function-scoped dependency exits, accidentally committing a session.
+        raise HTTPException(503, "认证服务暂不可用") from None
     except IntegrityError as exc:
         # A concurrent duplicate username rolls back the whole transaction,
         # including an invitation increment. Do not expose database details.
@@ -135,6 +141,29 @@ def service(request: Request) -> Iterator[AuthService]:
 Service = Annotated[AuthService, Depends(service, scope="function")]
 
 
+def _release_for_auth(request: Request, svc: AuthService, *, user_id=None, registration=False):
+    """Keep personal authentication in the same admission transaction.
+
+    Gateway admission precedes body parsing. Recheck here so a close/expiry
+    during that gap cannot create a session, and hold the admission lock until
+    authentication commits. Standalone local auth routes keep their behavior.
+    """
+    # PERSONAL_DEMO itself requires production's dedicated deployment. Do not
+    # impose release admission on standalone development/test auth routers.
+    if (not _is_secure(request) or request.app.state.settings.environment != "production" or
+            getattr(request.app.state, "database", None) is None):
+        return
+    from project_copilot.services.release_control import require_open
+    release = require_open(svc.session, request.app.state.settings)
+    if release.state == "PERSONAL_DEMO":
+        if registration:
+            raise HTTPException(403, "个人体验模式不允许注册")
+        if user_id is not None:
+            if str(user_id) not in release.allowed_user_ids:
+                raise AuthenticationRejected()
+            require_open(svc.session, request.app.state.settings, user_id=user_id)
+
+
 @dataclass(frozen=True)
 class AuthContext:
     principal: Principal
@@ -145,6 +174,7 @@ class AuthContext:
 def authenticated(request: Request, svc: Service) -> AuthContext:
     token = _token_from_cookie(request)
     principal, login_session = svc.authenticate(token)
+    _release_for_auth(request, svc, user_id=principal.id)
     return AuthContext(principal=principal, login_session=login_session, token=token)
 
 
@@ -213,6 +243,7 @@ def _acquire_hash_slot(request: Request, svc: AuthService) -> None:
 def register(request: Request, response: Response, svc: Service, body: object = Body(...)):
     require_origin(request)
     _no_store(response)
+    _release_for_auth(request, svc, registration=True)
     payload = _parse(RegisterInput, body)
     _limit_public_attempt(request, payload.username)
     _acquire_hash_slot(request, svc)
@@ -223,10 +254,14 @@ def register(request: Request, response: Response, svc: Service, body: object = 
 def login(request: Request, response: Response, svc: Service, body: object = Body(...)):
     require_origin(request)
     _no_store(response)
+    _release_for_auth(request, svc)
     payload = _parse(LoginInput, body)
     _limit_public_attempt(request, payload.username)
     _acquire_hash_slot(request, svc)
     issued = svc.login(payload)
+    # The account id is produced by real password verification, never trusted
+    # from the caller's username or a browser-supplied release/user header.
+    _release_for_auth(request, svc, user_id=issued.user.id)
     response.set_cookie(key=_cookie_name(request), value=issued.token, max_age=svc.ttl_seconds,
                         path="/", secure=_is_secure(request), httponly=True, samesite="lax")
     return LoginRead(user=issued.user, csrf_token=csrf_token(issued.token))

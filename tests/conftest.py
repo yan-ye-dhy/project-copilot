@@ -57,7 +57,8 @@ def _controlled_worker_release(request, monkeypatch):
     defaults remain CLOSED and dedicated release tests exercise the actual gate.
     """
     controlled_modules = {"test_public_jobs.py", "test_ai_jobs_security_postgres.py",
-                          "test_public_upload_real_services.py", "test_upload_worker_security.py"}
+                          "test_public_upload_real_services.py", "test_upload_worker_security.py",
+                          "test_public_upload_jobs.py", "test_ai_attempt_audit_postgres.py"}
     if request.node.path.name not in controlled_modules:
         return
     from datetime import datetime, timedelta, timezone

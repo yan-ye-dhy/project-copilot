@@ -1,0 +1,9 @@
+# Image selection only. All isolation, dependencies and CLOSED health gates
+# are inherited from docker-compose.public-demo.yml.
+services:
+  api:
+    image: project-copilot-api:personal-demo
+  worker:
+    image: project-copilot-api:personal-demo
+  migrate:
+    image: project-copilot-api:personal-demo

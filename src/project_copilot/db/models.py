@@ -154,10 +154,12 @@ class AiRequestReservation(Base):
         Index("ix_ai_reservations_day", "utc_day"),
         Index("ix_ai_reservations_user_day", "user_id", "utc_day"),
         Index("ix_ai_reservations_user_state", "user_id", "state"),
+        Index("ix_ai_reservations_personal_grant", "personal_demo_grant_id"),
     )
 
     id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, server_default=text("gen_random_uuid()"))
     user_id: Mapped[UUID] = mapped_column(Uuid, ForeignKey("user_accounts.id"), nullable=False)
+    personal_demo_grant_id: Mapped[UUID | None] = mapped_column(Uuid, nullable=True)
     idempotency_key: Mapped[str] = mapped_column(String(128), nullable=False)
     payload_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
     kind: Mapped[str] = mapped_column(String(10), nullable=False)
