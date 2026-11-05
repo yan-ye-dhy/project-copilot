@@ -19,17 +19,20 @@ class GraphLimits:
     max_tool_result_chars: int = 24000
     max_context_chars: int = 60000
     max_tools_per_message: int = 12
+    max_no_progress_rounds: int = 3
 
     def __post_init__(self) -> None:
         if any(type(value) is not int or value < 1 for value in (
             self.max_model_calls, self.max_tool_calls, self.max_tool_result_chars,
-            self.max_context_chars, self.max_tools_per_message,
+            self.max_context_chars, self.max_tools_per_message, self.max_no_progress_rounds,
         )):
             raise ValueError("执行预算必须是正整数")
         if any(type(value) not in (int, float) or not 0 < value <= 300 for value in (
-            self.tool_timeout_seconds, self.model_timeout_seconds, self.total_timeout_seconds,
+            self.tool_timeout_seconds, self.model_timeout_seconds,
         )):
-            raise ValueError("超时必须在0到300秒之间")
+            raise ValueError("单次超时必须在0到300秒之间")
+        if type(self.total_timeout_seconds) not in (int, float) or not 0 < self.total_timeout_seconds <= 900:
+            raise ValueError("总执行超时必须在0到900秒之间")
 
 
 class AgentState(TypedDict):
@@ -40,7 +43,10 @@ class AgentState(TypedDict):
     model_calls: int
     tool_calls: int
     tool_executions: int
+    tool_failures: int
     used_call_ids: list[str]
+    completed_read_calls: dict[str, str]
+    no_progress_rounds: int
     usage: dict[str, int] | None
     usage_complete: bool
     status: str

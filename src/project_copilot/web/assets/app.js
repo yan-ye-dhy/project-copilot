@@ -1,5 +1,6 @@
 import { apiRequest, ApiError, ContextSession, boundHistory, validateAction, runPublicJob, resumePublicJob,
-  PUBLIC_BUILD, setCsrfToken, onAuthenticationFailure } from "./api.js";
+  PUBLIC_BUILD, setCsrfToken, onAuthenticationFailure, personalDemoProfile, personalJobWaitOptions,
+  safeFailureType, jobFailureLabel } from "./api.js";
 
 import { renderMarkdown } from "./markdown.js";
 
@@ -9,6 +10,7 @@ const state = {
   view: "chat", busy: false, activeWait: null, jobContexts: new Map(), proposalBusy: false, history: [], selectedFile: null,
   uploading: false, uploadLimit: null, ticketOffset: 0, ticketLimit: 10,
   ticketsLoaded: false, ticketsBusy: false, ticketsRequest: 0, detailRequest: 0, proposals: new Map(), epoch: 0,
+  personalDemo: null, profileStale: false, configPending: null,
 };
 const auth = { user: null, busy: false };
 const views = {
@@ -49,6 +51,7 @@ function resetWorkspace() {
   state.epoch += 1; state.ticketsRequest += 1; state.detailRequest += 1;
   session.clear(); setCsrfToken(null); auth.user = null;
   state.history = []; state.proposals.clear(); state.jobContexts.clear(); state.selectedFile = null;
+  state.personalDemo = null; state.profileStale = false; state.configPending = null; renderPersonalDemo();
   state.busy = false; state.proposalBusy = false; state.uploading = false;
   state.ticketsLoaded = false; state.ticketsBusy = false; state.ticketOffset = 0;
   $("chat-messages").querySelectorAll(".message").forEach((node) => node.remove());
@@ -317,7 +320,10 @@ function renderRunDetails(data, meta) {
   if (typeof data.model_calls === "number") rows.push(["模型调用", `${data.model_calls} 次`]);
   const usage = data.usage || data.generation?.usage;
   if (usage && Number.isInteger(usage.total_tokens)) rows.push(["Token 用量", `${usage.total_tokens}`]);
-  if (data.failure_type) rows.push(["失败类型", data.failure_type]);
+  if (safeFailureType(data.failure_type)) rows.push(["失败类型", `${jobFailureLabel(data.failure_type)}（${data.failure_type}）`]);
+  if (typeof data.tool_calls === "number") rows.push(["工具尝试", `${data.tool_calls} 次`]);
+  if (typeof data.tool_executions === "number") rows.push(["工具执行", `${data.tool_executions} 次`]);
+  if (typeof data.tool_failures === "number") rows.push(["工具失败", `${data.tool_failures} 次`]);
   for (const [key, value] of rows) list.append(element("dt", "", key), element("dd", "", value));
   details.append(list);
   return details;
@@ -467,7 +473,9 @@ async function displayAnswer(message, data, meta, mode, context, question, epoch
     if (typeof data.answer !== "string" || typeof data.status !== "string") throw new ApiError("服务未返回可识别的回答。", { meta, kind: "response" });
     message.body.replaceChildren(renderMarkdown(data.answer));
     if (["failed", "budget_exhausted"].includes(data.status)) {
-      message.body.append(inlineNotice(data.status === "budget_exhausted" ? "本次处理达到执行预算，未完成的操作不会被视为成功。" : "本次处理未完成，可查看运行详情定位原因。", { tone: "warning", className: "error-note", role: "alert" }));
+      const reason = safeFailureType(data.failure_type);
+      const label = reason ? `${jobFailureLabel(reason)}（${reason}）。` : "";
+      message.body.append(inlineNotice(`${label}${data.status === "budget_exhausted" ? "本次处理达到执行预算，未完成的操作不会被视为成功。" : "本次处理未完成，可查看运行详情定位原因。"}`, { tone: "warning", className: "error-note", role: "alert" }));
     } else {
       if (question) state.history.push({ role: "user", content: question }, { role: "assistant", content: data.answer });
       state.history = boundHistory(state.history);
@@ -491,8 +499,11 @@ async function resumeWaiting(record) {
   const epoch = state.epoch;
   const message = addMessage("assistant", "", true), wait = startWaiting(message, record.kind);
   try {
+    if (PUBLIC_BUILD) await refreshUiConfig();
+    if (state.activeWait !== wait || epoch !== state.epoch) return;
     const { data, meta } = await resumePublicJob(record.id, { signal: wait.controller.signal,
-      isCurrent: () => epoch === state.epoch, onEvent: (event) => updateJobEvent(wait, event) });
+      ...personalJobWaitOptions(state.personalDemo), isCurrent: () => epoch === state.epoch,
+      onEvent: (event) => updateJobEvent(wait, event) });
     if (state.activeWait !== wait || epoch !== state.epoch) return;
     await displayAnswer(message, data, meta, record.kind, state.jobContexts.get(record.id) || null, null, epoch);
     state.jobContexts.delete(record.id);
@@ -500,7 +511,7 @@ async function resumeWaiting(record) {
   } catch (error) {
     if (state.activeWait === wait && epoch === state.epoch) message.body.replaceChildren(errorNode(error));
   } finally {
-    if (state.activeWait === wait && epoch === state.epoch) { state.activeWait = null; state.busy = false; updateComposer(); renderRecovery(); scrollChat(); }
+    if (state.activeWait === wait && epoch === state.epoch) { state.activeWait = null; state.busy = false; updateComposer(); renderRecovery(); scrollChat(); if (PUBLIC_BUILD) refreshUiConfig(); }
   }
 }
 async function sendQuestion(event) {
@@ -514,14 +525,17 @@ async function sendQuestion(event) {
   $("question-input").value = ""; updateComposer();
   let context = null, submitted = null;
   try {
+    if (PUBLIC_BUILD) await refreshUiConfig();
+    if (epoch !== state.epoch || state.activeWait !== wait) return;
     if (mode === "agent") context = await session.ensure();
     if (epoch !== state.epoch || state.activeWait !== wait) return;
     const payload = mode === "agent" ? { question, history } : { question };
     const headers = context ? ContextSession.headers(context) : {};
     const { data, meta } = PUBLIC_BUILD
       ? await runPublicJob(mode, payload, { headers, signal: wait.controller.signal,
+          ...personalJobWaitOptions(state.personalDemo),
           isCurrent: () => epoch === state.epoch,
-          onSubmitted: (record) => { if (epoch === state.epoch) { submitted = record; if (context) state.jobContexts.set(record.id, context); saveJob(record); } },
+          onSubmitted: (record) => { if (epoch === state.epoch) { submitted = record; if (context) state.jobContexts.set(record.id, context); saveJob(record); refreshUiConfig(); } },
           onEvent: (event) => updateJobEvent(wait, event) })
       : await apiRequest(mode === "agent" ? "/agent/ask" : "/rag/ask", {
           method: "POST", body: payload, headers, signal: wait.controller.signal, timeoutMs: mode === "agent" ? 330000 : 180000,
@@ -536,6 +550,7 @@ async function sendQuestion(event) {
   } finally {
     if (epoch === state.epoch && state.activeWait === wait) {
       state.activeWait = null; state.busy = false; updateComposer(); renderRecovery(); scrollChat(); $("question-input").focus();
+      if (PUBLIC_BUILD) refreshUiConfig();
     }
   }
 }
@@ -666,8 +681,11 @@ async function uploadFile() {
   const file = state.selectedFile;
   const form = new FormData(); form.append("file", file);
   try {
+    if (PUBLIC_BUILD) await refreshUiConfig();
+    if (epoch !== state.epoch) return;
     const { data } = PUBLIC_BUILD
-      ? await runPublicJob("upload", form, { isCurrent: () => epoch === state.epoch })
+      ? await runPublicJob("upload", form, { ...personalJobWaitOptions(state.personalDemo),
+          isCurrent: () => epoch === state.epoch, onSubmitted: () => refreshUiConfig() })
       : await apiRequest("/documents/upload", { method: "POST", body: form, timeoutMs: 300000 });
     if (epoch !== state.epoch) return;
     if (data.status !== "indexed" || !data.document?.document_id || data.mode !== "HYBRID_RERANK") throw new ApiError("入库结果未通过校验，请核对服务状态。", { kind: "response" });
@@ -683,7 +701,7 @@ async function uploadFile() {
     state.selectedFile = null; $("file-input").value = "";
     notify("资料已加入知识库。", "success");
   } catch (error) { if (epoch === state.epoch) $("upload-feedback").append(errorNode(error)); }
-  finally { if (epoch === state.epoch) { state.uploading = false; renderFile(); } }
+  finally { if (epoch === state.epoch) { state.uploading = false; renderFile(); if (PUBLIC_BUILD) refreshUiConfig(); } }
 }
 
 async function loadTickets() {
@@ -830,19 +848,60 @@ function bindEvents() {
   setInterval(() => {
     for (const record of state.proposals.values()) if (record.action?.status === "pending" && Date.parse(record.action.expires_at) <= Date.now()) renderProposal(record);
   }, 15000);
+  setInterval(renderPersonalDemo, 1000); // Existing expiry only; never an execution-progress timer.
+  setInterval(() => {
+    if (PUBLIC_BUILD && auth.user && state.personalDemo && !document.hidden) refreshUiConfig();
+  }, 60000);
+}
+
+function renderPersonalDemo() {
+  const target = $("personal-demo-meter");
+  if (!target) return;
+  const profile = state.personalDemo;
+  target.hidden = !profile;
+  if (!profile) return;
+  const seconds = Math.max(0, Math.ceil((profile.deadline_ms - Date.now()) / 1000));
+  const time = [Math.floor(seconds / 3600), Math.floor(seconds % 3600 / 60), seconds % 60]
+    .map((value) => String(value).padStart(2, "0")).join(":");
+  $("personal-demo-time").textContent = seconds ? time : "已到期";
+  $("personal-demo-time").dateTime = profile.expires_at;
+  $("personal-demo-tasks").textContent = `已用 ${profile.jobs_used} / ${profile.job_limit} 次任务`;
+  $("personal-demo-slots").textContent = `未完成 ${profile.occupied_slots} / ${profile.concurrent_limit}`;
+  const note = seconds === 0 ? "授权已到期；原任务仍可保留编号核查" : state.profileStale
+    ? "额度信息暂未更新" : profile.worker_enabled ? "后台按顺序处理队列" : "后台执行器已暂停";
+  if ($("personal-demo-note").textContent !== note) $("personal-demo-note").textContent = note;
+  target.classList.toggle("expired", seconds === 0);
+}
+
+async function refreshUiConfig() {
+  if (state.configPending) return state.configPending;
+  const epoch = state.epoch;
+  const pending = (async () => {
+    try {
+      const { data } = await apiRequest("/ui/config", { timeoutMs: 10000 });
+      if (epoch !== state.epoch) return;
+      state.personalDemo = PUBLIC_BUILD ? personalDemoProfile(data.personal_demo) : null;
+      state.profileStale = false; renderPersonalDemo();
+      if (Number.isInteger(data.upload_max_bytes) && data.upload_max_bytes > 0) {
+        state.uploadLimit = PUBLIC_BUILD ? Math.min(data.upload_max_bytes, 4 * 1024 * 1024) : data.upload_max_bytes;
+        $("upload-limit").textContent = `支持 ${PUBLIC_BUILD ? "TXT、Markdown" : "TXT、Markdown、PDF"} · 单文件最多 ${new Intl.NumberFormat("zh-CN", { maximumFractionDigits: 1 }).format(state.uploadLimit / 1024 / 1024)} MB`;
+      }
+    } catch {
+      if (epoch === state.epoch) {
+        state.profileStale = true; renderPersonalDemo();
+        $("upload-limit").textContent = `支持 ${PUBLIC_BUILD ? "TXT、Markdown" : "TXT、Markdown、PDF"} · 文件大小由服务校验`;
+      }
+    } finally {
+      if (state.configPending === pending) state.configPending = null;
+    }
+  })();
+  state.configPending = pending;
+  return pending;
 }
 
 async function initializeServices() {
-  const epoch = state.epoch;
   checkService();
-  try {
-    const { data } = await apiRequest("/ui/config", { timeoutMs: 10000 });
-    if (epoch !== state.epoch) return;
-    if (Number.isInteger(data.upload_max_bytes) && data.upload_max_bytes > 0) {
-      state.uploadLimit = PUBLIC_BUILD ? Math.min(data.upload_max_bytes, 4 * 1024 * 1024) : data.upload_max_bytes;
-      $("upload-limit").textContent = `支持 ${PUBLIC_BUILD ? "TXT、Markdown" : "TXT、Markdown、PDF"} · 单文件最多 ${new Intl.NumberFormat("zh-CN", { maximumFractionDigits: 1 }).format(state.uploadLimit / 1024 / 1024)} MB`;
-    }
-  } catch { if (epoch === state.epoch) $("upload-limit").textContent = `支持 ${PUBLIC_BUILD ? "TXT、Markdown" : "TXT、Markdown、PDF"} · 文件大小由服务校验`; }
+  await refreshUiConfig();
 }
 
 async function start() {

@@ -94,6 +94,8 @@ class ToolEvent(BaseModel):
     status: Literal["ok", "error"]
     failure_type: str | None = None
     elapsed_ms: float = Field(ge=0)
+    # Old archived events did not distinguish rejected attempts from execution.
+    executed: bool = Field(default=False, strict=True)
 
 
 class AgentRun(BaseModel):
@@ -107,6 +109,7 @@ class AgentRun(BaseModel):
     model_calls: int = Field(ge=0)
     tool_calls: int = Field(ge=0)
     tool_executions: int = Field(ge=0)
+    tool_failures: int = Field(default=0, ge=0)
     usage: dict[str, int] | None
     model_events: list[dict[str, Any]]
     elapsed_ms: float = Field(ge=0)

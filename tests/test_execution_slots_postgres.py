@@ -17,7 +17,7 @@ from uuid import UUID, uuid4
 
 from alembic import command
 import pytest
-from sqlalchemy import func, select, text
+from sqlalchemy import func, insert, select, text
 
 from project_copilot.config import Settings
 from project_copilot.db.executions import AiJobExecution
@@ -44,6 +44,7 @@ PASSWORD = "synthetic-slot-password-123"
 def slots(ticket_database, tmp_path, monkeypatch):
     database = ticket_database
     settings = Settings(_env_file=None, public_demo=True, environment="production",
+        personal_max_concurrent_requests_per_user=1,  # Isolate one-slot lease safety; default3 tested separately.
         public_proxy_secret="synthetic-slot-secret-" * 3,
         auth_public_origin="https://personal.example",
         database_url="postgresql+psycopg://project_copilot_public:synthetic@postgres:5432/project_copilot_public",
@@ -107,7 +108,7 @@ def state(setup, identity):
 def test_empty_migration_and_orm_match_execution_evidence(ticket_database):
     check_model_drift(ticket_database)
     with ticket_database.transaction() as session:
-        assert session.scalar(text("SELECT version_num FROM alembic_version")) == "0014_execution_slots"
+        assert session.scalar(text("SELECT version_num FROM alembic_version")) == "0015_personal_capacity"
 
 
 def test_upgrade_releases_existing_terminal_only_and_never_invents_unknown_proof(postgres_database, tmp_path):
@@ -211,7 +212,7 @@ def test_worker_returns_real_completion_evidence_even_when_agent_final_is_unknow
     assert ai_worker.process_one(slots.database, slots.settings, runner=runner)
     assert not ai_worker.process_one(slots.database, slots.settings, runner=runner)
     snapshot = state(slots, identity)
-    assert snapshot.state == ("unknown" if bad_final else "succeeded")
+    assert snapshot.state == ("failed" if bad_final else "succeeded")
     assert snapshot.released is not None and snapshot.attempts == 1 and snapshot.usage == USAGE
     assert calls == ["controlled-provider"]
     assert slots.reserve(kind="agent", key=key)[0] == identity
@@ -496,7 +497,7 @@ def test_asyncio_timeout_does_not_release_physical_to_thread_early(slots):
         finish.set(); thread.join(timeout=10)
         assert not thread.is_alive() and not errors
         snapshot = state(slots, identity)
-        assert snapshot.state == "unknown" and snapshot.released is not None
+        assert snapshot.state == "failed" and snapshot.released is not None
     finally:
         finish.set(); thread.join(timeout=10)
 
@@ -514,7 +515,7 @@ def test_stale_execution_is_fenced_before_provider_counter_or_outbound_call(slot
     assert state(slots, identity).attempts == 0
 
 
-def test_three_task_lifetime_budget_is_not_refunded_when_unknown_slots_release(slots):
+def test_grant_lifetime_budget_is_not_refunded_when_unknown_slots_release(slots):
     identities = []
     for _ in range(3):
         identity, _, lease = slots.enroll()
@@ -522,11 +523,18 @@ def test_three_task_lifetime_budget_is_not_refunded_when_unknown_slots_release(s
         with slots.database.transaction() as session:
             QuotaService(session).finish(slots.user_id, identity, outcome="unknown", usage=USAGE)
         assert mark_local_done_and_release(slots.database, slots.settings, identity, lease.token, lease)
+    with slots.database.transaction() as session:
+        first = session.get(AiRequestReservation, identities[0])
+        now = session.scalar(select(func.clock_timestamp()))
+        session.execute(insert(AiRequestReservation), [{"user_id": slots.user_id,
+            "personal_demo_grant_id": first.personal_demo_grant_id, "idempotency_key": f"synthetic-filled-{n}",
+            "payload_fingerprint": "e" * 64, "kind": "rag", "utc_day": first.utc_day,
+            "state": "failed", "finished_at": now, "slot_released_at": now} for n in range(497)])
     with pytest.raises(QuotaExceeded) as error:
         slots.reserve()
     assert error.value.reason == "personal_demo_limit"
     with slots.database.transaction() as session:
-        assert session.scalar(select(func.count()).select_from(AiRequestReservation)) == 3
+        assert session.scalar(select(func.count()).select_from(AiRequestReservation)) == 500
         assert all(session.get(AiRequestReservation, identity).state == "unknown" for identity in identities)
 
 

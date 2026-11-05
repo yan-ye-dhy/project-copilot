@@ -308,7 +308,7 @@ def test_later_model_timeout_does_not_report_partial_usage_as_complete_total():
 
 
 def test_model_loop_budget_preserves_previous_pairing_and_stops():
-    result, runner, model, _ = run([call(call_id="one"), call(call_id="two")], limits=GraphLimits(max_model_calls=2))
+    result, runner, model, _ = run([call(call_id="one"), call(args={"ticket_id": "459903a9-6303-46d2-a5b0-7f33de7e133f"}, call_id="two")], limits=GraphLimits(max_model_calls=2))
     assert result.status == "budget_exhausted" and result.failure_type == "model_budget"
     assert result.model_calls == 2 and len(model.received) == 2 and result.tool_executions == 2
     assert [message.tool_call_id for message in runner.tool_messages] == ["one", "two"]

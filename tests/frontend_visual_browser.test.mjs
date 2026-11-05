@@ -26,7 +26,8 @@ let browser;
 before(async () => { browser = await chromium.launch({ headless: true }); });
 after(async () => { await browser?.close(); });
 
-async function fixture({ width = 1440, submitStatus = 202, state = 'succeeded', streaming = false } = {}) {
+async function fixture({ width = 1440, submitStatus = 202, state = 'succeeded', streaming = false,
+  personal = null, failureType = null } = {}) {
   const context = await browser.newContext({ viewport: { width, height: width > 500 ? 1000 : 844 }, serviceWorkers: 'block' });
   const f = { calls: [], unexpected: [], errors: [], done: !streaming };
   await context.route('**/*', async (route) => {
@@ -42,7 +43,8 @@ async function fixture({ width = 1440, submitStatus = 202, state = 'succeeded', 
     const reply = (data, status = 200) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(data) });
     if (path === '/api/auth/me') return reply({ user: { id: JOB, username: 'alice', role: 'user' }, csrf_token: CSRF });
     if (path === '/api/health') return reply({ status: 'ok' });
-    if (path === '/api/ui/config') return reply({ upload_max_bytes: 4194304 });
+    if (path === '/api/ui/config') return reply({ upload_max_bytes: 4194304, ...(personal ? { personal_demo: personal } : {}) });
+    if (path === '/api/auth/logout') return reply({ status: 'ok' });
     if (path === '/api/agent/contexts') return reply({ context_id: JOB, context_token: 'c'.repeat(43),
       expires_at: new Date(Date.now() + 3600000).toISOString() }, 201);
     if (path === '/api/jobs' && req.method() === 'POST') {
@@ -51,7 +53,7 @@ async function fixture({ width = 1440, submitStatus = 202, state = 'succeeded', 
     }
     if (path === `/api/jobs/${JOB}` && req.method() === 'GET') {
       const status = f.done ? state : 'running';
-      return reply({ job_id: JOB, kind: 'rag', status, progress: { stage: 'retrieval', label: '正在检索知识库' },
+      return reply({ job_id: JOB, kind: 'rag', status, failure_type: failureType, progress: { stage: 'retrieval', label: '正在检索知识库' },
         result: status === 'succeeded' ? { status: 'answered', answer, citations: [{ number: 1, text: '受控原文',
           metadata: { source_name: '研发资料.md', chunk_id: JOB, page: null } }] } : null });
     }
@@ -209,6 +211,50 @@ test('progress, draft and stopped wait share inline styling without losing the o
     f.done = true;
     await page.getByRole('button', { name: '查询 / 恢复等待' }).click();
     await page.locator('.markdown-answer h2').getByText('知行建议').waitFor();
+    assert.equal(posts(f), 1);
+    await noPageOverflow(page);
+    await safe(f);
+  } finally { await context.close(); }
+});
+
+for (const width of [1440, 390]) {
+  test(`personal capacity meter remains readable and private at ${width}px`, async () => {
+    const personal = { expires_at: new Date(Date.now() + 86400000).toISOString(), remaining_seconds: 86399,
+      job_limit: 500, jobs_used: 37, user_daily_limit: 1000, global_daily_limit: 2000,
+      concurrent_limit: 3, occupied_slots: 2, worker_enabled: true, secret: 'PRIVATE_PROFILE_SECRET' };
+    const { context, page, f } = await fixture({ width, personal });
+    try {
+      const meter = page.locator('#personal-demo-meter');
+      await meter.waitFor({ state: 'visible' });
+      assert.match(await meter.textContent(), /已用 37 \/ 500 次任务/);
+      assert.match(await meter.textContent(), /未完成 2 \/ 3/);
+      assert.match(await page.locator('#personal-demo-time').textContent(), /^23:59:\d{2}$/);
+      assert.equal(await page.locator('#personal-demo-time').getAttribute('aria-live'), 'off');
+      assert.match(await meter.textContent(), /后台按顺序处理队列/);
+      assert.doesNotMatch(await page.locator('body').textContent(), /PRIVATE_PROFILE_SECRET/);
+      await noPageOverflow(page);
+      await page.screenshot({ path: `/tmp/pc-capacity-${width}.png`, fullPage: true });
+      await page.locator('#logout-button').click();
+      await page.locator('#auth-screen').waitFor({ state: 'visible' });
+      assert.equal(await meter.isVisible(), false);
+      await safe(f);
+    } finally { await context.close(); }
+  });
+}
+
+test('confirmed Agent budget failure shows reason and recoverable job without pretending unknown or success', async () => {
+  const { context, page, f } = await fixture({ width: 390, state: 'failed', failureType: 'tool_budget' });
+  try {
+    await send(page);
+    const notice = page.locator('.message.assistant [role="alert"]');
+    await notice.getByText(/工具调用次数达到上限/).waitFor();
+    assert.match(await notice.textContent(), /tool_budget/);
+    assert.match(await notice.textContent(), new RegExp(JOB));
+    assert.doesNotMatch(await notice.textContent(), /结果待核实|执行成功/);
+    assert.equal(await page.locator('#job-recovery').isVisible(), true);
+    await page.reload({ waitUntil: 'networkidle' });
+    await page.getByRole('button', { name: '查询 / 恢复等待' }).click();
+    await page.locator('.message.assistant [role="alert"]').getByText(/tool_budget/).waitFor();
     assert.equal(posts(f), 1);
     await noPageOverflow(page);
     await safe(f);

@@ -140,3 +140,5 @@ SITE_ORIGIN仍是唯一受审HTTPS浏览器Origin：显式Origin必须精确匹�
 [聊天体验说明](CHAT_EXPERIENCE.md)提供完整协议和最小验证步骤。新增精确只读`GET /api/jobs/{uuid}/events`，Cloud Function转发到同名后端路径，允许`after`/`Last-Event-ID`整数游标；不增加云变量或写权限。后端每20秒结束连接，代理25秒上限；前端只读重连，失败自动查询原任务。不要把SSE重连转换成POST任务。
 
 上线前必须同时部署前端/Node函数与API/Worker/Nginx新代码，并显式升级`0013_job_events`。保持原卷和PERSONAL_DEMO授权边界；不通过旧发布证据签名新源码。真实EdgeOne与Cloudflare是否缓冲必须由用户授权部署后，用浏览器观察多帧在完成前到达来确认；本轮只证明localhost代理和隔离Nginx增量透传。没有公网实测不得宣布公网流式成功。
+
+高额度个人模式还需升级至`0015_personal_capacity`并重新生成v2授权，见[升级与配额说明](PERSONAL_DEMO_CAPACITY.md)。个人50分钟等待由短SSE和只读GET拼接，未提高Cloud Function单次时长或放宽PUBLIC门禁；停止/刷新/重连不重复POST。

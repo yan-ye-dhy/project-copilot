@@ -74,6 +74,7 @@
         <section id="view-chat" class="view chat-view" aria-labelledby="view-title">
           <div class="chat-column">
             <div class="chat-toolbar"><label class="mode-picker" for="chat-mode"><span class="mode-dot" aria-hidden="true"></span><select id="chat-mode" aria-label="对话模式"><option value="agent">智能协作</option><option value="rag">知识问答</option></select></label><span class="toolbar-note">对话仅保留本页 · 原任务可恢复</span><button id="evidence-toggle" class="button button-quiet evidence-mobile-toggle" type="button" aria-controls="evidence-panel" aria-expanded="false">查看依据</button></div>
+            <div id="personal-demo-meter" class="personal-demo-meter" aria-label="个人体验授权与额度" hidden><strong>个人体验</strong><span>剩余 <time id="personal-demo-time" role="timer" aria-live="off"></time></span><span id="personal-demo-tasks"></span><span id="personal-demo-slots"></span><span id="personal-demo-note" class="personal-demo-note" role="status" aria-live="polite"></span></div>
             <div id="chat-messages" class="chat-messages" aria-live="polite" aria-relevant="additions" tabindex="0">
               <div id="chat-welcome" class="chat-welcome">
                 <div class="welcome-emblem" aria-hidden="true"><svg viewBox="0 0 36 36" fill="none"><path d="m18 5 3.6 9.4L31 18l-9.4 3.6L18 31l-3.6-9.4L5 18l9.4-3.6L18 5Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="m29 4 1.1 2.9L33 8l-2.9 1.1L29 12l-1.1-2.9L25 8l2.9-1.1L29 4Z" fill="currentColor"/></svg></div>

@@ -3252,7 +3252,14 @@ body {
 .job-recovery-row { display:flex; flex-wrap:wrap; align-items:center; gap:4px 12px; padding:4px 0 4px 29px; }
 .job-identifier { overflow-wrap:anywhere; color:#5f6d56; }
 .job-recovery-row .button { min-height:30px; padding:3px 8px; font-size:12px; }
+.personal-demo-meter { display:flex; flex-wrap:wrap; align-items:center; gap:3px 15px; flex-shrink:0; padding:8px 24px; border-bottom:1px solid #e1e5d8; color:#65715b; font-size:11px; line-height:1.7; }
+.personal-demo-meter strong { color:#4c6d45; font-weight:600; }
+.personal-demo-meter time { font-variant-numeric:tabular-nums; }
+.personal-demo-note { color:#737c69; }
+.personal-demo-meter.expired,.personal-demo-meter.expired strong { color:#936443; }
 @media(max-width:600px) {
+  .personal-demo-meter { padding:6px 14px; gap:2px 10px; font-size:10px; }
+  .personal-demo-note { flex-basis:100%; }
   .message { grid-template-columns:27px minmax(0,1fr); column-gap:10px; margin-bottom:25px; }
   .message.user { grid-template-columns:minmax(0,1fr) 27px; margin-bottom:28px; }
   .message-avatar { width:27px; height:27px; }

@@ -83,20 +83,24 @@ class QuotaService:
         day = now.astimezone(timezone.utc).date()
         count = lambda *criteria: self.session.scalar(select(func.count()).select_from(AiRequestReservation).where(*criteria))
         personal_grant = UUID(release.evidence["grant_id"]) if release is not None and release.state == "PERSONAL_DEMO" else None
-        if personal_grant is not None and count(AiRequestReservation.personal_demo_grant_id == personal_grant) >= 3:
+        from project_copilot.services.personal_profile import PERSONAL_JOB_LIMIT, personal_limits
+        profile = personal_limits(self.settings) if personal_grant is not None else None
+        if personal_grant is not None and count(AiRequestReservation.personal_demo_grant_id == personal_grant) >= PERSONAL_JOB_LIMIT:
             # Count all outcomes, across UTC midnight. Failure, timeout or a new
-            # idempotency key cannot refund this short grant's three tasks.
+            # idempotency key cannot refund this grant's tasks.
             raise QuotaExceeded("personal_demo_limit")
-        concurrency_limit = min(self.user_concurrency_limit, 1) if personal_grant is not None else self.user_concurrency_limit
+        concurrency_limit = profile["concurrent_limit"] if profile else self.user_concurrency_limit
+        user_daily_limit = profile["user_daily_limit"] if profile else self.user_daily_limit
+        global_daily_limit = profile["global_daily_limit"] if profile else self.global_daily_limit
         if personal_grant is not None:
             from project_copilot.services.execution_slots import reclaim_ended
             # Proof-based maintenance only; this never reruns work or refunds a task.
             reclaim_ended(self.session, self.settings, user_id=user_id)
         if count(AiRequestReservation.user_id == user_id, AiRequestReservation.slot_released_at.is_(None)) >= concurrency_limit:
             raise QuotaExceeded("user_concurrency")
-        if count(AiRequestReservation.user_id == user_id, AiRequestReservation.utc_day == day) >= self.user_daily_limit:
+        if count(AiRequestReservation.user_id == user_id, AiRequestReservation.utc_day == day) >= user_daily_limit:
             raise QuotaExceeded("user_daily")
-        if count(AiRequestReservation.utc_day == day) >= self.global_daily_limit:
+        if count(AiRequestReservation.utc_day == day) >= global_daily_limit:
             raise QuotaExceeded("global_daily")
         reservation = AiRequestReservation(user_id=user_id, idempotency_key=idempotency_key,
                                            payload_fingerprint=payload_fingerprint, kind=kind,

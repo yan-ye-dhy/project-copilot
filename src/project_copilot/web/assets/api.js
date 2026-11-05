@@ -32,6 +32,66 @@ export class ApiError extends Error {
 }
 
 const JOB_ID = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
+const DEFAULT_JOB_WAIT_MS = 8 * 60 * 1000;
+const MAX_JOB_WAIT_MS = 60 * 60 * 1000;
+export const PERSONAL_JOB_WAIT_MS = 50 * 60 * 1000;
+
+const FAILURE_LABELS = Object.freeze({
+  model_budget: "模型决策次数达到上限", tool_budget: "工具调用次数达到上限",
+  provider_budget: "供应商调用次数达到上限", provider_attempts: "供应商调用次数达到上限",
+  total_timeout: "任务达到总执行时限", model_timeout: "模型调用超时", tool_timeout: "工具等待超时",
+  repeated_tool_loop: "检测到重复且无进展的工具循环", tool_no_progress: "工具调用没有取得新的进展",
+  no_progress: "执行没有取得新的进展", model_error: "模型服务调用未能完成",
+  model_exception: "模型服务调用未能完成", tool_exception: "工具执行未能完成",
+  invalid_final: "最终回答未通过校验", final_output_invalid: "最终回答未通过校验",
+  invalid_sources: "回答引用未通过校验", invalid_citation: "回答引用未通过校验",
+  invalid_json: "回答格式未通过校验", invalid_schema: "回答结构未通过校验",
+  authentication_error: "执行身份或上下文校验失效", knowledge_retrieval_failed: "知识检索未能完成",
+  execution_error: "后台执行未能完成", tool_protocol_error: "工具调用格式未通过校验",
+  grant_ended: "授权已结束，排队任务未执行；不会自动重试或退款",
+  context_budget: "上下文达到处理上限",
+  tool_output_invalid: "工具结果未通过校验", tool_output_too_large: "工具结果超过处理上限",
+});
+const QUOTA_LABELS = Object.freeze({
+  personal_demo_limit: "本次个人授权的任务次数已用完。",
+  user_daily: "你的 UTC 每日任务额度已用完。",
+  global_daily: "全站 UTC 每日任务额度已用完。",
+  user_concurrency: "未完成任务已占满个人并发槽，请等待或查询原任务。",
+  provider_attempts: "本任务的供应商调用次数已达上限。",
+});
+export function safeFailureType(value) {
+  return typeof value === "string" && Object.hasOwn(FAILURE_LABELS, value) ? value : undefined;
+}
+export function jobFailureLabel(value) {
+  return FAILURE_LABELS[safeFailureType(value)] || "处理未能完成";
+}
+function quotaReason(value) {
+  const reason = value?.reason ?? value?.detail?.reason;
+  return typeof reason === "string" && Object.hasOwn(QUOTA_LABELS, reason) ? reason : undefined;
+}
+
+// Only these non-secret server fields are used. A countdown describes an
+// existing authorization, never grants permission or simulates Agent progress.
+export function personalDemoProfile(value, now = Date.now()) {
+  if (!value || typeof value !== "object" || Array.isArray(value) || typeof value.expires_at !== "string" ||
+      !Number.isFinite(Date.parse(value.expires_at)) || typeof value.worker_enabled !== "boolean") return null;
+  const fields = ["job_limit", "jobs_used", "user_daily_limit", "global_daily_limit", "concurrent_limit", "occupied_slots"];
+  if (fields.some((key) => !Number.isSafeInteger(value[key]) || value[key] < 0) ||
+      value.job_limit < 1 || value.job_limit > 500 || value.jobs_used > value.job_limit ||
+      value.user_daily_limit < 1 || value.global_daily_limit < 1 ||
+      value.concurrent_limit < 1 || value.concurrent_limit > 3) return null;
+  const seconds = value.remaining_seconds === undefined
+    ? Math.max(0, (Date.parse(value.expires_at) - now) / 1000) : value.remaining_seconds;
+  if (!Number.isFinite(seconds) || seconds < 0 || seconds > 86400) return null;
+  return Object.freeze(Object.fromEntries([
+    ...fields.map((key) => [key, value[key]]), ["expires_at", value.expires_at],
+    ["deadline_ms", Math.min(Date.parse(value.expires_at), now + Math.floor(seconds * 1000))],
+    ["worker_enabled", value.worker_enabled],
+  ]));
+}
+export function personalJobWaitOptions(profile) {
+  return profile ? { maxWaitMs: PERSONAL_JOB_WAIT_MS } : {};
+}
 
 function jobStopped(signal, isCurrent) {
   if (!isCurrent()) throw new ApiError("会话已切换。", { kind: "aborted" });
@@ -77,6 +137,7 @@ function jobReadError(error, id) {
 export async function readJobEvents(id, { after = 0, signal, onEvent = () => {}, fetchImpl = globalThis.fetch,
   timeoutMs = 27000 } = {}) {
   if (!JOB_ID.test(id) || !Number.isSafeInteger(after) || after < 0) throw new ApiError("任务编号无效。", { kind: "response" });
+  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0 || timeoutMs > 27000) throw new ApiError("实时连接时限无效。", { kind: "configuration" });
   const controller = new AbortController();
   const abort = () => controller.abort();
   const timer = setTimeout(abort, timeoutMs);
@@ -145,14 +206,16 @@ export async function readJobEvents(id, { after = 0, signal, onEvent = () => {},
 
 // Reattach by identifier after stop/reload. This function cannot create work.
 export async function resumePublicJob(id, { request = apiRequest, signal, onEvent = () => {},
-  after = 0, delay = delayJob, maxPolls = 240, isCurrent = () => true,
+  after = 0, delay = delayJob, maxPolls, isCurrent = () => true,
   eventReader = readJobEvents, useEvents = request === apiRequest,
-  maxWaitMs = 8 * 60 * 1000, now = Date.now, random = Math.random } = {}) {
+  maxWaitMs = DEFAULT_JOB_WAIT_MS, now = Date.now, random = Math.random } = {}) {
   if (!JOB_ID.test(id)) throw new ApiError("任务编号无效，请勿重复提交。", { kind: "response" });
-  if (!Number.isFinite(maxWaitMs) || maxWaitMs <= 0 || maxWaitMs > 8 * 60 * 1000) throw new ApiError("等待时限无效。", { kind: "configuration" });
+  if (!Number.isFinite(maxWaitMs) || maxWaitMs <= 0 || maxWaitMs > MAX_JOB_WAIT_MS) throw new ApiError("等待时限无效。", { kind: "configuration" });
+  const polls = maxPolls === undefined ? Math.ceil(maxWaitMs / 2000) + 4 : maxPolls;
+  if (!Number.isSafeInteger(polls) || polls < 1 || polls > 2000) throw new ApiError("查询次数无效。", { kind: "configuration" });
   const deadline = now() + maxWaitMs;
   let cursor = after, streamFailures = 0, readFailures = 0;
-  for (let i = 0; i < maxPolls; i += 1) {
+  for (let i = 0; i < polls; i += 1) {
     jobStopped(signal, isCurrent);
     if (now() >= deadline) break;
     let current;
@@ -178,7 +241,11 @@ export async function resumePublicJob(id, { request = apiRequest, signal, onEven
     const status = current.data?.status;
     if (status === "succeeded" && current.data.result) return { data: current.data.result, meta: current.meta || {} };
     if (["failed", "unknown"].includes(status)) {
-      throw new ApiError(`任务未完成（${status === "unknown" ? "结果待核实" : "处理失败"}），请勿重复提交。任务编号：${id}`, { kind: "job", meta: { jobId: id, jobStatus: status } });
+      const failureType = safeFailureType(current.data.failure_type);
+      const explanation = failureType ? `；${jobFailureLabel(failureType)}（${failureType}）` : "";
+      throw new ApiError(`任务未完成（${status === "unknown" ? "结果待核实" : "处理失败"}${explanation}），请勿重复提交。任务编号：${id}`, {
+        kind: "job", meta: { jobId: id, jobStatus: status, ...(failureType ? { failureType } : {}) },
+      });
     }
     if (!["reserved", "running"].includes(status)) throw new ApiError("任务状态无效，请勿重复提交。", { kind: "response" });
     if (current.data.progress && typeof current.data.progress.label === "string") onEvent({ id: null, event: "progress", data: current.data.progress });
@@ -238,7 +305,10 @@ export async function runPublicJob(kind, payload, { headers = {}, request = apiR
 }
 
 function detailMessage(value, status, mutating = false) {
-  if (status === 429) return "本次请求因限流或额度限制被拒绝，请稍后再操作。系统没有自动重试；已有任务请查询原编号。";
+  if (status === 429) {
+    const reason = quotaReason(value);
+    return `${reason ? QUOTA_LABELS[reason] : "本次请求因限流或额度限制被拒绝，请稍后再操作。"}系统没有自动重试；已有任务请查询原编号。`;
+  }
   if ([502, 503, 504].includes(status)) return mutating
     ? "上游服务暂时不可用，本次操作是否已被接受尚未核实。系统没有自动重试，请先查询结果，避免重复提交。"
     : "服务暂时不可用，当前无法读取结果。已有任务可能仍在后台执行。";
@@ -312,6 +382,8 @@ export async function apiRequest(path, {
     try { data = await response.json(); }
     catch { throw new ApiError([429, 502, 503, 504].includes(response.status) ? detailMessage(null, response.status, mutating) : "服务返回了无法识别的结果，请根据请求编号排查。", { status: response.status, meta, kind: "response" }); }
     if (!response.ok) {
+      const reason = quotaReason(data);
+      if (response.status === 429 && reason) meta.quotaReason = reason;
       throw new ApiError(detailMessage(data, response.status, mutating), { status: response.status, meta });
     }
     return { data, meta };
