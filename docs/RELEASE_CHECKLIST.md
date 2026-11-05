@@ -1,5 +1,20 @@
 # 公网发布验收清单（含默认域名专项）
 
+## 当前发布准备结论（2026-11-05，基准80302f9）
+
+- `READY_FOR_CLOSED_CHECKS`：已有独立只读预检和本机维护预备包；不需要重初始化、管理员重建或降低health。
+- `READY_FOR_USER_REVIEW`：本轮代码、测试和[交接手册](STAGING_LAUNCH_HANDOFF.md)供用户审查，草稿PR不自动合并/部署。
+- **`READY_FOR_STAGING_AUTHORIZATION=false`**：模型Key尚未配置而现门禁强制要求；8项工件未全部人工审核，云端负例、维护停函数验证及本人剩余风险接受未完成。
+
+用户本轮报告真实EdgeOne503/503/404已通过，归类为已收到真实执行反馈；原始截图/hash及审核文件仍 `NEEDS_USER_EVIDENCE`。下方旧阶段的“可进入准备”结论不是当前发布许可。完整证据分类/字段/指纹见[工作单](STAGING_EVIDENCE_WORKSHEET.md)，本轮实际执行见[报告](STAGING_PREPARATION_REPORT.md)。
+
+- [x] 独立脚本不改变正式构建、业务门禁、Compose/Nginx及私有env；未启动Tunnel/Worker或调用模型。
+- [x] 真实只读Docker/PG探针核实CLOSED/worker=false、migrate已exited且0、四卷标签/主要挂载、无演示宿主端口；完整网络/其他消费者仍由既有归属检查和用户复核。
+- [x] 静态维护候选无脚本/API/登录/函数目录，明确仅本地产物，不代表云端旧路由消失。
+- [ ] 当前配置就绪、8项语义审核及实际容器指纹/资源一致；不得用测试fixture授权。
+- [ ] 用户独立接受函数调用前额度风险，核实维护替换可作用同一项目及旧部署/别名的处置。
+- [ ] 用户亲自授权短期STAGING；之后另授权Tunnel、必要Worker及付费验收。默认域名PUBLIC继续禁止。
+
 基准`717f66a588f4d5eb09d71d1e1203f9fd695e1dd7`。本轮清除可本地验证的阻塞项，真实默认CLOSED；未登录平台、启动Tunnel、调用付费模型、切换真实STAGING/PUBLIC或删除现有卷。公开PDF503保留。
 
 ## 本地整改
@@ -60,6 +75,7 @@ PDF真正权限/网络沙箱尚未开启，继续503。提案及确认至少30�
 - [x] 保留写Origin、GET显式Origin、FetchMetadata、Cookie/CSRF及全部后端权限/门禁，缺少浏览器元数据不等于公开读取。
 - [x] 严格查询格式与原有限额；剔除eo_token/eo_time查询与同名Cookie后保留业务数据及Session，不把预览令牌当认证，也未声称已发生泄漏。
 - [x] 明确action GET可物化过期状态，Session、owner/context校验和无缓存仍保留；未改业务模块。
-- [ ] 用户审核PR并部署后在CLOSED/无Tunnel/无BACKEND下真实验收health503、me503、非法PATCH404和错误来源写403。
+- [x] 用户报告PR #4已部署，在CLOSED/无Tunnel/无BACKEND下真实验收health503、me503、非法PATCH404；原件收集及hash审核仍待补。
+- [ ] 错误来源写403真实平台负例及实际Cookie/CSRF/上游完整链路；不得把已完成的三项外推为全部通过。
 
 本地执行者、测试类型/数量和未执行项见[最终报告](EDGEONE_ORIGIN_FINAL_FIX.md)。本轮不切STAGING/PUBLIC，默认域名PUBLIC禁入与PDF关闭保持；实际CDN/Cookie/CORS/别名及全链路仍按原STAGING清单验收。

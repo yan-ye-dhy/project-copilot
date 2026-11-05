@@ -1,5 +1,7 @@
 # 公开演示运行手册（阶段1.5）
 
+**当前已有环境请先读 [STAGING发布交接](STAGING_LAUNCH_HANDOFF.md)**（基准80302f9）。本页保留完整历史准备命令，当前不要重复初始化、迁移、创建管理员或重启已准备的服务。本轮只读预检和维护预备包不授权发布；代码强制模型Key就绪、受审工件及云端止损边界未满足，继续CLOSED。私有证据整理见[工作单](STAGING_EVIDENCE_WORKSHEET.md)。
+
 默认 **CLOSED**，真实资源未切换STAGING/PUBLIC。以下资源初始化、账号、启动、Tunnel及发布命令仅供用户后续明确授权后使用。本轮测试只使用合成数据和新资源，保留原有数据卷、模型缓存及实验记录。
 
 ## Windows与WSL准备
@@ -143,7 +145,7 @@ docker compose --env-file .env.public-demo -f docker-compose.public-demo.yml \
 
 ### 默认域名限流的紧急关闭
 
-本地流程仍为交互 `release_control CLOSED`，然后 `./scripts/stop_public_demo.sh`。脚本按标签只停演示容器，不删除卷；如DB不可用先停入口和执行进程。仅停Tunnel不能阻止EdgeOne函数被反复调用：用户还须在控制台核实可用的暂停项目/停用部署/撤销入口方式，必要时撤销该部署，而不是只隐藏URL或换secret。控制台是否提供额度告警、暂停与硬上限须本人实际确认；不承诺未证的平台自动止损。
+本地流程仍为交互 `release_control CLOSED`，然后 `./scripts/stop_public_demo.sh`；均须用户明确授权。脚本按标签只停演示容器，不删除卷；如DB不可用先停入口和执行进程。用户尚未发现可核实的一键暂停；仅停Tunnel、换secret、断Git或停自动部署不阻止已有EdgeOne函数被调用。不要把删除项目/删除部署当成安全日常操作。静态维护包、同项目替换、历史别名验证和失败处置见[维护回退](STAGING_MAINTENANCE.md)，尚未证明云端函数额度得到保护。
 
 再次开放前先调查unknown/running和已确认工单、核对额度/备份/索引；恢复按既有管理员工具，绝不重放不确定操作。新授权绑定当前代码、配置和入口文件摘要，旧工件不得沿用。
 
