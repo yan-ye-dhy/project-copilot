@@ -6,7 +6,7 @@ import re
 from typing import Self
 
 import httpx
-from project_copilot.infrastructure.call_accounting import record_provider_attempt
+from project_copilot.infrastructure.execution_tracking import provider_request
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage, ToolMessage
 from openai import (
     APIConnectionError, APIResponseValidationError, APIStatusError, APITimeoutError, AsyncOpenAI,
@@ -158,13 +158,14 @@ class DeepSeekToolModel:
         encoded = encode_messages(messages)
         tools = _validate_tools(tools)
         try:
-            record_provider_attempt()
-            raw_response = await self._client.chat.completions.with_raw_response.create(
-                model=self.model, messages=encoded, tools=tools,
-                temperature=self.temperature, max_tokens=self.max_tokens, stream=False,
-                extra_body={"thinking": {"type": "disabled"}},
-            )
-            response = raw_response.http_response.json()
+            with provider_request() as attempt:
+                raw_response = await self._client.chat.completions.with_raw_response.create(
+                    model=self.model, messages=encoded, tools=tools,
+                    temperature=self.temperature, max_tokens=self.max_tokens, stream=False,
+                    extra_body={"thinking": {"type": "disabled"}},
+                )
+                attempt.completed()
+                response = raw_response.http_response.json()
         except APITimeoutError:
             raise ChatRequestError("DeepSeek Agent请求超时") from None
         except APIConnectionError:

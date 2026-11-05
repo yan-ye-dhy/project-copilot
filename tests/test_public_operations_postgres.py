@@ -195,15 +195,16 @@ def test_recovery_requires_exclusive_execution_and_reconciled_evidence(ticket_da
             execution.commit()
     with ticket_database.transaction() as session:
         result = resolve_no_retry(session, admin.id, unknown, evidence, **stopped(unknown))
-        assert result["state"] == "failed" and result["provider_result"] == "not_inferred"
+        assert result["state"] == "unknown" and result["slot_released"] is True and result["provider_result"] == "not_inferred"
     with ticket_database.transaction() as session:
         row = session.get(AiRequestReservation, unknown)
-        assert row.state == "failed" and row.provider_attempts == 1
+        assert row.state == "unknown" and row.provider_attempts == 1
+        assert row.slot_released_at is not None and row.finished_at is None
         assert session.scalar(select(JobRecoveryAudit).where(JobRecoveryAudit.job_id == unknown)).previous_state == "unknown"
         assert session.get(AiJob, unknown).payload == {"question": "PRIVATE_QUESTION"}
         assert cleanup(session, admin.id)["terminal_content"] == 0
         replay, reused = QuotaService(session).reserve(alice.id, "synthetic-unknown-8-no-context", "a" * 64, "rag")
-        assert reused and replay.id == unknown and replay.state == "failed"
+        assert reused and replay.id == unknown and replay.state == "unknown"
         assert not QuotaService(session).claim(alice.id, unknown)
 
 

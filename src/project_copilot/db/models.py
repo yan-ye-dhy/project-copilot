@@ -167,6 +167,7 @@ class AiRequestReservation(Base):
     utc_day: Mapped[date] = mapped_column(Date, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=text("clock_timestamp()"))
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    slot_released_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     provider_attempts: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
     usage: Mapped[dict[str, int] | None] = mapped_column(JSONB, nullable=True)
     cost_status: Mapped[str] = mapped_column(String(10), nullable=False, server_default=text("'unknown'"))

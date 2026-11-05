@@ -79,6 +79,7 @@ def cleanup(session, actor_user_id: UUID, *, batch_size: int = 100):
             if job is not None:
                 job.payload, job.result = {}, None
             reservation.state, reservation.finished_at = "failed", now
+            reservation.slot_released_at = now
             counts["expired_unclaimed"] += 1
 
         rows = session.execute(select(AiJob, AiRequestReservation).join(AiRequestReservation).where(
@@ -160,7 +161,18 @@ def inspect_job(session, actor_user_id: UUID, job_id: UUID) -> dict:
         "request_attempt_outcomes": [[outcome, count] for outcome, count in session.execute(
             select(AiRequestAttempt.outcome, func.count()).where(AiRequestAttempt.reservation_id == job.id)
             .group_by(AiRequestAttempt.outcome).order_by(AiRequestAttempt.outcome)).all()],
-        "actions": action_details, "manually_resolved": session.scalar(select(JobRecoveryAudit.id).where(JobRecoveryAudit.job_id == job.id)) is not None}
+        "actions": action_details, "slot_held": reservation.slot_released_at is None,
+        "slot_released_at": reservation.slot_released_at.isoformat() if reservation.slot_released_at else None,
+        "manually_resolved": session.scalar(select(JobRecoveryAudit.id).where(JobRecoveryAudit.job_id == job.id)) is not None}
+    from project_copilot.db.executions import AiJobExecution
+    execution = session.get(AiJobExecution, job_id)
+    result["execution"] = None if execution is None else {
+        "token": str(execution.token), "provider_open": execution.provider_open,
+        "provider_uncertain": execution.provider_uncertain,
+        "local_done_at": execution.local_done_at.isoformat() if execution.local_done_at else None,
+        "fenced_at": execution.fenced_at.isoformat() if execution.fenced_at else None,
+        "release_reason": execution.release_reason,
+    }
     result["inspection_sha256"] = sha256(_canonical(result).encode()).hexdigest()
     return result
 
@@ -170,7 +182,7 @@ def resolve_no_retry(session, actor_user_id: UUID, job_id: UUID, evidence: dict,
 
     This is an administrator decision after checking process/container inventory,
     business rows and the provider. It does not claim the upstream call failed or
-    reproduce its result; state=failed means no result will be delivered locally.
+    reproduce its result; unknown stays unknown and only its concurrency slot ends.
     """
     required = {"version", "job_id", "inspection_sha256", "original_execution_terminated",
         "business_verified", "provider_outcome", "evidence_reference_sha256", "decision"}
@@ -185,8 +197,13 @@ def resolve_no_retry(session, actor_user_id: UUID, job_id: UUID, evidence: dict,
     with closed_quiescent(session):
         reservation = session.scalar(select(AiRequestReservation).where(AiRequestReservation.id == job_id)
             .with_for_update())
-        if reservation is None or reservation.state not in ("running", "unknown"):
-            raise MaintenanceRejected("only unresolved executions can be retired")
+        from project_copilot.db.executions import AiJobExecution
+        execution = session.get(AiJobExecution, job_id, with_for_update=True)
+        eligible = reservation is not None and (reservation.state in ("running", "unknown") or
+            (reservation.state in ("succeeded", "failed") and execution is not None))
+        if (not eligible
+                or reservation.slot_released_at is not None):
+            raise MaintenanceRejected("only held executions requiring reconciliation can be retired")
         from project_copilot.services.worker_stop import verify_inventory
         try:
             verify_inventory(worker_stop_proof, secret=settings.public_proxy_secret.get_secret_value(),
@@ -206,7 +223,12 @@ def resolve_no_retry(session, actor_user_id: UUID, job_id: UUID, evidence: dict,
             provider_attempts=reservation.provider_attempts, prior_usage=reservation.usage,
             evidence_sha256=sha256(_canonical({"review": evidence, "worker_stop": worker_stop_proof}).encode()).hexdigest(),
             inspection_sha256=inspection["inspection_sha256"]))
-        reservation.state, reservation.finished_at = "failed", session.scalar(select(func.clock_timestamp()))
+        now = session.scalar(select(func.clock_timestamp()))
+        if reservation.state == "running":
+            reservation.state, reservation.finished_at = "unknown", None
+        reservation.slot_released_at = now
+        if execution is not None:
+            execution.fenced_at, execution.release_reason = now, "manual"
         session.flush()
-        return {"job_id": str(job_id), "state": "failed", "resolution": "terminal_no_retry",
-                "replay_permitted": False, "provider_result": "not_inferred"}
+        return {"job_id": str(job_id), "state": reservation.state, "resolution": "terminal_no_retry",
+                "slot_released": True, "replay_permitted": False, "provider_result": "not_inferred"}

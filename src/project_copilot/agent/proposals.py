@@ -3,6 +3,7 @@ import asyncio
 import threading
 
 from project_copilot.agent.backend import ReadOnlyBackend
+from project_copilot.infrastructure.execution_tracking import current_execution, tracked_to_thread
 from project_copilot.schemas.tickets import TicketCreate
 from project_copilot.services.approvals import ApprovalService
 
@@ -35,7 +36,23 @@ class ProposalBackend(ReadOnlyBackend):
                 principal = None
             service = ApprovalService(session, principal=principal, enforce_ownership=principal is not None)
             context = self._context(service)
+            tracker = current_execution()
+            execution = None
+            if tracker is not None:
+                from project_copilot.services.execution_slots import ExecutionFenced, guard_execution
+                execution = guard_execution(session, tracker.job_id, tracker.token)
+                if execution.action_id is not None:
+                    # A timed-out tool may have committed before cancellation.
+                    # A later tool decision reuses that preview rather than creating a duplicate.
+                    from project_copilot.db.models import PendingAction
+                    existing = session.get(PendingAction, execution.action_id)
+                    if (existing is None or existing.context_id != context.id or
+                            existing.owner_user_id != principal.id):
+                        raise ExecutionFenced("proposal binding mismatch")
+                    return service.read(existing)
             result = service.preview(context, payload)
+            if execution is not None:
+                execution.action_id = result.action_id
             if cancelled.is_set():
                 raise RuntimeError('request cancelled')
         return result
@@ -43,7 +60,7 @@ class ProposalBackend(ReadOnlyBackend):
     async def propose_ticket(self, title: str, description: str):
         cancelled = threading.Event()
         try:
-            action = await asyncio.to_thread(self._create_proposal, TicketCreate(title=title, description=description), cancelled)
+            action = await tracked_to_thread(self._create_proposal, TicketCreate(title=title, description=description), cancelled)
         except asyncio.CancelledError:
             cancelled.set()
             raise
