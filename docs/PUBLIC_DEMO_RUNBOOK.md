@@ -81,14 +81,16 @@ docker compose --env-file .env.public-demo -f docker-compose.public-demo.yml \
 
 只读调查输出编号、归属、状态、尝试数、usage及业务绑定，不输出问题/模型原文/凭据。同Context提案是核对线索，不代表精确任务归因。真实计费以供应商账单为准。
 
-running/unknown不能自动重跑或直接释放。先CLOSED，停止入口/API/Worker/迁移；核对供应商最终结果与数据库提案/工单。准备权限600的审查工件和回执，绑定任务、最新inspection哈希、已核实供应商结果和terminal_no_retry决定，再执行：
+新版本PERSONAL_DEMO任务使用[独立执行槽](PERSONAL_EXECUTION_SLOTS.md)：真实本地工作及供应商调用均已结束时可自动放槽，任务仍可为unknown；崩溃时还检查原文件锁可获取、执行身份及业务绑定，并用数据库fencing阻断旧执行。不是按超时回收，也不重跑或退款。`inspect-job`分别显示`state`、`slot_held`和`execution`；缺失证明的历史任务、仍有执行或供应商结果不明的任务继续占槽。
+
+仅上述无法自动证明的特殊情况走原人工入口。先CLOSED，停止入口/API/Worker/迁移；核对供应商最终结果与数据库提案/工单。准备权限600的审查工件和回执，绑定任务、最新inspection哈希、已核实供应商结果和terminal_no_retry决定，再执行：
 
 ```bash
 .venv/bin/python -m scripts.public_maintenance resolve-job --job-id <任务UUID> \
   --evidence <私有回执JSON> --review-artifact <实际审查工件>
 ```
 
-宿主核验固定卷全部消费者，API/Worker/migrate须真正退出，且能证明Worker在任务开始后终止；短时签名绑定任务、资源和审查工件。内部核验管理员、CLOSED、禁用Worker、执行排他锁、业务绑定与回执，原子写不可变审计。恢复仅终结本地交付、禁止重放，不推断远端成功或账单；保留原尝试、usage及调查证据。无法证明时继续占槽。
+宿主核验固定卷全部消费者，API/Worker/migrate须真正退出，且能证明Worker在任务开始后终止；短时签名绑定任务、资源和审查工件。内部核验管理员、CLOSED、禁用Worker、执行排他锁、业务绑定与回执，原子写不可变审计。恢复仅释放已核实结束的并发槽，unknown保留（running改为unknown），禁止重放，不推断远端成功或账单；保留原尝试、usage、费用和幂等记录。无法证明时继续占槽。
 
 ## 一致性冷备与新资源恢复
 

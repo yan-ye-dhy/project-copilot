@@ -97,7 +97,7 @@ def test_empty_migration_and_event_schema_match_orm(ticket_database):
     columns = {row["name"] for row in inspect(ticket_database.engine).get_columns("ai_job_events")}
     assert columns == {"job_id", "sequence", "kind", "data", "created_at"}
     with ticket_database.transaction() as session:
-        assert session.scalar(text("SELECT version_num FROM alembic_version")) == "0013_job_events"
+        assert session.scalar(text("SELECT version_num FROM alembic_version")) == "0014_execution_slots"
 
 
 def test_sequence_cap_and_expiry_keep_reservation_identity(event_setup):

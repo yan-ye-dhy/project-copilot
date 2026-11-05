@@ -16,7 +16,7 @@ from project_copilot import main
 from project_copilot.agent import service as agent_service
 from project_copilot.config import Settings
 from project_copilot.db.models import AiRequestReservation, PendingAction, Ticket
-from project_copilot.infrastructure.call_accounting import record_provider_attempt
+from project_copilot.infrastructure.execution_tracking import provider_request
 from project_copilot.schemas.auth import RegisterInput
 from project_copilot.services import ai_worker, release_control as release
 from project_copilot.services.auth import AuthService
@@ -42,7 +42,8 @@ def test_personal_http_jobs_compiled_proposal_confirm_and_close(ticket_database,
 
     class ProposalModel:
         async def ainvoke(self, messages, tools):
-            record_provider_attempt()  # Intercept accounting only; never sends network traffic.
+            with provider_request() as attempt:  # Complete fake response; no network traffic.
+                attempt.completed()
             return AIMessage(content="", tool_calls=[{
                 "name": "propose_ticket", "id": "controlled_personal_proposal",
                 "args": {"title": "个人体验提案", "description": "测试独立确认与幂等。"},
@@ -62,7 +63,8 @@ def test_personal_http_jobs_compiled_proposal_confirm_and_close(ticket_database,
     def controlled_runner(active, database, job):
         seen.append(job.kind)
         if job.kind == "rag":
-            record_provider_attempt()
+            with provider_request() as attempt:
+                attempt.completed()
             return SimpleNamespace(generation=None, model_dump=lambda **_: {
                 "status": "answered", "answer": "受控RAG结果；未调用实际检索或模型。", "citations": []})
         return ai_worker.execute(active, database, job)  # Real compiled graph and proposal backend.

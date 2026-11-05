@@ -1,4 +1,4 @@
-"""Execute durable AI jobs at most once; uncertain outcomes remain reserved."""
+"""Execute jobs at most once; personal slots end only with execution proof."""
 import asyncio
 from dataclasses import dataclass
 from contextlib import nullcontext
@@ -16,6 +16,9 @@ from project_copilot.db.jobs import AiJob, AiJobUpload
 from project_copilot.db.models import AiRequestReservation
 from project_copilot.infrastructure.call_accounting import account_job
 from project_copilot.infrastructure.job_progress import observe, progress
+from project_copilot.infrastructure.execution_tracking import ExecutionTracker, track_execution
+from project_copilot.services.execution_slots import (ExecutionLease, register_execution, reclaim_ended,
+    mark_local_done_and_release)
 from project_copilot.infrastructure.tracing import create_trace_runtime, current_trace_id
 from project_copilot.services.job_events import EventWriter, append_event
 from project_copilot.rag.answering import create_answer_service
@@ -38,6 +41,7 @@ class ClaimedJob:
     source_name: str | None = None
     media_type: str | None = None
     content_sha256: str | None = None
+    execution_lease: object | None = None
 
 
 def expire_unclaimed(database, *, ttl_seconds: int, batch_size: int = 100) -> int:
@@ -64,17 +68,30 @@ def expire_unclaimed(database, *, ttl_seconds: int, batch_size: int = 100) -> in
             if job is not None:
                 job.payload = {}
             reservation.state, reservation.finished_at = "failed", now
+            reservation.slot_released_at = now
         return len(rows)
 
 
 def claim_one(database, *, ttl_seconds: int | None = None, settings=None) -> ClaimedJob | None:
-    # One transaction binds the job payload to the reservation claim.
+    leases = []
+    try:
+        return _claim_one(database, ttl_seconds=ttl_seconds, settings=settings, leases=leases)
+    except BaseException:
+        # No execution can start before this claim transaction commits.
+        for lease in leases:
+            lease.close()
+        raise
+
+
+def _claim_one(database, *, ttl_seconds, settings, leases):
+    # One transaction binds the job payload, physical lease and unique execution token.
     with database.transaction() as session:
         statement = select(AiJob, AiRequestReservation).join(AiRequestReservation).where(AiRequestReservation.state == "reserved")
         release = require_open(session, settings, worker=True) if settings is not None else None
         if release is not None and release.state == "PERSONAL_DEMO":
             # An old grant's queued task remains evidence, never an implicit
             # retry. Filtering also prevents it blocking the current grant.
+            reclaim_ended(session, settings, user_id=UUID(release.allowed_user_ids[0]))
             statement = statement.where(
                 AiRequestReservation.personal_demo_grant_id == UUID(release.evidence["grant_id"]),
                 AiRequestReservation.user_id == UUID(release.allowed_user_ids[0]),
@@ -98,12 +115,17 @@ def claim_one(database, *, ttl_seconds: int | None = None, settings=None) -> Cla
         if not QuotaService(session).claim(reservation.user_id, reservation.id):
             return None
         attachment = session.get(AiJobUpload, job.id) if reservation.kind == "upload" else None
+        lease = None
+        if reservation.personal_demo_grant_id is not None:
+            lease = ExecutionLease.create(settings.manifest_dir, job.id)
+            leases.append(lease)
+            register_execution(session, reservation, lease)
         result = ClaimedJob(job.id, reservation.user_id, job.login_session_id,
                             job.context_id, reservation.kind, dict(job.payload),
                             bytes(attachment.content) if attachment else None,
                             attachment.source_name if attachment else None,
                             attachment.media_type if attachment else None,
-                            attachment.content_sha256 if attachment else None)
+                            attachment.content_sha256 if attachment else None, lease)
         # Once claimed, the bytes are not retained in PostgreSQL or replayed after a crash.
         if attachment is not None:
             session.delete(attachment)
@@ -145,8 +167,8 @@ def execute(settings, database, job):
 
 
 def process_one(database, settings, *, runner=execute) -> bool:
-    # The lease covers the synchronous runner. Recovery additionally requires
-    # proof the entire worker process ended, since a timed-out thread can live on.
+    # Keep the existing database execution lease through physical work drain.
+    # PERSONAL_DEMO additionally has a durable per-job OS lease for crash proof.
     with execution_lease(database):
         try:
             with database.transaction() as session:
@@ -161,6 +183,34 @@ def _process_one(database, settings, *, runner):
     job = claim_one(database, ttl_seconds=settings.public_job_queue_ttl_seconds, settings=settings)
     if job is None:
         return False
+    lease = job.execution_lease
+    if lease is None:
+        return _run_traced(database, settings, job, runner=runner)
+    tracker = ExecutionTracker(database, job.id, lease.token)
+    drained = False
+    try:
+        with track_execution(tracker):
+            try:
+                return _run_traced(database, settings, job, runner=runner)
+            finally:
+                # Awaiting a tool can time out before its real thread/future ends.
+                # Keep BOTH execution leases held until physical work has drained.
+                tracker.drain()
+                drained = True
+                mark_local_done_and_release(database, settings, job.id, lease.token, lease)
+    finally:
+        if drained:
+            lease.close()
+        else:
+            # If drain itself is interrupted, don't turn a lost Python reference
+            # into false death proof. The OS releases this only at process exit.
+            _INCOMPLETE_LEASES.append(lease)
+
+
+_INCOMPLETE_LEASES = []
+
+
+def _run_traced(database, settings, job, *, runner):
     runtime = create_trace_runtime(settings)
     trace_id = None
     try:

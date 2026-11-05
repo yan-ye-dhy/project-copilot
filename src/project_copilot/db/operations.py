@@ -12,7 +12,7 @@ from project_copilot.db.models import Base
 class JobRecoveryAudit(Base):
     __tablename__ = "job_recovery_audits"
     __table_args__ = (
-        CheckConstraint("previous_state IN ('running', 'unknown')", name="ck_recovery_previous"),
+        CheckConstraint("previous_state IN ('running', 'unknown', 'succeeded', 'failed')", name="ck_recovery_previous"),
         CheckConstraint("resolution = 'terminal_no_retry'", name="ck_recovery_resolution"),
         CheckConstraint("evidence_sha256 ~ '^[0-9a-f]{64}$'", name="ck_recovery_evidence"),
         CheckConstraint("inspection_sha256 ~ '^[0-9a-f]{64}$'", name="ck_recovery_inspection"),

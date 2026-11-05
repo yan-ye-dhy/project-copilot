@@ -21,6 +21,7 @@ def test_empty_postgres_migrates_to_model_and_upgrade_is_repeatable(postgres_dat
         "alembic_version", "tickets", "agent_contexts", "pending_actions",
         "user_accounts", "login_sessions", "registration_invites",
         "ai_request_reservations", "auth_rate_buckets", "ai_jobs", "ai_job_uploads", "ai_request_attempts",
+        "ai_job_events", "ai_job_executions",
         "ai_audit_rate_buckets",
         "release_control", "release_events", "job_recovery_audits", "maintenance_audits", "job_content_tombstones",
     }

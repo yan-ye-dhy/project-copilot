@@ -2,7 +2,8 @@
 
 All methods participate in the caller's transaction. Commit a reservation and
 its job together before contacting an upstream provider. A process crash leaves
-reserved/running work occupying its slot; neither is automatically retried.
+work occupying its slot unless the personal execution protocol proves it ended.
+No task is automatically retried.
 """
 from datetime import timezone
 import re
@@ -31,7 +32,6 @@ class QuotaStateError(ValueError):
 _KEY = re.compile(r"[A-Za-z0-9_-]{8,128}\Z", re.ASCII)
 _FINGERPRINT = re.compile(r"[0-9a-f]{64}\Z", re.ASCII)
 _USAGE_KEYS = frozenset({"prompt_tokens", "completion_tokens", "total_tokens", "prompt_cache_hit_tokens", "prompt_cache_miss_tokens", "reasoning_tokens"})
-_ACTIVE_STATES = ("reserved", "running", "unknown")
 
 
 class QuotaService:
@@ -88,7 +88,11 @@ class QuotaService:
             # idempotency key cannot refund this short grant's three tasks.
             raise QuotaExceeded("personal_demo_limit")
         concurrency_limit = min(self.user_concurrency_limit, 1) if personal_grant is not None else self.user_concurrency_limit
-        if count(AiRequestReservation.user_id == user_id, AiRequestReservation.state.in_(_ACTIVE_STATES)) >= concurrency_limit:
+        if personal_grant is not None:
+            from project_copilot.services.execution_slots import reclaim_ended
+            # Proof-based maintenance only; this never reruns work or refunds a task.
+            reclaim_ended(self.session, self.settings, user_id=user_id)
+        if count(AiRequestReservation.user_id == user_id, AiRequestReservation.slot_released_at.is_(None)) >= concurrency_limit:
             raise QuotaExceeded("user_concurrency")
         if count(AiRequestReservation.user_id == user_id, AiRequestReservation.utc_day == day) >= self.user_daily_limit:
             raise QuotaExceeded("user_daily")
@@ -140,4 +144,9 @@ class QuotaService:
         row.state = outcome
         row.usage = dict(usage) if usage is not None else None
         row.finished_at = self.session.scalar(select(func.clock_timestamp())) if outcome != "unknown" else None
+        from project_copilot.db.executions import AiJobExecution
+        # Enrolled personal executions release only after physical drain proof.
+        # Non-enrolled terminal work retains the existing success/failure behavior.
+        if outcome in {"succeeded", "failed"} and self.session.get(AiJobExecution, row.id) is None:
+            row.slot_released_at = row.finished_at
         self.session.flush()

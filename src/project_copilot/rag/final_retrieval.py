@@ -9,6 +9,7 @@ from uuid import uuid4
 
 from project_copilot.infrastructure.tracing import trace_span
 from project_copilot.infrastructure.job_progress import progress
+from project_copilot.infrastructure.execution_tracking import tracked_submit
 from project_copilot.config import Settings
 from project_copilot.infrastructure.models import create_embedding_client
 from project_copilot.infrastructure.qdrant import create_qdrant_store
@@ -123,7 +124,7 @@ class SharedReranker:
         with self._guard:
             if self._unavailable:
                 raise FinalRetrievalError("重排实例不可用，请检查模型后重启服务")
-            future = self._executor.submit(self._prepare)
+            future = tracked_submit(self._executor, self._prepare)
         try:
             future.result(timeout=self.timeout)
         except FutureTimeout:
@@ -147,7 +148,7 @@ class SharedReranker:
         with self._guard:
             if self._unavailable:
                 raise FinalRetrievalError("重排实例不可用，请检查模型后重启服务")
-            future = self._executor.submit(self._run, query, candidates)
+            future = tracked_submit(self._executor, self._run, query, candidates)
         try:
             return future.result(timeout=self.timeout)
         except FutureTimeout:

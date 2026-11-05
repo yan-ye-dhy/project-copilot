@@ -22,7 +22,7 @@ def account_job(database, user_id, reservation_id, *, max_attempts=16, prelocked
 def record_provider_attempt():
     current = _current.get()
     if current is None:
-        return
+        return False
     database, user_id, reservation_id, max_attempts, prelocked_admin = current
     # Commit before invoking a provider. This is an initiation count; a crash
     # immediately afterward can overcount requests that reached the provider.
@@ -50,4 +50,14 @@ def record_provider_attempt():
         if prelocked_admin:
             if principal.role != "admin" or reservation is None or reservation.kind != "upload":
                 raise AuthenticationRejected()
+        from project_copilot.infrastructure.execution_tracking import current_execution
+        tracker = current_execution()
+        if tracker is not None:
+            from project_copilot.services.execution_slots import ExecutionFenced, guard_execution, provider_started
+            if tracker.database is not database or tracker.job_id != reservation_id:
+                raise ExecutionFenced("execution accounting binding mismatch")
+            guard_execution(session, reservation_id, tracker.token)
         QuotaService(session).mark_provider_attempt(user_id, reservation_id, max_attempts=max_attempts)
+        if tracker is not None:
+            provider_started(session, reservation_id, tracker.token)
+    return True
