@@ -372,9 +372,10 @@ test('entry header and origin rejection happens before a body reader or upstream
   }
 });
 
-test('unreviewed runtime origins are rejected; a preview host is not staging authentication', async () => {
+test('runtime hostname does not authenticate a caller; an explicit foreign browser Origin is rejected', async () => {
   const handler = makeHandler(neverFetch);
-  const response = await handler({ env: ENV, request: new Request('https://unreviewed.edgeone.cool/api/health?eo_token=not-authentication') });
+  const response = await handler({ env: ENV, request: new Request('https://unreviewed.edgeone.cool/api/health?eo_token=not-authentication',
+    { headers: { origin: 'https://evil.example' } }) });
   assert.equal(response.status, 403);
 });
 

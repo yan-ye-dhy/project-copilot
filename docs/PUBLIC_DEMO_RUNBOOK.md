@@ -147,10 +147,10 @@ docker compose --env-file .env.public-demo -f docker-compose.public-demo.yml \
 
 再次开放前先调查unknown/running和已确认工单、核对额度/备份/索引；恢复按既有管理员工具，绝不重放不确定操作。新授权绑定当前代码、配置和入口文件摘要，旧工件不得沿用。
 
-## 内部URL误拒修复后的最少验证
+## 最终路由/来源修复后的最少验证
 
-用户已提供真实Node内部HTTP映射证据，旧URL等于公网Origin的假设已修正。无需更改任何现有环境变量或启本地新服务。先审查 `fix/edgeone-internal-runtime-origin` PR，由本人决定合并/部署；main自动部署，Codex本轮不合并。保持SITE为固定公网HTTPS地址、BACKEND未配置、CLOSED/禁Worker/无Tunnel。
+不再依赖或收集内部运行时域名；URL仅严格解析路由，网站Origin仍固定，敏感GET仍须Session/归属。本轮不改现有变量、Docker、数据库或模型，也不启动任何公网入口。先审查 `fix/edgeone-routing-origin-boundary` 草稿PR，由本人决定合并/部署；main自动生产部署，Codex不合并。
 
-部署后在固定项目页面Console执行一次health请求，预期503；可再测auth/me503和PATCH jobs404，具体短命令见[修复报告](EDGEONE_RUNTIME_ORIGIN_FIX.md)。如果仍403，先核对部署版本及是否仍为已验证的内部运行时，不靠改Host/XFH或放宽后缀解决。诊断事件已删除，旧日志仅作历史证据；不要为了看到新日志反复请求。
+保持SITE原值、BACKEND未配置、CLOSED、禁Worker、无Tunnel。在固定项目浏览器页面按[最终报告](EDGEONE_ORIGIN_FINAL_FIX.md)执行health/me GET与非法PATCH，预期503/503/404。错误来源POST应403，但浏览器不能任意修改Origin，别用被忽略的Origin赋值当作负例验收；受控客户端如先遇平台401，应区分平台访问条件。
 
-未来进入STAGING前，实际部署的前后端入口版本与证据摘要仍需一致并重新审核；本轮未重建或操作用户Docker、数据卷及账号，不把云函数修复视为发布授权。
+合法503不证明整站安全，只证明当前请求前置通过且上游关闭。不得为追求200启动Tunnel或改发布状态。若仍403，已不是内部hostname的准入条件，先核对实际部署及Origin/FetchMetadata运行值；不再追加内部域名。未来STAGING仍需实际前后端版本/证据审核，不因本次修复自动开放。
