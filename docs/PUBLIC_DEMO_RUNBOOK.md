@@ -73,6 +73,8 @@ docker compose --env-file .env.public-demo -f docker-compose.public-demo.yml \
 
 ## 异常任务调查与恢复
 
+历史任务`3f72446c-6aed-470f-85da-774004b97555`的严格限定例外及合并PR #10/#11后的离线镜像升级，见[历史任务与升级步骤](LEGACY_PERSONAL_DEMO_UPGRADE.md)。只有管理员核实本地终止和业务副作用并明确接受供应商`unverified`风险后才能使用；普通恢复的供应商要求不变。本轮没有执行真实退役。
+
 ```bash
 .venv/bin/python -m scripts.public_maintenance inspect-job --job-id <任务UUID>
 # 用户主动授权CLOSED并确认无执行后：
