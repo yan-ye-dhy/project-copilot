@@ -81,6 +81,30 @@ def verify_review_artifact(path, evidence):
     return digest
 
 
+def write_private_output(path, document):
+    """Save an inspection once; never follow a link or overwrite existing data."""
+    path = Path(path).absolute()
+    parent = path.parent
+    # Refuse linked ancestors before mkdir can create directories elsewhere.
+    if any(item.is_symlink() for item in (parent, *parent.parents)):
+        raise ValueError("inspection output parent cannot contain symlinks")
+    parent.mkdir(parents=True, mode=0o700, exist_ok=True)
+    descriptor = os.open(parent, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    try:
+        info = os.fstat(descriptor)
+        if info.st_uid != os.getuid() or info.st_mode & 0o077:
+            raise ValueError("inspection output directory must be private")
+        output = os.open(path.name, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
+                         0o600, dir_fd=descriptor)
+        with os.fdopen(output, "w", encoding="utf-8") as stream:
+            json.dump(document, stream, ensure_ascii=False)
+            stream.write("\n")
+            stream.flush()
+            os.fsync(stream.fileno())
+    finally:
+        os.close(descriptor)
+
+
 def internal(payload):
     settings = load_settings()
     if (not settings.public_demo or settings.environment != "production" or settings.database_url is None or
@@ -101,6 +125,11 @@ def internal(payload):
             if operation == "resolve-job":
                 return resolve_no_retry(session, actor_id, UUID(payload["job_id"]), payload["evidence"],
                     worker_stop_proof=payload["worker_stop_proof"], settings=settings)
+            if operation == "retire-legacy-job":
+                from project_copilot.services.public_maintenance import retire_legacy_unknown
+                return retire_legacy_unknown(session, actor_id, UUID(payload["job_id"]), payload["evidence"],
+                    risk_acceptance=payload.get("risk_acceptance"),
+                    worker_stop_proof=payload["worker_stop_proof"], settings=settings)
             raise ValueError("unsupported maintenance operation")
     finally:
         database.close()
@@ -108,16 +137,21 @@ def internal(payload):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("operation", choices=("inspect-job", "cleanup", "resolve-job"), nargs="?")
+    parser.add_argument("operation", choices=("inspect-job", "cleanup", "resolve-job", "retire-legacy-job"), nargs="?")
     parser.add_argument("--job-id", type=UUID)
     parser.add_argument("--env-file", default=".env.public-demo")
     parser.add_argument("--evidence", type=Path)
     parser.add_argument("--review-artifact", type=Path, help="私有供应商及业务核实工件，内容仅在本机校验摘要")
     parser.add_argument("--apply", action="store_true")
+    parser.add_argument("--personal-image", action="store_true",
+                        help="use the fixed deploy/personal-demo.image.yml image selection")
+    parser.add_argument("--output", type=Path, help="inspect-job only: create a private inspection JSON without overwriting")
     parser.add_argument("--internal", action="store_true", help=argparse.SUPPRESS)
     args = parser.parse_args()
     try:
         if args.internal:
+            if args.output is not None or args.personal_image:
+                raise ValueError("host-only output/image options")
             # Bounded stdin is populated only by the trusted host wrapper.
             raw = sys.stdin.buffer.read(128 * 1024 + 1)
             if len(raw) > 128 * 1024:
@@ -130,6 +164,12 @@ def main():
                 raise ValueError("operation/job identity required")
             if args.operation == "cleanup" and not args.apply:
                 raise ValueError("cleanup requires --apply")
+            if args.output is not None and args.operation != "inspect-job":
+                raise ValueError("--output is only available for inspect-job")
+            if args.operation == "retire-legacy-job":
+                from project_copilot.services.public_maintenance import LEGACY_JOB_ID
+                if args.job_id != LEGACY_JOB_ID:
+                    raise ValueError("legacy retirement is restricted to the reviewed task")
             from scripts import public_resources as resources
             values = resources.validate_env(args.env_file)
             resources.check_config()
@@ -137,7 +177,8 @@ def main():
             resources.check_containers()
             payload = {"operation": args.operation, "job_id": str(args.job_id) if args.job_id else None,
                        "apply": args.apply}
-            if args.operation == "resolve-job":
+            retiring = args.operation in {"resolve-job", "retire-legacy-job"}
+            if retiring:
                 if (args.evidence is None or args.evidence.is_symlink() or not args.evidence.is_file() or
                         args.evidence.stat().st_size > 32 * 1024 or args.evidence.stat().st_mode & 0o077):
                     raise ValueError("private evidence receipt required")
@@ -145,24 +186,41 @@ def main():
                 if args.review_artifact is None:
                     raise ValueError("--review-artifact is required for recovery")
                 review_sha256 = verify_review_artifact(args.review_artifact, payload["evidence"])
-                if input("已核实供应商最终状态和数据库业务结果，输入 terminal_no_retry：").strip() != "terminal_no_retry":
+                if args.operation == "retire-legacy-job":
+                    from project_copilot.services.public_maintenance import LEGACY_RISK_PHRASE
+                    phrase = input("仅处理指定历史任务。必须已核实原归属、本地全部执行已终止及业务副作用；"
+                        "供应商最终执行状态与费用仍未核实，不会退款或重试。"
+                        f"如接受此剩余风险，请完整输入 {LEGACY_RISK_PHRASE}：")
+                    if phrase != LEGACY_RISK_PHRASE:
+                        raise ValueError("explicit unverified-provider risk acceptance missing")
+                    payload["risk_acceptance"] = phrase
+                elif input("已核实供应商最终状态和数据库业务结果，输入 terminal_no_retry：").strip() != "terminal_no_retry":
                     raise ValueError("recovery approval missing")
             payload["username"] = input("管理员账号：").strip().lower()
             payload["password"] = getpass.getpass("管理员密码：")
-            if args.operation == "resolve-job":
+            if retiring:
                 # Capture after interactive prompts so the proof is fresh when
                 # the maintenance container acquires its exclusive DB locks.
                 inventory = collect_stopped_workers(args.job_id, docker=resources.docker, volumes=resources.VOLUMES,
                     scope=resources.SCOPE, project=resources.PROJECT, label=resources.LABEL, review_sha256=review_sha256)
                 payload["worker_stop_proof"] = sign_inventory(inventory, values.get("PROJECT_COPILOT_PUBLIC_PROXY_SECRET") or "")
-            delivered = json.loads(resources.docker("compose", "--env-file", str(args.env_file), "-f",
-                str(resources.ROOT / "docker-compose.public-demo.yml"), "run", "--rm", "--no-deps", "--pull", "never", "-T", "api",
+            compose = ["compose", "--env-file", str(args.env_file), "-f",
+                       str(resources.ROOT / "docker-compose.public-demo.yml")]
+            if args.personal_image:
+                overlay = resources.ROOT / "deploy/personal-demo.image.yml"
+                if overlay.is_symlink() or not overlay.is_file():
+                    raise ValueError("reviewed personal image selection is missing")
+                compose.extend(("-f", str(overlay)))
+            delivered = json.loads(resources.docker(*compose, "run", "--rm", "--no-deps", "--pull", "never", "-T", "api",
                 "python", "-m", "scripts.public_maintenance", "--internal",
                 input=json.dumps(payload).encode("utf-8")))
             if delivered.get("status") != "ok":
                 raise ValueError("maintenance container refused the request")
             result = delivered["result"]
-        print(json.dumps({"status": "ok", "result": result}, ensure_ascii=False))
+        document = {"status": "ok", "result": result}
+        if args.output is not None:
+            write_private_output(args.output, document)
+        print(json.dumps(document, ensure_ascii=False))
         return 0
     except Exception:
         # Provider messages, DSNs, receipts and credentials are never logged.
