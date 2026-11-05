@@ -337,10 +337,12 @@ export function createProxyHandler({
     let timedOut = false;
     const timer = setTimeout(() => { timedOut = true; controller.abort(); }, timeoutMs);
     timer.unref?.();
+    // Makers may omit the client signal; our own deadline remains mandatory.
+    const clientSignal = request.signal;
     const onAbort = () => controller.abort();
-    if (request.signal.aborted) onAbort();
-    else request.signal.addEventListener('abort', onAbort, { once: true });
-    const cleanup = () => { clearTimeout(timer); request.signal.removeEventListener('abort', onAbort); };
+    if (clientSignal?.aborted) onAbort();
+    else clientSignal?.addEventListener('abort', onAbort, { once: true });
+    const cleanup = () => { clearTimeout(timer); clientSignal?.removeEventListener('abort', onAbort); };
     let upstream;
     try {
       const body = await readRequestBody(request, requestLimit, controller.signal);
@@ -371,7 +373,7 @@ export function createProxyHandler({
         () => controller.abort()), { status: upstream.status, headers });
     } catch (error) {
       if (upstream?.body && !upstream.body.locked) stopReader(upstream.body.getReader());
-      const status = timedOut ? 504 : request.signal.aborted ? 499 : error instanceof ProxyFailure ? error.status : 502;
+      const status = timedOut ? 504 : clientSignal?.aborted ? 499 : error instanceof ProxyFailure ? error.status : 502;
       controller.abort(); cleanup();
       return errorResponse(status);
     }
