@@ -18,7 +18,8 @@ LABEL = "io.project-copilot.scope"
 PROJECT = "project-copilot-public-demo"
 VOLUMES = {"postgres_data": "pc-public-v2-postgres", "qdrant_data": "pc-public-v2-qdrant",
            "phoenix_data": "pc-public-v2-phoenix", "manifests": "pc-public-v2-manifests"}
-NETWORKS = {"backend": "pc-public-v2-backend", "egress": "pc-public-v2-egress"}
+NETWORKS = {"backend": "pc-public-v2-backend", "egress": "pc-public-v2-egress",
+            "ingress": "pc-public-v2-ingress"}
 MOUNTS = {"postgres": {"/var/lib/postgresql/data": VOLUMES["postgres_data"]},
           "qdrant": {"/qdrant/storage": VOLUMES["qdrant_data"]},
           "phoenix": {"/data": VOLUMES["phoenix_data"]},
@@ -161,6 +162,13 @@ def check_networks(*, initialize=False):
                    "--label", f"io.project-copilot.role={role}", name)
 
 
+def service_networks(service):
+    return ({"backend"} if service in {"postgres", "qdrant", "phoenix"}
+            else {"ingress"} if service == "cloudflared"
+            else {"backend", "ingress"} if service == "ingress"
+            else {"backend", "egress"})
+
+
 def check_config():
     config = json.loads(docker("compose", "-f", str(ROOT / "docker-compose.public-demo.yml"), "config",
                                "--no-interpolate", "--no-env-resolution", "--format", "json"))
@@ -173,7 +181,12 @@ def check_config():
     for role, name in NETWORKS.items():
         if config["networks"][role].get("name") != name or not config["networks"][role].get("external"):
             raise ResourceError("network physical name must be fixed and external")
-    for service in config["services"].values():
+    ingress = config["services"].get("ingress", {})
+    if ingress.get("scale", 1) != 1 or ingress.get("deploy", {}).get("replicas", 1) != 1:
+        raise ResourceError("ingress shared zones require exactly one container")
+    for name, service in config["services"].items():
+        if set(service.get("networks", {})) != service_networks(name):
+            raise ResourceError("rendered service network boundary changed")
         if service.get("ports"):
             raise ResourceError("public-demo services must not publish host ports")
 
@@ -185,13 +198,18 @@ def check_containers(values=None):
     ids = set(docker("ps", "-aq", "--filter", f"label=com.docker.compose.project={PROJECT}").decode().split())
     for volume in VOLUMES.values():
         ids.update(docker("ps", "-aq", "--filter", f"volume={volume}").decode().split())
+    running_ingress = 0
     for cid in ids:
         info = json.loads(docker("inspect", cid))[0]
         labels = info.get("Config", {}).get("Labels") or {}
         if labels.get("com.docker.compose.project") != PROJECT:
             raise ResourceError("dedicated resource attached to an unexpected Compose project")
         service = labels.get("com.docker.compose.service")
-        if service not in {*MOUNTS, "cloudflared"}:
+        if service == "ingress" and info.get("State", {}).get("Running"):
+            running_ingress += 1
+            if running_ingress > 1:
+                raise ResourceError("only one shared-zone ingress instance is supported")
+        if service not in {*MOUNTS, "cloudflared", "ingress"}:
             raise ResourceError("unknown service consumes dedicated resources")
         wanted = MOUNTS.get(service, {})
         actual = {item["Destination"]: item for item in info.get("Mounts", [])}
@@ -215,7 +233,7 @@ def check_containers(values=None):
                 if binds is not None and Path(item["Source"]).resolve() != binds[target]:
                     raise ResourceError("actual host bind differs from reviewed private setting")
         attached = set(info.get("NetworkSettings", {}).get("Networks", {}))
-        expected = {NETWORKS["backend"]} if service in {"postgres", "qdrant", "phoenix"} else {NETWORKS["egress"]} if service == "cloudflared" else set(NETWORKS.values())
+        expected = {NETWORKS[role] for role in service_networks(service)}
         if attached and attached != expected:
             raise ResourceError("container attached to unexpected network")
 

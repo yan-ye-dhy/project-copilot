@@ -30,6 +30,11 @@ COPY src/ src/
 COPY scripts/ scripts/
 COPY migrations/ migrations/
 COPY alembic.ini ./
+# Public entry evidence is verified inside the image as well as the checkout.
+# These are explicit non-secret files; no private env or release artifacts.
+COPY cloud-functions/ cloud-functions/
+COPY edgeone.json docker-compose.public-demo.yml ./
+COPY deploy/nginx/ deploy/nginx/
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-default-groups --group "$RERANK_GROUP" \
     && python -c "from project_copilot.config import PROJECT_ROOT; assert str(PROJECT_ROOT) == '/app', PROJECT_ROOT" \

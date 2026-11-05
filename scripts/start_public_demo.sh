@@ -21,7 +21,7 @@ while IFS='=' read -r key _; do
 done < <(env)
 if [[ "$operation" == --prepare ]]; then
   "${compose[@]}" up -d --wait postgres qdrant phoenix
-  "${compose[@]}" up -d --build migrate api
+  "${compose[@]}" up -d --build migrate api ingress
   printf '%s\n' '基础服务已准备；默认CLOSED，API unhealthy/503是预期。未启动worker或隧道；授权变更请用交互式release_control。'
 else
   "${compose[@]}" exec -T api python -m scripts.public_probe worker-ready

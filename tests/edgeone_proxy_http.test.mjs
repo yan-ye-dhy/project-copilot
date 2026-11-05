@@ -12,6 +12,7 @@ const testSecret = 'test-only-proxy-secret-'.padEnd(64, 'x');
 const env = {
   PROJECT_COPILOT_BACKEND_ORIGIN: backendOrigin,
   PROJECT_COPILOT_PROXY_SECRET: testSecret,
+  PROJECT_COPILOT_SITE_ORIGIN: 'https://copilot.example',
 };
 let createProxyHandler;
 let upstream;
@@ -49,7 +50,9 @@ function localFetch(input, init) {
 }
 
 function invoke(path, init = {}, options = {}, suppliedEnv = env) {
-  const request = new Request(`https://copilot.example${path}`, init);
+  const headers = new Headers(init.headers);
+  if (init.method && init.method !== 'GET' && !headers.has('origin')) headers.set('origin', 'https://copilot.example');
+  const request = new Request(`https://copilot.example${path}`, { ...init, headers });
   const handler = createProxyHandler({ fetchImpl: localFetch, timeoutMs: 2000, ...options });
   return handler({ request, env: suppliedEnv });
 }

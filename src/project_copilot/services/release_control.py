@@ -104,6 +104,11 @@ def require_open(session, settings, *, user_id=None, worker=False):
         raise ReleaseClosed("release evidence incomplete")
     if row.evidence.get("configuration_fingerprint") != config_fingerprint(settings):
         raise ReleaseClosed("approved safety configuration changed")
+    from project_copilot.services.entry_protection import check_default_domain_runtime
+    try:
+        check_default_domain_runtime(row.state, row.evidence, str(settings.auth_public_origin))
+    except (ValueError, OSError):
+        raise ReleaseClosed("default domain entry protection is unavailable") from None
     if row.state == "STAGING" and user_id is not None and str(user_id) not in row.allowed_user_ids:
         raise ReleaseClosed("identity is outside staging allowlist")
     return row
@@ -180,7 +185,10 @@ def validate_evidence(document: dict, state: str, settings, now: datetime) -> di
     if state == "STAGING" and (not isinstance(allowed, list) or not 1 <= len(allowed) <= 20 or len(set(allowed)) != len(allowed)):
         raise ValueError("staging identities required")
     allowed = [str(UUID(value)) for value in allowed]
+    from project_copilot.services.entry_protection import validate_default_domain
+    entry_protection = validate_default_domain(document, state, settings, now)
     return {"checks": normalized, "allowed_user_ids": allowed, "expires_at": expires,
+            "entry_protection": entry_protection,
             "evidence_hash": sha256(json.dumps(document, sort_keys=True).encode()).hexdigest()}
 
 
@@ -227,6 +235,8 @@ def change_state(session, settings, *, actor_id, operation, reason, evidence=Non
         row.code_fingerprint, row.expires_at = code_fingerprint(), checked["expires_at"]
         row.allowed_user_ids = checked["allowed_user_ids"]
         row.evidence = {"checks": checked["checks"], "configuration_fingerprint": config_fingerprint(settings)}
+        if checked["entry_protection"] is not None:
+            row.evidence["entry_protection"] = checked["entry_protection"]
         event_hash = checked["evidence_hash"]
     row.updated_at = session.scalar(select(func.clock_timestamp()))
     session.add(ReleaseEvent(actor_user_id=actor_id, operation=operation, before_state=before,

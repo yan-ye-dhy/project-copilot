@@ -17,9 +17,9 @@ def test_public_compose_pins_tunnel_and_keeps_datastores_internal():
         "faa8e0a1475f137c910be6025f43c8e4092fdd35461b31e19fd1390657a1ff39"
     )
     assert services["cloudflared"]["profiles"] == ["tunnel"]
-    assert services["cloudflared"]["depends_on"]["api"]["condition"] == "service_healthy"
+    assert services["cloudflared"]["depends_on"]["ingress"]["condition"] == "service_healthy"
     assert services["worker"]["depends_on"]["api"]["condition"] == "service_healthy"
-    assert services["cloudflared"]["networks"] == ["egress"]
+    assert services["cloudflared"]["networks"] == ["ingress"]
     assert config["networks"]["backend"] == {"name": "pc-public-v2-backend", "external": True}
     assert config["networks"]["egress"] == {"name": "pc-public-v2-egress", "external": True}
     for name in ("postgres", "qdrant", "phoenix"):
@@ -43,6 +43,7 @@ printf '%s\\n' "$*" >> "$DOCKER_TEST_LOG"
 if [[ "$1" == ps ]]; then
   case "$*" in
     *service=cloudflared*) echo tunnel-id ;;
+    *service=ingress*) echo ingress-id ;;
     *service=api*) echo api-id ;;
     *service=worker*) echo worker-id ;;
     *service=phoenix*) echo phoenix-id ;;
@@ -59,9 +60,9 @@ fi
     lines = log.read_text(encoding="utf-8").splitlines()
     probes = [line for line in lines if line.startswith("ps ")]
     stops = [line for line in lines if line.startswith("stop ")]
-    assert len(probes) == len(stops) == 6
+    assert len(probes) == len(stops) == 7
     assert all("label=com.docker.compose.project=project-copilot-public-demo" in line for line in probes)
-    assert stops == ["stop --time 120 tunnel-id", "stop --time 120 api-id", "stop --time 360 worker-id",
+    assert stops == ["stop --time 120 tunnel-id", "stop --time 120 ingress-id", "stop --time 120 api-id", "stop --time 360 worker-id",
                      "stop --time 120 phoenix-id", "stop --time 120 qdrant-id", "stop --time 120 postgres-id"]
     assert not any("volume" in line or " down" in line for line in lines)
 

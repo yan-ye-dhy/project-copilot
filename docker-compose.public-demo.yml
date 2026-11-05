@@ -1,5 +1,5 @@
-# PREPARATION ONLY. PublicGatewayMiddleware still returns 503 to all valid
-# public requests; do not start this stack or the tunnel until reviewed.
+# CLOSED by default. Preparation never enables release authorization, Worker
+# or tunnel. The ingress health probe preserves the backend release gate.
 # Separate project name/volumes: never attach the existing production data.
 name: project-copilot-public-demo
 
@@ -140,16 +140,47 @@ services:
       disable: true
     stop_grace_period: 360s
 
+  ingress:
+    labels:
+      io.project-copilot.scope: public-demo-v2
+    image: project-copilot-ingress:default-domain
+    build:
+      context: .
+      dockerfile: deploy/nginx/Dockerfile
+    user: "101:101"
+    read_only: true
+    tmpfs: ["/tmp:size=64m,uid=101,gid=101,mode=700"]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    pids_limit: 64
+    mem_limit: 128m
+    cpus: "0.50"
+    networks: [backend, ingress]
+    environment:
+      # Used only by the readiness probe; never injected into proxy requests.
+      PROJECT_COPILOT_PUBLIC_PROXY_SECRET: ${PROJECT_COPILOT_PUBLIC_PROXY_SECRET:?public proxy secret required}
+    depends_on:
+      api:
+        condition: service_started
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - 'wget -q -O /dev/null --header="X-Project-Copilot-Proxy-Secret: $$PROJECT_COPILOT_PUBLIC_PROXY_SECRET" http://127.0.0.1:8080/health'
+      interval: 10s
+      timeout: 5s
+      start_period: 20s
+      retries: 6
+
   # Never start without explicit user authorization and completed safety checks.
   cloudflared:
     # Official 2026.10.3 multi-platform manifest, verified against Docker Hub.
     # Version and digest updates require review before any public release.
     image: cloudflare/cloudflared:2026.10.3@sha256:faa8e0a1475f137c910be6025f43c8e4092fdd35461b31e19fd1390657a1ff39
     profiles: ["tunnel"]
-    command: ["tunnel", "--no-autoupdate", "--url", "http://api:8002"]
-    networks: [egress]
+    command: ["tunnel", "--no-autoupdate", "--url", "http://ingress:8080"]
+    networks: [ingress]
     depends_on:
-      api:
+      ingress:
         condition: service_healthy
 
 volumes:
@@ -172,4 +203,7 @@ networks:
     external: true
   egress:
     name: pc-public-v2-egress
+    external: true
+  ingress:
+    name: pc-public-v2-ingress
     external: true
