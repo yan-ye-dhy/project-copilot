@@ -34,6 +34,18 @@ class Handler(BaseHTTPRequestHandler):
   body=self.rfile.read(int(self.headers.get('Content-Length','0')))
   status=503 if query.get('closed') else 403 if self.headers.get('X-Project-Copilot-Proxy-Secret')!='synthetic-proxy-header-for-test-only' else 200
   data=json.dumps({'bytes':len(body),'headers':dict(self.headers),'worker':self.headers.get('X-Test-Worker')}).encode()
+  if urlsplit(self.path).path.endswith('/events') and status==200:
+   self.send_response(200)
+   self.send_header('Content-Type','text/event-stream')
+   self.send_header('Cache-Control','no-store, no-transform')
+   self.send_header('X-Accel-Buffering','no')
+   self.end_headers()
+   self.wfile.write(b'id: 1\nevent: progress\ndata: '+data+b'\n\n')
+   self.wfile.flush()
+   time.sleep(1)
+   try:self.wfile.write(b'id: 2\nevent: terminal\ndata: {"status":"succeeded"}\n\n')
+   except (BrokenPipeError, ConnectionResetError):pass
+   return
   self.send_response(status)
   self.send_header('Content-Type','application/json')
   self.send_header('Content-Length',str(len(data)))
@@ -174,6 +186,27 @@ def test_polling_excluded_from_low_write_limit(ingress):
     port = ingress[0][0]
     time.sleep(2)
     assert [request(port,'GET',f'/jobs/{JOB}')[0] for _ in range(15)] == [200]*15
+
+
+def test_event_route_streams_before_completion_and_forwards_replay_cursor(ingress):
+    connection = http.client.HTTPConnection('127.0.0.1', ingress[0][0], timeout=4)
+    try:
+        started = time.monotonic()
+        connection.request('GET', f'/jobs/{JOB}/events?after=0', headers={
+            'X-Project-Copilot-Proxy-Secret': SECRET,
+            'Last-Event-ID': '0', 'Accept': 'text/event-stream',
+        })
+        response = connection.getresponse()
+        assert response.status == 200
+        assert response.getheader('Content-Type') == 'text/event-stream'
+        first = response.read1(8192)
+        assert b'event: progress' in first and b'event: terminal' not in first
+        assert b'"Last-Event-ID": "0"' in first
+        assert time.monotonic() - started < .8
+        assert b'event: terminal' in response.read()
+    finally:
+        connection.close()
+    assert request(ingress[0][0], 'POST', f'/jobs/{JOB}/events', b'{}')[0] == 404
 
 
 def test_upstream_disconnect_and_accelerated_timeout_are_sanitized(ingress):

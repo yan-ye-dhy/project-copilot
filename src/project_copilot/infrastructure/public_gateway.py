@@ -31,10 +31,14 @@ class PublicGatewayMiddleware:
         if path in {"/docs", "/redoc", "/openapi.json", "/agent/ask", "/rag/ask", "/documents/upload"}:
             raise ReleaseClosed()
         with database.transaction() as session:
-            require_open(session, settings)
+            release = require_open(session, settings)
+            personal = release.state == "PERSONAL_DEMO"
+            if personal and path == "/auth/register":
+                # No invitation can enlarge the personal demo's existing identity.
+                raise ReleaseClosed()
             if path not in {"/health", "/auth/login", "/auth/register"}:
                 principal, _ = AuthService(session).authenticate(_token_from_cookie(Request(scope)))
-                if path not in {"/auth/me", "/auth/logout"}:
+                if personal or path not in {"/auth/me", "/auth/logout"}:
                     require_open(session, settings, user_id=principal.id)
         dependencies_ready(settings)
 

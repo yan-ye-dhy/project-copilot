@@ -36,6 +36,7 @@ SOURCE_PATHS = (
     "migrations/versions/0007_ai_jobs.py", "migrations/versions/0008_ai_upload_jobs.py",
     "migrations/versions/0009_ai_attempts.py",
     "migrations/versions/0010_release_control.py", "migrations/versions/0011_public_operations.py",
+    "migrations/versions/0012_personal_demo.py",
     "src/project_copilot/db/release.py", "src/project_copilot/db/operations.py",
     "src/project_copilot/db/jobs.py", "alembic.ini",
     "scripts/postgres_support.py", "scripts/ticket_db.py", "scripts/postgres_smoke.py", "uv.lock",

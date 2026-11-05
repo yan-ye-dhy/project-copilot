@@ -1,6 +1,8 @@
 """Execute durable AI jobs at most once; uncertain outcomes remain reserved."""
 import asyncio
 from dataclasses import dataclass
+from contextlib import nullcontext
+import logging
 from datetime import timedelta
 from hashlib import sha256
 from io import BytesIO
@@ -13,6 +15,9 @@ from project_copilot.agent.service import create_agent_service
 from project_copilot.db.jobs import AiJob, AiJobUpload
 from project_copilot.db.models import AiRequestReservation
 from project_copilot.infrastructure.call_accounting import account_job
+from project_copilot.infrastructure.job_progress import observe, progress
+from project_copilot.infrastructure.tracing import create_trace_runtime, current_trace_id
+from project_copilot.services.job_events import EventWriter, append_event
 from project_copilot.rag.answering import create_answer_service
 from project_copilot.schemas.agent import AgentQuestion
 from project_copilot.schemas.rag import RagQuestion
@@ -66,6 +71,16 @@ def claim_one(database, *, ttl_seconds: int | None = None, settings=None) -> Cla
     # One transaction binds the job payload to the reservation claim.
     with database.transaction() as session:
         statement = select(AiJob, AiRequestReservation).join(AiRequestReservation).where(AiRequestReservation.state == "reserved")
+        release = require_open(session, settings, worker=True) if settings is not None else None
+        if release is not None and release.state == "PERSONAL_DEMO":
+            # An old grant's queued task remains evidence, never an implicit
+            # retry. Filtering also prevents it blocking the current grant.
+            statement = statement.where(
+                AiRequestReservation.personal_demo_grant_id == UUID(release.evidence["grant_id"]),
+                AiRequestReservation.user_id == UUID(release.allowed_user_ids[0]),
+            )
+        else:
+            statement = statement.where(AiRequestReservation.personal_demo_grant_id.is_(None))
         if ttl_seconds is not None:
             if type(ttl_seconds) is not int or not 60 <= ttl_seconds <= 30 * 86400:
                 raise ValueError("invalid queue lifetime")
@@ -79,7 +94,7 @@ def claim_one(database, *, ttl_seconds: int | None = None, settings=None) -> Cla
             return None
         job, reservation = row
         if settings is not None:
-            require_open(session, settings, user_id=reservation.user_id, worker=True)
+            require_open(session, settings, user_id=reservation.user_id, worker=True, reservation=reservation)
         if not QuotaService(session).claim(reservation.user_id, reservation.id):
             return None
         attachment = session.get(AiJobUpload, job.id) if reservation.kind == "upload" else None
@@ -146,8 +161,39 @@ def _process_one(database, settings, *, runner):
     job = claim_one(database, ttl_seconds=settings.public_job_queue_ttl_seconds, settings=settings)
     if job is None:
         return False
+    runtime = create_trace_runtime(settings)
+    trace_id = None
     try:
-        with account_job(database, job.user_id, job.id, max_attempts=settings.max_provider_attempts_per_job, settings=settings):
+        with runtime.activate(str(job.id), name="worker.job") if runtime else nullcontext():
+            trace_id = current_trace_id() if runtime else None
+            return _execute_claimed(database, settings, job, runner=runner)
+    finally:
+        if runtime is not None:
+            try:
+                result = runtime.export(trace_id) if trace_id else None
+                logger = logging.getLogger(__name__)
+                log = logger.info if result and result.exported else logger.warning
+                log("worker_trace job_id=%s trace_id=%s exported=%s reason=%s", job.id,
+                    trace_id or "none", str(bool(result and result.exported)).lower(),
+                    result.reason if result else "no_trace")
+            except Exception as exc:
+                logging.getLogger(__name__).warning("worker_trace_export_failed job_id=%s error_type=%s",
+                    job.id, type(exc).__name__)
+            finally:
+                try:
+                    runtime.close()
+                except Exception as exc:
+                    logging.getLogger(__name__).warning("worker_trace_close_failed job_id=%s error_type=%s",
+                        job.id, type(exc).__name__)
+
+
+def _execute_claimed(database, settings, job, *, runner):
+    writer = EventWriter(database, job.id)
+    failure = None
+    try:
+        with observe(writer), account_job(database, job.user_id, job.id,
+                max_attempts=settings.max_provider_attempts_per_job, settings=settings):
+            progress("running")
             result = runner(settings, database, job)
         serialized = result.model_dump(mode="json")
         # A timed-out tool may still be running in a thread; do not free its slot.
@@ -155,6 +201,7 @@ def _process_one(database, settings, *, runner):
                                     any("timeout" in (event.failure_type or "") for event in result.events) or
                                     any("timeout" in (event.get("failure_type") or "") for event in result.model_events)):
             outcome, usage, serialized = "unknown", result.usage, None
+            failure = getattr(result, "failure_type", None) or "tool_timeout"
         else:
             outcome = "succeeded"
             usage = (result.usage if job.kind == "agent" else
@@ -164,13 +211,24 @@ def _process_one(database, settings, *, runner):
                        "prompt_cache_hit_tokens", "prompt_cache_miss_tokens"}
             usage = {key: value for key, value in usage.items()
                      if key in allowed and type(value) is int and 0 <= value <= 2**63 - 1}
-    except Exception:
-        # Even authentication can fail after a model call, during a later tool step.
-        # The provider may have processed a request when its response is lost.
+    except Exception as exc:
+        # Never persist/log raw provider exceptions, prompts, tool payloads or credentials.
+        from project_copilot.rag.answering import AnswerResponseError
         outcome, usage, serialized = "unknown", None, None
+        failure = exc.reason if isinstance(exc, AnswerResponseError) else "execution_error"
+    writer.flush()
+    if failure is not None:
+        allowed_failures = {"model_error", "model_timeout", "total_timeout", "invalid_final", "knowledge_retrieval_failed",
+            "tool_timeout", "model_budget", "tool_budget", "context_budget", "tool_protocol_error",
+            "invalid_schema", "invalid_json", "invalid_citation", "authentication_error"}
+        failure = failure if failure in allowed_failures else "execution_error"
+        writer("diagnostic", {"failure_type": failure})
+        logging.getLogger(__name__).warning("worker_outcome job_id=%s status=unknown failure_type=%s", job.id, failure)
+    writer.close()
     with database.transaction() as session:
         QuotaService(session).finish(job.user_id, job.id, outcome=outcome, usage=usage)
         if serialized is not None:
             stored = session.get(AiJob, job.id)
             stored.result = serialized
+        append_event(session, job.id, "terminal", {"status": outcome})
     return True

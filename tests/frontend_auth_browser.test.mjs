@@ -10,7 +10,7 @@ const base = new URL('../src/project_copilot/web/', import.meta.url);
 const files = new Map();
 for (const [url, file, type] of [
   ['/', 'index.html', 'text/html'], ['/ui-assets/app.js', 'assets/app.js', 'text/javascript'],
-  ['/ui-assets/styles.css', 'assets/styles.css', 'text/css'], ['/ui-assets/mark.svg', 'assets/mark.svg', 'image/svg+xml'],
+  ['/ui-assets/markdown.js', 'assets/markdown.js', 'text/javascript'], ['/ui-assets/styles.css', 'assets/styles.css', 'text/css'], ['/ui-assets/mark.svg', 'assets/mark.svg', 'image/svg+xml'],
   ['/ui-assets/ink-mountains.svg', 'assets/ink-mountains.svg', 'image/svg+xml'], ['/ui-assets/bamboo.svg', 'assets/bamboo.svg', 'image/svg+xml'],
 ]) files.set(url, { body: await readFile(new URL(file, base)), type });
 const source = await readFile(new URL('assets/api.js', base), 'utf8');
@@ -29,7 +29,7 @@ after(async () => { await browser?.close(); });
 async function fixture(options = {}) {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' });
   const f = { session: options.session || null, meStatus: options.meStatus, calls: [], unexpected: [], action: null,
-    logoutFailure: options.logoutFailure || false, tickets401: false, holdRag: null, releaseRag: null };
+    logoutFailure: options.logoutFailure || false, tickets401: false, progressMode: options.progressMode || false, jobDone: false, holdRag: null, releaseRag: null };
   await context.route('**/*', async (route) => {
     const request = route.request(); const url = new URL(request.url()); const path = url.pathname;
     if (url.origin !== 'https://fixture.invalid') { f.unexpected.push(url.origin); return route.abort(); }
@@ -70,7 +70,12 @@ async function fixture(options = {}) {
     if (path === `/api/actions/${ACTION}`) return reply(f.action);
     if (path === '/api/jobs/upload' && request.method() === 'POST') { f.jobKind = 'upload'; return reply({ job_id: ID, status: 'reserved' }, 202); }
     if (path === '/api/jobs' && request.method() === 'POST') { f.jobKind = body.kind; return reply({ job_id: ID, status: 'reserved' }, 202); }
+    if (path === `/api/jobs/${ID}/events` && f.progressMode) return route.fulfill({ status: 200,
+      contentType: 'text/event-stream', body: 'id: 1\nevent: progress\ndata: {"stage":"search","label":"正在检索知识库"}\n\nid: 2\nevent: delta\ndata: {"text":"尚未验证的真实事件草稿"}\n\n' });
     if (path === `/api/jobs/${ID}` && request.method() === 'GET') {
+      if (f.progressMode) return reply({ job_id: ID, status: f.jobDone ? 'succeeded' : 'running', result: f.jobDone ? {
+        status: 'answered', answer: '# 最终回答\n\n**核对完成**。 <img src=x onerror=alert(1)>\n\n| 项目 | 结果 |\n| --- | --- |\n| 校验 | 通过 |', citations: [] } : null });
+
       if (f.jobKind === 'upload') return reply({ job_id: ID, status: 'succeeded', result: { status: 'indexed', mode: 'HYBRID_RERANK', document: { document_id: ID, source_name: 'temporary.md' }, chunk_count: 1 } });
       if (f.holdRag) await f.holdRag;
       return reply({ job_id: ID, status: 'succeeded', result: { question: 'test', status: 'answered', answer: 'private-old-account-answer', citations: [], evidence_count: 0 } });
@@ -212,4 +217,36 @@ test('expired session cannot show a late answer from a previous account', async 
     assert.doesNotMatch(text, /private-old-account-answer|Question from previous account/);
     assert.deepEqual(f.unexpected, []); assert.deepEqual(errors, []);
   } finally { f.releaseRag?.(); await context.close(); }
+});
+
+
+test('real event display, stop, refresh and resume preserve identifier without a second POST', async () => {
+  const { context, page, f, errors } = await fixture({ session: user('alice'), progressMode: true });
+  try {
+    await page.locator('#app-shell').waitFor({ state: 'visible' });
+    await page.locator('#chat-mode').selectOption('rag');
+    await page.locator('#question-input').fill('private-question-not-stored');
+    await page.locator('#send-button').click();
+    await page.getByText('尚未验证的真实事件草稿', { exact: true }).waitFor();
+    assert.match(await page.locator('.job-progress').textContent(), /最终校验尚未完成/);
+    const before = await page.evaluate(() => ({ ...localStorage }));
+    assert.match(JSON.stringify(before), new RegExp(ID));
+    assert.doesNotMatch(JSON.stringify(before), /private-question|真实事件草稿|context_token|csrf|password/);
+    await page.locator('#stop-wait').click();
+    await page.getByText(/已停止等待，后台任务可能继续执行/).waitFor();
+    assert.equal(await page.locator('.stream-preview').count(), 0);
+    assert.equal(await page.locator('#question-input').isEnabled(), true);
+    assert.equal(f.calls.filter((c) => c.path === '/api/jobs' && c.method === 'POST').length, 1);
+    await page.reload({ waitUntil: 'networkidle' });
+    await page.locator('#job-recovery').waitFor({ state: 'visible' });
+    f.jobDone = true;
+    await page.getByRole('button', { name: '查询 / 恢复等待' }).click();
+    await page.locator('.markdown-answer h2').getByText('最终回答').waitFor();
+    assert.equal(await page.locator('.markdown-answer table').count(), 1);
+    assert.equal(await page.locator('.markdown-answer img').count(), 0);
+    assert.match(await page.locator('.markdown-answer').textContent(), /<img src=x/);
+    assert.equal(f.calls.filter((c) => c.path === '/api/jobs' && c.method === 'POST').length, 1);
+    assert.equal(await page.evaluate(() => localStorage.length), 0);
+    assert.deepEqual(f.unexpected, []); assert.deepEqual(errors, []);
+  } finally { await context.close(); }
 });

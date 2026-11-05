@@ -3191,3 +3191,42 @@ body {
   .account-panel button { min-height:30px; padding:3px 6px; white-space:nowrap; }
   .auth-panel { padding:25px 21px; }
 }
+
+/* Answer typography: ink, bamboo and quiet paper; all content is safe DOM text. */
+.markdown-answer { max-width:76ch; color:#303d32; font-size:15px; line-height:1.9; overflow-wrap:anywhere; }
+.markdown-answer>:first-child { margin-top:0; }
+.markdown-answer>:last-child { margin-bottom:0; }
+.markdown-answer h2,.markdown-answer h3,.markdown-answer h4,.markdown-answer h5,.markdown-answer h6 { color:#29492f; font-family:var(--font-display,serif); line-height:1.5; margin:1.35em 0 .55em; letter-spacing:.02em; }
+.markdown-answer h2 { font-size:1.38em; padding-bottom:.35em; border-bottom:1px solid #dbe2d2; }
+.markdown-answer h3 { font-size:1.18em; }
+.markdown-answer h4,.markdown-answer h5,.markdown-answer h6 { font-size:1.06em; }
+.markdown-answer p { margin:.7em 0; white-space:pre-wrap; }
+.markdown-answer ul,.markdown-answer ol { margin:.65em 0; padding-left:1.6em; }
+.markdown-answer li { margin:.35em 0; padding-left:.15em; }
+.markdown-answer li::marker { color:#608151; }
+.markdown-answer blockquote { margin:1em 0; padding:.15em 1em; border-left:3px solid #93aa7c; background:#f1f2e8; color:#5b6958; }
+.markdown-answer code { font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-size:.88em; background:#eceee4; border-radius:4px; padding:.12em .35em; }
+.markdown-answer pre { overflow:auto; max-width:100%; margin:1em 0; padding:1em 1.2em; border:1px solid #dce1d2; border-radius:9px; background:#f1f2eb; line-height:1.65; white-space:pre; }
+.markdown-answer pre code { padding:0; background:transparent; overflow-wrap:normal; }
+.markdown-answer a { color:#446d3c; text-decoration:underline; text-underline-offset:3px; }
+.markdown-answer hr { border:0; border-top:1px solid #dbe1d0; margin:1.4em 0; }
+.markdown-table { max-width:100%; overflow-x:auto; margin:1em 0; border:1px solid #dbe1d3; border-radius:8px; }
+.markdown-table table { border-collapse:collapse; min-width:100%; text-align:left; font-size:.92em; }
+.markdown-table th,.markdown-table td { padding:.55em .8em; border-bottom:1px solid #e2e6d9; min-width:5em; }
+.markdown-table th { color:#365a37; background:#edf0e5; font-weight:600; }
+.markdown-table tbody tr:last-child td { border-bottom:0; }
+.job-progress { color:#5b7650; font-size:13px; margin:0 0 .65em; padding-left:12px; border-left:2px solid #90a978; }
+.stream-preview { white-space:pre-wrap; overflow-wrap:anywhere; line-height:1.85; color:#55644e; }
+.waiting-stopped { color:#6a705e; line-height:1.8; margin:0; }
+.job-recovery { border-top:1px solid #e0e4d5; padding:10px 20px; max-height:180px; overflow-y:auto; background:#f5f5eb; font-size:12px; }
+.job-recovery>p { margin:3px 0 6px; color:#707963; }
+.job-recovery-row { display:flex; flex-wrap:wrap; align-items:center; gap:4px 12px; padding:3px 0; }
+.job-identifier { overflow-wrap:anywhere; color:#68765e; }
+.job-recovery-row .button { min-height:30px; padding:3px 8px; font-size:12px; }
+@media(max-width:600px) {
+  .markdown-answer { font-size:14px; line-height:1.85; }
+  .markdown-answer pre { padding:.8em; }
+  .markdown-table th,.markdown-table td { padding:.45em .65em; }
+  .job-recovery { padding:8px 12px; max-height:150px; }
+  .job-identifier { font-size:11px; }
+}

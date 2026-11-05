@@ -31,32 +31,149 @@ export class ApiError extends Error {
   }
 }
 
-// Only the first POST creates work. Polls are read-only and never repeat it.
+const JOB_ID = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
+
+function jobStopped(signal, isCurrent) {
+  if (!isCurrent()) throw new ApiError("会话已切换。", { kind: "aborted" });
+  if (signal?.aborted) throw new ApiError("已停止等待，后台任务可能继续执行。请查询原任务状态。", { kind: "aborted" });
+}
+
+function delayJob(ms, signal) {
+  return new Promise((resolve, reject) => {
+    const abort = () => { clearTimeout(timer); reject(new ApiError("已停止等待，后台任务可能继续执行。", { kind: "aborted" })); };
+    const timer = setTimeout(() => { signal?.removeEventListener("abort", abort); resolve(); }, ms);
+    if (signal?.aborted) abort(); else signal?.addEventListener("abort", abort, { once: true });
+  });
+}
+
+// Read-only SSE connection. Reconnection never repeats a model or tool request.
+export async function readJobEvents(id, { after = 0, signal, onEvent = () => {}, fetchImpl = globalThis.fetch,
+  timeoutMs = 27000 } = {}) {
+  if (!JOB_ID.test(id) || !Number.isSafeInteger(after) || after < 0) throw new ApiError("任务编号无效。", { kind: "response" });
+  const controller = new AbortController();
+  const abort = () => controller.abort();
+  const timer = setTimeout(abort, timeoutMs);
+  const generation = authGeneration;
+  if (signal?.aborted) controller.abort();
+  signal?.addEventListener("abort", abort, { once: true });
+  let reader;
+  try {
+    const response = await fetchImpl(`${API_PREFIX}/jobs/${id}/events?after=${after}`, {
+      headers: { Accept: "text/event-stream", ...(after ? { "Last-Event-ID": String(after) } : {}) },
+      credentials: "same-origin", redirect: "error", signal: controller.signal,
+    });
+    if (PUBLIC_BUILD && response.status === 401 && generation === authGeneration) authFailureHandler?.();
+    if (!response.ok || !response.headers.get("content-type")?.toLowerCase().startsWith("text/event-stream") || !response.body?.getReader) {
+      throw new ApiError("实时进度暂不可用，改用任务状态查询。", { status: response.status, kind: "stream" });
+    }
+    reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "", last = after, terminal = false;
+    while (true) {
+      const { done, value } = await reader.read();
+      if (signal?.aborted) throw new ApiError("已停止等待，后台任务可能继续执行。", { kind: "aborted" });
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      if (buffer.length > 131072) throw new ApiError("实时事件超过限制。", { kind: "stream" });
+      let boundary;
+      while ((boundary = /\r?\n\r?\n/.exec(buffer))) {
+        const frame = buffer.slice(0, boundary.index);
+        buffer = buffer.slice(boundary.index + boundary[0].length);
+        let event = "message", sequence = null; const data = [];
+        for (const line of frame.split(/\r?\n/)) {
+          if (line.startsWith("event:")) event = line.slice(6).trim();
+          if (line.startsWith("id:")) sequence = Number(line.slice(3).trim());
+          if (line.startsWith("data:")) data.push(line.slice(5).trimStart());
+        }
+        if (!data.length) continue;
+        let payload;
+        try { payload = JSON.parse(data.join("\n")); } catch { throw new ApiError("实时事件格式无效。", { kind: "stream" }); }
+        if (!payload || typeof payload !== "object" || Array.isArray(payload)) throw new ApiError("实时事件格式无效。", { kind: "stream" });
+        if (event === "snapshot" && ["succeeded", "failed", "unknown"].includes(payload.status)) {
+          terminal = true; break; // Canonical GET is authoritative even without a journal event.
+        }
+        if (!Number.isSafeInteger(sequence) || sequence < 0) continue;
+        if (event === "reset" && payload.cursor_reset === true) {
+          last = sequence; onEvent({ id: sequence, event, data: payload }); continue;
+        }
+        if (sequence <= last) continue;
+        last = sequence;
+        if (["progress", "delta", "terminal", "reset", "snapshot"].includes(event)) onEvent({ id: sequence, event, data: payload });
+        if (event === "terminal") { terminal = true; break; }
+      }
+      if (terminal) break;
+    }
+    return { after: last, terminal };
+  } catch (error) {
+    if (signal?.aborted) throw new ApiError("已停止等待，后台任务可能继续执行。", { kind: "aborted" });
+    if (error instanceof ApiError) throw error;
+    throw new ApiError("实时连接已断开，继续查询原任务。", { kind: "stream" });
+  } finally {
+    clearTimeout(timer); signal?.removeEventListener("abort", abort);
+    if (reader) { try { await reader.cancel(); } catch {} reader.releaseLock(); }
+  }
+}
+
+// Reattach by identifier after stop/reload. This function cannot create work.
+export async function resumePublicJob(id, { request = apiRequest, signal, onEvent = () => {},
+  after = 0, delay = delayJob, maxPolls = 240, isCurrent = () => true,
+  eventReader = readJobEvents, useEvents = request === apiRequest,
+  maxWaitMs = 8 * 60 * 1000, now = Date.now } = {}) {
+  if (!JOB_ID.test(id)) throw new ApiError("任务编号无效，请勿重复提交。", { kind: "response" });
+  if (!Number.isFinite(maxWaitMs) || maxWaitMs <= 0 || maxWaitMs > 8 * 60 * 1000) throw new ApiError("等待时限无效。", { kind: "configuration" });
+  const deadline = now() + maxWaitMs;
+  let cursor = after, streamFailures = 0;
+  for (let i = 0; i < maxPolls; i += 1) {
+    jobStopped(signal, isCurrent);
+    if (now() >= deadline) break;
+    const current = await request(`/jobs/${id}`, { timeoutMs: 15000, signal });
+    jobStopped(signal, isCurrent);
+    if (current.data?.result_expired === true) {
+      throw new ApiError(`任务内容已超过保留期限，请勿重复提交。任务编号：${id}`, { kind: "job", meta: { jobId: id, jobStatus: "expired" } });
+    }
+    const status = current.data?.status;
+    if (status === "succeeded" && current.data.result) return { data: current.data.result, meta: current.meta || {} };
+    if (["failed", "unknown"].includes(status)) {
+      throw new ApiError(`任务未完成（${status === "unknown" ? "结果待核实" : "处理失败"}），请勿重复提交。任务编号：${id}`, { kind: "job", meta: { jobId: id, jobStatus: status } });
+    }
+    if (!["reserved", "running"].includes(status)) throw new ApiError("任务状态无效，请勿重复提交。", { kind: "response" });
+    if (current.data.progress && typeof current.data.progress.label === "string") onEvent({ id: null, event: "progress", data: current.data.progress });
+    else onEvent({ id: null, event: "progress", data: { stage: status, label: status === "reserved" ? "任务已入队，等待执行" : "后台正在执行" } });
+    if (useEvents && streamFailures < 2) {
+      try {
+        const stream = await eventReader(id, { after: cursor, signal, timeoutMs: Math.max(1, Math.min(27000, deadline - now())), onEvent: (event) => {
+          jobStopped(signal, isCurrent);
+          if (event.event === "reset" && event.data.cursor_reset === true) cursor = event.id;
+          else if (Number.isSafeInteger(event.id)) cursor = Math.max(cursor, event.id);
+          onEvent(event);
+        } });
+        if (Number.isSafeInteger(stream.after) && stream.after >= 0) cursor = stream.after;
+        if (!stream.terminal) await delay(300, signal);
+        continue;
+      } catch (error) {
+        jobStopped(signal, isCurrent);
+        if (error.status === 401 || error.status === 403) throw error;
+        streamFailures += 1;
+        onEvent({ id: null, event: "transport", data: { label: "实时进度暂不可用，正在查询原任务状态" } });
+      }
+    }
+    await delay(2000, signal);
+  }
+  throw new ApiError(`任务仍在处理，请勿重复提交。任务编号：${id}`, { kind: "timeout", meta: { jobId: id } });
+}
+
+// Only the first POST creates work; even failed SSE cannot repeat it.
 export async function runPublicJob(kind, payload, { headers = {}, request = apiRequest,
-  delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms)), maxPolls = 240,
-  createId = () => globalThis.crypto.randomUUID(), isCurrent = () => true } = {}) {
+  createId = () => globalThis.crypto.randomUUID(), onSubmitted = () => {}, signal, ...options } = {}) {
   const idempotencyKey = createId();
+  // Stopping the wait cannot cancel/repeat a write that may already have committed.
   const submitted = await request(kind === "upload" ? "/jobs/upload" : "/jobs", {
     method: "POST", body: kind === "upload" ? payload : { kind, payload },
     headers: { ...headers, "Idempotency-Key": idempotencyKey }, timeoutMs: 30000 });
   const id = submitted.data?.job_id;
-  if (typeof id !== "string" || !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(id)) {
-    throw new ApiError("任务编号无效，请勿重复提交。", { kind: "response" });
-  }
-  for (let i = 0; i < maxPolls; i += 1) {
-    if (!isCurrent()) throw new ApiError("会话已切换。", { kind: "aborted" });
-    const current = await request(`/jobs/${id}`, { timeoutMs: 15000 });
-    if (current.data?.result_expired === true) {
-      throw new ApiError(`任务内容已超过保留期限，请勿重复提交。任务编号：${id}`, { kind: "job" });
-    }
-    if (current.data?.status === "succeeded" && current.data.result) return { data: current.data.result, meta: current.meta };
-    if (["failed", "unknown"].includes(current.data?.status)) {
-      throw new ApiError(`任务未完成（${current.data.status === "unknown" ? "结果待核实" : "处理失败"}），请勿重复提交。任务编号：${id}`, { kind: "job" });
-    }
-    if (!["reserved", "running"].includes(current.data?.status)) throw new ApiError("任务状态无效，请勿重复提交。", { kind: "response" });
-    await delay(2000);
-  }
-  throw new ApiError(`任务仍在处理，请勿重复提交。任务编号：${id}`, { kind: "timeout" });
+  if (typeof id !== "string" || !JOB_ID.test(id)) throw new ApiError("任务编号无效，请勿重复提交。", { kind: "response" });
+  onSubmitted({ id, kind, lastSequence: 0, createdAt: Date.now() });
+  return resumePublicJob(id, { ...options, signal, request });
 }
 
 function detailMessage(value, status) {

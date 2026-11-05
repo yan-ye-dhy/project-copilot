@@ -13,6 +13,8 @@ from sqlalchemy.exc import SQLAlchemyError
 from starlette.concurrency import run_in_threadpool
 from starlette.datastructures import UploadFile
 
+from project_copilot.api.job_events import stream_events
+from project_copilot.services.job_events import latest_progress
 from project_copilot.api.access import public_identity, public_mode
 from project_copilot.api.actions import credentials
 from project_copilot.api.auth import _token_from_cookie
@@ -26,6 +28,7 @@ from project_copilot.services.approvals import ApprovalService, ContextRejected
 from project_copilot.services.auth import AuthService, AuthenticationRejected
 from project_copilot.services.ai_audit import record_attempt
 from project_copilot.services.quotas import IdempotencyConflict, QuotaExceeded, QuotaService
+from project_copilot.services.release_control import ReleaseClosed
 from project_copilot.services.upload_ingress import UploadIngressBusy, acquire_upload_slot, release_upload_slot
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
@@ -41,13 +44,14 @@ class JobInput(BaseModel):
 def _quota(session, settings):
     return QuotaService(session, user_daily_limit=settings.max_daily_requests_per_user,
                         global_daily_limit=settings.max_daily_requests_global,
-                        user_concurrency_limit=settings.max_concurrent_requests_per_user)
+                        user_concurrency_limit=settings.max_concurrent_requests_per_user, settings=settings)
 
 
 def _response(job, reservation):
     session = object_session(job)
     result_expired = session is not None and session.get(JobContentTombstone, job.id) is not None
-    return {"job_id": str(job.id), "kind": reservation.kind, "status": reservation.state,
+    progress = latest_progress(session, job.id) if session is not None and not result_expired else None
+    return {"progress": progress, "event_cursor": job.event_sequence, "job_id": str(job.id), "kind": reservation.kind, "status": reservation.state,
             "result": job.result if reservation.state == "succeeded" and not result_expired else None,
             "result_expired": result_expired}
 
@@ -178,6 +182,8 @@ async def submit_upload(request: Request, response: Response):
         raise
     except AuthenticationRejected:
         raise HTTPException(403, "会话不可用") from None
+    except ReleaseClosed:
+        raise HTTPException(503, "个人体验或发布授权已关闭") from None
     except UploadIngressBusy:
         if identity is not None:
             await run_in_threadpool(_record_rejected, request.app.state.database, identity[0], "upload", "failed")
@@ -256,6 +262,8 @@ def submit(body: JobInput, request: Request, response: Response):
     except (ContextRejected, AuthenticationRejected):
         _record_rejected(database, user_id, body.kind, "failed")
         raise HTTPException(403, "会话或上下文不可用") from None
+    except ReleaseClosed:
+        raise HTTPException(503, "个人体验或发布授权已关闭") from None
     except IdempotencyConflict:
         _record_rejected(database, user_id, body.kind, "failed")
         raise HTTPException(409, "幂等键已用于其他请求") from None
@@ -294,3 +302,8 @@ def status(job_id: UUID, request: Request, response: Response):
         raise HTTPException(503, "服务暂不可用") from None
     response.headers["Cache-Control"] = "no-store"
     return result
+
+
+@router.get("/{job_id}/events")
+async def events(job_id: UUID, request: Request):
+    return await stream_events(request, job_id)

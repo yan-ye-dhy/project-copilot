@@ -1,6 +1,7 @@
 """智谱Embedding与DeepSeek对话适配：显式请求、脱敏错误与响应契约。"""
 
 from collections.abc import Sequence
+import json
 from dataclasses import dataclass
 from math import isfinite
 from typing import Self
@@ -266,6 +267,87 @@ class DeepSeekChat:
         except (APIResponseValidationError, ValueError, TypeError):
             raise ChatResponseError("DeepSeek对话响应无法解析") from None
 
+        return self._validate_response(response)
+
+    def generate_json_stream(self, messages, on_delta) -> ChatGeneration:
+        """One real provider request; stream raw JSON, validate completion, never retry."""
+        if (not isinstance(messages, Sequence) or isinstance(messages, (str, bytes)) or len(messages) != 2
+                or any(not isinstance(message, dict) or set(message) != {"role", "content"}
+                       or message.get("role") != role or not isinstance(message.get("content"), str)
+                       or not message["content"].strip()
+                       for message, role in zip(messages, ("system", "user"), strict=True))):
+            raise ValueError("对话消息必须依次为System和User")
+        content, model, usage, finished, done = [], None, None, False, False
+        size = 0
+        try:
+            record_provider_attempt()
+            with self._client.chat.completions.with_streaming_response.create(
+                model=self.model, messages=[dict(item) for item in messages], temperature=self.temperature,
+                max_tokens=self.max_tokens, stream=True, stream_options={"include_usage": True},
+                response_format={"type": "json_object"}, extra_body={"thinking": {"type": "disabled"}},
+            ) as raw:
+                for line in raw.http_response.iter_lines():
+                    if not line or line.startswith(":"):
+                        continue
+                    if not line.startswith("data:"):
+                        raise ChatResponseError("对话流协议无效")
+                    data = line[5:].strip()
+                    if data == "[DONE]":
+                        done = True
+                        break
+                    chunk = json.loads(data)
+                    if not isinstance(chunk, dict) or chunk.get("error") is not None:
+                        raise ChatResponseError("对话流响应无效")
+                    actual = chunk.get("model")
+                    if not isinstance(actual, str) or not actual.strip() or (model is not None and actual != model):
+                        raise ChatResponseError("对话流模型标识无效")
+                    model = actual
+                    choices = chunk.get("choices")
+                    if not isinstance(choices, list) or len(choices) > 1:
+                        raise ChatResponseError("对话流回答数量无效")
+                    if chunk.get("usage") is not None:
+                        usage = self._validate_usage(chunk["usage"])
+                    if not choices:
+                        continue
+                    choice = choices[0]
+                    if not isinstance(choice, dict) or type(choice.get("index")) is not int or choice["index"] != 0:
+                        raise ChatResponseError("对话流回答编号无效")
+                    delta = choice.get("delta")
+                    if not isinstance(delta, dict) or delta.get("role") not in (None, "assistant"):
+                        raise ChatResponseError("对话流角色无效")
+                    if ((delta.get("tool_calls") is not None and delta["tool_calls"] != [])
+                            or delta.get("function_call") is not None or delta.get("refusal") is not None):
+                        raise ChatResponseError("知识问答流不允许工具调用")
+                    block = delta.get("content")
+                    if block is not None and not isinstance(block, str):
+                        raise ChatResponseError("对话流文本无效")
+                    if finished and (block or choice.get("finish_reason") is not None):
+                        raise ChatResponseError("对话流结束顺序无效")
+                    if block:
+                        size += len(block)
+                        if size > 65536:
+                            raise ChatResponseError("对话流超出输出预算")
+                        content.append(block)
+                        on_delta(block)
+                    reason = choice.get("finish_reason")
+                    if reason is not None:
+                        if reason != "stop":
+                            raise ChatResponseError("对话回答未正常完成")
+                        finished = True
+        except APITimeoutError:
+            raise ChatRequestError("DeepSeek对话请求超时") from None
+        except APIConnectionError:
+            raise ChatRequestError("无法连接DeepSeek对话服务") from None
+        except APIStatusError as exc:
+            raise ChatRequestError("DeepSeek对话请求被拒绝", status_code=exc.status_code) from None
+        except (APIResponseValidationError, ValueError, TypeError, UnicodeError):
+            raise ChatResponseError("DeepSeek对话流无法解析") from None
+        if not done or not finished or model is None:
+            raise ChatResponseError("对话流未完整结束")
+        response = {"model": model, "choices": [{"finish_reason": "stop", "message": {
+            "role": "assistant", "content": "".join(content)}}]}
+        if usage is not None:
+            response["usage"] = usage
         return self._validate_response(response)
 
     @staticmethod
