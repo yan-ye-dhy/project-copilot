@@ -372,7 +372,7 @@ test('entry header and origin rejection happens before a body reader or upstream
   }
 });
 
-test('request URL origin must match the configured site; a preview host is not staging authentication', async () => {
+test('unreviewed runtime origins are rejected; a preview host is not staging authentication', async () => {
   const handler = makeHandler(neverFetch);
   const response = await handler({ env: ENV, request: new Request('https://unreviewed.edgeone.cool/api/health?eo_token=not-authentication') });
   assert.equal(response.status, 403);

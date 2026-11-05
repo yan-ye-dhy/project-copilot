@@ -123,7 +123,7 @@ docker compose --env-file .env.public-demo -f docker-compose.public-demo.yml \
 
 用户已完成的存储/管理员/CLOSED初始化不再重复。原四个固定卷、管理员凭据、私有配置、BGE缓存、数据库迁移和业务功能保持。此次只推独立开发分支；**不要直接在 main 上同步或合并，main 已关联生产自动部署。** 先检查预览部署触发设置：开发分支推送也可能自动触发平台预览，但不是本轮云端操作授权。
 
-1. 本人审查PR后决定何时部署代码。控制台新增函数服务端 `PROJECT_COPILOT_SITE_ORIGIN`（与 `PROJECT_COPILOT_AUTH_PUBLIC_ORIGIN` 完全一致的HTTPS origin、无尾斜杠）；保留现有后端origin/代理secret，不修改管理员密码。变量缺失503；不同预览域名403。只有本人确认过的一个origin可访问。不得把函数变量注入前端静态构建。
+1. 本人审查PR后决定何时部署代码。控制台新增函数服务端 `PROJECT_COPILOT_SITE_ORIGIN`（与 `PROJECT_COPILOT_AUTH_PUBLIC_ORIGIN` 完全一致的HTTPS origin、无尾斜杠）；保留现有后端origin/代理secret，不修改管理员密码。变量缺失503；错误写入Origin或GET显式Origin403。Node内部URL无法独立证明公网Host，不能保证同项目别名的无Origin GET仅凭此被拒；业务仍须Session与归属。不得把函数变量注入前端静态构建。
 2. WSL 中检查 `release_control inspect`，确认CLOSED与禁Worker；按[安全升级步骤](EDGEONE_DEPLOYMENT.md)运行资源initialize/check和 `--prepare`。只新增入口镜像/网络，不重建已有卷。Nginx与API在CLOSED均应unhealthy/503；不用 `--no-deps` 或改health强行启动。原API需要重建加载代码，PostgreSQL/Qdrant/Phoenix持久数据保持。
 3. Tunnel与Worker保持关闭时，在真实Node函数做少量早拒绝/上游离线测试；管理员审查日志、调用额度与本地Nginx测试，生成真实 `edge_protection` 工件。无云端证据时**继续CLOSED**，不能把仓库里的合成收据当准入。
 4. 用户明确接受剩余函数额度风险后，按[默认域名证据格式](EDGEONE_DEPLOYMENT.md)交互授权最多2小时STAGING、仅1–20个已有账号；Worker另行授权。仅在另获启动隧道授权后才执行原Tunnel命令。此时 `cloudflared → ingress:8080 → api:8002`，Tunnel所在专网不能直连api或数据库。
@@ -146,3 +146,11 @@ docker compose --env-file .env.public-demo -f docker-compose.public-demo.yml \
 本地流程仍为交互 `release_control CLOSED`，然后 `./scripts/stop_public_demo.sh`。脚本按标签只停演示容器，不删除卷；如DB不可用先停入口和执行进程。仅停Tunnel不能阻止EdgeOne函数被反复调用：用户还须在控制台核实可用的暂停项目/停用部署/撤销入口方式，必要时撤销该部署，而不是只隐藏URL或换secret。控制台是否提供额度告警、暂停与硬上限须本人实际确认；不承诺未证的平台自动止损。
 
 再次开放前先调查unknown/running和已确认工单、核对额度/备份/索引；恢复按既有管理员工具，绝不重放不确定操作。新授权绑定当前代码、配置和入口文件摘要，旧工件不得沿用。
+
+## 内部URL误拒修复后的最少验证
+
+用户已提供真实Node内部HTTP映射证据，旧URL等于公网Origin的假设已修正。无需更改任何现有环境变量或启本地新服务。先审查 `fix/edgeone-internal-runtime-origin` PR，由本人决定合并/部署；main自动部署，Codex本轮不合并。保持SITE为固定公网HTTPS地址、BACKEND未配置、CLOSED/禁Worker/无Tunnel。
+
+部署后在固定项目页面Console执行一次health请求，预期503；可再测auth/me503和PATCH jobs404，具体短命令见[修复报告](EDGEONE_RUNTIME_ORIGIN_FIX.md)。如果仍403，先核对部署版本及是否仍为已验证的内部运行时，不靠改Host/XFH或放宽后缀解决。诊断事件已删除，旧日志仅作历史证据；不要为了看到新日志反复请求。
+
+未来进入STAGING前，实际部署的前后端入口版本与证据摘要仍需一致并重新审核；本轮未重建或操作用户Docker、数据卷及账号，不把云函数修复视为发布授权。
