@@ -36,11 +36,12 @@ _ACTIVE_STATES = ("reserved", "running", "unknown")
 
 class QuotaService:
     def __init__(self, session: Session, *, user_daily_limit: int = 5, global_daily_limit: int = 30,
-                 user_concurrency_limit: int = 1):
+                 user_concurrency_limit: int = 1, settings=None):
         limits = (user_daily_limit, global_daily_limit, user_concurrency_limit)
         if any(type(value) is not int or value < 1 or value > 1_000_000 for value in limits):
             raise ValueError("invalid AI quota configuration")
         self.session = session
+        self.settings = settings
         self.user_daily_limit, self.global_daily_limit, self.user_concurrency_limit = limits
 
     def reserve(self, user_id: UUID, idempotency_key: str, payload_fingerprint: str,
@@ -51,9 +52,20 @@ class QuotaService:
             raise ValueError("invalid request fingerprint")
         if kind not in {"agent", "rag", "upload"}:
             raise ValueError("invalid request kind")
+        release = None
+        if self.settings is not None and (self.settings.public_demo or self.settings.environment == "production"):
+            from project_copilot.services.release_control import require_open
+            # Take the shared admission lock before the quota lock. A close or
+            # expiry between HTTP admission and this transaction cannot reserve
+            # fresh paid work, and closing follows the same lock order.
+            release = require_open(self.session, self.settings, user_id=user_id)
         # One database-wide lock serializes the global and per-user limits across
         # processes. It is transaction-scoped and cannot outlive rollback/commit.
         self.session.execute(text("SELECT pg_advisory_xact_lock(576572591122)"))
+        if release is not None:
+            # A lock wait can cross the grant deadline even though its shared
+            # admission lease prevents an operator changing the row meanwhile.
+            release = require_open(self.session, self.settings, user_id=user_id)
         existing = self.session.scalar(select(AiRequestReservation).where(
             AiRequestReservation.user_id == user_id,
             AiRequestReservation.idempotency_key == idempotency_key,
@@ -61,6 +73,8 @@ class QuotaService:
         if existing is not None:
             if existing.payload_fingerprint != payload_fingerprint or existing.kind != kind:
                 raise IdempotencyConflict("idempotency key was used for another request")
+            if release is not None:
+                require_open(self.session, self.settings, user_id=user_id, reservation=existing)
             return existing, True
 
         # Read wall-clock time *after* the lock wait; PostgreSQL now() is fixed at
@@ -68,7 +82,13 @@ class QuotaService:
         now = self.session.scalar(select(func.clock_timestamp()))
         day = now.astimezone(timezone.utc).date()
         count = lambda *criteria: self.session.scalar(select(func.count()).select_from(AiRequestReservation).where(*criteria))
-        if count(AiRequestReservation.user_id == user_id, AiRequestReservation.state.in_(_ACTIVE_STATES)) >= self.user_concurrency_limit:
+        personal_grant = UUID(release.evidence["grant_id"]) if release is not None and release.state == "PERSONAL_DEMO" else None
+        if personal_grant is not None and count(AiRequestReservation.personal_demo_grant_id == personal_grant) >= 3:
+            # Count all outcomes, across UTC midnight. Failure, timeout or a new
+            # idempotency key cannot refund this short grant's three tasks.
+            raise QuotaExceeded("personal_demo_limit")
+        concurrency_limit = min(self.user_concurrency_limit, 1) if personal_grant is not None else self.user_concurrency_limit
+        if count(AiRequestReservation.user_id == user_id, AiRequestReservation.state.in_(_ACTIVE_STATES)) >= concurrency_limit:
             raise QuotaExceeded("user_concurrency")
         if count(AiRequestReservation.user_id == user_id, AiRequestReservation.utc_day == day) >= self.user_daily_limit:
             raise QuotaExceeded("user_daily")
@@ -76,7 +96,8 @@ class QuotaService:
             raise QuotaExceeded("global_daily")
         reservation = AiRequestReservation(user_id=user_id, idempotency_key=idempotency_key,
                                            payload_fingerprint=payload_fingerprint, kind=kind,
-                                           utc_day=day, created_at=now, state="reserved")
+                                           utc_day=day, created_at=now, state="reserved",
+                                           personal_demo_grant_id=personal_grant)
         self.session.add(reservation)
         self.session.flush()
         return reservation, False

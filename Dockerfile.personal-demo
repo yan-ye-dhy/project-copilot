@@ -1,0 +1,7 @@
+# Reuse the existing CPU dependency image without a Docker Hub pull or install.
+# Only for this source-only change; dependency changes need the normal Dockerfile.
+FROM project-copilot-api:public-demo
+WORKDIR /app
+COPY --chown=1000:1000 src/ src/
+COPY --chown=1000:1000 scripts/ scripts/
+COPY --chown=1000:1000 migrations/ migrations/

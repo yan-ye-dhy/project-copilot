@@ -26,6 +26,7 @@ from project_copilot.services.approvals import ApprovalService, ContextRejected
 from project_copilot.services.auth import AuthService, AuthenticationRejected
 from project_copilot.services.ai_audit import record_attempt
 from project_copilot.services.quotas import IdempotencyConflict, QuotaExceeded, QuotaService
+from project_copilot.services.release_control import ReleaseClosed
 from project_copilot.services.upload_ingress import UploadIngressBusy, acquire_upload_slot, release_upload_slot
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
@@ -41,7 +42,7 @@ class JobInput(BaseModel):
 def _quota(session, settings):
     return QuotaService(session, user_daily_limit=settings.max_daily_requests_per_user,
                         global_daily_limit=settings.max_daily_requests_global,
-                        user_concurrency_limit=settings.max_concurrent_requests_per_user)
+                        user_concurrency_limit=settings.max_concurrent_requests_per_user, settings=settings)
 
 
 def _response(job, reservation):
@@ -178,6 +179,8 @@ async def submit_upload(request: Request, response: Response):
         raise
     except AuthenticationRejected:
         raise HTTPException(403, "会话不可用") from None
+    except ReleaseClosed:
+        raise HTTPException(503, "个人体验或发布授权已关闭") from None
     except UploadIngressBusy:
         if identity is not None:
             await run_in_threadpool(_record_rejected, request.app.state.database, identity[0], "upload", "failed")
@@ -256,6 +259,8 @@ def submit(body: JobInput, request: Request, response: Response):
     except (ContextRejected, AuthenticationRejected):
         _record_rejected(database, user_id, body.kind, "failed")
         raise HTTPException(403, "会话或上下文不可用") from None
+    except ReleaseClosed:
+        raise HTTPException(503, "个人体验或发布授权已关闭") from None
     except IdempotencyConflict:
         _record_rejected(database, user_id, body.kind, "failed")
         raise HTTPException(409, "幂等键已用于其他请求") from None

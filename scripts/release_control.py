@@ -5,17 +5,27 @@ import json
 from pathlib import Path
 import sys
 
+from sqlalchemy import select
+
 from project_copilot.config import load_settings
 from project_copilot.db.session import Database
+from project_copilot.db.models import UserAccount
 from project_copilot.services.auth import AuthService
-from project_copilot.services.release_control import change_state, code_fingerprint, config_fingerprint, release_status
+from project_copilot.services.release_control import change_state, code_fingerprint, config_fingerprint, release_status, personal_settings
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("operation", choices=("inspect", "CLOSED", "STAGING", "PUBLIC", "worker-enable", "worker-disable"))
+    parser.add_argument("operation", choices=("inspect", "CLOSED", "STAGING", "PUBLIC", "PERSONAL_DEMO", "worker-enable", "worker-disable"))
     parser.add_argument("--evidence", type=Path)
+    parser.add_argument("--user", help="existing active test username (PERSONAL_DEMO only)")
+    parser.add_argument("--minutes", type=int, default=90, help="PERSONAL_DEMO lifetime, 1-90 minutes; no automatic renewal")
     args = parser.parse_args()
+    if args.operation == "PERSONAL_DEMO":
+        if not args.user or args.evidence is not None or not 1 <= args.minutes <= 90:
+            parser.error("PERSONAL_DEMO requires --user, 1-90 minutes and no evidence file")
+    elif args.user is not None or args.minutes != 90:
+        parser.error("--user and --minutes are PERSONAL_DEMO options")
     if not sys.stdin.isatty() or not sys.stdout.isatty():
         parser.error("interactive administrator terminal required")
     database = None
@@ -23,6 +33,8 @@ def main():
         settings = load_settings()
         if settings.database_url is None or not (settings.public_demo or settings.environment == "production"):
             raise ValueError("configured public database required")
+        if args.operation == "PERSONAL_DEMO":
+            personal_settings(settings)  # Refuse a non-demo DSN before connecting.
         username = input("Administrator username: ").strip().lower()
         password = getpass.getpass("Administrator password: ")
         database = Database(settings.database_url.get_secret_value())
@@ -51,8 +63,15 @@ def main():
                     raise ValueError("bounded local evidence file required")
                 evidence = json.loads(args.evidence.read_text(encoding="utf-8"))
             with database.transaction() as session:
+                personal = {}
+                if args.operation == "PERSONAL_DEMO":
+                    user_id = session.scalar(select(UserAccount.id).where(
+                        UserAccount.username == args.user.strip().lower(), UserAccount.active.is_(True)))
+                    if user_id is None:
+                        raise ValueError("existing active test user required")
+                    personal = {"personal_user_id": user_id, "duration_minutes": args.minutes}
                 result = change_state(session, settings, actor_id=actor_id, operation=args.operation,
-                                      reason=reason, evidence=evidence)
+                                      reason=reason, evidence=evidence, **personal)
         print(json.dumps(result))
         return 0
     except (Exception, KeyboardInterrupt):

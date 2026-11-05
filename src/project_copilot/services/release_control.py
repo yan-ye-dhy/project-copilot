@@ -9,17 +9,20 @@ from hashlib import sha256
 import json
 from pathlib import Path
 import re
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import httpx
 from sqlalchemy import func, select, text
+from sqlalchemy.engine import make_url
 
 from project_copilot.config import PROJECT_ROOT
 from project_copilot.db.release import ReleaseControl, ReleaseEvent
-from project_copilot.db.models import UserAccount
+from project_copilot.db.models import AiRequestReservation, UserAccount
 
 RELEASE_ADMISSION_LOCK = 604116220001
 WORKER_EXECUTION_LOCK = 604116220002
+PERSONAL_DEMO = "PERSONAL_DEMO"
+PERSONAL_JOB_LIMIT = 3
 _LOCAL = frozenset({"identity_isolation", "quotas_limits", "storage_restore", "retention_recovery", "proxy_limits", "resource_isolation"})
 _STAGING = _LOCAL | {"edge_protection", "restricted_access"}
 _PUBLIC = _STAGING | {"public_e2e", "cookies_csrf", "offline_shutdown"}
@@ -78,8 +81,21 @@ def admission_exclusive(session):
 
 def release_status(session) -> dict:
     row = session.get(ReleaseControl, 1, populate_existing=True)
-    return {"state": row.state if row else "CLOSED", "worker_enabled": bool(row and row.worker_enabled),
+    result = {"state": row.state if row else "CLOSED", "worker_enabled": bool(row and row.worker_enabled),
             "resource_id": row.resource_id if row else None, "expires_at": row.expires_at.isoformat() if row and row.expires_at else None}
+    if row is not None and row.state == PERSONAL_DEMO:
+        now = session.scalar(select(func.clock_timestamp()))
+        result["expired"] = row.expires_at is None or row.expires_at <= now
+        grant = (row.evidence or {}).get("grant_id")
+        try:
+            grant = UUID(grant)
+        except (ValueError, TypeError, AttributeError):
+            grant = None
+        result["personal_demo"] = {"job_limit": PERSONAL_JOB_LIMIT,
+            "jobs_used": session.scalar(select(func.count()).select_from(AiRequestReservation)
+                .where(AiRequestReservation.personal_demo_grant_id == grant)) if grant else None,
+            "allowed_user_ids": row.allowed_user_ids}
+    return result
 
 
 def require_closed(session):
@@ -88,22 +104,62 @@ def require_closed(session):
         raise ReleaseClosed("maintenance requires CLOSED and worker disabled")
 
 
-def require_open(session, settings, *, user_id=None, worker=False):
+def personal_settings(settings):
+    """Only the dedicated public-demo configuration may use this opt-in mode."""
+    if (not settings.public_demo or settings.environment != "production" or
+            settings.public_resource_id != "public-demo-v2" or settings.auth_open_registration or
+            settings.database_url is None):
+        raise ReleaseClosed("personal demo requires isolated public settings")
+    url = make_url(settings.database_url.get_secret_value())
+    if (url.drivername != "postgresql+psycopg" or url.host != "postgres" or url.port != 5432 or
+            url.username != "project_copilot_public" or url.database != "project_copilot_public" or url.query):
+        raise ReleaseClosed("personal demo requires the dedicated database")
+
+
+def _personal_admission(session, row, settings, now, user_id, reservation):
+    personal_settings(settings)
+    evidence = row.evidence
+    from project_copilot.services.entry_protection import source_fingerprint
+    try:
+        if (not isinstance(evidence, dict) or set(evidence) != {"profile", "grant_id", "started_at", "configuration_fingerprint", "source_sha256"} or
+                evidence["profile"] != "personal-demo-v1" or evidence["source_sha256"] != source_fingerprint() or
+                not isinstance(row.allowed_user_ids, list) or len(row.allowed_user_ids) != 1):
+            raise ValueError()
+        grant = UUID(evidence["grant_id"])
+        allowed = UUID(row.allowed_user_ids[0])
+        started = datetime.fromisoformat(evidence["started_at"])
+        if started.tzinfo is None or not started <= now < row.expires_at <= started + timedelta(minutes=90):
+            raise ValueError()
+        user = session.get(UserAccount, allowed, populate_existing=True)
+        if user is None or not user.active or (user_id is not None and user_id != allowed):
+            raise ValueError()
+        if reservation is not None and (reservation.personal_demo_grant_id != grant or reservation.user_id != allowed):
+            raise ValueError()
+    except (ValueError, TypeError, KeyError, OSError, AttributeError):
+        raise ReleaseClosed("personal demo authorization unavailable") from None
+
+
+def require_open(session, settings, *, user_id=None, worker=False, reservation=None):
     session.execute(text("SET LOCAL lock_timeout = '5s'"))
     session.execute(text("SELECT pg_advisory_xact_lock_shared(:key)"), {"key": RELEASE_ADMISSION_LOCK})
     row = session.get(ReleaseControl, 1, populate_existing=True)
     now = session.scalar(select(func.clock_timestamp()))
-    if (row is None or row.state not in {"STAGING", "PUBLIC"} or
+    if (row is None or row.state not in {"STAGING", "PUBLIC", PERSONAL_DEMO} or
             (worker and not row.worker_enabled) or row.expires_at is None or row.expires_at <= now or
             row.resource_id != settings.public_resource_id or not row.resource_id or
             row.origin != str(settings.auth_public_origin).rstrip("/") or
             row.code_fingerprint != code_fingerprint()):
         raise ReleaseClosed("release admission closed")
-    required = _STAGING if row.state == "STAGING" else _PUBLIC
-    if not isinstance(row.evidence, dict) or set(row.evidence.get("checks", {})) != required:
-        raise ReleaseClosed("release evidence incomplete")
-    if row.evidence.get("configuration_fingerprint") != config_fingerprint(settings):
+    if not isinstance(row.evidence, dict) or row.evidence.get("configuration_fingerprint") != config_fingerprint(settings):
         raise ReleaseClosed("approved safety configuration changed")
+    if row.state == PERSONAL_DEMO:
+        _personal_admission(session, row, settings, now, user_id, reservation)
+        return row
+    if reservation is not None and reservation.personal_demo_grant_id is not None:
+        raise ReleaseClosed("personal task belongs to an ended personal grant")
+    required = _STAGING if row.state == "STAGING" else _PUBLIC
+    if set(row.evidence.get("checks", {})) != required:
+        raise ReleaseClosed("release evidence incomplete")
     from project_copilot.services.entry_protection import check_default_domain_runtime
     try:
         check_default_domain_runtime(row.state, row.evidence, str(settings.auth_public_origin))
@@ -192,9 +248,10 @@ def validate_evidence(document: dict, state: str, settings, now: datetime) -> di
             "evidence_hash": sha256(json.dumps(document, sort_keys=True).encode()).hexdigest()}
 
 
-def change_state(session, settings, *, actor_id, operation, reason, evidence=None):
+def change_state(session, settings, *, actor_id, operation, reason, evidence=None,
+                 personal_user_id=None, duration_minutes=90):
     """Operator-only service; no HTTP/model tool endpoint exposes this function."""
-    if operation not in {"CLOSED", "STAGING", "PUBLIC", "worker-enable", "worker-disable"} or not 8 <= len(reason) <= 1000:
+    if operation not in {"CLOSED", "STAGING", "PUBLIC", PERSONAL_DEMO, "worker-enable", "worker-disable"} or not 8 <= len(reason) <= 1000:
         raise ValueError("invalid release operation")
     admission_exclusive(session)
     # FOR SHARE prevents demotion/deactivation through commit but remains
@@ -220,6 +277,28 @@ def change_state(session, settings, *, actor_id, operation, reason, evidence=Non
         require_open(session, settings)
         dependencies_ready(settings)
         row.worker_enabled = True
+    elif operation == PERSONAL_DEMO:
+        personal_settings(settings)
+        if (before != "CLOSED" or row.worker_enabled or evidence is not None or
+                not isinstance(personal_user_id, UUID) or type(duration_minutes) is not int or
+                not 1 <= duration_minutes <= 90):
+            raise ValueError("personal demo requires CLOSED, one existing user and 1-90 minutes")
+        user = session.scalar(select(UserAccount).where(UserAccount.id == personal_user_id)
+                              .with_for_update(read=True).execution_options(populate_existing=True))
+        if user is None or not user.active:
+            raise ValueError("personal test user unavailable")
+        dependencies_ready(settings)
+        now = session.scalar(select(func.clock_timestamp()))
+        from project_copilot.services.entry_protection import source_fingerprint
+        row.state, row.worker_enabled = PERSONAL_DEMO, False
+        row.resource_id, row.origin = settings.public_resource_id, str(settings.auth_public_origin).rstrip("/")
+        row.code_fingerprint = code_fingerprint()
+        row.expires_at = now + timedelta(minutes=duration_minutes)
+        row.allowed_user_ids = [str(personal_user_id)]
+        row.evidence = {"profile": "personal-demo-v1", "grant_id": str(uuid4()), "started_at": now.isoformat(),
+                        "configuration_fingerprint": config_fingerprint(settings), "source_sha256": source_fingerprint()}
+        event_hash = sha256(json.dumps({"personal": row.evidence, "user": str(personal_user_id),
+                                      "expires_at": row.expires_at.isoformat()}, sort_keys=True).encode()).hexdigest()
     else:
         if operation == "PUBLIC" and before != "STAGING":
             raise ValueError("PUBLIC requires an independently verified STAGING release")

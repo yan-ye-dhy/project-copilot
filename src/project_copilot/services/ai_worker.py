@@ -66,6 +66,16 @@ def claim_one(database, *, ttl_seconds: int | None = None, settings=None) -> Cla
     # One transaction binds the job payload to the reservation claim.
     with database.transaction() as session:
         statement = select(AiJob, AiRequestReservation).join(AiRequestReservation).where(AiRequestReservation.state == "reserved")
+        release = require_open(session, settings, worker=True) if settings is not None else None
+        if release is not None and release.state == "PERSONAL_DEMO":
+            # An old grant's queued task remains evidence, never an implicit
+            # retry. Filtering also prevents it blocking the current grant.
+            statement = statement.where(
+                AiRequestReservation.personal_demo_grant_id == UUID(release.evidence["grant_id"]),
+                AiRequestReservation.user_id == UUID(release.allowed_user_ids[0]),
+            )
+        else:
+            statement = statement.where(AiRequestReservation.personal_demo_grant_id.is_(None))
         if ttl_seconds is not None:
             if type(ttl_seconds) is not int or not 60 <= ttl_seconds <= 30 * 86400:
                 raise ValueError("invalid queue lifetime")
@@ -79,7 +89,7 @@ def claim_one(database, *, ttl_seconds: int | None = None, settings=None) -> Cla
             return None
         job, reservation = row
         if settings is not None:
-            require_open(session, settings, user_id=reservation.user_id, worker=True)
+            require_open(session, settings, user_id=reservation.user_id, worker=True, reservation=reservation)
         if not QuotaService(session).claim(reservation.user_id, reservation.id):
             return None
         attachment = session.get(AiJobUpload, job.id) if reservation.kind == "upload" else None

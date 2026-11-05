@@ -6,7 +6,7 @@
 
 项目包含浏览器工作台、容器化部署与可视化追踪。可查看[工作台截图](docs/evidence/FRONTEND_DESKTOP_20261031.png)、[前端验收记录](docs/evidence/FRONTEND_VERIFICATION_20261031.json)和[端到端验收结果](docs/FINAL_ACCEPTANCE.md)。
 
-公网演示改造正在进行：新界面参考[桌面预览](docs/evidence/PUBLIC_WEB_DESKTOP.png)和[移动端预览](docs/evidence/PUBLIC_WEB_MOBILE.png)。公开入口目前保持关闭；EdgeOne 和隧道尚未完成真实部署及安全验收。准备工作和限制见[部署准备](docs/EDGEONE_DEPLOYMENT.md)、[安全模型](docs/SECURITY_MODEL.md)与[运行手册](docs/PUBLIC_DEMO_RUNBOOK.md)。
+公网演示改造正在进行：新界面参考[桌面预览](docs/evidence/PUBLIC_WEB_DESKTOP.png)和[移动端预览](docs/evidence/PUBLIC_WEB_MOBILE.png)。EdgeOne前端已部署，完整公网安全验收仍待完成，后端默认CLOSED。短期个人体验可单独启用 [PERSONAL_DEMO](docs/PERSONAL_DEMO.md)：一个已有账号、最长90分钟、最多3个AI任务，不冒充STAGING/PUBLIC。正式准备工作和限制见[部署准备](docs/EDGEONE_DEPLOYMENT.md)、[安全模型](docs/SECURITY_MODEL.md)与[运行手册](docs/PUBLIC_DEMO_RUNBOOK.md)。
 
 阶段1.5已增加持久发布状态、Worker门禁、数据库创建限额、异常任务调查及新资源冷备恢复；当前默认CLOSED。测试边界和下一步受控STAGING条件见[阶段报告](docs/STAGE15_REPORT.md)与[发布清单](docs/RELEASE_CHECKLIST.md)。
 
