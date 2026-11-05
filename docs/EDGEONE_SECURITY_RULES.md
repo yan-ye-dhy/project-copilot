@@ -77,8 +77,12 @@ Origin、`Sec-Fetch-Site`、Cookie存在性等只能作早期筛选；脚本客�
 
 记录中禁止保存Cookie、API Key、代理密钥、管理员密码或真实Tunnel地址。所有PUBLIC缺口须另行解决、真实复核并再次用户授权；免费默认域名目前不具备直接PUBLIC准入条件。
 
-## 内部运行时 URL 的兼容边界
+## 路由、来源和身份分开校验
 
-2026-11-05 用户真实日志已确认Node接收内部HTTP Origin，并非浏览器固定HTTPS Origin。当前只接受代码里已审核的完整项目SITE与完整内部Origin组合（另保留普通exact SITE模式），不依赖Host/XFH、域名后缀、eo_token或首次请求学习。它仅描述传输，不证明内部域名归属该项目，也不证明原始公网Host。官方未提供已核实可信原始Host元数据保证。
+现行proxy只把运行时URL用于严格路由/查询解析；任何语法合法HTTP(S)内部主机都不因hostname变化被拒，绝不据此认证原公网Host。旧内部域名固定组合已删除，没有suffix白名单或Host/XFH回退。这不是任意上游代理：方法/路径白名单、受审固定HTTPS trycloudflare目标、仅服务端secret及禁止重定向/重放保持。
 
-因此同项目部署别名若被平台映射为同一内部URL，缺Origin的GET不能在Node层独立区分；不能把这层检查说成外部域名访问控制或用户认证。错误/缺失写Origin、错误GET显式Origin、cross-site请求仍拒绝，Session/host-onlyCookie/CSRF、所有权、数据库额度、固定上游密钥和CLOSED继续生效。此修复不授予任何数据库写权限、不打开PUBLIC，也不解决函数调用前额度风险。临时origin诊断已删除，见[专项报告](EDGEONE_RUNTIME_ORIGIN_FIX.md)。
+浏览器写请求Origin必须等于唯一SITE；GET显式Origin也要匹配。Fetch-Site存在时仅same-origin/none，缺失按兼容客户端处理，不推断攻击也不推断登录。跨站/same-site/错误Origin仍拒绝；无Origin GET仍经过后端Session、资源归属及发布门禁。任何人都能用脚本伪造Header，身份不是由这些Header授予。
+
+敏感GET包括auth/me的用户与CSRF值、工单/任务/提案。提案GET存在受身份/上下文约束的幂等过期状态物化，不会确认或创建工单；本轮未改变业务语义。响应一律no-store，无Access-Control-Allow-*转发；登录Cookie须host-only、Secure、HttpOnly、Path=/、SameSite=Lax，其他辅助Cookie仍按各自用途保留。平台别名和不带浏览器元数据的客户端仍是需实测的边界，不能把本地测试冒充平台域名隔离。
+
+三层保证分别为：Makers项目路由＋proxy语法/方法/路径/Header/大小；固定Origin＋FetchMetadata＋Cookie/CSRF＋server secret/目的地；后端Session/权限/配额＋Nginx＋发布门禁。没有任何一层单独证明全部安全。`eo_token`/`eo_time`查询参数和同名Cookie字段防御性移除且不记录，其余Cookie保留且不去重Session；没有据此声称真实令牌泄漏。预览权限与业务权限严格区分。来源最终设计及请求矩阵见[最终报告](EDGEONE_ORIGIN_FINAL_FIX.md)。

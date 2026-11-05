@@ -9,13 +9,6 @@ const DEFAULT_REQUEST_LIMIT = 4 * 1024 * 1024 + 64 * 1024;
 const DEFAULT_RESPONSE_LIMIT = 5_900_000;
 const JSON_REQUEST_LIMIT = 256 * 1024;
 const HEADER_LIMIT = 16 * 1024;
-// Exact, code-reviewed pair observed in this project's real Makers Node logs.
-// This describes transport, NOT an authenticated original browser Host. No
-// suffix matching, forwarded-header fallback or automatic alias discovery.
-const OBSERVED_MAKERS_RUNTIME = Object.freeze({
-  siteOrigin: 'https://project-copilot-2v2ym9bf.edgeone.cool',
-  runtimeOrigin: 'http://pages-pro-41-af5f.pages-scf-gz-pro.qcloudteo.com',
-});
 const UUID = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}';
 const ROUTES = [
   ['GET', /^\/health$/],
@@ -84,28 +77,50 @@ function validConfiguration(env) {
 }
 
 function resolveRoute(request) {
+  // Node's URL may describe platform-internal transport. Validate its syntax,
+  // not its hostname identity. Check raw path BEFORE WHATWG normalization can
+  // hide dot segments, encoded paths, backslashes or whitespace.
+  const raw = request.url;
+  if (typeof raw !== 'string' || raw.length > 8192 || /[\s\\\u0000-\u001f\u007f-\u009f]/u.test(raw)) return null;
+  const parts = /^(https?):\/\/([^/?#]+)(\/[^?#]*)?(?:\?([^#]*))?$/i.exec(raw);
+  if (!parts || parts[2].includes('@')) return null;
   let url;
-  try { url = new URL(request.url); } catch { return null; }
-  const path = url.pathname;
-  if (!path.startsWith('/api/') || path.includes('%') || path.includes('\\') ||
-      path.includes('//') || !/^\/[a-z0-9_/-]+$/.test(path) || url.search.length > 4096) return null;
+  try { url = new URL(raw); } catch { return null; }
+  if (!['http:', 'https:'].includes(url.protocol) || !url.hostname || url.username || url.password) return null;
+  const path = parts[3] || '/';
+  if (path !== url.pathname || !path.startsWith('/api/') ||
+      path.includes('//') || !/^\/[a-z0-9_/-]+$/.test(path)) return null;
   const target = path.slice(4);
   if (!ROUTES.some(([method, pattern]) => method === request.method && pattern.test(target))) return null;
-  return { target, search: url.search };
-}
-
-function allowedRuntimeURL(url, siteOrigin) {
-  if (url.username || url.password) return false;
-  return url.origin === siteOrigin ||
-    (siteOrigin === OBSERVED_MAKERS_RUNTIME.siteOrigin && url.origin === OBSERVED_MAKERS_RUNTIME.runtimeOrigin);
+  // Validate ALL input, including preview parameters that will be removed.
+  // Keep business bytes/order/duplicates intact, avoiding URLSearchParams'
+  // re-serialization of encodings. Platform preview tokens are not API auth.
+  const query = parts[4];
+  if ((query !== undefined && query.length + 1 > 4096) || url.search.length > 4096) return null;
+  const fields = query ? query.split('&') : [];
+  if (fields.length > 64) return null;
+  const forwarded = [];
+  try {
+    for (const field of fields) {
+      if (!field || /%(?![0-9a-f]{2})/i.test(field)) return null;
+      const separator = field.indexOf('=');
+      const key = separator < 0 ? field : field.slice(0, separator);
+      const value = separator < 0 ? '' : field.slice(separator + 1);
+      const name = decodeURIComponent(key.replace(/\+/g, ' '));
+      const decoded = decodeURIComponent(value.replace(/\+/g, ' '));
+      encodeURIComponent(name); encodeURIComponent(decoded); // Reject lone UTF-16 surrogates too.
+      if (!name || /[\u0000-\u001f\u007f-\u009f]/u.test(name + decoded)) return null;
+      if (name !== 'eo_token' && name !== 'eo_time') forwarded.push(field);
+    }
+  } catch { return null; } // Invalid UTF-8 must not be silently repaired.
+  return { target, search: forwarded.length ? `?${forwarded.join('&')}` : '' };
 }
 
 // Makers routes this project's /api/* to its own handler. Its Node URL can be
-// an internal HTTP envelope; it is not the browser's external HTTPS Origin.
-// Browser write Origin remains pinned to server configuration below; neither
-// the observed internal hostname nor Host/XFH authenticates a user or site.
+// an internal HTTP envelope; hostname is neither browser Origin nor authority.
+// Do not reconstruct browser identity from Host/XFH. Fixed browser Origin and
+// Fetch Metadata below provide browser CSRF defence, NEVER user authentication.
 function requestPolicy(request, route, config, requestLimit) {
-  if (!allowedRuntimeURL(new URL(request.url), config.siteOrigin)) throw new ProxyFailure(403);
   let headerBytes = 0;
   const encoder = new TextEncoder();
   for (const [name, value] of request.headers) {
@@ -132,7 +147,7 @@ function requestPolicy(request, route, config, requestLimit) {
   if ((origin !== null && origin !== config.siteOrigin) ||
       (request.method !== 'GET' && origin !== config.siteOrigin)) throw new ProxyFailure(403);
   const fetchSite = request.headers.get('sec-fetch-site');
-  if (fetchSite && !['same-origin', 'none'].includes(fetchSite)) throw new ProxyFailure(403);
+  if (fetchSite !== null && !['same-origin', 'none'].includes(fetchSite)) throw new ProxyFailure(403);
 
   const limit = route.target === '/jobs/upload' ? requestLimit : Math.min(requestLimit, JSON_REQUEST_LIMIT);
   // Declared oversize/malformed bodies are rejected before getting a reader.
@@ -153,12 +168,26 @@ function connectionTokens(headers) {
   return new Set((headers.get('connection') || '').split(',').map((value) => value.trim().toLowerCase()).filter(Boolean));
 }
 
+function withoutPreviewCookies(value) {
+  const fields = value.split(';');
+  const retained = fields.filter(field => {
+    const name = field.split('=', 1)[0].trim();
+    return name !== 'eo_token' && name !== 'eo_time';
+  });
+  // Preserve untouched headers exactly. Never deduplicate session cookies:
+  // ambiguity must still reach the backend's duplicate-cookie rejection.
+  return retained.length === fields.length ? value : retained.map(field => field.trim()).filter(Boolean).join('; ');
+}
+
 function forwardedRequestHeaders(request, secret) {
   const result = new Headers();
   const excluded = connectionTokens(request.headers);
   for (const name of REQUEST_HEADERS) {
     const value = request.headers.get(name);
-    if (value !== null && !excluded.has(name)) result.set(name, value);
+    if (value !== null && !excluded.has(name)) {
+      const forwarded = name === 'cookie' ? withoutPreviewCookies(value) : value;
+      if (name !== 'cookie' || forwarded) result.set(name, forwarded);
+    }
   }
   result.set('Accept-Encoding', 'identity');
   result.set('Cache-Control', 'no-store');
@@ -181,12 +210,31 @@ function responseHeaders(upstream) {
     } else {
       for (const cookie of upstream.headers.getSetCookie()) {
         // The session must be host-only for the public site, not the tunnel.
-        if (/(?:^|;)\s*domain\s*=/i.test(cookie)) throw new ProxyFailure(502);
+        validateCookie(cookie);
         headers.append('Set-Cookie', cookie);
       }
     }
   }
   return headers;
+}
+
+function validateCookie(cookie) {
+  if (/(?:^|;)\s*domain\s*=/i.test(cookie)) throw new ProxyFailure(502);
+  const [pair, ...rawAttributes] = cookie.split(';');
+  const name = pair.slice(0, pair.indexOf('=')).trim();
+  if (name !== '__Host-pc_session') return; // Auxiliary cookies may be JS-readable.
+  const attributes = new Map();
+  const required = new Set(['secure', 'httponly', 'path', 'samesite', 'domain']);
+  for (const raw of rawAttributes) {
+    const separator = raw.indexOf('=');
+    const key = (separator < 0 ? raw : raw.slice(0, separator)).trim().toLowerCase();
+    if (!required.has(key)) continue;
+    if (attributes.has(key)) throw new ProxyFailure(502);
+    attributes.set(key, separator < 0 ? null : raw.slice(separator + 1).trim());
+  }
+  if (attributes.get('secure') !== null || attributes.get('httponly') !== null ||
+      attributes.get('path') !== '/' || attributes.get('samesite')?.toLowerCase() !== 'lax' ||
+      attributes.has('domain')) throw new ProxyFailure(502);
 }
 
 function boundedLength(headers, limit, invalidStatus, oversizedStatus) {

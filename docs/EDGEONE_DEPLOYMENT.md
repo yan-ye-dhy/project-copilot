@@ -6,7 +6,7 @@
 
 | 字段 | 配置 |
 | --- | --- |
-| 仓库、分支 | 现有 `main` 会自动部署；本轮修复只推 `fix/edgeone-internal-runtime-origin`，先审查 PR，不自动合并或发布。预览分支也可能产生部署，先检查平台自动预览设置；Node内部URL不独立证明公网Host；预览写请求仍须固定SITE，见下文运行时边界 |
+| 仓库、分支 | 现有 `main` 会自动部署；本轮修复只推 `fix/edgeone-routing-origin-boundary`，先审查 PR，不自动合并或发布。预览分支也可能产生部署，先检查平台自动预览设置；Node内部URL不独立证明公网Host；预览写请求仍须固定SITE，见下文运行时边界 |
 | 根目录、框架 | 仓库根目录；通用/自定义静态站，按实际选项核实 |
 | 构建命令、输出 | `node scripts/build_edgeone.mjs`；`dist`；已有输出会拒绝覆盖，平台须用干净目录 |
 | 安装 | 前端没有第三方 npm 依赖，不增加未经审查脚本 |
@@ -120,12 +120,14 @@ curl --silent --show-error --max-time 120 -i "$pc_site_origin/api/health"
 
 若平台预览访问先返回401/HTML，先在真实控制台核实默认域名/地区/预览要求，不将它解释为应用认证成功，也不把eo_token当业务身份。多Set-Cookie、真实Session与4MiB端到端上传只能在获授权的完整链路中验证；不要将以上3项称为完整云端验收。请求触发后函数指标可能增加，这正是尚未解决的调用前额度风险。
 
-## 已实测的 Node 内部 HTTP URL（PR #2 后的兼容修复）
+## 最终来源边界：运行时 URL 只用于路由
 
-用户提供的真实 `pc_proxy_origin_v1` 日志确认：公网项目为 `https://project-copilot-2v2ym9bf.edgeone.cool`，Node却收到 `http://pages-pro-41-af5f.pages-scf-gz-pro.qcloudteo.com`，Host也不等于站点Host。旧的URL Origin等于SITE检查因此误拒GET。官方Node文档未给出可信原始公网Host字段保证；不能改信Host/X-Forwarded-Host。
+用户确认部署PR #3后仍403；此前日志已证明Node接收的是平台内部HTTP URL。现行实现**不再比较任何运行时Origin，不再维护内部域名列表、后缀或固定项目配对**。它依赖Makers将本项目`/api/*`正确路由到本项目handler及相应服务端配置，不声称从Node独立证明原始公网Host。Host/XFH不参与来源、身份或上游选择。
 
-当前代码保留普通HTTPS SITE原样匹配，并仅对上面**完整SITE＋完整内部HTTP Origin**组合增加经审核的传输兼容。不匹配其他站点、任意qcloudteo后缀、HTTPS替代、非默认端口、userinfo或自动学习的新alias。没有新增变量或平台设置；运行时origin变化就403，重新核实后才能更新精确组合。
+URL仍严格校验：绝对HTTP(S)、无userinfo/fragment/控制字符/反斜杠；原始路径与规范化路径一致、精确方法/路径白名单，不允许点段、编码路径或重复分隔符。查询原始和规范化长度均限4096、最多64项，严格percent/UTF-8/控制字符校验；保留正常业务参数编码/顺序/重复值，只删除解码后名称精确为`eo_token`或`eo_time`的参数（包括编码名称/重复项）。同名预览Cookie也防御性剥除，业务Cookie与重复Session保留；预览参数不作认证，删除前也必须通过长度/格式检查。没有证据声称实际API已携带或泄漏令牌。
 
-该组合不是平台身份签名、项目认证或浏览器Host证明。它依赖Makers把本项目路径分发到本项目handler和服务端配置；实际URL只用于路由/传输检查。写请求Origin仍必须精确为HTTPS SITE，GET若有错误Origin也403，Fetch-Site同原规则。无Origin的GET经同一内部URL到达时，Node不能区分外部项目域名/部署别名；会话、host-only Secure Cookie、CSRF、归属、配额、后端代理密钥及发布门禁继续承担业务边界。不能继续宣称所有预览域名GET都由Node验证拒绝。
+SITE_ORIGIN仍是唯一受审HTTPS浏览器Origin：显式Origin必须精确匹配，POST/DELETE缺少合法Origin仍403。Fetch-Site缺失允许以兼容curl/旧客户端；若存在，仅接受same-origin/none，空值、same-site、cross-site或未知值拒绝。Origin/Referer/Fetch Metadata均不是脚本客户端身份。缺Origin的GET仍须后端Session/权限，auth/me、工单、任务、提案均不是公开数据。
 
-临时诊断已经移除，不再输出 `pc_proxy_origin_v1`。新版部署后最少一次合法GET health应503（BACKEND仍空）；auth/me同503、非法PATCH404、错误写Origin403已由本机合成及HTTP回环测试验证。真实新版云端结果仍需用户审核/部署后验收，不启动Tunnel/Worker，不切STAGING。完整证据与步骤见[运行时修复报告](EDGEONE_RUNTIME_ORIGIN_FIX.md)。
+同项目别名被平台映射后，Node无法独立区分原始Host；浏览器host-only Secure/HttpOnly/SameSite=Lax会话Cookie、无CORS开放、所有响应no-store、资源归属及发布门禁继续保护业务。代理额外拒绝缺少这些安全属性的`__Host-pc_session`响应Cookie（502），保留正常多Set-Cookie和注销清除。GET提案读取可能物化已到期状态，不能称所有GET纯读，见[最终报告](EDGEONE_ORIGIN_FINAL_FIX.md)。
+
+无需新增变量，不调整本地Docker、数据库或模型。用户审核PR后才决定合并/部署；保持BACKEND空、CLOSED、禁Worker、无Tunnel，真实health/me预期503；该503只证明本次前置校验通过且没有上游，不代表STAGING/PUBLIC验收完成。全部实际命令及边界见[最终报告](EDGEONE_ORIGIN_FINAL_FIX.md)。

@@ -1,6 +1,6 @@
 # EdgeOne Node Cloud Function 403：定点诊断交接（历史）
 
-> 后续状态：用户已取得真实日志，确认Node内部HTTP Origin导致误拒。临时诊断与专用测试已在后续修复移除；本文保留PR #2时的调查过程，不再执行其中收集日志步骤。现行策略及验证见[运行时Origin修复](EDGEONE_RUNTIME_ORIGIN_FIX.md)。
+> 后续状态：用户已取得真实日志，确认Node内部HTTP Origin导致误拒。临时诊断与专用测试已在后续修复移除；本文保留PR #2时的调查过程，不再执行其中收集日志步骤。精确内部匹配方案后续也已替换；现行策略及验证见[最终来源设计](EDGEONE_ORIGIN_FINAL_FIX.md)。
 
 ## 1. 目标、基准及当前结论
 
