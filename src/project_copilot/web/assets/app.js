@@ -172,11 +172,40 @@ function notify(text, kind = "info") {
   setTimeout(() => toast.remove(), 6000);
 }
 
+function lineIcon(kind) {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  for (const [name, value] of Object.entries({ viewBox: "0 0 24 24", fill: "none", stroke: "currentColor",
+    "stroke-width": "1.65", "stroke-linecap": "round", "stroke-linejoin": "round", "aria-hidden": "true" })) svg.setAttribute(name, value);
+  const paths = kind === "user" ? ["M20 21a8 8 0 0 0-16 0", "M16 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0"]
+    : kind === "progress" ? ["M12 8v4l2.5 1.5", "M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0"]
+    : ["M12 8v4", "M12 16h.01", "M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0"];
+  for (const d of paths) {
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    path.setAttribute("d", d); svg.append(path);
+  }
+  return svg;
+}
+
+function inlineNotice(text, { tone = "muted", className = "", role = "status" } = {}) {
+  const box = element("div", `inline-notice notice-${tone}${className ? ` ${className}` : ""}`);
+  box.setAttribute("role", role);
+  box.setAttribute("aria-live", role === "alert" ? "assertive" : "polite");
+  const icon = lineIcon(tone === "progress" ? "progress" : "info"); icon.classList.add("notice-icon");
+  const content = element("div", "notice-content");
+  content.append(element("p", "notice-text", text)); box.append(icon, content);
+  return box;
+}
+
 function errorNode(error) {
-  const box = element("div", "error-note");
-  box.setAttribute("role", "alert");
-  box.append(element("p", "", error.message || "操作未能完成。"));
-  if (error.meta?.runId) box.append(element("p", "request-id", `请求编号：${error.meta.runId}`));
+  const uncertain = error.meta?.outcome === "uncertain" || error.meta?.jobStatus === "unknown";
+  const box = inlineNotice(error.message || "操作未能完成。", {
+    tone: uncertain ? "warning" : "error", className: "error-note", role: "alert",
+  });
+  const content = box.querySelector(".notice-content");
+  if (error.meta?.runId) content.append(element("p", "request-id", `请求编号：${error.meta.runId}`));
+  if (error.meta?.jobId && !error.message?.includes(error.meta.jobId)) {
+    content.append(element("p", "request-id", `任务编号：${error.meta.jobId}`));
+  }
   return box;
 }
 
@@ -255,17 +284,24 @@ function scrollChat(force = false) {
 function addMessage(role, content, pending = false) {
   $("chat-welcome").hidden = true;
   const article = element("article", `message ${role}`);
-  const avatar = element("div", "message-avatar", role === "user" ? "你" : "C");
+  article.setAttribute("aria-label", role === "user" ? "你的消息" : "知行助手的消息");
+  const avatar = element("div", `message-avatar${role === "assistant" ? " assistant-seal" : ""}`);
   avatar.setAttribute("aria-hidden", "true");
+  avatar.append(role === "user" ? lineIcon("user") : element("span", "seal-character", "知"));
   const block = element("div", "message-block");
-  const label = element("div", "message-label", role === "user" ? "你" : "Project Copilot");
-  const body = element("div", "message-bubble");
+  // User identity is already conveyed by the round icon and alignment, without a second label.
+  if (role === "assistant") {
+    const label = element("div", "message-label");
+    label.append(element("strong", "assistant-name", "知行助手"), element("small", "assistant-product", "Project Copilot"));
+    block.append(label);
+  }
+  // Assistant prose and system hints share the chat paper, never a user-style bubble.
+  const body = element("div", role === "assistant" ? "message-body" : "message-bubble");
   const meta = element("div", "message-meta");
   if (pending) {
-    body.setAttribute("aria-live", "polite");
-    body.append(element("span", "loading", "正在整理资料与处理结果，请稍候…"));
+    body.append(inlineNotice("正在整理资料与处理结果，请稍候…", { tone: "progress" }));
   } else body.append(role === "assistant" ? renderMarkdown(content) : element("div", "message-text", content));
-  block.append(label, body, meta); article.append(avatar, block);
+  block.append(body, meta); article.append(avatar, block);
   $("chat-messages").append(article); scrollChat(true);
   return { article, body, meta };
 }
@@ -380,7 +416,9 @@ function renderRecovery() {
   const target = $("job-recovery"); if (!target) return;
   target.replaceChildren(); const jobs = savedJobs(); target.hidden = !jobs.length;
   if (!jobs.length) return;
-  target.append(element("strong", "", "可恢复的任务"), element("p", "", "停止等待或刷新不会重新执行。以下操作只查询原任务。"));
+  const summary = inlineNotice("停止等待或刷新不会重新执行。以下操作只查询原任务。", { className: "recovery-notice" });
+  summary.querySelector(".notice-content").prepend(element("strong", "", "可恢复的任务"));
+  target.append(summary);
   for (const record of jobs) {
     const row = element("div", "job-recovery-row");
     row.append(element("span", "job-identifier", `${record.kind === "rag" ? "知识问答" : "智能协作"} · ${record.id}`));
@@ -392,7 +430,8 @@ function startWaiting(message, mode) {
   const wait = { controller: new AbortController(), message, mode, sequence: 0, draft: "" };
   state.activeWait = wait; state.busy = true; updateComposer(); renderRecovery();
   message.body.replaceChildren();
-  wait.progress = element("p", "job-progress", "任务正在提交…"); wait.progress.setAttribute("role", "status");
+  wait.progress = inlineNotice("任务正在提交…", { tone: "progress", className: "job-progress" });
+  wait.progressText = wait.progress.querySelector(".notice-text");
   wait.preview = element("div", "stream-preview");
   wait.preview.hidden = true;
   message.body.append(wait.progress, wait.preview);
@@ -404,31 +443,31 @@ function updateJobEvent(wait, event) {
     if (event.id <= wait.sequence && !(event.event === "reset" && event.data.cursor_reset === true)) return;
     wait.sequence = event.id;
   }
-  if (["progress", "transport"].includes(event.event) && typeof event.data.label === "string") wait.progress.textContent = event.data.label;
+  if (["progress", "transport"].includes(event.event) && typeof event.data.label === "string") wait.progressText.textContent = event.data.label;
   if (["reset", "snapshot"].includes(event.event) && event.data.cursor_reset) {
     wait.draft = ""; wait.preview.replaceChildren(); wait.preview.hidden = true;
-    wait.progress.textContent = "部分实时内容已过期，继续查询最终结果";
+    wait.progressText.textContent = "部分实时内容已过期，继续查询最终结果";
   }
   if (event.event === "delta" && wait.mode === "rag" && typeof event.data.text === "string") {
     // Plain text while incomplete: no reparsing partial Markdown on each token.
     wait.draft = (wait.draft + event.data.text).slice(0, 100000);
     wait.preview.hidden = false; wait.preview.textContent = wait.draft;
-    wait.progress.textContent = "正在生成回答草稿 · 最终校验尚未完成";
+    wait.progressText.textContent = "正在生成回答草稿 · 最终校验尚未完成";
     scrollChat();
   }
-  if (event.event === "terminal") wait.progress.textContent = "正在核对最终任务结果…";
+  if (event.event === "terminal") wait.progressText.textContent = "正在核对最终任务结果…";
 }
 function stopWaiting() {
   const wait = state.activeWait; if (!wait) return;
   wait.controller.abort(); state.activeWait = null; state.busy = false;
-  wait.message.body.replaceChildren(element("p", "waiting-stopped", "已停止等待，后台任务可能继续执行。请从“可恢复的任务”查询原任务，不要重复提交。"));
+  wait.message.body.replaceChildren(inlineNotice("已停止等待，后台任务可能继续执行。请从“可恢复的任务”查询原任务，不要重复提交。", { className: "waiting-stopped" }));
   updateComposer(); renderRecovery();
 }
 async function displayAnswer(message, data, meta, mode, context, question, epoch) {
     if (typeof data.answer !== "string" || typeof data.status !== "string") throw new ApiError("服务未返回可识别的回答。", { meta, kind: "response" });
     message.body.replaceChildren(renderMarkdown(data.answer));
     if (["failed", "budget_exhausted"].includes(data.status)) {
-      message.body.append(element("p", "error-note", data.status === "budget_exhausted" ? "本次处理达到执行预算，未完成的操作不会被视为成功。" : "本次处理未完成，可查看运行详情定位原因。"));
+      message.body.append(inlineNotice(data.status === "budget_exhausted" ? "本次处理达到执行预算，未完成的操作不会被视为成功。" : "本次处理未完成，可查看运行详情定位原因。", { tone: "warning", className: "error-note", role: "alert" }));
     } else {
       if (question) state.history.push({ role: "user", content: question }, { role: "assistant", content: data.answer });
       state.history = boundHistory(state.history);
