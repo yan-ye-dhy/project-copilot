@@ -27,7 +27,7 @@ GET任务状态轮询使用读请求预算，**不计入较严格的写请求预
 
 ## Cloud Function 进入阶段
 
-所有入口共用 `cloud-functions/proxy.mjs`。配置 `PROJECT_COPILOT_SITE_ORIGIN` 为当前站点的精确HTTPS origin，与后端 `PROJECT_COPILOT_AUTH_PUBLIC_ORIGIN` 一致；缺失、错误或请求origin不匹配时关闭。既有后端origin和代理密钥仍只放函数服务端，不能进入前端构建变量或静态文件。
+所有入口共用 `cloud-functions/proxy.mjs`。配置 `PROJECT_COPILOT_SITE_ORIGIN` 为当前站点的精确HTTPS origin，与后端 `PROJECT_COPILOT_AUTH_PUBLIC_ORIGIN` 一致；配置无效时503；写入Origin或GET显式Origin不匹配时403。既有后端origin和代理密钥仍只放函数服务端，不能进入前端构建变量或静态文件。
 
 方法、路径、请求Header、声明大小和高风险格式可以在代理调用 `getReader()`、访问Tunnel之前拒绝。没有Content-Length或长度虚报的正文仍须有界读取才能知道真实大小；平台本身也可能在函数代码执行前缓冲正文，不能宣称项目代码控制了平台缓冲。普通JSON上限256KiB，上传保留4MiB文件所需的4MiB＋64KiB multipart正文上限；完整文件约束仍由后端复核。公开PDF继续503。
 
@@ -76,3 +76,9 @@ Origin、`Sec-Fetch-Site`、Cookie存在性等只能作早期筛选；脚本客�
 5. 退出STAGING后核对数据库状态、Worker停止与未决任务，保留脱敏证据，不清空已有数据库或卷。
 
 记录中禁止保存Cookie、API Key、代理密钥、管理员密码或真实Tunnel地址。所有PUBLIC缺口须另行解决、真实复核并再次用户授权；免费默认域名目前不具备直接PUBLIC准入条件。
+
+## 内部运行时 URL 的兼容边界
+
+2026-11-05 用户真实日志已确认Node接收内部HTTP Origin，并非浏览器固定HTTPS Origin。当前只接受代码里已审核的完整项目SITE与完整内部Origin组合（另保留普通exact SITE模式），不依赖Host/XFH、域名后缀、eo_token或首次请求学习。它仅描述传输，不证明内部域名归属该项目，也不证明原始公网Host。官方未提供已核实可信原始Host元数据保证。
+
+因此同项目部署别名若被平台映射为同一内部URL，缺Origin的GET不能在Node层独立区分；不能把这层检查说成外部域名访问控制或用户认证。错误/缺失写Origin、错误GET显式Origin、cross-site请求仍拒绝，Session/host-onlyCookie/CSRF、所有权、数据库额度、固定上游密钥和CLOSED继续生效。此修复不授予任何数据库写权限、不打开PUBLIC，也不解决函数调用前额度风险。临时origin诊断已删除，见[专项报告](EDGEONE_RUNTIME_ORIGIN_FIX.md)。

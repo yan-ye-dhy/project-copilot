@@ -53,3 +53,12 @@ PDF真正权限/网络沙箱尚未开启，继续503。提案及确认至少30�
 - [ ] 用户授权后完成浏览器→函数→Tunnel→Nginx→API完整STAGING验收；PUBLIC本轮不支持。
 
 本轮本地测试结果与实际/合成/未执行边界见[专项报告](DEFAULT_DOMAIN_SECURITY_REPORT.md)。此清单不代表已发布、已接受剩余风险或用户本人已手测。
+
+## 内部运行时 Origin 兼容专项
+
+- [x] 用户真实Node日志确认公网HTTPS站点与内部HTTP URL不同，来源及执行者见[修复报告](EDGEONE_RUNTIME_ORIGIN_FIX.md)。
+- [x] 代码仅增加已审核的完整SITE/runtime组合；不信任Host/XFH，不做后缀通配，去除临时诊断。
+- [x] 文档承认无Origin GET无法由Node独立验证原公网Host；认证、CSRF、归属和全部发布门禁不改。
+- [ ] 用户审核PR并部署后，在无BACKEND/无Tunnel/CLOSED条件下真实验证health503；本机测试不代替此项。
+
+此专项不启动Worker/Tunnel、不变更数据和环境变量、不切STAGING/PUBLIC，不替代完整公网安全验收。

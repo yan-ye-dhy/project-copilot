@@ -1,5 +1,5 @@
 /*
- * Same-origin, fixed-destination EdgeOne proxy.
+ * Fixed-site browser policy and fixed-destination EdgeOne proxy.
  * Public use also requires the backend's separate proxy-secret, session,
  * ownership, CSRF and quota enforcement; this module is not that enforcement.
  */
@@ -9,6 +9,13 @@ const DEFAULT_REQUEST_LIMIT = 4 * 1024 * 1024 + 64 * 1024;
 const DEFAULT_RESPONSE_LIMIT = 5_900_000;
 const JSON_REQUEST_LIMIT = 256 * 1024;
 const HEADER_LIMIT = 16 * 1024;
+// Exact, code-reviewed pair observed in this project's real Makers Node logs.
+// This describes transport, NOT an authenticated original browser Host. No
+// suffix matching, forwarded-header fallback or automatic alias discovery.
+const OBSERVED_MAKERS_RUNTIME = Object.freeze({
+  siteOrigin: 'https://project-copilot-2v2ym9bf.edgeone.cool',
+  runtimeOrigin: 'http://pages-pro-41-af5f.pages-scf-gz-pro.qcloudteo.com',
+});
 const UUID = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}';
 const ROUTES = [
   ['GET', /^\/health$/],
@@ -37,7 +44,7 @@ const RESPONSE_HEADERS = [
 ];
 
 class ProxyFailure extends Error {
-  constructor(status, reason = null) { super('Proxy request failed'); this.status = status; this.reason = reason; }
+  constructor(status) { super('Proxy request failed'); this.status = status; }
 }
 
 function errorResponse(status, extra = {}) {
@@ -87,10 +94,18 @@ function resolveRoute(request) {
   return { target, search: url.search };
 }
 
-// This runs after the function was invoked, but before reading its request body
-// or opening the Tunnel. Origin is CSRF defence, never an API identity.
+function allowedRuntimeURL(url, siteOrigin) {
+  if (url.username || url.password) return false;
+  return url.origin === siteOrigin ||
+    (siteOrigin === OBSERVED_MAKERS_RUNTIME.siteOrigin && url.origin === OBSERVED_MAKERS_RUNTIME.runtimeOrigin);
+}
+
+// Makers routes this project's /api/* to its own handler. Its Node URL can be
+// an internal HTTP envelope; it is not the browser's external HTTPS Origin.
+// Browser write Origin remains pinned to server configuration below; neither
+// the observed internal hostname nor Host/XFH authenticates a user or site.
 function requestPolicy(request, route, config, requestLimit) {
-  if (new URL(request.url).origin !== config.siteOrigin) throw new ProxyFailure(403, 'url_origin_mismatch');
+  if (!allowedRuntimeURL(new URL(request.url), config.siteOrigin)) throw new ProxyFailure(403);
   let headerBytes = 0;
   const encoder = new TextEncoder();
   for (const [name, value] of request.headers) {
@@ -115,9 +130,9 @@ function requestPolicy(request, route, config, requestLimit) {
   if (expect) throw new ProxyFailure(400);
   const origin = request.headers.get('origin');
   if ((origin !== null && origin !== config.siteOrigin) ||
-      (request.method !== 'GET' && origin !== config.siteOrigin)) throw new ProxyFailure(403, 'origin_header_mismatch');
+      (request.method !== 'GET' && origin !== config.siteOrigin)) throw new ProxyFailure(403);
   const fetchSite = request.headers.get('sec-fetch-site');
-  if (fetchSite && !['same-origin', 'none'].includes(fetchSite)) throw new ProxyFailure(403, 'fetch_site_disallowed');
+  if (fetchSite && !['same-origin', 'none'].includes(fetchSite)) throw new ProxyFailure(403);
 
   const limit = route.target === '/jobs/upload' ? requestLimit : Math.min(requestLimit, JSON_REQUEST_LIMIT);
   // Declared oversize/malformed bodies are rejected before getting a reader.
@@ -132,42 +147,6 @@ function requestPolicy(request, route, config, requestLimit) {
     } else if (!/^application\/json(?:;\s*charset=utf-8)?$/i.test(type)) throw new ProxyFailure(415);
   }
   return limit;
-}
-
-// TEMPORARY bootstrap diagnostics. Never log full URLs, headers, error objects
-// or bodies. URL.origin omits paths/query/fragment; credentials and excessively
-// long or unexpected origins are suppressed as well. These values are only
-// observations, never new authority for accepting Host/X-Forwarded-Host.
-function diagnosticOrigin(value, secret) {
-  try {
-    const url = new URL(value);
-    if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password ||
-        url.origin.length > 256 || !/^[\x21-\x7e]+$/.test(url.origin) ||
-        url.origin.toLowerCase().includes(secret.toLowerCase())) return '[redacted]';
-    return url.origin;
-  } catch { return '[redacted]'; }
-}
-
-function originDiagnostic(request, route, config, outcome) {
-  const urlOrigin = new URL(request.url).origin;
-  const origin = request.headers.get('origin');
-  const fetchSite = request.headers.get('sec-fetch-site');
-  const host = request.headers.get('host');
-  return {
-    event: 'pc_proxy_origin_v1',
-    route: route.target === '/health' ? 'health' : 'auth_me',
-    outcome,
-    request_url_origin: diagnosticOrigin(request.url, config.secret),
-    expected_site_origin: diagnosticOrigin(config.siteOrigin, config.secret),
-    url_origin_matches: urlOrigin === config.siteOrigin,
-    origin_header_present: origin !== null,
-    origin_header_matches: origin === null ? null : origin === config.siteOrigin,
-    fetch_site_present: fetchSite !== null,
-    fetch_site_allowed: !fetchSite || ['same-origin', 'none'].includes(fetchSite),
-    host_header_present: host !== null,
-    host_header_matches_site: host === null ? null : host === new URL(config.siteOrigin).host,
-    backend_destination_configured: false,
-  };
 }
 
 function connectionTokens(headers) {
@@ -290,22 +269,10 @@ export function createProxyHandler({
   timeoutMs = DEFAULT_TIMEOUT_MS,
   maxRequestBytes = DEFAULT_REQUEST_LIMIT,
   maxResponseBytes = DEFAULT_RESPONSE_LIMIT,
-  originDiagnosticLog = (event) => console.info(JSON.stringify(event)),
 } = {}) {
   if (typeof fetchImpl !== 'function' || !Number.isSafeInteger(timeoutMs) || timeoutMs < 1 ||
       !Number.isSafeInteger(maxRequestBytes) || maxRequestBytes < 1 ||
-      !Number.isSafeInteger(maxResponseBytes) || maxResponseBytes < 1 ||
-      typeof originDiagnosticLog !== 'function') throw new TypeError('Invalid proxy limits');
-  // At most two records per warm handler, not a global/distributed rate limit.
-  // No new env flags or diagnostic HTTP endpoints. Remove after cloud evidence.
-  let originLogsRemaining = 2;
-  const observeOrigin = (request, route, config, outcome) => {
-    if (config.origin || request.method !== 'GET' ||
-        !['/health', '/auth/me'].includes(route.target) || originLogsRemaining === 0) return;
-    originLogsRemaining -= 1;
-    try { originDiagnosticLog(originDiagnostic(request, route, config, outcome)); }
-    catch { /* Diagnostics must never change admission or error responses. */ }
-  };
+      !Number.isSafeInteger(maxResponseBytes) || maxResponseBytes < 1) throw new TypeError('Invalid proxy limits');
   return async function proxy({ request, env }) {
     const config = validConfiguration(env);
     if (!config) return errorResponse(503);
@@ -313,18 +280,10 @@ export function createProxyHandler({
     if (!route) return errorResponse(404);
     let requestLimit;
     try { requestLimit = requestPolicy(request, route, config, maxRequestBytes); }
-    catch (error) {
-      if (error instanceof ProxyFailure && error.status === 403) {
-        observeOrigin(request, route, config, error.reason);
-      }
-      return errorResponse(error instanceof ProxyFailure ? error.status : 400);
-    }
+    catch (error) { return errorResponse(error instanceof ProxyFailure ? error.status : 400); }
     // Never read a valid request body or send credentials without a reviewed
     // destination. Do not configure a fabricated or third-party Tunnel URL.
-    if (!config.origin) {
-      observeOrigin(request, route, config, 'preflight_pass_no_backend');
-      return errorResponse(503);
-    }
+    if (!config.origin) return errorResponse(503);
 
     const controller = new AbortController();
     let timedOut = false;
