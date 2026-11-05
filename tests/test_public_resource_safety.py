@@ -123,3 +123,25 @@ def test_actual_rendered_project_must_match_preflight(monkeypatch, tmp_path):
     monkeypatch.setattr(resources, "docker", lambda *args: json.dumps({"name": "project-copilot"}).encode())
     with pytest.raises(resources.ResourceError, match="rendered project"):
         resources.validate_rendered_env(tmp_path / "private.env", {})
+
+
+def test_preflight_refuses_two_running_ingress_instances(monkeypatch):
+    def fake(*args):
+        if args[0] == "ps":
+            return b"ingress-a\ningress-b\n"
+        return json.dumps([{"Config":{"Labels":{"com.docker.compose.project":resources.PROJECT,
+                    "com.docker.compose.service":"ingress"}}, "State":{"Running":True},
+                "Mounts":[], "NetworkSettings":{"Networks":{
+                    resources.NETWORKS["backend"]:{}, resources.NETWORKS["ingress"]:{}}}}]).encode()
+    monkeypatch.setattr(resources, "docker", fake)
+    with pytest.raises(resources.ResourceError, match="one shared-zone"):
+        resources.check_containers()
+
+
+@pytest.mark.parametrize("setting", [{"scale": 2}, {"deploy": {"replicas": 2}}])
+def test_rendered_ingress_scale_must_be_one(monkeypatch, setting):
+    config = yaml.safe_load((resources.ROOT / "docker-compose.public-demo.yml").read_text())
+    config["services"]["ingress"].update(setting)
+    monkeypatch.setattr(resources, "docker", lambda *args: json.dumps(config).encode())
+    with pytest.raises(resources.ResourceError, match="exactly one"):
+        resources.check_config()

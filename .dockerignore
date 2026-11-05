@@ -11,6 +11,16 @@
 !scripts/**
 !migrations/
 !migrations/**
+!cloud-functions/
+!cloud-functions/proxy.mjs
+!cloud-functions/api/
+!cloud-functions/api/*.js
+!edgeone.json
+!docker-compose.public-demo.yml
+!deploy/
+!deploy/nginx/
+!deploy/nginx/Dockerfile
+!deploy/nginx/public-demo.conf
 **/__pycache__/
 **/*.py[cod]
 **/.env

@@ -7,6 +7,8 @@
 const DEFAULT_TIMEOUT_MS = 115_000;
 const DEFAULT_REQUEST_LIMIT = 4 * 1024 * 1024 + 64 * 1024;
 const DEFAULT_RESPONSE_LIMIT = 5_900_000;
+const JSON_REQUEST_LIMIT = 256 * 1024;
+const HEADER_LIMIT = 16 * 1024;
 const UUID = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}';
 const ROUTES = [
   ['GET', /^\/health$/],
@@ -40,7 +42,7 @@ class ProxyFailure extends Error {
 
 function errorResponse(status, extra = {}) {
   const messages = {
-    400: '请求格式无效。', 404: '请求地址不存在。', 413: '请求内容过大。',
+    400: '请求格式无效。', 403: '请求来源不允许。', 415: '请求类型不支持。', 431: '请求头过大。', 404: '请求地址不存在。', 413: '请求内容过大。',
     499: '请求已取消。', 502: '上游服务暂时不可用。',
     503: '服务暂时不可用。', 504: '服务响应超时，请查询操作状态。',
   };
@@ -49,18 +51,29 @@ function errorResponse(status, extra = {}) {
   });
 }
 
-function validConfiguration(env) {
-  const raw = env?.PROJECT_COPILOT_BACKEND_ORIGIN;
-  const secret = env?.PROJECT_COPILOT_PROXY_SECRET;
-  if (typeof raw !== 'string' || typeof secret !== 'string' ||
-      !/^[A-Za-z0-9_-]{32,128}$/.test(secret) || raw !== raw.trim()) return null;
+function backendDestination(raw) {
+  if (typeof raw !== 'string' || raw !== raw.trim()) return null;
   let url;
   try { url = new URL(raw); } catch { return null; }
   const host = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.trycloudflare\.com$/;
   if (url.protocol !== 'https:' || !host.test(url.hostname) || url.port ||
       url.username || url.password || url.pathname !== '/' || url.search || url.hash ||
       (raw !== url.origin && raw !== `${url.origin}/`)) return null;
-  return { origin: url.origin, secret };
+  return url.origin;
+}
+
+function validConfiguration(env) {
+  const secret = env?.PROJECT_COPILOT_PROXY_SECRET;
+  const site = env?.PROJECT_COPILOT_SITE_ORIGIN;
+  if (typeof secret !== 'string' || !/^[A-Za-z0-9_-]{32,128}$/.test(secret)) return null;
+  let siteUrl;
+  try { siteUrl = new URL(site); } catch { return null; }
+  if (typeof site !== 'string' || siteUrl.protocol !== 'https:' || site !== siteUrl.origin ||
+      siteUrl.username || siteUrl.password || siteUrl.port || siteUrl.hostname === 'localhost' ||
+      !/^[a-z0-9.-]+$/.test(siteUrl.hostname) || !siteUrl.hostname.includes('.')) return null;
+  // No destination is a supported CLOSED bootstrap configuration. Early
+  // request checks remain testable without ever starting a public Tunnel.
+  return { origin: backendDestination(env?.PROJECT_COPILOT_BACKEND_ORIGIN), secret, siteOrigin: siteUrl.origin };
 }
 
 function resolveRoute(request) {
@@ -72,6 +85,53 @@ function resolveRoute(request) {
   const target = path.slice(4);
   if (!ROUTES.some(([method, pattern]) => method === request.method && pattern.test(target))) return null;
   return { target, search: url.search };
+}
+
+// This runs after the function was invoked, but before reading its request body
+// or opening the Tunnel. Origin is CSRF defence, never an API identity.
+function requestPolicy(request, route, config, requestLimit) {
+  if (new URL(request.url).origin !== config.siteOrigin) throw new ProxyFailure(403);
+  let headerBytes = 0;
+  const encoder = new TextEncoder();
+  for (const [name, value] of request.headers) {
+    headerBytes += encoder.encode(name).byteLength + encoder.encode(value).byteLength + 4;
+    if (/[\x00-\x08\x0b-\x1f\x7f]/.test(value)) throw new ProxyFailure(400);
+  }
+  if (headerBytes > HEADER_LIMIT) throw new ProxyFailure(431);
+  const limits = {
+    cookie: 8192, origin: 512, 'content-type': 512, accept: 1024,
+    'x-csrf-token': 512, 'x-copilot-context-id': 128,
+    'x-copilot-context-token': 512, 'idempotency-key': 256,
+  };
+  for (const [name, limit] of Object.entries(limits)) {
+    if ((request.headers.get(name) || '').length > limit) throw new ProxyFailure(431);
+  }
+  for (const name of ['transfer-encoding', 'upgrade', 'proxy-authorization', 'x-http-method-override']) {
+    if (request.headers.has(name)) throw new ProxyFailure(400);
+  }
+  const encoding = request.headers.get('content-encoding');
+  if (encoding && encoding.toLowerCase() !== 'identity') throw new ProxyFailure(415);
+  const expect = request.headers.get('expect');
+  if (expect) throw new ProxyFailure(400);
+  const origin = request.headers.get('origin');
+  if ((origin !== null && origin !== config.siteOrigin) ||
+      (request.method !== 'GET' && origin !== config.siteOrigin)) throw new ProxyFailure(403);
+  const fetchSite = request.headers.get('sec-fetch-site');
+  if (fetchSite && !['same-origin', 'none'].includes(fetchSite)) throw new ProxyFailure(403);
+
+  const limit = route.target === '/jobs/upload' ? requestLimit : Math.min(requestLimit, JSON_REQUEST_LIMIT);
+  // Declared oversize/malformed bodies are rejected before getting a reader.
+  boundedLength(request.headers, limit, 400, 413);
+  if (request.method === 'GET' && request.body) throw new ProxyFailure(400);
+  if (request.body) {
+    const type = request.headers.get('content-type') || '';
+    if (route.target === '/jobs/upload') {
+      if (!/^multipart\/form-data;\s*boundary=(?:[A-Za-z0-9'()+_,.\/:=?-]{1,70}|"[A-Za-z0-9'()+_,.\/:=?-]{1,70}")$/i.test(type)) {
+        throw new ProxyFailure(415);
+      }
+    } else if (!/^application\/json(?:;\s*charset=utf-8)?$/i.test(type)) throw new ProxyFailure(415);
+  }
+  return limit;
 }
 
 function connectionTokens(headers) {
@@ -203,6 +263,12 @@ export function createProxyHandler({
     if (!config) return errorResponse(503);
     const route = resolveRoute(request);
     if (!route) return errorResponse(404);
+    let requestLimit;
+    try { requestLimit = requestPolicy(request, route, config, maxRequestBytes); }
+    catch (error) { return errorResponse(error instanceof ProxyFailure ? error.status : 400); }
+    // Never read a valid request body or send credentials without a reviewed
+    // destination. Do not configure a fabricated or third-party Tunnel URL.
+    if (!config.origin) return errorResponse(503);
 
     const controller = new AbortController();
     let timedOut = false;
@@ -214,7 +280,7 @@ export function createProxyHandler({
     const cleanup = () => { clearTimeout(timer); request.signal.removeEventListener('abort', onAbort); };
     let upstream;
     try {
-      const body = await readRequestBody(request, maxRequestBytes, controller.signal);
+      const body = await readRequestBody(request, requestLimit, controller.signal);
       if (controller.signal.aborted) throw new Error('aborted');
       upstream = await withAbort(fetchImpl(`${config.origin}${route.target}${route.search}`, {
         method: request.method, headers: forwardedRequestHeaders(request, config.secret),

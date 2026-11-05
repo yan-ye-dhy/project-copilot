@@ -137,7 +137,7 @@ def compose(env_file, *args):
 
 def assert_no_writers(values=None):
     check_containers(values)
-    for service in ("cloudflared", "api", "worker", "migrate"):
+    for service in ("cloudflared", "ingress", "api", "worker", "migrate"):
         ids = docker("ps", "-q", "--filter", f"label=com.docker.compose.project={PROJECT}",
                      "--filter", f"label=com.docker.compose.service={service}").decode().strip()
         if ids:
@@ -158,7 +158,7 @@ def backup(env_file, output):
         raise ResourceError("backup root at capacity; preserve unverified evidence and review retention")
     output.mkdir(mode=0o700, parents=True)
     # Never restart these automatically on success or failure.
-    for service, timeout in (("cloudflared", 30), ("api", 120), ("worker", 360)):
+    for service, timeout in (("cloudflared", 30), ("ingress", 30), ("api", 120), ("worker", 360)):
         compose(env_file, "stop", "-t", str(timeout), service)
     assert_no_writers(values)
     live = json.loads(compose(env_file, "run", "--rm", "--no-deps", "-T", "api", "python", "-m",

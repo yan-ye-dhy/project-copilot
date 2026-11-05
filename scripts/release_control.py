@@ -36,6 +36,10 @@ def main():
                 result = release_status(session)
                 result["current_code_fingerprint"] = code_fingerprint()
                 result["current_configuration_fingerprint"] = config_fingerprint(settings)
+                from project_copilot.services.entry_protection import is_default_domain, source_fingerprint
+                if is_default_domain(str(settings.auth_public_origin)):
+                    result["entry_source_sha256"] = source_fingerprint()
+                    result["default_domain_public_supported"] = False
         else:
             phrase = input(f"Type AUTHORIZE {args.operation} to record your explicit authorization: ")
             if phrase != f"AUTHORIZE {args.operation}":

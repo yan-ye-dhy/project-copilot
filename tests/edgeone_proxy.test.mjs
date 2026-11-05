@@ -6,9 +6,17 @@ import onRequest from '../cloud-functions/api/[[default]].js';
 
 const ORIGIN = 'https://quiet-bamboo-garden.trycloudflare.com';
 const SECRET = 'a'.repeat(43);
-const ENV = { PROJECT_COPILOT_BACKEND_ORIGIN: ORIGIN, PROJECT_COPILOT_PROXY_SECRET: SECRET };
+const ENV = { PROJECT_COPILOT_BACKEND_ORIGIN: ORIGIN, PROJECT_COPILOT_PROXY_SECRET: SECRET, PROJECT_COPILOT_SITE_ORIGIN: 'https://copilot.example' };
 const ID = '11111111-2222-4333-8444-555555555555';
-const request = (path, init = {}) => new Request(`https://copilot.example${path}`, init);
+const request = (path, init = {}) => {
+  const headers = new Headers(init.headers);
+  if (init.method && init.method !== 'GET') {
+    if (!headers.has('origin')) headers.set('origin', 'https://copilot.example');
+    if (init.body && !headers.has('content-type')) headers.set('content-type',
+      path === '/api/jobs/upload' ? 'multipart/form-data; boundary=test-boundary' : 'application/json');
+  }
+  return new Request(`https://copilot.example${path}`, { ...init, headers });
+};
 const context = (path, init = {}, env = ENV) => ({ request: request(path, init), env });
 const json = (data = { ok: true }, init = {}) => Response.json(data, init);
 const makeHandler = (fetchImpl, limits = {}) => createProxyHandler({ fetchImpl, ...limits });
@@ -39,6 +47,11 @@ test('configuration rejects missing, weak or malformed secrets and origins', asy
   const handler = makeHandler(neverFetch);
   const invalid = [
     {}, { ...ENV, PROJECT_COPILOT_PROXY_SECRET: '' },
+    { ...ENV, PROJECT_COPILOT_SITE_ORIGIN: undefined },
+    { ...ENV, PROJECT_COPILOT_SITE_ORIGIN: 'https://copilot.example/' },
+    { ...ENV, PROJECT_COPILOT_SITE_ORIGIN: 'http://copilot.example' },
+    { ...ENV, PROJECT_COPILOT_SITE_ORIGIN: 'https://user:pass@copilot.example' },
+    { ...ENV, PROJECT_COPILOT_SITE_ORIGIN: 'https://copilot.example:8443' },
     { ...ENV, PROJECT_COPILOT_PROXY_SECRET: 'short' },
     { ...ENV, PROJECT_COPILOT_PROXY_SECRET: 'a'.repeat(32) + '\n' },
     { ...ENV, PROJECT_COPILOT_BACKEND_ORIGIN: 'http://quiet.trycloudflare.com' },
@@ -327,5 +340,116 @@ test('downstream response cancellation aborts upstream stream', async () => {
 test('injected factory rejects invalid limits', () => {
   for (const options of [{ timeoutMs: 0 }, { maxRequestBytes: -1 }, { maxResponseBytes: Infinity }, { fetchImpl: null }]) {
     assert.throws(() => createProxyHandler(options), TypeError);
+  }
+});
+
+test('entry header and origin rejection happens before a body reader or upstream call', async () => {
+  const handler = makeHandler(neverFetch);
+  for (const [headers, status] of [
+    [{ origin: 'https://evil.example', 'content-type': 'application/json' }, 403],
+    [{ 'content-type': 'application/json' }, 403],
+    [{ origin: 'https://copilot.example', 'sec-fetch-site': 'cross-site', 'content-type': 'application/json' }, 403],
+    [{ origin: 'https://copilot.example', 'content-encoding': 'gzip', 'content-type': 'application/json' }, 415],
+    [{ origin: 'https://copilot.example', 'transfer-encoding': 'chunked', 'content-type': 'application/json' }, 400],
+    [{ origin: 'https://copilot.example', upgrade: 'websocket', 'content-type': 'application/json' }, 400],
+    [{ origin: 'https://copilot.example', expect: '100-continue', 'content-type': 'application/json' }, 400],
+    [{ origin: 'https://copilot.example', 'x-http-method-override': 'DELETE', 'content-type': 'application/json' }, 400],
+    [{ origin: 'https://copilot.example', 'content-length': '262145', 'content-type': 'application/json' }, 413],
+    [{ origin: 'https://copilot.example', 'content-type': 'text/plain' }, 415],
+    [{ origin: 'https://copilot.example', cookie: 'a'.repeat(8193), 'content-type': 'application/json' }, 431],
+    [{ origin: 'https://copilot.example', 'x-noise': 'x'.repeat(16384), 'content-type': 'application/json' }, 431],
+  ]) {
+    let readers = 0;
+    const response = await handler({ env: ENV, request: {
+      url: 'https://copilot.example/api/jobs', method: 'POST', headers: new Headers(headers),
+      signal: new AbortController().signal,
+      body: { getReader() { readers += 1; throw new Error('body reader must not be opened'); } },
+    } });
+    assert.equal(response.status, status, JSON.stringify(Object.keys(headers)));
+    assert.equal(readers, 0);
+    assert.equal(response.headers.get('cache-control'), 'no-store');
+    assert.doesNotMatch(await response.text(), /trycloudflare|aaaaaaaaaaaaaaaa|evil\.example/);
+  }
+});
+
+test('request URL origin must match the configured site; a preview host is not staging authentication', async () => {
+  const handler = makeHandler(neverFetch);
+  const response = await handler({ env: ENV, request: new Request('https://unreviewed.edgeone.cool/api/health?eo_token=not-authentication') });
+  assert.equal(response.status, 403);
+});
+
+test('non-upload JSON is bounded at 256 KiB even when the platform permits larger bodies', async () => {
+  const handler = makeHandler(neverFetch);
+  const response = await handler(context('/api/jobs', { method: 'POST', body: 'x'.repeat(262145) }));
+  assert.equal(response.status, 413);
+});
+
+test('upload requires a bounded multipart boundary and does not fall back to Edge Functions', async () => {
+  const handler = makeHandler(neverFetch);
+  for (const type of ['application/pdf', 'application/json', 'multipart/form-data', `multipart/form-data; boundary=${'x'.repeat(71)}`]) {
+    const response = await handler(context('/api/jobs/upload', { method: 'POST', body: 'x', headers: { 'content-type': type } }));
+    assert.equal(response.status, 415);
+  }
+});
+
+test('two independent handlers do not pretend to implement a global rate limiter or burden GET polling', async () => {
+  const first = makeHandler(async () => json());
+  const second = makeHandler(async () => json());
+  const responses = await Promise.all(Array.from({ length: 40 }, (_, index) =>
+    (index % 2 ? first : second)(context(`/api/jobs/${ID}`))));
+  for (const response of responses) {
+    assert.equal(response.status, 200);
+    await response.body.cancel();
+  }
+});
+
+
+test('full legal Agent history fits even when every Unicode code point is JSON escaped', async () => {
+  let call;
+  const handler = makeHandler(async (_url, init) => { call = init; return json(); });
+  const payload = { kind: 'agent', payload: {
+    question: '😀'.repeat(2000),
+    history: [
+      { role: 'user', content: '😀'.repeat(4000) },
+      { role: 'assistant', content: '😀'.repeat(4000) },
+      { role: 'user', content: '😀'.repeat(2000) },
+    ],
+  } };
+  const escaped = JSON.stringify(payload).replace(/[\u0080-\uffff]/g, (char) => `\\u${char.charCodeAt(0).toString(16).padStart(4, '0')}`);
+  assert(escaped.length > 128 * 1024 && escaped.length < 256 * 1024);
+  const response = await handler(context('/api/jobs', { method: 'POST', body: escaped }));
+  assert.equal(response.status, 200);
+  assert.deepEqual(JSON.parse(new TextDecoder().decode(call.body)), payload);
+  await response.body.cancel();
+});
+
+test('CLOSED bootstrap with no valid Tunnel destination still rejects invalid requests locally', async () => {
+  const handler = makeHandler(neverFetch);
+  for (const destination of [undefined, '', 'http://bad.trycloudflare.com', 'https://other.example', 'https://bad.trycloudflare.com/path']) {
+    const env = { ...ENV, PROJECT_COPILOT_BACKEND_ORIGIN: destination };
+    let readers = 0;
+    const invoke = (url, method, headers, hasBody = false) => handler({ env, request: {
+      url: `https://copilot.example${url}`, method, headers: new Headers(headers),
+      signal: new AbortController().signal,
+      body: hasBody ? { getReader() { readers += 1; throw new Error('must remain unread'); } } : null,
+    } });
+    assert.equal((await invoke('/api/docs', 'GET', {})).status, 404);
+    assert.equal((await invoke('/api/jobs', 'POST', { origin: 'https://evil.example', 'content-type': 'application/json' }, true)).status, 403);
+    assert.equal((await invoke('/api/jobs', 'POST', { origin: ENV.PROJECT_COPILOT_SITE_ORIGIN, 'content-type': 'application/json', 'content-length': '262145' }, true)).status, 413);
+    for (const response of [
+      await invoke('/api/health', 'GET', {}),
+      await invoke('/api/jobs', 'POST', { origin: ENV.PROJECT_COPILOT_SITE_ORIGIN, 'content-type': 'application/json' }, true),
+    ]) {
+      assert.equal(response.status, 503);
+      assert.doesNotMatch(await response.text(), /trycloudflare|aaaaaaaaaaaa|other\.example/);
+    }
+    assert.equal(readers, 0);
+  }
+});
+
+test('missing site or secret cannot be used as bootstrap request-policy proof', async () => {
+  const handler = makeHandler(neverFetch);
+  for (const env of [{ PROJECT_COPILOT_SITE_ORIGIN: ENV.PROJECT_COPILOT_SITE_ORIGIN }, { PROJECT_COPILOT_PROXY_SECRET: SECRET }]) {
+    assert.equal((await handler(context('/api/docs', {}, env))).status, 503);
   }
 });

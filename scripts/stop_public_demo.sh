@@ -4,7 +4,7 @@
 set -euo pipefail
 project='project-copilot-public-demo'
 found=0
-for service in cloudflared api worker phoenix qdrant postgres; do
+for service in cloudflared ingress api worker phoenix qdrant postgres; do
   if ! ids_output=$(docker ps -q --filter "label=com.docker.compose.project=${project}" \
       --filter "label=com.docker.compose.service=${service}"); then
     printf '%s\n' '无法读取 Docker 状态，停止操作已中断。' >&2

@@ -23,7 +23,7 @@ cd ~/project-copilot
 
 专用卷为pc-public-v2-postgres、pc-public-v2-qdrant、pc-public-v2-phoenix、pc-public-v2-manifests，专用网络也采用固定外部名字和归属标签。项目名覆盖不能改变这些物理名；发现已存在但归属不明的资源时拒绝接管，不迁移、覆盖或删除。禁止绕过预检使用旧数据库URL。
 
-`--prepare`仅启动存储、迁移和API；新库默认CLOSED，此时API unhealthy/503是预期，不启动Worker/Tunnel。它不主动关闭已有授权状态，已有演示堆栈须先inspect并由用户显式CLOSED，再进入准备/维护流程。不要降低健康检查或用`--no-deps`绕过。初始管理员及一次性邀请由本人交互输入：
+`--prepare`仅启动存储、迁移、API与Nginx入口；新库默认CLOSED，此时API unhealthy/503是预期，不启动Worker/Tunnel。它不主动关闭已有授权状态，已有演示堆栈须先inspect并由用户显式CLOSED，再进入准备/维护流程。不要降低健康检查或用`--no-deps`绕过。初始管理员及一次性邀请由本人交互输入：
 
 ```bash
 docker compose --env-file .env.public-demo -f docker-compose.public-demo.yml \
@@ -33,7 +33,7 @@ docker compose --env-file .env.public-demo -f docker-compose.public-demo.yml \
 
 ## 获授权的阶段二STAGING
 
-用户在EdgeOne连接仓库前确认自动部署行为，设置函数、服务端变量、HTTPS和[入口规则](EDGEONE_SECURITY_RULES.md)。准备本地验收工件及实际控制台防护/受限身份记录。普通环境变量不会开放。
+用户在EdgeOne连接仓库前确认自动部署行为，设置函数、服务端变量、HTTPS和[入口保护](EDGEONE_SECURITY_RULES.md)。准备本地验收工件及实际控制台防护/受限身份记录。普通环境变量不会开放。
 
 ```bash
 # 证据文件须以只读挂载在容器中可见；路径仅为占位。
@@ -51,7 +51,7 @@ docker compose --env-file .env.public-demo -f docker-compose.public-demo.yml \
 
 状态变更要求管理员密码、AUTHORIZE <操作>短语和无秘密的原因；STAGING限指定身份并有短有效期。缺工件、过期、代码/资源不匹配、依赖不健康或模型缓存缺失都失败关闭。Worker在每次领取和外呼前复查，Compose启动依赖只是辅助。`--serve`不启动隧道。
 
-实际Quick Tunnel域名只在本人终端私下读取并填EdgeOne服务端变量，不发浏览器或聊天。域名变化后更新并重验。CLOSED时隧道依赖API健康不能启动；先授权受限STAGING后才按批准流程进行网络测试，不能伪造公网成功工件。
+实际Quick Tunnel域名只在本人终端私下读取并填EdgeOne服务端变量，不发浏览器或聊天。域名变化后更新并重验。CLOSED时隧道依赖ingress健康（后者仍代理API准入）不能启动；先授权受限STAGING后才按批准流程进行网络测试，不能伪造公网成功工件。
 
 ## 业务策略与受控保留
 
@@ -111,10 +111,38 @@ docker compose --env-file .env.public-demo -f docker-compose.public-demo.yml \
 ./scripts/stop_public_demo.sh
 ```
 
-停止顺序为Tunnel、API、Worker、存储，不删除卷。CLOSED阻新工作，已发出的上游请求可能收尾；取消HTTP不证明远端取消。恢复前核对健康、任务调查、备份、一致性与证据期限，再由用户重新授权；没有自动回切PUBLIC。
+停止顺序为Tunnel、Nginx入口、API、Worker、存储，不删除卷。CLOSED阻新工作，已发出的上游请求可能收尾；取消HTTP不证明远端取消。恢复前核对健康、任务调查、备份、一致性与证据期限，再由用户重新授权；没有自动回切PUBLIC。
 
 ## 受控公网端到端验收
 
 用户按已授权环境验证：中文及移动页面；Cookie/多Set-Cookie/Session/退出/过期/CSRF；代理403与非白名单拒绝、跨用户工单及确认拒绝；管理员TXT/MD上传/原文查询/删除，PDF503；真实RAG与Agent联合查询、提案预览和独立确认幂等；AI与Context/提案限额；GET轮询不误限；平台请求限制、115s代理、断线与后端离线；Phoenix仅内网；换隧道域名后重配；紧急关闭后停止新领取/外呼。
 
 实际公网、控制台和必要小规模真实模型验收分别留证，无自动重试。任一关键失败回CLOSED；PUBLIC必须先STAGING验收并再次用户授权。当前状态见[发布清单](RELEASE_CHECKLIST.md)。
+
+## 默认域名专项：本人审核后的操作顺序
+
+用户已完成的存储/管理员/CLOSED初始化不再重复。原四个固定卷、管理员凭据、私有配置、BGE缓存、数据库迁移和业务功能保持。此次只推独立开发分支；**不要直接在 main 上同步或合并，main 已关联生产自动部署。** 先检查预览部署触发设置：开发分支推送也可能自动触发平台预览，但不是本轮云端操作授权。
+
+1. 本人审查PR后决定何时部署代码。控制台新增函数服务端 `PROJECT_COPILOT_SITE_ORIGIN`（与 `PROJECT_COPILOT_AUTH_PUBLIC_ORIGIN` 完全一致的HTTPS origin、无尾斜杠）；保留现有后端origin/代理secret，不修改管理员密码。变量缺失503；不同预览域名403。只有本人确认过的一个origin可访问。不得把函数变量注入前端静态构建。
+2. WSL 中检查 `release_control inspect`，确认CLOSED与禁Worker；按[安全升级步骤](EDGEONE_DEPLOYMENT.md)运行资源initialize/check和 `--prepare`。只新增入口镜像/网络，不重建已有卷。Nginx与API在CLOSED均应unhealthy/503；不用 `--no-deps` 或改health强行启动。原API需要重建加载代码，PostgreSQL/Qdrant/Phoenix持久数据保持。
+3. Tunnel与Worker保持关闭时，在真实Node函数做少量早拒绝/上游离线测试；管理员审查日志、调用额度与本地Nginx测试，生成真实 `edge_protection` 工件。无云端证据时**继续CLOSED**，不能把仓库里的合成收据当准入。
+4. 用户明确接受剩余函数额度风险后，按[默认域名证据格式](EDGEONE_DEPLOYMENT.md)交互授权最多2小时STAGING、仅1–20个已有账号；Worker另行授权。仅在另获启动隧道授权后才执行原Tunnel命令。此时 `cloudflared → ingress:8080 → api:8002`，Tunnel所在专网不能直连api或数据库。
+5. 在短窗口中执行下面验收；任一关键失败，先CLOSED再停止Tunnel/入口/Worker，保留日志和任务调查；不自动重试可能已提交的写操作。未经独立准入审查，不扩展账号或授权窗口。当前默认域名方案禁止PUBLIC。
+
+### 受限STAGING验收记录（本轮未执行）
+
+| 实测 | 成功判定与排查 |
+| --- | --- |
+| 函数前置拒绝 | 非白名单404、错误Origin403、大声明body413，实际Node函数日志核对；看不到正文读取/上游连接的内部证据时不要宣称平台未预缓冲 |
+| 用户正常链路 | 浏览器登录/退出、多个Set-Cookie、Session、CSRF、2个测试账号隔离；无Cookie泄露，错误返回无Tunnel地址/secret |
+| 上传 | 已授权管理员4MiB TXT/MD可提交；超限413、PDF503；不要为验证重复消耗模型quota |
+| 轮询 | 正常GET jobs状态不消耗写桶或AI日额；突发全局阈值仍可能429，按Retry-After有界退避，不重新POST任务 |
+| 来源与限流 | Tunnel缺key403、错误key403；真实写突发限流429、等待后恢复；Nginx进程共享，不能声称跨主机全局 |
+| 故障关闭 | API/Tunnel离线映射502/503/504、无泄密；发布到期/显式CLOSED阻新任务/新外呼；在途任务核对，不推断远端已取消 |
+| 业务 | 仅在用户另行授权必要小规模模型请求后做知识/工单联合查询→提案→独立确认→相同ticket_id；Hybrid+Rerank不降级 |
+
+### 默认域名限流的紧急关闭
+
+本地流程仍为交互 `release_control CLOSED`，然后 `./scripts/stop_public_demo.sh`。脚本按标签只停演示容器，不删除卷；如DB不可用先停入口和执行进程。仅停Tunnel不能阻止EdgeOne函数被反复调用：用户还须在控制台核实可用的暂停项目/停用部署/撤销入口方式，必要时撤销该部署，而不是只隐藏URL或换secret。控制台是否提供额度告警、暂停与硬上限须本人实际确认；不承诺未证的平台自动止损。
+
+再次开放前先调查unknown/running和已确认工单、核对额度/备份/索引；恢复按既有管理员工具，绝不重放不确定操作。新授权绑定当前代码、配置和入口文件摘要，旧工件不得沿用。

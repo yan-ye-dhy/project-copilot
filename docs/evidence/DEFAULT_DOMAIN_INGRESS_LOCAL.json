@@ -1,0 +1,53 @@
+{
+  "scope": "default-domain-entry-protection",
+  "executor": "Codex automated local verification",
+  "recorded_date": "2026-11-05",
+  "command": "PROJECT_COPILOT_RUN_INGRESS_DOCKER=1 .venv/bin/python -m pytest -q tests/test_public_ingress_docker.py",
+  "result": {
+    "passed": 8,
+    "failed": 0,
+    "duration_seconds": 38.0
+  },
+  "runtime": "Actual Docker Nginx 1.30.6 Alpine, non-root 101:101, read-only filesystem; fresh random local test network and containers, loopback-only ephemeral host ports",
+  "upstream": "Seven cases use a synthetic Python HTTP server (not real auth/database/model). Eighth case uses this branch real FastAPI image with no database configured, only to verify release fail-closed and actual three-network isolation.",
+  "source_sha256": {
+    "deploy/nginx/public-demo.conf": "354b56f5cde4eaaf120f70755589bcbaf521546157e82e78b03abc2201d33a63",
+    "deploy/nginx/Dockerfile": "d04127a0b7811c0efbe6ad4b43c822b3ce5e3121e0e1cc8fa5fd90e964e51938",
+    "docker-compose.public-demo.yml": "e58793e88188dc649e3f155c31d3f8e015b262cca9080034828a7992e4998467"
+  },
+  "base_image": "nginx:1.30.6-alpine@sha256:0e52bd054126cdc040b1276c0af347aeb02a41b9cfe305d6094767ac30e97949",
+  "checks": [
+    "Cookie, CSRF, Origin and two distinct Set-Cookie headers preserved; untrusted forwarding, authorization and arbitrary internal headers dropped",
+    "4 MiB plus multipart overhead accepted; total body over 4 MiB+64 KiB rejected with413",
+    "Missing/invalid proxy-secret header shape403 before body arrives; wrong well-shaped secret403 from synthetic upstream",
+    "Disallowed method/path and encoded raw path rejected; synthetic CLOSED upstream503 remains503",
+    "Two real Nginx worker processes plus two client OS processes share write rate zone; burst rejection429 and refill recovery200",
+    "15 rapid GET job polls unaffected by low write quota",
+    "Upstream disconnected/timeout sanitized503, no internal origin or testsecret in errors",
+    "Concurrent slow writes bounded at4 while a GET poll succeeds",
+    "Actual fresh three-network topology: API on backend+egress, Nginx on backend+ingress, simulated tunnel client only ingress; direct API DNS inaccessible, Nginx missing-secret403, correct-secret503. Container-local real API probe waits for listener then verifies503 and exact gateway detail before cross-network test.",
+    "Concurrent rate-limit requests with synthetic private query marker produce no marker in either Docker stdout or stderr logs; raw Nginx error/access logs disabled.",
+    "Explicit proxy_next_upstream off prevents upstream proxy replay; source contract assertion plus final complete8-case regression."
+  ],
+  "limits": {
+    "global_rate_per_second": 30,
+    "global_burst": 40,
+    "write_rate_per_second": 2,
+    "write_burst": 8,
+    "active_global_connections": 24,
+    "active_write_connections": 4
+  },
+  "timeout_test": "A separate derived test config changes ONLY proxy_read_timeout110s to1s. Production110s remains source-checked. This is accelerated local timing, not a120s real cloud execution test.",
+  "distribution_boundary": "Shared zones span TWO WORKER PROCESSES in ONE Nginx container. They do NOT span separate Nginx containers. Supported deployment is singleton and resource preflight rejects multiple running ingress containers or configured replicas/scale !=1. Multiple Cloud Functions converge at this one ingress; no cloud global counter claim.",
+  "not_executed": [
+    "EdgeOne Node runtime or cloud routing",
+    "Cloudflare Quick Tunnel",
+    "STAGING/PUBLIC release transitions",
+    "real user login/Cookie/CSRF lifecycle through new ingress",
+    "paid model calls"
+  ],
+  "cleanup": "All fresh ephemeral ingress/upstream containers stopped and removed by --rm; their new empty test networks removed. No persistent volume used or removed. Original public-demo resources and private env untouched.",
+  "tested_image_id": "sha256:e302753aff49860242695f8fd1d79317d8d3c5b525fe92b553e53227d37ef5e9",
+  "api_image": "project-copilot:default-domain-validation (this branch application Docker build)",
+  "diagnostic_boundary": "Raw Nginx error/access logs are disabled because standard error context includes full query strings. Use sanitized JSON/status, health and backend run_id; temporary raw diagnostics require explicit private maintenance and must not be published."
+}
