@@ -3,7 +3,7 @@
  * Public use also requires the backend's separate proxy-secret, session,
  * ownership, CSRF and quota enforcement; this module is not that enforcement.
  */
-import { Buffer } from 'node:buffer';
+import { Blob, Buffer } from 'node:buffer';
 
 const DEFAULT_TIMEOUT_MS = 115_000;
 const DEFAULT_REQUEST_LIMIT = 4 * 1024 * 1024 + 64 * 1024;
@@ -154,15 +154,15 @@ function requestPolicy(request, route, config, requestLimit) {
   // Declared oversize/malformed bodies are rejected before getting a reader.
   boundedLength(request.headers, limit, 400, 413);
   if (request.method === 'GET' && request.body) throw new ProxyFailure(400);
-  if (request.body) {
-    const type = request.headers.get('content-type') || '';
-    if (route.target === '/jobs/upload') {
-      if (!/^multipart\/form-data;\s*boundary=(?:[A-Za-z0-9'()+_,.\/:=?-]{1,70}|"[A-Za-z0-9'()+_,.\/:=?-]{1,70}")$/i.test(type)) {
-        throw new ProxyFailure(415);
-      }
-    } else if (!/^application\/json(?:;\s*charset=utf-8)?$/i.test(type)) throw new ProxyFailure(415);
-  }
+  if (request.body || Number(request.headers.get('content-length')) > 0) bodyContentType(request.headers, route.target);
   return limit;
+}
+
+function bodyContentType(headers, target) {
+  const type = headers.get('content-type') || '';
+  if (target === '/jobs/upload') {
+    if (!/^multipart\/form-data;\s*boundary=(?:[A-Za-z0-9'()+_,.\/:=?-]{1,70}|"[A-Za-z0-9'()+_,.\/:=?-]{1,70}")$/i.test(type)) throw new ProxyFailure(415);
+  } else if (!/^application\/json(?:;\s*charset=utf-8)?$/i.test(type)) throw new ProxyFailure(415);
 }
 
 function connectionTokens(headers) {
@@ -264,11 +264,96 @@ function stopReader(reader) {
   try { Promise.resolve(reader.cancel()).catch(() => {}); } catch { /* already closed */ }
 }
 
+function bodyKind(value) {
+  if (value === null || value === undefined) return 'none';
+  if (Buffer.isBuffer(value)) return 'buffer';
+  if (ArrayBuffer.isView(value)) return 'byte_view';
+  if (value instanceof ArrayBuffer) return 'array_buffer';
+  if (typeof value === 'string') return 'string';
+  if (value instanceof Blob) return 'blob';
+  if (Array.isArray(value)) return 'json_array';
+  if (typeof value === 'object') {
+    // Inspect plain envelopes without invoking a JSON property's getter.
+    const proto = Object.getPrototypeOf(value);
+    if (proto === null || proto === Object.prototype) {
+      if (typeof Object.getOwnPropertyDescriptor(value, 'getReader')?.value === 'function') return 'web_stream';
+      if (typeof Object.getOwnPropertyDescriptor(value, Symbol.asyncIterator)?.value === 'function') return 'node_stream';
+      return 'plain_object';
+    }
+    if (typeof value.getReader === 'function') return 'web_stream';
+    if (typeof value[Symbol.asyncIterator] === 'function') return 'node_stream';
+  }
+  return 'unsupported';
+}
+
+function parsedJsonBytes(value, limit) {
+  // Validate a bounded JSON data tree before stringify can invoke hooks/getters.
+  const stack = [[value, 0]], seen = new WeakSet();
+  let size = 0;
+  const charge = bytes => { size += bytes; if (size > limit) throw new ProxyFailure(413); };
+  while (stack.length) {
+    const [item, depth] = stack.pop();
+    if (depth > 64) throw new ProxyFailure(400);
+    if (item === null || typeof item === 'string' || typeof item === 'boolean' ||
+        (typeof item === 'number' && Number.isFinite(item))) {
+      if (typeof item === 'string' && Buffer.byteLength(item, 'utf8') > limit) throw new ProxyFailure(413);
+      charge(Buffer.byteLength(JSON.stringify(item), 'utf8'));
+      continue;
+    }
+    if (typeof item !== 'object' || seen.has(item) ||
+        (!Array.isArray(item) && Object.getPrototypeOf(item) !== Object.prototype && Object.getPrototypeOf(item) !== null)) throw new ProxyFailure(400);
+    if (Array.isArray(item) && Object.getPrototypeOf(item) !== Array.prototype && Object.getPrototypeOf(item) !== null) throw new ProxyFailure(400);
+    seen.add(item);
+    const keys = Object.keys(item), array = Array.isArray(item);
+    charge(2 + Math.max(0, keys.length - 1));
+    if (Object.getOwnPropertySymbols(item).length ||
+        Object.getOwnPropertyNames(item).length !== keys.length + (array ? 1 : 0) ||
+        (array && keys.length !== item.length)) throw new ProxyFailure(400);
+    for (const key of keys) {
+      const descriptor = Object.getOwnPropertyDescriptor(item, key);
+      if (!descriptor || !('value' in descriptor)) throw new ProxyFailure(400);
+      if (!array) {
+        if (Buffer.byteLength(key, 'utf8') > limit) throw new ProxyFailure(413);
+        charge(Buffer.byteLength(JSON.stringify(key), 'utf8') + 1);
+      }
+      stack.push([descriptor.value, depth + 1]);
+    }
+  }
+  const json = JSON.stringify(value);
+  if (Buffer.byteLength(json, 'utf8') > limit) throw new ProxyFailure(413);
+  return Buffer.from(json, 'utf8');
+}
+
 async function readRequestBody(request, limit, signal) {
   boundedLength(request.headers, limit, 400, 413);
   if (signal.aborted) throw new Error('aborted');
-  const source = request.body;
-  if (source === null || source === undefined) return undefined;
+  let source = request.rawBody ?? request.body;
+  let kind = bodyKind(source);
+  // Prefer original bytes to parsed JSON. An opaque arrayBuffer() materializes
+  // once, then is checked; stream paths below retain incremental enforcement.
+  if (['plain_object', 'json_array', 'string', 'unsupported', 'none'].includes(kind) &&
+      request.bodyUsed !== true && typeof request.arrayBuffer === 'function') {
+    source = await withAbort(request.arrayBuffer(), signal);
+    if (!(source instanceof ArrayBuffer) && !ArrayBuffer.isView(source)) throw new ProxyFailure(400);
+    kind = bodyKind(source);
+  }
+  if (kind === 'none') return undefined;
+  if (kind === 'blob') {
+    if (source.size > limit) throw new ProxyFailure(413);
+    source = source.stream();
+    kind = 'web_stream';
+  }
+  if (kind === 'plain_object' || kind === 'json_array') {
+    if (!/^application\/json(?:;\s*charset=utf-8)?$/i.test(request.headers.get('content-type') || '')) {
+      console.warn(JSON.stringify({ event: 'pc_proxy_body_type_v1', stage: 'read_body', body_kind: kind }));
+      throw new ProxyFailure(400); // Never serialize a multipart body.
+    }
+    return parsedJsonBytes(source, limit);
+  }
+  if (kind === 'unsupported') {
+    console.warn(JSON.stringify({ event: 'pc_proxy_body_type_v1', stage: 'read_body', body_kind: kind }));
+    throw new ProxyFailure(400);
+  }
   const chunks = [];
   let total = 0;
   const append = (value) => {
@@ -291,9 +376,9 @@ async function readRequestBody(request, limit, signal) {
   // Web Request uses getReader(); Node-backed Request adapters may expose a
   // Readable/async iterator instead. Choose once: never reread a failed body.
   let reader;
-  if (typeof source.getReader === 'function') {
+  if (kind === 'web_stream') {
     reader = source.getReader();
-  } else if (typeof source[Symbol.asyncIterator] === 'function') {
+  } else if (kind === 'node_stream') {
     const iterator = source[Symbol.asyncIterator]();
     reader = { read: () => iterator.next(), cancel() {
       try { source.destroy?.(); } finally { return iterator.return?.(); }
@@ -383,8 +468,13 @@ export function createProxyHandler({
     let upstream;
     let stage = 'read_body';
     try {
-      const body = await readRequestBody(request, requestLimit, controller.signal);
+      let body = await readRequestBody(request, requestLimit, controller.signal);
       if (controller.signal.aborted) throw new Error('aborted');
+      if (body?.byteLength) {
+        if (request.method === 'GET') throw new ProxyFailure(400);
+        bodyContentType(request.headers, route.target);
+      }
+      if (request.method === 'GET') body = undefined; // Empty arrayBuffer() is not a GET BodyInit.
       stage = 'fetch_upstream';
       upstream = await withAbort(fetchImpl(`${config.origin}${route.target}${route.search}`, {
         method: request.method, headers: forwardedRequestHeaders(request, config.secret),

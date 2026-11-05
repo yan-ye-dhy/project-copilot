@@ -150,14 +150,15 @@ test('oversized actual or declared bodies return 413 before any upstream request
   assert.equal(calls, 0);
 });
 
-test('read failure and parsed objects never reach upstream or replay the input', async () => {
+test('read failure and parsed multipart objects never reach upstream or replay the input', async () => {
   let calls = 0;
   const fetchImpl = () => { calls += 1; assert.fail('invalid input must not fetch'); };
   const stream = Readable.from((async function* () { yield Buffer.from('{'); throw new TypeError('synthetic-private-error'); })());
   const failed = await invoke(stream, { fetchImpl });
   assert.equal(failed.status, 502);
   assert(!(await failed.text()).includes('synthetic-private-error'));
-  assert.equal((await invoke({ already: 'parsed' }, { fetchImpl })).status, 400);
+  assert.equal((await invoke({ already: 'parsed' }, { fetchImpl, path: '/api/jobs/upload',
+    headers: { 'content-type': 'multipart/form-data; boundary=body-test' } })).status, 400);
   assert.equal(calls, 0);
 });
 
