@@ -7,26 +7,29 @@ from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from hashlib import sha256
 import json
+import logging
 from pathlib import Path
 import re
 from uuid import UUID, uuid4
 
 import httpx
 from sqlalchemy import func, select, text
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.engine import make_url
 
 from project_copilot.config import PROJECT_ROOT
 from project_copilot.db.release import ReleaseControl, ReleaseEvent
 from project_copilot.db.models import AiRequestReservation, UserAccount
+from project_copilot.services.personal_profile import (PERSONAL_JOB_LIMIT, PERSONAL_MAX_MINUTES,
+    PERSONAL_PROFILE, PERSONAL_SETTINGS_FIELDS, personal_limits)
 
 RELEASE_ADMISSION_LOCK = 604116220001
 WORKER_EXECUTION_LOCK = 604116220002
 PERSONAL_DEMO = "PERSONAL_DEMO"
-PERSONAL_JOB_LIMIT = 3
 _LOCAL = frozenset({"identity_isolation", "quotas_limits", "storage_restore", "retention_recovery", "proxy_limits", "resource_isolation"})
 _STAGING = _LOCAL | {"edge_protection", "restricted_access"}
 _PUBLIC = _STAGING | {"public_e2e", "cookies_csrf", "offline_shutdown"}
-_SECURITY_FIELDS = frozenset({
+_SECURITY_FIELDS = PERSONAL_SETTINGS_FIELDS | frozenset({
     "environment", "public_demo", "public_resource_id", "auth_public_origin",
     "auth_open_registration", "auth_session_ttl_seconds",
     "max_daily_requests_per_user", "max_daily_requests_global", "max_concurrent_requests_per_user",
@@ -121,14 +124,15 @@ def _personal_admission(session, row, settings, now, user_id, reservation):
     evidence = row.evidence
     from project_copilot.services.entry_protection import source_fingerprint
     try:
-        if (not isinstance(evidence, dict) or set(evidence) != {"profile", "grant_id", "started_at", "configuration_fingerprint", "source_sha256"} or
-                evidence["profile"] != "personal-demo-v1" or evidence["source_sha256"] != source_fingerprint() or
+        if (not isinstance(evidence, dict) or set(evidence) != {"profile", "grant_id", "started_at", "configuration_fingerprint", "source_sha256", "limits"} or
+                evidence["profile"] != PERSONAL_PROFILE or evidence["limits"] != personal_limits(settings)
+                or evidence["source_sha256"] != source_fingerprint() or
                 not isinstance(row.allowed_user_ids, list) or len(row.allowed_user_ids) != 1):
             raise ValueError()
         grant = UUID(evidence["grant_id"])
         allowed = UUID(row.allowed_user_ids[0])
         started = datetime.fromisoformat(evidence["started_at"])
-        if started.tzinfo is None or not started <= now < row.expires_at <= started + timedelta(minutes=90):
+        if started.tzinfo is None or not started <= now < row.expires_at <= started + timedelta(minutes=PERSONAL_MAX_MINUTES):
             raise ValueError()
         user = session.get(UserAccount, allowed, populate_existing=True)
         if user is None or not user.active or (user_id is not None and user_id != allowed):
@@ -249,7 +253,7 @@ def validate_evidence(document: dict, state: str, settings, now: datetime) -> di
 
 
 def change_state(session, settings, *, actor_id, operation, reason, evidence=None,
-                 personal_user_id=None, duration_minutes=90):
+                 personal_user_id=None, duration_minutes=PERSONAL_MAX_MINUTES):
     """Operator-only service; no HTTP/model tool endpoint exposes this function."""
     if operation not in {"CLOSED", "STAGING", "PUBLIC", PERSONAL_DEMO, "worker-enable", "worker-disable"} or not 8 <= len(reason) <= 1000:
         raise ValueError("invalid release operation")
@@ -270,6 +274,17 @@ def change_state(session, settings, *, actor_id, operation, reason, evidence=Non
     before = row.state
     event_hash = None
     if operation == "CLOSED":
+        if before in {PERSONAL_DEMO, "CLOSED"} and isinstance(row.evidence, dict) and row.evidence.get("profile") == PERSONAL_PROFILE:
+            # A v2 grant cannot resume its queue in a later window. Only jobs
+            # proven never claimed are ended by this explicit administrator
+            # close; old history/running/unknown work is deliberately excluded.
+            try:
+                with session.begin_nested():
+                    _end_unclaimed_personal_queue(session, row)
+            except SQLAlchemyError as exc:
+                # Emergency CLOSED must not depend on queue maintenance. The
+                # savepoint preserves all held evidence when reconciliation fails.
+                logging.getLogger(__name__).warning("personal queue close unavailable error_type=%s", type(exc).__name__)
         row.state, row.worker_enabled = "CLOSED", False
     elif operation == "worker-disable":
         row.worker_enabled = False
@@ -281,8 +296,8 @@ def change_state(session, settings, *, actor_id, operation, reason, evidence=Non
         personal_settings(settings)
         if (before != "CLOSED" or row.worker_enabled or evidence is not None or
                 not isinstance(personal_user_id, UUID) or type(duration_minutes) is not int or
-                not 1 <= duration_minutes <= 90):
-            raise ValueError("personal demo requires CLOSED, one existing user and 1-90 minutes")
+                not 1 <= duration_minutes <= PERSONAL_MAX_MINUTES):
+            raise ValueError("personal demo requires CLOSED, one existing user and 1-1440 minutes")
         user = session.scalar(select(UserAccount).where(UserAccount.id == personal_user_id)
                               .with_for_update(read=True).execution_options(populate_existing=True))
         if user is None or not user.active:
@@ -295,8 +310,9 @@ def change_state(session, settings, *, actor_id, operation, reason, evidence=Non
         row.code_fingerprint = code_fingerprint()
         row.expires_at = now + timedelta(minutes=duration_minutes)
         row.allowed_user_ids = [str(personal_user_id)]
-        row.evidence = {"profile": "personal-demo-v1", "grant_id": str(uuid4()), "started_at": now.isoformat(),
-                        "configuration_fingerprint": config_fingerprint(settings), "source_sha256": source_fingerprint()}
+        row.evidence = {"profile": PERSONAL_PROFILE, "grant_id": str(uuid4()), "started_at": now.isoformat(),
+                        "configuration_fingerprint": config_fingerprint(settings), "source_sha256": source_fingerprint(),
+                        "limits": personal_limits(settings)}
         event_hash = sha256(json.dumps({"personal": row.evidence, "user": str(personal_user_id),
                                       "expires_at": row.expires_at.isoformat()}, sort_keys=True).encode()).hexdigest()
     else:
@@ -322,3 +338,36 @@ def change_state(session, settings, *, actor_id, operation, reason, evidence=Non
                              after_state=row.state, reason=reason, evidence_hash=event_hash))
     session.flush()
     return release_status(session)
+
+
+def _end_unclaimed_personal_queue(session, control):
+    from project_copilot.db.executions import AiJobExecution
+    from project_copilot.db.jobs import AiJob, AiJobUpload
+    from project_copilot.services.job_events import append_event
+    try:
+        grant = UUID(control.evidence["grant_id"])
+        if not isinstance(control.allowed_user_ids, list) or len(control.allowed_user_ids) != 1:
+            return
+        owner = UUID(control.allowed_user_ids[0])
+    except (ValueError, TypeError, KeyError, AttributeError):
+        return  # Close admission even when the old queue identity is malformed.
+    rows = session.scalars(select(AiRequestReservation).where(
+        AiRequestReservation.personal_demo_grant_id == grant,
+        AiRequestReservation.user_id == owner,
+        AiRequestReservation.state == "reserved", AiRequestReservation.provider_attempts == 0,
+        AiRequestReservation.slot_released_at.is_(None),
+        ~select(AiJobExecution.job_id).where(AiJobExecution.job_id == AiRequestReservation.id).exists(),
+    ).order_by(AiRequestReservation.id).with_for_update()).all()
+    now = session.scalar(select(func.clock_timestamp()))
+    for request in rows:
+        job = session.get(AiJob, request.id)
+        if job is not None and job.result is not None:
+            continue  # Inconsistent history needs investigation, not guessed cancellation.
+        request.state, request.finished_at, request.slot_released_at = "failed", now, now
+        if job is not None:
+            job.failure_type = "grant_ended"
+            attachment = session.get(AiJobUpload, request.id)
+            if attachment is not None:
+                session.delete(attachment)  # Only transient, never-claimed bytes.
+            append_event(session, request.id, "diagnostic", {"failure_type": "grant_ended"})
+            append_event(session, request.id, "terminal", {"status": "failed"})

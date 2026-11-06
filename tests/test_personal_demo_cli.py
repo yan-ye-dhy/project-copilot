@@ -9,7 +9,7 @@ from project_copilot.config import Settings
 
 
 @pytest.mark.parametrize("arguments", [
-    ["PERSONAL_DEMO"], ["PERSONAL_DEMO", "--user", "alice", "--minutes", "91"],
+    ["PERSONAL_DEMO"], ["PERSONAL_DEMO", "--user", "alice", "--minutes", "1441"],
     ["PERSONAL_DEMO", "--user", "alice", "--minutes", "0"],
     ["PERSONAL_DEMO", "--user", "alice", "--evidence", "unused.json"],
     ["STAGING", "--user", "alice"],

@@ -134,6 +134,12 @@ def test_legacy_unknown_stays_held_after_new_grant_and_automatic_reaper(legacy, 
     with legacy.db.transaction() as session:
         release.change_state(session, legacy.settings, actor_id=legacy.admin, operation="PERSONAL_DEMO",
             personal_user_id=legacy.user, duration_minutes=90, reason="controlled new grant")
+    # The old unresolved execution still consumes one of the new three slots.
+    # A new grant must not silently drop that slot from concurrency accounting.
+    with legacy.db.transaction() as session:
+        for n in range(2):
+            QuotaService(session, settings=legacy.settings).reserve(legacy.user,
+                f"new-grant-available-{n}", "b" * 64, "rag")
     with pytest.raises(QuotaExceeded) as error, legacy.db.transaction() as session:
         QuotaService(session, settings=legacy.settings).reserve(legacy.user, "synthetic-new-request", "b" * 64, "rag")
     assert error.value.reason == "user_concurrency"

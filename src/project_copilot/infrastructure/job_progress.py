@@ -11,6 +11,7 @@ LABELS = {
     "model": "正在整理回答", "get_ticket": "正在查询工单", "search_tickets": "正在检索相关工单",
     "search_knowledge": "正在检索知识库", "propose_ticket": "正在生成待确认提案",
     "tool": "正在执行工具", "tool_done": "工具执行结束", "validate": "正在校验回答与来源",
+    "draining": "正在等待已启动的工具执行结束", "finalizing": "正在核实执行结果并保存任务状态",
 }
 
 

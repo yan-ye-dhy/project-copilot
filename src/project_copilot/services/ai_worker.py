@@ -16,9 +16,11 @@ from project_copilot.db.jobs import AiJob, AiJobUpload
 from project_copilot.db.models import AiRequestReservation
 from project_copilot.infrastructure.call_accounting import account_job
 from project_copilot.infrastructure.job_progress import observe, progress
-from project_copilot.infrastructure.execution_tracking import ExecutionTracker, track_execution
+from project_copilot.infrastructure.execution_tracking import ExecutionTracker, track_execution, current_execution
 from project_copilot.services.execution_slots import (ExecutionLease, register_execution, reclaim_ended,
-    mark_local_done_and_release)
+    mark_local_done_and_release, finish_personal_execution)
+from project_copilot.services.personal_profile import personal_runtime_settings
+from project_copilot.services.job_failures import safe_failure
 from project_copilot.infrastructure.tracing import create_trace_runtime, current_trace_id
 from project_copilot.services.job_events import EventWriter, append_event
 from project_copilot.rag.answering import create_answer_service
@@ -240,18 +242,20 @@ def _run_traced(database, settings, job, *, runner):
 def _execute_claimed(database, settings, job, *, runner):
     writer = EventWriter(database, job.id)
     failure = None
+    personal = job.execution_lease is not None
+    runtime_settings = personal_runtime_settings(settings) if personal else settings
     try:
         with observe(writer), account_job(database, job.user_id, job.id,
-                max_attempts=settings.max_provider_attempts_per_job, settings=settings):
+                max_attempts=runtime_settings.max_provider_attempts_per_job, settings=settings):
             progress("running")
-            result = runner(settings, database, job)
+            result = runner(runtime_settings, database, job)
         serialized = result.model_dump(mode="json")
         # A timed-out tool may still be running in a thread; do not free its slot.
         if job.kind == "agent" and (result.status in {"failed", "budget_exhausted"} or
-                                    any("timeout" in (event.failure_type or "") for event in result.events) or
-                                    any("timeout" in (event.get("failure_type") or "") for event in result.model_events)):
-            outcome, usage, serialized = "unknown", result.usage, None
-            failure = getattr(result, "failure_type", None) or "tool_timeout"
+                                    (not personal and (any("timeout" in (event.failure_type or "") for event in result.events) or
+                                    any("timeout" in (event.get("failure_type") or "") for event in result.model_events)))):
+            outcome, usage, serialized = "failed" if personal else "unknown", result.usage, None
+            failure = getattr(result, "failure_type", None) or "execution_error"
         else:
             outcome = "succeeded"
             usage = (result.usage if job.kind == "agent" else
@@ -266,19 +270,40 @@ def _execute_claimed(database, settings, job, *, runner):
         from project_copilot.rag.answering import AnswerResponseError
         outcome, usage, serialized = "unknown", None, None
         failure = exc.reason if isinstance(exc, AnswerResponseError) else "execution_error"
+        from project_copilot.services.quotas import QuotaExceeded
+        if isinstance(exc, QuotaExceeded) and exc.reason == "provider_attempts":
+            failure = "provider_budget"
+        if personal and (isinstance(exc, AnswerResponseError) or failure == "provider_budget"):
+            outcome = "failed"
     writer.flush()
     if failure is not None:
-        allowed_failures = {"model_error", "model_timeout", "total_timeout", "invalid_final", "knowledge_retrieval_failed",
-            "tool_timeout", "model_budget", "tool_budget", "context_budget", "tool_protocol_error",
-            "invalid_schema", "invalid_json", "invalid_citation", "authentication_error"}
-        failure = failure if failure in allowed_failures else "execution_error"
+        failure = safe_failure(failure)
+        if personal and failure == "execution_error":
+            outcome = "unknown"
         writer("diagnostic", {"failure_type": failure})
-        logging.getLogger(__name__).warning("worker_outcome job_id=%s status=unknown failure_type=%s", job.id, failure)
+        logging.getLogger(__name__).warning("worker_outcome job_id=%s failure_type=%s", job.id, failure)
+    if personal:
+        # Preserve known usage/diagnostics without publishing a premature terminal
+        # state. A crash here remains running/unknown and is never replayed.
+        with database.transaction() as session:
+            stored = session.get(AiJob, job.id)
+            reservation = session.get(AiRequestReservation, job.id, with_for_update=True)
+            reservation.usage = usage
+            stored.failure_type = failure
+        tracker = current_execution()
+        if tracker is None:
+            raise RuntimeError("personal execution tracker unavailable")
+        with observe(writer):
+            progress("draining" if tracker.pending else "finalizing")
+        tracker.drain()
     writer.close()
     with database.transaction() as session:
-        QuotaService(session).finish(job.user_id, job.id, outcome=outcome, usage=usage)
-        if serialized is not None:
-            stored = session.get(AiJob, job.id)
-            stored.result = serialized
+        if personal:
+            outcome = finish_personal_execution(session, job, job.execution_lease, outcome=outcome, usage=usage)
+        else:
+            QuotaService(session).finish(job.user_id, job.id, outcome=outcome, usage=usage)
+        stored = session.get(AiJob, job.id)
+        stored.failure_type = failure
+        stored.result = serialized if outcome == "succeeded" else None
         append_event(session, job.id, "terminal", {"status": outcome})
     return True

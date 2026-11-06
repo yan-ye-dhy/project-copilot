@@ -42,6 +42,21 @@ class Settings(BaseSettings):
     max_daily_requests_global: int = Field(default=30, ge=1, le=1_000_000)
     max_concurrent_requests_per_user: int = Field(default=1, ge=1, le=1_000_000)
     max_provider_attempts_per_job: int = Field(default=16, ge=1, le=100)
+    # Independent opt-in PERSONAL_DEMO profile. Ordinary modes keep the fields above.
+    personal_max_daily_requests_per_user: int = Field(default=1000, ge=1, le=1000)
+    personal_max_daily_requests_global: int = Field(default=2000, ge=1, le=2000)
+    personal_max_concurrent_requests_per_user: int = Field(default=3, ge=1, le=3)
+    personal_max_provider_attempts_per_job: int = Field(default=160, ge=1, le=160)
+    personal_agent_max_model_calls: int = Field(default=24, ge=1, le=24)
+    personal_agent_max_tool_calls: int = Field(default=80, ge=1, le=80)
+    personal_agent_tool_timeout_seconds: float = Field(default=300.0, gt=0, le=300, allow_inf_nan=False)
+    personal_agent_model_timeout_seconds: float = Field(default=60.0, gt=0, le=60, allow_inf_nan=False)
+    personal_agent_total_timeout_seconds: float = Field(default=900.0, gt=0, le=900, allow_inf_nan=False)
+    personal_deepseek_max_tokens: int = Field(default=4096, ge=1, le=4096)
+    personal_context_hourly_limit: int = Field(default=100, ge=1, le=100)
+    personal_context_active_limit: int = Field(default=30, ge=1, le=30)
+    personal_proposal_daily_limit: int = Field(default=200, ge=1, le=200)
+    personal_proposal_pending_limit: int = Field(default=30, ge=1, le=30)
     public_job_queue_ttl_seconds: int = Field(default=86400, ge=60, le=30 * 86400)
     public_upload_max_chunks: int = Field(default=64, ge=1, le=1000)
     public_upload_max_chars: int = Field(default=32000, ge=1, le=500000)
@@ -96,6 +111,8 @@ class Settings(BaseSettings):
             raise ValueError("最终重排须显式选择cuda/float16或cpu/float32")
         if self.agent_tool_timeout_seconds <= self.final_rerank_timeout_seconds:
             raise ValueError("Agent工具时限必须长于最终重排时限，确保首次加载有预算")
+        if self.personal_agent_tool_timeout_seconds <= self.final_rerank_timeout_seconds:
+            raise ValueError("个人Agent工具时限必须长于最终重排时限")
         if self.public_demo or self.environment == "production":
             secret = self.public_proxy_secret.get_secret_value() if self.public_proxy_secret else ""
             if not re.fullmatch(r"[A-Za-z0-9_-]{32,128}", secret) or self.auth_public_origin is None:

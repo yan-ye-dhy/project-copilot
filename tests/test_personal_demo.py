@@ -65,13 +65,15 @@ def test_personal_is_explicit_and_default_remains_closed(personal_environment):
         now = session.scalar(select(func.clock_timestamp()))
         assert row.allowed_user_ids == [str(alice)]
         assert now < row.expires_at <= now + timedelta(minutes=90)
-        assert row.evidence["profile"] == "personal-demo-v1"
+        assert row.evidence["profile"] == "personal-demo-v2"
+        assert row.evidence["limits"]["job_limit"] == 500
+        assert row.evidence["limits"]["context_hourly"] == 100
         assert UUID(row.evidence["grant_id"])
         assert "checks" not in row.evidence
         assert session.scalar(select(func.count()).select_from(ReleaseEvent)) == 1
 
 
-@pytest.mark.parametrize("minutes", [0, -1, 91, 1000, True, 1.5])
+@pytest.mark.parametrize("minutes", [0, -1, 1441, 2000, True, 1.5])
 def test_personal_rejects_invalid_lifetime_without_audit_or_state_write(personal_environment, minutes):
     db, _, _, _, _ = personal_environment
     with pytest.raises((ValueError, release.ReleaseClosed)):

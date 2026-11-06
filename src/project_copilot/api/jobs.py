@@ -14,7 +14,7 @@ from starlette.concurrency import run_in_threadpool
 from starlette.datastructures import UploadFile
 
 from project_copilot.api.job_events import stream_events
-from project_copilot.services.job_events import latest_progress
+from project_copilot.services.job_events import latest_progress, latest_failure
 from project_copilot.api.access import public_identity, public_mode
 from project_copilot.api.actions import credentials
 from project_copilot.api.auth import _token_from_cookie
@@ -51,7 +51,12 @@ def _response(job, reservation):
     session = object_session(job)
     result_expired = session is not None and session.get(JobContentTombstone, job.id) is not None
     progress = latest_progress(session, job.id) if session is not None and not result_expired else None
+    from project_copilot.services.job_failures import safe_failure
+    failure = job.failure_type
+    if failure is None and session is not None and reservation.state in {"unknown", "failed"}:
+        failure = latest_failure(session, job.id)
     return {"progress": progress, "event_cursor": job.event_sequence, "job_id": str(job.id), "kind": reservation.kind, "status": reservation.state,
+            "failure_type": safe_failure(failure) if failure else None,
             "result": job.result if reservation.state == "succeeded" and not result_expired else None,
             "result_expired": result_expired}
 
@@ -196,10 +201,10 @@ async def submit_upload(request: Request, response: Response):
         if identity is not None:
             await run_in_threadpool(_record_rejected, request.app.state.database, identity[0], "upload", "failed")
         raise HTTPException(409, "幂等键已用于其他请求") from None
-    except QuotaExceeded:
+    except QuotaExceeded as exc:
         if identity is not None:
             await run_in_threadpool(_record_rejected, request.app.state.database, identity[0], "upload", "quota_rejected")
-        raise HTTPException(429, "当前请求已达限额，请稍后再试") from None
+        raise HTTPException(429, {"message": "当前请求已达限额，请稍后再试", "reason": exc.reason}) from None
     except ValueError:
         if identity is not None:
             await run_in_threadpool(_record_rejected, request.app.state.database, identity[0], "upload", "failed")
@@ -267,9 +272,9 @@ def submit(body: JobInput, request: Request, response: Response):
     except IdempotencyConflict:
         _record_rejected(database, user_id, body.kind, "failed")
         raise HTTPException(409, "幂等键已用于其他请求") from None
-    except QuotaExceeded:
+    except QuotaExceeded as exc:
         _record_rejected(database, user_id, body.kind, "quota_rejected")
-        raise HTTPException(429, "当前请求已达限额，请稍后再试") from None
+        raise HTTPException(429, {"message": "当前请求已达限额，请稍后再试", "reason": exc.reason}) from None
     except ValueError:
         _record_rejected(database, user_id, body.kind, "failed")
         raise HTTPException(400, "请求格式无效") from None

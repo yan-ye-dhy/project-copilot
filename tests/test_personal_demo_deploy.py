@@ -4,11 +4,14 @@ from pathlib import Path
 import yaml
 
 
-def test_personal_image_override_changes_only_three_application_images():
+def test_personal_image_override_changes_images_and_bounded_worker_drain_only():
     root = Path(__file__).resolve().parents[1]
     config = yaml.safe_load((root / "deploy/personal-demo.image.yml").read_text())
-    assert config == {"services": {name: {"image": "project-copilot-api:personal-demo"}
-                                  for name in ("api", "worker", "migrate")}}
+    assert config == {"services": {
+        "api": {"image": "project-copilot-api:personal-demo"},
+        "worker": {"image": "project-copilot-api:personal-demo", "stop_grace_period": "1260s"},
+        "migrate": {"image": "project-copilot-api:personal-demo"},
+    }}
     dockerfile = (root / "Dockerfile.personal-demo").read_text()
     lines = [line for line in dockerfile.splitlines() if line and not line.startswith("#")]
     assert lines == ["FROM project-copilot-api:public-demo", "WORKDIR /app",

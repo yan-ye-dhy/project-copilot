@@ -5,7 +5,7 @@ from threading import Barrier
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import func, select
+from sqlalchemy import func, insert, select, update
 
 from project_copilot.config import Settings
 from project_copilot.db.jobs import AiJob
@@ -17,6 +17,7 @@ from project_copilot.services import ai_worker, release_control as release
 from project_copilot.services.auth import AuthService
 from project_copilot.services.entry_protection import source_fingerprint
 from project_copilot.services.quotas import QuotaExceeded, QuotaService
+from project_copilot.services.personal_profile import personal_limits
 
 
 def setup_personal(database, monkeypatch):
@@ -38,9 +39,9 @@ def setup_personal(database, monkeypatch):
         row.code_fingerprint, row.expires_at = release.code_fingerprint(), now + timedelta(minutes=60)
         row.allowed_user_ids = [str(alice.id)]
         # Synthetic authorization fixture, never emitted as deployment evidence.
-        row.evidence = {"profile": "personal-demo-v1", "grant_id": str(grant), "started_at": now.isoformat(),
+        row.evidence = {"profile": "personal-demo-v2", "grant_id": str(grant), "started_at": now.isoformat(),
                         "configuration_fingerprint": release.config_fingerprint(settings),
-                        "source_sha256": source_fingerprint()}
+                        "source_sha256": source_fingerprint(), "limits": personal_limits(settings)}
     monkeypatch.setattr(release, "dependencies_ready", lambda *_: None)
     monkeypatch.setattr(ai_worker, "dependencies_ready", lambda *_: None)
     return settings, alice.id, other.id, login.id, grant
@@ -60,7 +61,18 @@ def complete(database, user_id, job_id, *, outcome="failed"):
         quota.finish(user_id, job_id, outcome=outcome)
 
 
-def test_three_tasks_survive_failures_replay_and_utc_day_change(ticket_database, monkeypatch):
+def seed_released_history(database, user_id, grant, count):
+    """Synthetic ledger history only: no Worker/provider execution or quota refund."""
+    with database.transaction() as session:
+        now = session.scalar(select(func.clock_timestamp()))
+        session.execute(insert(AiRequestReservation), [
+            {"user_id": user_id, "personal_demo_grant_id": grant, "idempotency_key": f"synthetic-released-{n:04}",
+             "payload_fingerprint": "a" * 64, "kind": "rag", "utc_day": now.astimezone(timezone.utc).date(),
+             "state": "failed", "finished_at": now, "slot_released_at": now}
+            for n in range(count)])
+
+
+def test_five_hundred_tasks_survive_failures_replay_and_utc_day_change(ticket_database, monkeypatch):
     database = ticket_database
     settings, user_id, _, _, grant = setup_personal(database, monkeypatch)
     first, _ = reserve(database, settings, user_id, "personal-task-000")
@@ -69,33 +81,36 @@ def test_three_tasks_survive_failures_replay_and_utc_day_change(ticket_database,
     for n in (1, 2):
         job_id, _ = reserve(database, settings, user_id, f"personal-task-{n:03}")
         complete(database, user_id, job_id)
+    seed_released_history(database, user_id, grant, 497)
     # UTC daily accounting can reset; this window's lifetime accounting cannot.
     with database.transaction() as session:
-        for row in session.scalars(select(AiRequestReservation)):
-            row.utc_day -= timedelta(days=1)
+        session.execute(update(AiRequestReservation).values(utc_day=AiRequestReservation.utc_day - 1))
     with pytest.raises(QuotaExceeded) as error:
         reserve(database, settings, user_id, "personal-task-003")
     assert error.value.reason == "personal_demo_limit"
     with database.transaction() as session:
         assert session.scalar(select(func.count()).select_from(AiRequestReservation).where(
-            AiRequestReservation.personal_demo_grant_id == grant)) == 3
+            AiRequestReservation.personal_demo_grant_id == grant)) == 500
 
 
-def test_personal_concurrency_is_one_even_if_settings_allow_more(ticket_database, monkeypatch):
+def test_personal_concurrency_is_three_independent_of_generic_settings(ticket_database, monkeypatch):
     database = ticket_database
     settings, user_id, _, _, _ = setup_personal(database, monkeypatch)
     reserve(database, settings, user_id, "personal-task-000")
+    reserve(database, settings, user_id, "personal-task-001")
+    reserve(database, settings, user_id, "personal-task-002")
     with pytest.raises(QuotaExceeded) as error:
-        reserve(database, settings, user_id, "personal-task-001")
+        reserve(database, settings, user_id, "personal-task-003")
     assert error.value.reason == "user_concurrency"
 
 
 def test_personal_last_slot_is_atomic_between_requests(ticket_database, monkeypatch):
     database = ticket_database
-    settings, user_id, _, _, _ = setup_personal(database, monkeypatch)
+    settings, user_id, _, _, grant = setup_personal(database, monkeypatch)
     for n in range(2):
         job_id, _ = reserve(database, settings, user_id, f"personal-task-{n:03}")
         complete(database, user_id, job_id)
+    seed_released_history(database, user_id, grant, 497)
     barrier = Barrier(4)
     def submit(n):
         barrier.wait(timeout=10)

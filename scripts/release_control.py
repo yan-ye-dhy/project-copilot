@@ -12,6 +12,7 @@ from project_copilot.db.session import Database
 from project_copilot.db.models import UserAccount
 from project_copilot.services.auth import AuthService
 from project_copilot.services.release_control import change_state, code_fingerprint, config_fingerprint, release_status, personal_settings
+from project_copilot.services.personal_profile import PERSONAL_MAX_MINUTES
 
 
 def main():
@@ -19,12 +20,12 @@ def main():
     parser.add_argument("operation", choices=("inspect", "CLOSED", "STAGING", "PUBLIC", "PERSONAL_DEMO", "worker-enable", "worker-disable"))
     parser.add_argument("--evidence", type=Path)
     parser.add_argument("--user", help="existing active test username (PERSONAL_DEMO only)")
-    parser.add_argument("--minutes", type=int, default=90, help="PERSONAL_DEMO lifetime, 1-90 minutes; no automatic renewal")
+    parser.add_argument("--minutes", type=int, default=PERSONAL_MAX_MINUTES, help="PERSONAL_DEMO lifetime, 1-1440 minutes; no automatic renewal")
     args = parser.parse_args()
     if args.operation == "PERSONAL_DEMO":
-        if not args.user or args.evidence is not None or not 1 <= args.minutes <= 90:
-            parser.error("PERSONAL_DEMO requires --user, 1-90 minutes and no evidence file")
-    elif args.user is not None or args.minutes != 90:
+        if not args.user or args.evidence is not None or not 1 <= args.minutes <= PERSONAL_MAX_MINUTES:
+            parser.error("PERSONAL_DEMO requires --user, 1-1440 minutes and no evidence file")
+    elif args.user is not None or args.minutes != PERSONAL_MAX_MINUTES:
         parser.error("--user and --minutes are PERSONAL_DEMO options")
     if not sys.stdin.isatty() or not sys.stdout.isatty():
         parser.error("interactive administrator terminal required")

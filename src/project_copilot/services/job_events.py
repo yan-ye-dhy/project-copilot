@@ -11,6 +11,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from project_copilot.db.jobs import AiJob, AiJobEvent
 from project_copilot.infrastructure.job_progress import LABELS
+from project_copilot.services.job_failures import SAFE_FAILURE_TYPES
 
 MAX_EVENTS = 512
 RETENTION_DAYS = 7
@@ -29,11 +30,7 @@ def append_event(session, job_id: UUID, kind: str, data: dict):
         if set(data) != {"status"} or data["status"] not in {"succeeded", "failed", "unknown"}:
             raise ValueError("invalid terminal")
     elif kind == "diagnostic":
-        if set(data) != {"failure_type"} or data["failure_type"] not in {
-            "model_error", "model_timeout", "total_timeout", "invalid_final", "knowledge_retrieval_failed",
-            "tool_timeout", "model_budget", "tool_budget", "context_budget", "tool_protocol_error",
-            "execution_error", "invalid_schema", "invalid_json", "invalid_citation", "authentication_error",
-        }:
+        if set(data) != {"failure_type"} or data["failure_type"] not in SAFE_FAILURE_TYPES:
             raise ValueError("invalid diagnostic")
     else:
         raise ValueError("invalid event")
@@ -65,6 +62,15 @@ def latest_progress(session, job_id):
         AiJobEvent.kind == "progress",
         AiJobEvent.created_at >= func.clock_timestamp() - timedelta(days=RETENTION_DAYS),
     ).order_by(AiJobEvent.sequence.desc()).limit(1))
+
+
+def latest_failure(session, job_id):
+    """Read an old diagnostic without backfilling or rewriting task history."""
+    value = session.scalar(select(AiJobEvent.data).where(AiJobEvent.job_id == job_id,
+        AiJobEvent.kind == "diagnostic").order_by(AiJobEvent.sequence.desc()).limit(1))
+    if isinstance(value, dict) and value.get("failure_type") in SAFE_FAILURE_TYPES:
+        return value["failure_type"]
+    return None
 
 
 class EventWriter:

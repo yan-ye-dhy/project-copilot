@@ -5,5 +5,8 @@ services:
     image: project-copilot-api:personal-demo
   worker:
     image: project-copilot-api:personal-demo
+    # Finish a 900s graph and drain an already-started 300s tool on SIGTERM.
+    # A hard stop still preserves uncertainty; it never authorizes a replay.
+    stop_grace_period: 1260s
   migrate:
     image: project-copilot-api:personal-demo

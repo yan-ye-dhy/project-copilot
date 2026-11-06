@@ -253,6 +253,30 @@ def mark_local_done_and_release(database, settings, job_id, token, lease):
         return _release(session, reservation, execution, reason="drained")
 
 
+def finish_personal_execution(session, job, lease, *, outcome, usage):
+    """Finalize delivery only after real Futures drain; proof still gates release.
+
+    A known local failure is not provider/business uncertainty. Incomplete
+    acknowledgements or inconsistent business bindings always remain unknown.
+    The caller commits final delivery, diagnostic and terminal event atomically.
+    """
+    if (lease.job_id != job.id or not lease.valid_owned()):
+        raise ExecutionProofError("final execution lease unavailable")
+    reservation, execution = _locked(session, job.id)
+    if (reservation is None or execution is None or reservation.user_id != job.user_id
+            or execution.token != lease.token or execution.lease_inode != lease.inode
+            or execution.fenced_at is not None or reservation.state != "running"):
+        raise ExecutionFenced("final execution identity differs")
+    settled = (execution.provider_open == 0 and not execution.provider_uncertain
+               and _business_valid(session, reservation, execution))
+    final = outcome if settled else "unknown"
+    from project_copilot.services.quotas import QuotaService
+    QuotaService(session).finish(job.user_id, job.id, outcome=final, usage=usage)
+    execution.local_done_at = session.scalar(select(func.clock_timestamp()))
+    _release(session, reservation, execution, reason="drained")
+    return final
+
+
 def reclaim_ended(session, settings, user_id=None, *, batch_size=20):
     """Reclaim only verifiably unheld protocol-v1 leases. Never use task age."""
     if type(batch_size) is not int or not 1 <= batch_size <= 20:
