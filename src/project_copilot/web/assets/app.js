@@ -4,15 +4,20 @@ import { apiRequest, ApiError, ContextSession, boundHistory, validateAction, run
 
 import { renderMarkdown } from "./markdown.js";
 import { recoveryRecords, jobObservation, jobStateLabel, canHideJob, setRecoveryHidden } from "./task-center.js";
+import { createConversation, conversationTitle, sanitizeConversation, sanitizeSources, boundedConversations, HistoryStore, HISTORY_LIMITS } from "./conversations.js";
 
 const $ = (id) => document.getElementById(id);
 const session = new ContextSession();
+const historyStore = new HistoryStore();
+let historyWrites = Promise.resolve();
 const state = {
   view: "chat", busy: false, activeWait: null, jobContexts: new Map(), proposalBusy: false, history: [], selectedFile: null,
   uploading: false, uploadLimit: null, ticketOffset: 0, ticketLimit: 10,
   ticketsLoaded: false, ticketsBusy: false, ticketsRequest: 0, detailRequest: 0, proposals: new Map(), epoch: 0,
   personalDemo: null, profileStale: false, configPending: null,
   jobObservations: new Map(), jobReadErrors: new Set(), taskCenterReads: null, showHiddenJobs: false,
+  conversations: [], conversation: createConversation(), historyEnabled: false, historyLoading: false,
+  historySaving: false, historyMessage: "", submissionInFlight: 0,
 };
 const auth = { user: null, busy: false };
 const views = {
@@ -50,6 +55,9 @@ function resetWorkspace() {
   // Late responses from a previous account must not populate the next one.
   state.activeWait?.controller.abort(); state.activeWait = null;
   closeTaskCenter(); state.taskCenterReads?.abort(); state.taskCenterReads = null;
+  closeHistory();
+  state.conversations = []; state.conversation = createConversation(); state.historyEnabled = false;
+  state.historyLoading = false; state.historySaving = false; state.historyMessage = ""; state.submissionInFlight = 0;
   state.jobObservations.clear(); state.jobReadErrors.clear(); state.showHiddenJobs = false;
   for (const id of ["account-panel", "personal-demo-meter"]) if ($(id)?.tagName === "DETAILS") $(id).open = false;
   state.epoch += 1; state.ticketsRequest += 1; state.detailRequest += 1;
@@ -58,7 +66,7 @@ function resetWorkspace() {
   state.personalDemo = null; state.profileStale = false; state.configPending = null; renderPersonalDemo();
   state.busy = false; state.proposalBusy = false; state.uploading = false;
   state.ticketsLoaded = false; state.ticketsBusy = false; state.ticketOffset = 0;
-  $("chat-messages").querySelectorAll(".message").forEach((node) => node.remove());
+  $("chat-messages").querySelectorAll(".message,.history-readonly-note").forEach((node) => node.remove());
   $("chat-welcome").hidden = false; $("question-input").value = ""; $("chat-mode").value = "agent";
   $("upload-records").replaceChildren(element("div", "empty-state", "本页暂无上传记录。"));
   $("upload-feedback").replaceChildren(); $("file-input").value = "";
@@ -71,7 +79,8 @@ function resetWorkspace() {
   $("account-name").textContent = ""; $("account-role").textContent = "";
   $("account-panel").hidden = true; $("toast-root").replaceChildren();
   $("public-documents-list").replaceChildren();
-  showEvidence([]); toggleEvidence(false); setView("chat"); updateComposer(); renderFile();
+  $("history-search").value = "";
+  showEvidence([]); toggleEvidence(false); setView("chat"); updateComposer(); renderFile(); renderHistory(); renderRecovery();
 }
 
 function setAuthenticationBusy(busy) {
@@ -109,7 +118,7 @@ function activateUser(data) {
   $("file-input").accept = ".txt,.md";
   $("auth-screen").hidden = true; $("app-shell").hidden = false; $("workspace-skip").hidden = false;
   clearCredentialInputs();
-  initializeServices(); renderRecovery();
+  initializeServices(); renderRecovery(); initializeConversations();
 }
 
 async function submitAuthentication(event, register) {
@@ -134,10 +143,10 @@ async function submitAuthentication(event, register) {
 
 async function logout() {
   if (auth.busy) return;
-  if (state.busy || state.proposalBusy || state.uploading || state.ticketsBusy || [...state.proposals.values()].some((record) => record.busy)) {
+  if (state.busy || state.submissionInFlight || state.proposalBusy || state.uploading || state.ticketsBusy || [...state.proposals.values()].some((record) => record.busy)) {
     notify("请等待当前操作完成后再退出。", "error"); return;
   }
-  if (unresolvedProposals() && !window.confirm("当前有待处理或结果未确认的提案。退出会清除本页上下文，可能无法从本页恢复该提案；请先核实工单状态。仍要退出吗？")) return;
+  if ((unresolvedProposals() || state.conversation.uncertainSubmission) && !window.confirm("当前有待处理提案或结果未确认的提交。退出会清除本页上下文，可能无法从本页恢复审批；请先核实原请求和工单状态。仍要退出吗？")) return;
   setAuthenticationBusy(true);
   let message = "已退出登录。";
   try {
@@ -171,6 +180,243 @@ function badge(status) {
 function formatDate(value) {
   const date = new Date(value);
   return Number.isFinite(date.getTime()) ? new Intl.DateTimeFormat("zh-CN", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }).format(date) : "时间未知";
+}
+
+function conversationSnapshots() { return boundedConversations(state.conversations); }
+
+function touchConversation() {
+  const chat = state.conversation;
+  chat.updatedAt = Date.now();
+  if (chat.title === "新对话") chat.title = conversationTitle(chat.messages);
+  const modes = new Set(chat.messages.map((message) => message.mode));
+  chat.mode = modes.size > 1 ? "mixed" : modes.values().next().value || chat.mode;
+  if (chat.messages.length > HISTORY_LIMITS.messages) chat.messages.splice(0, chat.messages.length - HISTORY_LIMITS.messages);
+  chat.jobs = chat.jobs.slice(-32);
+  // Keep complete final messages rather than silently truncating their text.
+  while (!sanitizeConversation(chat) && chat.messages.length > 1) {
+    chat.messages.shift(); state.historyMessage = "已达到历史容量上限，仅保留最近的完整消息；后台记录不受影响。";
+  }
+  if (!state.conversations.some((item) => item.id === chat.id) && (chat.messages.length || chat.jobs.length)) state.conversations.push(chat);
+  state.conversations.sort((a, b) => b.updatedAt - a.updatedAt || (a.id === chat.id ? -1 : b.id === chat.id ? 1 : 0));
+  const retained = new Set(conversationSnapshots().map((item) => item.id));
+  state.conversations = state.conversations.filter((item) => retained.has(item.id));
+  renderHistory(); persistConversations();
+}
+
+function queueHistoryWrite(work) {
+  historyWrites = historyWrites.catch(() => {}).then(work);
+  return historyWrites;
+}
+
+function persistConversations() {
+  if (!state.historyEnabled || !auth.user) return;
+  const owner = auth.user.id, epoch = state.epoch, snapshot = conversationSnapshots();
+  queueHistoryWrite(async () => {
+    if (epoch !== state.epoch || owner !== auth.user?.id || !state.historyEnabled) return;
+    try { await historyStore.save(owner, snapshot); }
+    catch {
+      if (epoch === state.epoch && owner === auth.user?.id) {
+        state.historyEnabled = false;
+        state.historyMessage = "本机历史保存失败，已降级为仅本页历史；此前存储是否清理尚未核实。";
+        renderHistory();
+      }
+    }
+  });
+}
+
+async function initializeConversations() {
+  const owner = auth.user?.id, epoch = state.epoch;
+  state.historyMessage = "";
+  if (!PUBLIC_BUILD || !owner) { renderHistory(); return; }
+  state.historyLoading = true; updateComposer(); renderHistory();
+  try {
+    // A previous account's late result can never populate this account's page.
+    await historyWrites.catch(() => {});
+    const loaded = await historyStore.load(owner);
+    if (epoch !== state.epoch || owner !== auth.user?.id) return;
+    state.conversations = loaded.conversations; state.historyEnabled = loaded.enabled;
+  } catch {
+    if (epoch === state.epoch) state.historyMessage = "IndexedDB不可用，安全降级为仅本页历史；刷新后不会保留正文。";
+  } finally {
+    if (epoch === state.epoch) { state.historyLoading = false; renderHistory(); updateComposer(); }
+  }
+}
+
+async function changeHistoryPersistence() {
+  const requested = $("history-persist").checked, owner = auth.user?.id, epoch = state.epoch;
+  if (!owner || state.historyLoading || state.historySaving) { renderHistory(); return; }
+  const warning = requested
+    ? "将在此浏览器的IndexedDB保存普通对话正文和引用。内容并非端到端加密，共用设备不建议开启，请勿在对话中粘贴密钥。是否开启？"
+    : "关闭保存并删除此账号在本浏览器的持久历史？本页内存历史仍保留，后台任务和费用不受影响。";
+  if (!window.confirm(warning)) { renderHistory(); return; }
+  state.historySaving = true; state.historyEnabled = requested; renderHistory();
+  const snapshot = conversationSnapshots();
+  try {
+    await queueHistoryWrite(() => historyStore.save(owner, snapshot, requested));
+    if (epoch !== state.epoch || owner !== auth.user?.id) return;
+    state.historyMessage = requested ? "已开启本浏览器保存，仅记录展示内容。" : "已关闭并清除持久历史，本页历史仍可切换。";
+  } catch {
+    if (epoch === state.epoch) {
+      state.historyEnabled = false;
+      state.historyMessage = "IndexedDB操作失败，当前仅保留内存历史；未确认清除的旧数据请在浏览器网站数据中管理。";
+    }
+  } finally { if (epoch === state.epoch) { state.historySaving = false; renderHistory(); } }
+}
+
+async function clearPersistentHistory() {
+  const owner = auth.user?.id, epoch = state.epoch;
+  if (!owner || state.historySaving || state.historyLoading || !window.confirm("清空此账号在本浏览器保存的历史并关闭保存？本页会话仍保留，后台任务、工单及其他账号记录不变。")) return;
+  state.historyEnabled = false; state.historySaving = true; renderHistory();
+  try {
+    await queueHistoryWrite(() => historyStore.clear(owner));
+    if (epoch === state.epoch) state.historyMessage = "本机持久历史已清空；本页会话暂留内存，刷新后消失。";
+  } catch {
+    if (epoch === state.epoch) state.historyMessage = "清空未能确认，请使用浏览器网站数据管理；当前不会继续保存。";
+  } finally { if (epoch === state.epoch) { state.historySaving = false; renderHistory(); } }
+}
+
+let historyReturnFocus = null;
+function closeHistory() { if ($("history-dialog")?.open) $("history-dialog").close(); }
+function openHistory() {
+  const dialog = $("history-dialog"); if (!dialog || dialog.open) return;
+  closeTaskCenter(); historyReturnFocus = document.activeElement;
+  renderHistory(); dialog.showModal(); $("history-toggle").setAttribute("aria-expanded", "true"); $("history-close").focus();
+}
+
+function canLeaveConversation() {
+  if (state.historyLoading || state.proposalBusy || state.submissionInFlight || [...state.proposals.values()].some((record) => record.busy)) {
+    notify("正在核对提交或业务操作结果，请稍候再切换，避免丢失原编号。", "error"); return false;
+  }
+  if (state.busy && (!PUBLIC_BUILD || !state.activeWait?.jobId)) {
+    notify("正在确认任务提交结果，请稍候；不会重复提交。", "error"); return false;
+  }
+  const risks = [];
+  if (state.busy) risks.push(`切换只停止本页等待，后台任务可能继续执行。原任务编号：${state.activeWait.jobId}。可在任务中心只读查询。`);
+  else if (state.conversation.jobs.some((job) => !["succeeded", "failed"].includes(state.jobObservations.get(job.id)?.status))) risks.push("此对话仍有执行结果未核实的任务。切换不会取消或重跑任务，原编号将保留以便只读查询。");
+  if (state.conversation.uncertainSubmission) risks.push("此前有提交响应未确认，不能断言后台没有执行。请先核实原请求结果，不要重复提交相同操作。");
+  if (unresolvedProposals()) risks.push("存在待确认提案或结果不确定的业务操作。切换将清除本页审批上下文，旧提案只读展示，不恢复确认权限；请先核实工单状态。");
+  return !risks.length || window.confirm(`${risks.join("\n")}\n仍要切换对话吗？`);
+}
+
+function switchConversation(id = null, { approved = false } = {}) {
+  if (id === state.conversation.id) { closeHistory(); return true; }
+  const target = id ? state.conversations.find((chat) => chat.id === id) : null;
+  if (id && !target) return false;
+  if (!approved && !canLeaveConversation()) return false;
+  if (state.activeWait) stopWaiting();
+  // Display history is deliberately independent from permission-bearing runtime state.
+  session.clear(); state.jobContexts.clear(); state.proposals.clear(); state.history = [];
+  state.detailRequest += 1;
+  if ($("detail-dialog").open) $("detail-dialog").close();
+  state.conversation = target || createConversation($("chat-mode").value);
+  $("question-input").value = "";
+  $("chat-mode").value = state.conversation.mode === "rag" ? "rag" : "agent";
+  closeHistory(); closeTaskCenter(); setView("chat"); renderConversation(); updateComposer();
+  $("question-input").focus(); renderHistory();
+  return true;
+}
+
+function deleteConversation(id) {
+  const chat = state.conversations.find((item) => item.id === id); if (!chat) return;
+  if (!window.confirm(`删除对话“${chat.title}”？仅移除此账号的本机历史，不取消后台任务、不删除工单或退还额度。`)) return;
+  if (id === state.conversation.id && !canLeaveConversation()) return;
+  if (id === state.conversation.id) switchConversation(null, { approved: true });
+  state.conversations = state.conversations.filter((item) => item.id !== id);
+  persistConversations(); renderHistory();
+}
+
+function renderHistory() {
+  const list = $("history-list"); if (!list) return;
+  $("history-persist").checked = state.historyEnabled;
+  $("history-persist").disabled = !auth.user || state.historyLoading || state.historySaving;
+  $("history-clear").disabled = !auth.user || state.historyLoading || state.historySaving;
+  $("history-status").textContent = state.historyLoading ? "正在读取此账号的本机历史…" : state.historyMessage || (state.historyEnabled ? "已开启本机保存；普通正文仅供展示，不恢复审批授权。" : "仅本页内存历史；刷新后消失。最多50个会话、每会话50条消息、30天、每账号5MiB。");
+  const query = $("history-search").value.trim().toLocaleLowerCase();
+  const chats = conversationSnapshots().filter((chat) => !query || chat.title.toLocaleLowerCase().includes(query));
+  const focused = document.activeElement, focusId = focused?.dataset?.conversationId, focusAction = focused?.dataset?.historyAction;
+  list.replaceChildren();
+  if (!chats.length) list.append(element("p", "history-empty", query ? "没有匹配的对话。" : "暂无历史对话。发送问题后即可在这里返回查看。"));
+  for (const chat of chats) {
+    const row = element("article", "history-row"); row.dataset.conversationId = chat.id;
+    if (chat.id === state.conversation.id) row.setAttribute("aria-current", "true");
+    const open = actionButton("", "history-open", () => switchConversation(chat.id));
+    if (chat.id === state.conversation.id) open.setAttribute("aria-current", "page");
+    open.dataset.conversationId = chat.id; open.dataset.historyAction = "open";
+    const title = element("strong", "history-title", chat.title); title.title = chat.title; open.append(title);
+    open.setAttribute("aria-label", `打开对话：${chat.title}`); row.append(open);
+    row.append(element("p", "history-meta", `${({ agent: "Agent", rag: "RAG", mixed: "Agent / RAG" })[chat.mode]} · 创建 ${formatDate(chat.createdAt)} · 更新 ${formatDate(chat.updatedAt)}${chat.id === state.conversation.id ? " · 当前" : ""}`));
+    const actions = element("div", "history-actions");
+    const rename = actionButton("重命名", "button button-quiet", () => {
+      const value = window.prompt("重命名对话（最多60字）", chat.title);
+      if (value === null) return;
+      const title = value.trim().replace(/\s+/g, " ");
+      if (!title || Array.from(title).length > 60) { notify("标题应为1至60个字。", "error"); return; }
+      const original = state.conversations.find((item) => item.id === chat.id);
+      if (original) { original.title = title; original.updatedAt = Date.now(); persistConversations(); renderHistory(); }
+    });
+    rename.dataset.conversationId = chat.id; rename.dataset.historyAction = "rename";
+    const remove = actionButton("删除对话", "button button-quiet history-delete", () => deleteConversation(chat.id));
+    remove.dataset.conversationId = chat.id; remove.dataset.historyAction = "delete";
+    actions.append(rename, remove); row.append(actions); list.append(row);
+  }
+  if (focusId && focusAction && $("history-dialog").open) [...list.querySelectorAll("button")].find((button) => button.dataset.conversationId === focusId && button.dataset.historyAction === focusAction)?.focus();
+}
+
+function historicalProposal(source) {
+  const card = element("section", "proposal-card history-proposal");
+  card.append(element("strong", "", "历史提案 · 仅供查看"), element("h3", "proposal-title", source.data.payload.title), element("div", "proposal-description", source.data.payload.description || ""), element("p", "proposal-note", "原审批上下文已清除，此记录不可直接确认或重放。需要操作时请在新的安全上下文重新提出。"));
+  return card;
+}
+
+function renderConversation() {
+  $("chat-messages").querySelectorAll(".message,.history-readonly-note").forEach((node) => node.remove());
+  $("chat-welcome").hidden = !(!state.conversation.messages.length && !state.conversation.jobs.length);
+  showEvidence([]);
+  if (!$("chat-welcome").hidden) return;
+  $("chat-messages").append(element("p", "history-readonly-note", "历史记录仅供阅读。旧提案不会恢复审批权限，继续发送将建立新的安全执行上下文。"));
+  for (const item of state.conversation.messages) {
+    const message = addMessage(item.role, item.content, false, { record: false, mode: item.mode });
+    message.display = item; message.article.historyDisplay = item;
+    if (item.role !== "assistant") continue;
+    const sources = sanitizeSources(item.sources), details = item.details || {};
+    message.meta.append(actionButton(sources.length ? `查看 ${sources.length} 条依据` : "查看处理详情", "source-button", () => { showEvidence(sources, details, details); toggleEvidence(true); }));
+    for (const source of sources.filter((source) => source.kind === "proposal")) message.body.append(historicalProposal(source));
+    if (details.runId) message.meta.append(renderRunDetails(details, details));
+  }
+  state.history = boundHistory(state.conversation.messages.map(({ role, content }) => ({ role, content })));
+  for (const job of state.conversation.jobs) {
+    const message = addMessage("assistant", "", false, { record: false });
+    const note = inlineNotice(`原任务编号：${job.id}。状态需要查询核实，历史记录不会重新执行。`);
+    note.querySelector(".notice-content").append(actionButton("查询原任务", "button button-quiet", () => resumeWaiting(job)));
+    message.body.replaceChildren(note);
+  }
+  scrollChat(true);
+}
+
+function finishSubmission(wait) {
+  if (!wait.submitting) return;
+  wait.submitting = false;
+  if (wait.epoch === state.epoch) { state.submissionInFlight = Math.max(0, state.submissionInFlight - 1); updateComposer(); }
+}
+
+function rememberFinalMessage(message, data, meta, mode) {
+  if (!["answered", "refused", "pending_confirmation"].includes(data.status)) return;
+  const chat = state.conversations.find((item) => item.id === message.conversationId) || state.conversation;
+  if (chat.id !== message.conversationId) return;
+  const snapshot = sanitizeConversation({ ...chat, jobs: [], messages: [{ role: "assistant", content: data.answer,
+    final: true, mode, sources: sourcesFor(data, mode), details: { ...meta,
+      elapsed_ms: data.elapsed_ms, model_calls: data.model_calls, tool_calls: data.tool_calls,
+      tool_executions: data.tool_executions, tool_failures: data.tool_failures,
+      usage: data.usage || data.generation?.usage, failure_type: data.failure_type } }] });
+  if (!snapshot?.messages.length) { notify("此回答超过历史保存上限，仅在当前页面显示。", "error"); return; }
+  message.display = snapshot.messages[0]; message.article.historyDisplay = message.display;
+  chat.messages.push(message.display); touchConversation();
+}
+
+function completeConversationJob(id) {
+  const chat = state.conversation;
+  if (!chat.jobs.some((job) => job.id === id)) return;
+  chat.jobs = chat.jobs.filter((job) => job.id !== id); touchConversation();
 }
 
 function notify(text, kind = "info") {
@@ -288,7 +534,7 @@ function scrollChat(force = false) {
   if (force || chat.scrollHeight - chat.clientHeight - chat.scrollTop < 180) chat.scrollTop = chat.scrollHeight;
 }
 
-function addMessage(role, content, pending = false) {
+function addMessage(role, content, pending = false, { record = true, mode = $("chat-mode").value } = {}) {
   $("chat-welcome").hidden = true;
   const article = element("article", `message ${role}`);
   article.setAttribute("aria-label", role === "user" ? "你的消息" : "知行助手的消息");
@@ -314,7 +560,13 @@ function addMessage(role, content, pending = false) {
   } else body.append(role === "assistant" ? renderMarkdown(content) : element("div", "message-text", content));
   block.append(body, meta); article.append(avatar, block);
   $("chat-messages").append(article); scrollChat(true);
-  return { article, body, meta };
+  const message = { article, body, meta, conversationId: state.conversation.id };
+  if (record && content && !pending) {
+    const display = role === "user" ? { role, content, mode } : { role, content, mode, final: true, sources: [] };
+    state.conversation.messages.push(display); message.display = display; article.historyDisplay = display;
+    touchConversation();
+  }
+  return message;
 }
 
 function renderRunDetails(data, meta) {
@@ -403,7 +655,7 @@ function updateComposer() {
   $("send-button").disabled = state.busy || !$("question-input").value.trim();
   $("question-input").disabled = state.busy;
   $("chat-mode").disabled = state.busy;
-  $("new-chat").disabled = state.busy || state.proposalBusy;
+  $("new-chat").disabled = state.proposalBusy || state.historyLoading || state.submissionInFlight > 0;
   $("input-count").textContent = `${$("question-input").value.length} / 2000`;
   resizeComposer();
 }
@@ -534,6 +786,14 @@ function renderRecovery() {
       renderRecovery();
       if (!record.hidden) $("task-center-show-hidden")?.focus();
     });
+    if (canHideJob(observation)) {
+      const remove = bindAction("删除本地记录", "delete", () => {
+        if (!canHideJob(state.jobObservations.get(record.id))) return;
+        if (!window.confirm(`删除本地恢复记录？\n任务编号：${record.id}\n仅移除此账号的浏览器恢复索引；不会取消任务、删除后台记录、工单或退还费用和额度。`)) return;
+        removeSavedJob(record.id); $("task-center-close").focus();
+      });
+      remove.classList.add("task-record-delete");
+    }
     row.append(actions); target.append(row);
   }
   // A status read must not steal keyboard focus while replacing that row.
@@ -543,7 +803,7 @@ function renderRecovery() {
   }
 }
 function startWaiting(message, mode) {
-  const wait = { controller: new AbortController(), message, mode, sequence: 0, draft: "" };
+  const wait = { controller: new AbortController(), message, mode, sequence: 0, draft: "", epoch: state.epoch };
   state.activeWait = wait; state.busy = true; updateComposer(); renderRecovery();
   message.body.replaceChildren();
   wait.progress = inlineNotice("任务正在提交…", { tone: "progress", className: "job-progress" });
@@ -581,15 +841,13 @@ function stopWaiting() {
 }
 async function displayAnswer(message, data, meta, mode, context, question, epoch) {
     if (typeof data.answer !== "string" || typeof data.status !== "string") throw new ApiError("服务未返回可识别的回答。", { meta, kind: "response" });
+    rememberFinalMessage(message, data, meta, mode);
     message.body.replaceChildren(renderMarkdown(data.answer));
     if (["failed", "budget_exhausted"].includes(data.status)) {
       const reason = safeFailureType(data.failure_type);
       const label = reason ? `${jobFailureLabel(reason)}（${reason}）。` : "";
       message.body.append(inlineNotice(`${label}${data.status === "budget_exhausted" ? "本次处理达到执行预算，未完成的操作不会被视为成功。" : "本次处理未完成，可查看运行详情定位原因。"}`, { tone: "warning", className: "error-note", role: "alert" }));
-    } else {
-      if (question) state.history.push({ role: "user", content: question }, { role: "assistant", content: data.answer });
-      state.history = boundHistory(state.history);
-    }
+    } else state.history = boundHistory(state.conversation.messages.map(({ role, content }) => ({ role, content })));
     const sources = sourcesFor(data, mode);
     const sourceControl = actionButton(sources.length ? `查看 ${sources.length} 条依据` : "查看处理详情", "source-button", () => {
       showEvidence(sources, data, meta); toggleEvidence(true);
@@ -606,8 +864,20 @@ async function displayAnswer(message, data, meta, mode, context, question, epoch
 }
 async function resumeWaiting(record) {
   if (state.busy) return;
+  const original = state.conversations.find((chat) => chat.jobs.some((job) => job.id === record.id));
+  if (original && original.id !== state.conversation.id) {
+    if (!switchConversation(original.id)) return;
+  } else if (!original) {
+    // A legacy recovery index has no transcript binding. Isolate it instead of
+    // injecting an unrelated answer into whichever conversation is visible.
+    if (!switchConversation()) return;
+    state.conversation.title = `恢复${record.kind === "rag" ? "知识问答" : "Agent"} ${record.id.slice(0, 8)}`;
+    state.conversation.jobs.push({ id: record.id, kind: record.kind, createdAt: record.createdAt });
+    touchConversation();
+  }
   const epoch = state.epoch;
   const message = addMessage("assistant", "", true), wait = startWaiting(message, record.kind);
+  wait.jobId = record.id;
   try {
     if (PUBLIC_BUILD) await refreshUiConfig();
     if (state.activeWait !== wait || epoch !== state.epoch) return;
@@ -618,6 +888,7 @@ async function resumeWaiting(record) {
     await displayAnswer(message, data, meta, record.kind, state.jobContexts.get(record.id) || null, null, epoch);
     state.jobContexts.delete(record.id);
     removeSavedJob(record.id);
+    completeConversationJob(record.id);
   } catch (error) {
     if (state.activeWait === wait && epoch === state.epoch) message.body.replaceChildren(errorNode(error));
   } finally {
@@ -628,8 +899,8 @@ async function sendQuestion(event) {
   event.preventDefault();
   const epoch = state.epoch;
   const question = $("question-input").value.trim();
-  if (!question || state.busy || question.length > 2000) return;
-  const mode = $("chat-mode").value, history = boundHistory(state.history);
+  if (!question || state.busy || state.historyLoading || state.submissionInFlight || question.length > 2000) return;
+  const mode = $("chat-mode").value, history = boundHistory(state.conversation.messages.map(({ role, content }) => ({ role, content })));
   addMessage("user", question);
   const message = addMessage("assistant", "", true), wait = startWaiting(message, mode);
   $("question-input").value = ""; updateComposer();
@@ -641,23 +912,39 @@ async function sendQuestion(event) {
     if (epoch !== state.epoch || state.activeWait !== wait) return;
     const payload = mode === "agent" ? { question, history } : { question };
     const headers = context ? ContextSession.headers(context) : {};
+    if (PUBLIC_BUILD) { wait.submitting = true; state.submissionInFlight += 1; updateComposer(); }
     const { data, meta } = PUBLIC_BUILD
       ? await runPublicJob(mode, payload, { headers, signal: wait.controller.signal, request: jobRequest(epoch), useEvents: true,
           ...personalJobWaitOptions(state.personalDemo),
           isCurrent: () => epoch === state.epoch,
-          onSubmitted: (record) => { if (epoch === state.epoch) { submitted = record; if (context) state.jobContexts.set(record.id, context); saveJob(record); refreshUiConfig(); } },
+          onSubmitted: (record) => {
+            finishSubmission(wait);
+            if (epoch === state.epoch) {
+              submitted = record; wait.jobId = record.id;
+              if (context && state.activeWait === wait) state.jobContexts.set(record.id, context);
+              const chat = state.conversations.find((chat) => chat.id === message.conversationId);
+              if (chat && !chat.jobs.some((job) => job.id === record.id)) { chat.jobs.push({ id: record.id, kind: record.kind, createdAt: record.createdAt }); touchConversation(); }
+              saveJob(record); refreshUiConfig();
+            }
+          },
           onEvent: (event) => updateJobEvent(wait, event) })
       : await apiRequest(mode === "agent" ? "/agent/ask" : "/rag/ask", {
           method: "POST", body: payload, headers, signal: wait.controller.signal, timeoutMs: mode === "agent" ? 330000 : 180000,
         });
     if (epoch !== state.epoch || state.activeWait !== wait) return;
     await displayAnswer(message, data, meta, mode, context, question, epoch);
-    if (submitted) { removeSavedJob(submitted.id); state.jobContexts.delete(submitted.id); }
+    if (submitted) { removeSavedJob(submitted.id); state.jobContexts.delete(submitted.id); completeConversationJob(submitted.id); }
   } catch (error) {
-    if (epoch !== state.epoch || state.activeWait !== wait) return;
+    if (epoch !== state.epoch) return;
+    if (error.meta?.outcome === "uncertain" || (!PUBLIC_BUILD && ["network", "timeout"].includes(error.kind))) {
+      const chat = state.conversations.find((item) => item.id === message.conversationId);
+      if (chat) chat.uncertainSubmission = true;
+    }
+    if (state.activeWait !== wait) return;
     message.body.replaceChildren(errorNode(error));
     if (error.status === 403) session.clear();
   } finally {
+    finishSubmission(wait);
     if (epoch === state.epoch && state.activeWait === wait) {
       state.activeWait = null; state.busy = false; updateComposer(); renderRecovery(); scrollChat(); $("question-input").focus();
       if (PUBLIC_BUILD) refreshUiConfig();
@@ -680,7 +967,7 @@ async function attachProposal(container, source, context) {
   if (typeof source?.action_id !== "string") throw new ApiError("未返回有效提案编号。", { kind: "response" });
   const existing = state.proposals.get(source.action_id);
   if (existing) { container.append(existing.node); return; }
-  const record = { id: source.action_id, context, action: null, busy: true, error: null, uncertain: false, blocked: false, node: element("section", "proposal-card") };
+  const record = { id: source.action_id, context, conversationId: state.conversation.id, action: null, busy: true, error: null, uncertain: false, blocked: false, node: element("section", "proposal-card") };
   state.proposals.set(record.id, record); container.append(record.node); renderProposal(record);
   await refreshProposal(record);
 }
@@ -690,9 +977,14 @@ async function refreshProposal(record) {
   record.busy = true; record.error = null; renderProposal(record);
   try {
     const { data } = await apiRequest(`/actions/${encodeURIComponent(record.id)}`, { headers: ContextSession.headers(record.context), timeoutMs: 15000 });
-    if (epoch !== state.epoch) return;
+    if (epoch !== state.epoch || record.conversationId !== state.conversation.id) return;
     if (data.action_id !== record.id) throw new ApiError("提案编号与请求不一致。", { kind: "response" });
     applyAction(record, data);
+    const display = record.node.closest(".message")?.historyDisplay;
+    if (display) {
+      display.sources = sanitizeSources([...(display.sources || []).filter((source) => source.id !== `proposal:${record.id}`), { id: `proposal:${record.id}`, kind: "proposal", data }]);
+      touchConversation();
+    }
     if (data.status === "completed") state.ticketsLoaded = false;
   } catch (error) {
     if (epoch !== state.epoch) return;
@@ -710,7 +1002,7 @@ async function decideProposal(record, approve) {
       method: "POST", headers: ContextSession.headers(record.context),
       body: { payload_fingerprint: record.action.payload_fingerprint }, timeoutMs: 20000,
     });
-    if (epoch !== state.epoch) return;
+    if (epoch !== state.epoch || record.conversationId !== state.conversation.id) return;
     applyAction(record, data);
     if (data.status === "completed") {
       state.ticketsLoaded = false;
@@ -867,7 +1159,7 @@ async function openTicket(id) {
 
 async function submitProposal(event) {
   event.preventDefault();
-  const epoch = state.epoch;
+  const epoch = state.epoch, origin = state.conversation;
   if (state.proposalBusy || !$("proposal-form").reportValidity()) return;
   const payload = { title: $("proposal-title").value.trim(), description: $("proposal-description").value.trim() };
   if (!payload.title || !payload.description) { notify("请填写有效的工单标题和详细描述。", "error"); return; }
@@ -888,7 +1180,10 @@ async function submitProposal(event) {
     if (epoch !== state.epoch) return;
     message.meta.append(renderRunDetails({}, meta));
     scrollChat();
-  } catch (error) { if (epoch === state.epoch) { feedback.append(errorNode(error)); if (error.status === 403) session.clear(); } }
+  } catch (error) { if (epoch === state.epoch) {
+    if (["network", "timeout", "response"].includes(error.kind) || error.status >= 500) origin.uncertainSubmission = true;
+    feedback.append(errorNode(error)); if (error.status === 403) session.clear();
+  } }
   finally { if (epoch === state.epoch) { state.proposalBusy = false; $("proposal-submit").disabled = false; updateComposer(); } }
 }
 
@@ -908,6 +1203,32 @@ async function checkService() {
 }
 
 function bindEvents() {
+  $("history-toggle")?.addEventListener("click", openHistory);
+  $("history-close")?.addEventListener("click", closeHistory);
+  $("history-search")?.addEventListener("input", renderHistory);
+  $("history-persist")?.addEventListener("change", changeHistoryPersistence);
+  $("history-clear")?.addEventListener("click", clearPersistentHistory);
+  const historyDialog = $("history-dialog");
+  historyDialog?.addEventListener("close", () => {
+    $("history-toggle")?.setAttribute("aria-expanded", "false");
+    if (historyReturnFocus?.isConnected && !$("app-shell").hidden) historyReturnFocus.focus();
+    historyReturnFocus = null;
+  });
+  historyDialog?.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") { event.preventDefault(); closeHistory(); return; }
+    if (event.key !== "Tab" || !historyDialog.open) return;
+    const focusable = [...historyDialog.querySelectorAll("button,input,select,textarea,a[href],[tabindex]")]
+      .filter((node) => !node.disabled && node.tabIndex >= 0 && node.getClientRects().length);
+    const first = focusable[0], last = focusable.at(-1);
+    if (!first) { event.preventDefault(); return; }
+    if (event.shiftKey && (document.activeElement === first || !historyDialog.contains(document.activeElement))) { event.preventDefault(); last.focus(); }
+    else if (!event.shiftKey && (document.activeElement === last || !historyDialog.contains(document.activeElement))) { event.preventDefault(); first.focus(); }
+  });
+  historyDialog?.addEventListener("click", (event) => {
+    if (event.target !== historyDialog) return;
+    const box = historyDialog.getBoundingClientRect();
+    if (event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom) closeHistory();
+  });
   $("task-center-toggle")?.addEventListener("click", openTaskCenter);
   $("task-center-close")?.addEventListener("click", closeTaskCenter);
   const taskDialog = $("task-center-dialog");
@@ -966,15 +1287,7 @@ function bindEvents() {
   $("question-input").addEventListener("keydown", (event) => {
     if (event.key === "Enter" && !event.shiftKey && !event.isComposing) { event.preventDefault(); $("composer-form").requestSubmit(); }
   });
-  $("new-chat").addEventListener("click", () => {
-    if (state.busy || state.proposalBusy) return;
-    const unresolved = [...state.proposals.values()].some((record) => record.action?.status === "pending" && Date.parse(record.action.expires_at) > Date.now());
-    if (unresolved) { notify("请先确认或拒绝当前提案，再开始新对话。"); return; }
-    $("chat-messages").querySelectorAll(".message").forEach((node) => node.remove());
-    state.history = []; state.proposals.clear(); session.clear(); $("chat-welcome").hidden = false;
-    $("question-input").value = ""; updateComposer();
-    showEvidence([]); setView("chat"); $("question-input").focus();
-  });
+  $("new-chat").addEventListener("click", () => switchConversation());
   $("evidence-toggle").addEventListener("click", () => toggleEvidence());
   $("evidence-close")?.addEventListener("click", () => toggleEvidence(false));
   document.addEventListener("keydown", (event) => { if (event.key === "Escape") toggleEvidence(false); });
@@ -1060,7 +1373,7 @@ async function start() {
   bindEvents(); updateComposer(); renderFile();
   if (!PUBLIC_BUILD) {
     $("app-shell").hidden = false; $("workspace-skip").hidden = false;
-    initializeServices();
+    initializeServices(); initializeConversations();
     return;
   }
   $("api-docs-link").hidden = true;

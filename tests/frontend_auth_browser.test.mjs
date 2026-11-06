@@ -10,6 +10,7 @@ const base = new URL('../src/project_copilot/web/', import.meta.url);
 const files = new Map();
 for (const [url, file, type] of [
   ['/', 'index.html', 'text/html'], ['/ui-assets/app.js', 'assets/app.js', 'text/javascript'],
+  ['/ui-assets/conversations.js', 'assets/conversations.js', 'text/javascript'],
   ['/ui-assets/markdown.js', 'assets/markdown.js', 'text/javascript'], ['/ui-assets/task-center.js', 'assets/task-center.js', 'text/javascript'], ['/ui-assets/avatar-swordsman.webp', 'assets/avatar-swordsman.webp', 'image/webp'], ['/ui-assets/styles.css', 'assets/styles.css', 'text/css'], ['/ui-assets/mark.svg', 'assets/mark.svg', 'image/svg+xml'],
   ['/ui-assets/ink-mountains.svg', 'assets/ink-mountains.svg', 'image/svg+xml'], ['/ui-assets/bamboo.svg', 'assets/bamboo.svg', 'image/svg+xml'],
 ]) files.set(url, { body: await readFile(new URL(file, base)), type });

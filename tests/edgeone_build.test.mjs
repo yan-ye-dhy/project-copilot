@@ -31,7 +31,7 @@ test("static build ships complete assets and sends same-origin API requests thro
   await run(script, output, { env: { ...process.env, ...sentinels } });
   assert.deepEqual((await readdir(output)).sort(), ["index.html", "ui-assets"]);
   const assets = (await readdir(path.join(output, "ui-assets"))).sort();
-  assert.deepEqual(assets, ["api.js", "app.js", "avatar-swordsman.webp", "bamboo.svg", "ink-mountains.svg", "mark.svg", "markdown.js", "styles.css", "task-center.js"]);
+  assert.deepEqual(assets, ["api.js", "app.js", "avatar-swordsman.webp", "bamboo.svg", "conversations.js", "ink-mountains.svg", "mark.svg", "markdown.js", "styles.css", "task-center.js"]);
   const index = await readFile(path.join(output, "index.html"), "utf8");
   assert.match(index, /\/ui-assets\/styles\.css/);
   assert.match(index, /\/ui-assets\/app\.js/);
@@ -40,6 +40,7 @@ test("static build ships complete assets and sends same-origin API requests thro
   assert.match(code, /const API_PREFIX = "\/api";/);
   assert.match(await readFile(path.join(output, "ui-assets", "app.js"), "utf8"), /from "\.\/api\.js"/);
   assert.match(await readFile(path.join(output, "ui-assets", "app.js"), "utf8"), /from "\.\/task-center\.js"/);
+  assert.match(await readFile(path.join(output, "ui-assets", "app.js"), "utf8"), /from "\.\/conversations\.js"/);
   for (const name of ["index.html", ...assets.map((asset) => `ui-assets/${asset}`)]) {
     const contents = await readFile(path.join(output, name));
     for (const secret of Object.values(sentinels)) assert.equal(contents.includes(Buffer.from(secret)), false);
