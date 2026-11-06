@@ -3,6 +3,7 @@ import { apiRequest, ApiError, ContextSession, boundHistory, validateAction, run
   safeFailureType, jobFailureLabel } from "./api.js";
 
 import { renderMarkdown } from "./markdown.js";
+import { recoveryRecords, jobObservation, jobStateLabel, canHideJob, setRecoveryHidden } from "./task-center.js";
 
 const $ = (id) => document.getElementById(id);
 const session = new ContextSession();
@@ -11,6 +12,7 @@ const state = {
   uploading: false, uploadLimit: null, ticketOffset: 0, ticketLimit: 10,
   ticketsLoaded: false, ticketsBusy: false, ticketsRequest: 0, detailRequest: 0, proposals: new Map(), epoch: 0,
   personalDemo: null, profileStale: false, configPending: null,
+  jobObservations: new Map(), jobReadErrors: new Set(), taskCenterReads: null, showHiddenJobs: false,
 };
 const auth = { user: null, busy: false };
 const views = {
@@ -47,7 +49,9 @@ function clearCredentialInputs() {
 function resetWorkspace() {
   // Late responses from a previous account must not populate the next one.
   state.activeWait?.controller.abort(); state.activeWait = null;
-  clearSavedJobs();
+  closeTaskCenter(); state.taskCenterReads?.abort(); state.taskCenterReads = null;
+  state.jobObservations.clear(); state.jobReadErrors.clear(); state.showHiddenJobs = false;
+  for (const id of ["account-panel", "personal-demo-meter"]) if ($(id)?.tagName === "DETAILS") $(id).open = false;
   state.epoch += 1; state.ticketsRequest += 1; state.detailRequest += 1;
   session.clear(); setCsrfToken(null); auth.user = null;
   state.history = []; state.proposals.clear(); state.jobContexts.clear(); state.selectedFile = null;
@@ -290,9 +294,13 @@ function addMessage(role, content, pending = false) {
   article.setAttribute("aria-label", role === "user" ? "你的消息" : "知行助手的消息");
   const avatar = element("div", `message-avatar${role === "assistant" ? " assistant-seal" : ""}`);
   avatar.setAttribute("aria-hidden", "true");
-  avatar.append(role === "user" ? lineIcon("user") : element("span", "seal-character", "知"));
+  if (role === "user") {
+    const portrait = element("img", "swordsman-avatar");
+    portrait.src = "/ui-assets/avatar-swordsman.webp"; portrait.alt = ""; portrait.width = 48; portrait.height = 48;
+    avatar.append(portrait);
+  } else avatar.append(element("span", "seal-character", "知"));
   const block = element("div", "message-block");
-  // User identity is already conveyed by the round icon and alignment, without a second label.
+  // The local swordsman portrait and alignment convey identity without a duplicate user label.
   if (role === "assistant") {
     const label = element("div", "message-label");
     label.append(element("strong", "assistant-name", "知行助手"), element("small", "assistant-product", "Project Copilot"));
@@ -379,6 +387,16 @@ function showEvidence(sources, data = {}, meta = {}) {
   if (meta.runId || meta.traceId) target.append(renderRunDetails(data, meta));
 }
 
+function resizeComposer() {
+  const input = $("question-input");
+  const style = getComputedStyle(input);
+  const maximum = Number.parseFloat(style.getPropertyValue("--composer-max-height")) || 176;
+  input.style.height = "auto";
+  const height = Math.max(52, Math.min(maximum, input.scrollHeight));
+  input.style.height = `${height}px`;
+  input.style.overflowY = input.scrollHeight > maximum ? "auto" : "hidden";
+}
+
 function updateComposer() {
   $("stop-wait").hidden = !state.busy;
   $("send-button").hidden = state.busy;
@@ -387,6 +405,7 @@ function updateComposer() {
   $("chat-mode").disabled = state.busy;
   $("new-chat").disabled = state.busy || state.proposalBusy;
   $("input-count").textContent = `${$("question-input").value.length} / 2000`;
+  resizeComposer();
 }
 
 // Browser persistence contains identifiers only; never questions, answers or bearer credentials.
@@ -394,42 +413,133 @@ function recoveryKey() { return PUBLIC_BUILD && auth.user ? `pc.jobs.v1.${auth.u
 function savedJobs() {
   try {
     const key = recoveryKey(); if (!key) return [];
-    const parsed = JSON.parse(localStorage.getItem(key) || "[]");
-    return Array.isArray(parsed) ? parsed.filter((item) => item && /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(item.id) &&
-      ["agent", "rag"].includes(item.kind) && Number.isSafeInteger(item.createdAt) && item.createdAt > Date.now() - 7 * 86400000).slice(-8) : [];
+    return recoveryRecords(JSON.parse(localStorage.getItem(key) || "[]"));
   } catch { return []; }
 }
-function saveJob(record) {
+function storeJobs(records) {
   try {
     const key = recoveryKey(); if (!key) return;
-    const list = savedJobs().filter((item) => item.id !== record.id);
-    // Do not persist streamed text, context tokens or an unverified answer.
-    list.push({ id: record.id, kind: record.kind, createdAt: record.createdAt, lastSequence: 0 });
-    localStorage.setItem(key, JSON.stringify(list.slice(-8)));
-  } catch { /* Private browsing can disable storage; the current page still works. */ }
+    const clean = recoveryRecords(records);
+    if (clean.length) localStorage.setItem(key, JSON.stringify(clean)); else localStorage.removeItem(key);
+  } catch { /* Storage can be unavailable; the current page still works. */ }
+}
+function saveJob(record) {
+  storeJobs([...savedJobs().filter((item) => item.id !== record.id), record]);
   renderRecovery();
 }
 function removeSavedJob(id) {
-  try {
-    const key = recoveryKey(); if (!key) return;
-    const list = savedJobs().filter((record) => record.id !== id);
-    if (list.length) localStorage.setItem(key, JSON.stringify(list)); else localStorage.removeItem(key);
-  } catch {}
+  storeJobs(savedJobs().filter((record) => record.id !== id));
+  state.jobObservations.delete(id); state.jobReadErrors.delete(id);
   renderRecovery();
 }
-function clearSavedJobs() { try { const key = recoveryKey(); if (key) localStorage.removeItem(key); } catch {} }
+function observeJob(id, data) {
+  const observation = jobObservation(data, id);
+  if (!observation) return;
+  state.jobObservations.set(id, observation); state.jobReadErrors.delete(id);
+  renderRecovery();
+}
+function jobRequest(epoch) {
+  return async (path, options = {}) => {
+    const response = await apiRequest(path, options);
+    const match = /^\/jobs\/([a-f0-9-]{36})$/i.exec(path);
+    if (match && !options.method && epoch === state.epoch) {
+      if (!jobObservation(response.data, match[1])) throw new ApiError("任务状态与原编号不匹配，请勿重复提交。", { kind: "response", meta: { jobId: match[1] } });
+      observeJob(match[1], response.data);
+    }
+    return response;
+  };
+}
+async function queryJobState(record, { signal, epoch = state.epoch } = {}) {
+  try {
+    const response = await apiRequest(`/jobs/${record.id}`, { timeoutMs: 10000, signal });
+    if (epoch !== state.epoch || signal?.aborted) return;
+    if (!jobObservation(response.data, record.id)) throw new ApiError("任务状态格式无效。", { kind: "response" });
+    observeJob(record.id, response.data);
+  } catch {
+    if (epoch === state.epoch && !signal?.aborted) {
+      state.jobReadErrors.add(record.id); renderRecovery();
+    }
+  }
+}
+let taskCenterReturnFocus = null;
+function closeTaskCenter() {
+  const dialog = $("task-center-dialog");
+  if (dialog?.open) dialog.close();
+}
+async function openTaskCenter() {
+  const dialog = $("task-center-dialog");
+  if (!dialog || dialog.open) return;
+  taskCenterReturnFocus = document.activeElement;
+  renderRecovery(); dialog.showModal();
+  $("task-center-toggle")?.setAttribute("aria-expanded", "true");
+  $("task-center-close")?.focus();
+  const epoch = state.epoch;
+  state.taskCenterReads?.abort();
+  const controller = new AbortController(); state.taskCenterReads = controller;
+  // One bounded, sequential read pass when opened. No background polling or POST here.
+  for (const record of savedJobs().filter((item) => state.showHiddenJobs || !item.hidden).reverse().slice(0, 8)) {
+    if (!dialog.open || controller.signal.aborted || epoch !== state.epoch) break;
+    await queryJobState(record, { signal: controller.signal, epoch });
+    if (!dialog.open || controller.signal.aborted || epoch !== state.epoch) break;
+    await new Promise((resolve) => setTimeout(resolve, 180));
+  }
+  if (state.taskCenterReads === controller) state.taskCenterReads = null;
+}
 function renderRecovery() {
   const target = $("job-recovery"); if (!target) return;
-  target.replaceChildren(); const jobs = savedJobs(); target.hidden = !jobs.length;
-  if (!jobs.length) return;
-  const summary = inlineNotice("停止等待或刷新不会重新执行。以下操作只查询原任务。", { className: "recovery-notice" });
-  summary.querySelector(".notice-content").prepend(element("strong", "", "可恢复的任务"));
-  target.append(summary);
-  for (const record of jobs) {
-    const row = element("div", "job-recovery-row");
-    row.append(element("span", "job-identifier", `${record.kind === "rag" ? "知识问答" : "智能协作"} · ${record.id}`));
-    const resume = actionButton("查询 / 恢复等待", "button button-quiet", () => resumeWaiting(record));
-    resume.disabled = state.busy; row.append(resume); target.append(row);
+  const jobs = savedJobs(), shown = jobs.filter((record) => !record.hidden), hidden = jobs.length - shown.length;
+  const trigger = $("task-center-toggle"), count = $("task-center-count");
+  if (count) count.textContent = String(shown.length);
+  if (trigger) trigger.setAttribute("aria-label", `任务中心，${shown.length} 条记录${hidden ? `，另有 ${hidden} 条已隐藏` : ""}`);
+  const focusControl = target.contains(document.activeElement) ? document.activeElement.id : null;
+  const focusId = document.activeElement?.dataset?.jobId;
+  const focusAction = document.activeElement?.dataset?.jobAction;
+  target.hidden = false; target.replaceChildren();
+  const controls = element("div", "task-center-controls");
+  controls.append(element("p", "task-center-count-label", `${shown.length} 条可见 · ${hidden} 条已隐藏`));
+  const toggle = actionButton(state.showHiddenJobs ? "收起已隐藏" : `查看已隐藏（${hidden}）`, "button button-quiet", () => {
+    state.showHiddenJobs = !state.showHiddenJobs; renderRecovery(); $("task-center-show-hidden")?.focus();
+  });
+  toggle.id = "task-center-show-hidden"; toggle.setAttribute("aria-pressed", String(state.showHiddenJobs));
+  toggle.disabled = hidden === 0 && !state.showHiddenJobs; controls.append(toggle); target.append(controls);
+  const visible = jobs.filter((record) => state.showHiddenJobs || !record.hidden).reverse();
+  if (!visible.length) target.append(element("p", "task-center-empty", hidden ? "没有可见任务。已隐藏的记录仍可查看和恢复。" : "暂无可恢复任务。停止等待或刷新后，可在这里查询原任务。"));
+  for (const record of visible) {
+    const observation = state.jobObservations.get(record.id);
+    const row = element("article", `job-recovery-row${record.hidden ? " is-hidden-record" : ""}`);
+    const heading = element("div", "job-recovery-heading");
+    const identity = element("strong", "job-kind", record.kind === "rag" ? "知识问答" : "智能协作");
+    const status = element("span", "job-state", jobStateLabel(observation));
+    if (observation) status.dataset.state = observation.status;
+    heading.append(identity, status); row.append(heading);
+    const metadata = element("div", "job-recovery-meta");
+    const submitted = element("time", "job-submitted", `提交于 ${formatDate(record.createdAt)}`);
+    submitted.dateTime = new Date(record.createdAt).toISOString();
+    const identifier = element("span", "job-identifier", record.id.slice(0, 8));
+    identifier.title = record.id; identifier.setAttribute("aria-label", `任务编号 ${record.id}`);
+    metadata.append(submitted, identifier); row.append(metadata);
+    if (record.hidden) row.append(element("p", "job-local-note", "已在本浏览器隐藏；后台状态与额度未改变。"));
+    if (state.jobReadErrors.has(record.id)) row.append(element("p", "job-local-note", "本次状态查询未成功；上次结果仅供参考，可稍后查询原任务。"));
+    const actions = element("div", "job-recovery-actions");
+    const bindAction = (label, action, handler) => {
+      const button = actionButton(label, "button button-quiet", handler);
+      button.dataset.jobId = record.id; button.dataset.jobAction = action;
+      actions.append(button); return button;
+    };
+    bindAction("查询状态", "query", () => queryJobState(record));
+    const resume = bindAction("查询 / 恢复等待", "resume", () => { closeTaskCenter(); setView("chat"); resumeWaiting(record); });
+    resume.disabled = state.busy;
+    if (record.hidden || canHideJob(observation)) bindAction(record.hidden ? "取消隐藏" : "隐藏此记录", "hide", () => {
+      storeJobs(setRecoveryHidden(savedJobs(), record.id, !record.hidden, observation));
+      renderRecovery();
+      if (!record.hidden) $("task-center-show-hidden")?.focus();
+    });
+    row.append(actions); target.append(row);
+  }
+  // A status read must not steal keyboard focus while replacing that row.
+  if (focusControl && $("task-center-dialog")?.open) $(focusControl)?.focus();
+  if (focusId && focusAction && $("task-center-dialog")?.open) {
+    [...target.querySelectorAll("button[data-job-id]")].find((button) => button.dataset.jobId === focusId && button.dataset.jobAction === focusAction)?.focus();
   }
 }
 function startWaiting(message, mode) {
@@ -466,7 +576,7 @@ function updateJobEvent(wait, event) {
 function stopWaiting() {
   const wait = state.activeWait; if (!wait) return;
   wait.controller.abort(); state.activeWait = null; state.busy = false;
-  wait.message.body.replaceChildren(inlineNotice("已停止等待，后台任务可能继续执行。请从“可恢复的任务”查询原任务，不要重复提交。", { className: "waiting-stopped" }));
+  wait.message.body.replaceChildren(inlineNotice("已停止等待，后台任务可能继续执行。请从“任务中心”查询原任务，不要重复提交。", { className: "waiting-stopped" }));
   updateComposer(); renderRecovery();
 }
 async function displayAnswer(message, data, meta, mode, context, question, epoch) {
@@ -501,7 +611,7 @@ async function resumeWaiting(record) {
   try {
     if (PUBLIC_BUILD) await refreshUiConfig();
     if (state.activeWait !== wait || epoch !== state.epoch) return;
-    const { data, meta } = await resumePublicJob(record.id, { signal: wait.controller.signal,
+    const { data, meta } = await resumePublicJob(record.id, { signal: wait.controller.signal, request: jobRequest(epoch), useEvents: true,
       ...personalJobWaitOptions(state.personalDemo), isCurrent: () => epoch === state.epoch,
       onEvent: (event) => updateJobEvent(wait, event) });
     if (state.activeWait !== wait || epoch !== state.epoch) return;
@@ -532,7 +642,7 @@ async function sendQuestion(event) {
     const payload = mode === "agent" ? { question, history } : { question };
     const headers = context ? ContextSession.headers(context) : {};
     const { data, meta } = PUBLIC_BUILD
-      ? await runPublicJob(mode, payload, { headers, signal: wait.controller.signal,
+      ? await runPublicJob(mode, payload, { headers, signal: wait.controller.signal, request: jobRequest(epoch), useEvents: true,
           ...personalJobWaitOptions(state.personalDemo),
           isCurrent: () => epoch === state.epoch,
           onSubmitted: (record) => { if (epoch === state.epoch) { submitted = record; if (context) state.jobContexts.set(record.id, context); saveJob(record); refreshUiConfig(); } },
@@ -798,6 +908,46 @@ async function checkService() {
 }
 
 function bindEvents() {
+  $("task-center-toggle")?.addEventListener("click", openTaskCenter);
+  $("task-center-close")?.addEventListener("click", closeTaskCenter);
+  const taskDialog = $("task-center-dialog");
+  taskDialog?.addEventListener("close", () => {
+    state.taskCenterReads?.abort(); state.taskCenterReads = null;
+    $("task-center-toggle")?.setAttribute("aria-expanded", "false");
+    if (taskCenterReturnFocus?.isConnected && !$("app-shell").hidden) taskCenterReturnFocus.focus();
+    taskCenterReturnFocus = null;
+  });
+  taskDialog?.addEventListener("keydown", (event) => {
+    if (event.key !== "Tab" || !taskDialog.open) return;
+    const focusable = [...taskDialog.querySelectorAll("button, a[href], input, select, textarea, [tabindex]")]
+      .filter((node) => !node.disabled && node.tabIndex >= 0 && node.getClientRects().length);
+    const first = focusable[0], last = focusable.at(-1);
+    if (!first) { event.preventDefault(); return; }
+    if (event.shiftKey && (document.activeElement === first || !taskDialog.contains(document.activeElement))) {
+      event.preventDefault(); last.focus();
+    } else if (!event.shiftKey && (document.activeElement === last || !taskDialog.contains(document.activeElement))) {
+      event.preventDefault(); first.focus();
+    }
+  });
+  taskDialog?.addEventListener("click", (event) => {
+    if (event.target !== taskDialog) return;
+    const box = taskDialog.getBoundingClientRect();
+    if (event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom) closeTaskCenter();
+  });
+  document.addEventListener("click", (event) => {
+    for (const id of ["account-panel", "personal-demo-meter"]) {
+      const menu = $(id);
+      if (menu?.tagName === "DETAILS" && menu.open && !menu.contains(event.target)) menu.open = false;
+    }
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape") return;
+    for (const id of ["account-panel", "personal-demo-meter"]) {
+      const menu = $(id);
+      if (menu?.tagName === "DETAILS" && menu.open) { menu.open = false; menu.querySelector("summary")?.focus(); }
+    }
+  });
+  window.addEventListener("resize", resizeComposer);
   $("auth-show-login").addEventListener("click", () => { if (!auth.busy) { clearCredentialInputs(); showAuth("login"); } });
   $("auth-show-register").addEventListener("click", () => { if (!auth.busy) { clearCredentialInputs(); showAuth("register"); } });
   $("login-form").addEventListener("submit", (event) => submitAuthentication(event, false));
@@ -822,6 +972,7 @@ function bindEvents() {
     if (unresolved) { notify("请先确认或拒绝当前提案，再开始新对话。"); return; }
     $("chat-messages").querySelectorAll(".message").forEach((node) => node.remove());
     state.history = []; state.proposals.clear(); session.clear(); $("chat-welcome").hidden = false;
+    $("question-input").value = ""; updateComposer();
     showEvidence([]); setView("chat"); $("question-input").focus();
   });
   $("evidence-toggle").addEventListener("click", () => toggleEvidence());
@@ -865,7 +1016,8 @@ function renderPersonalDemo() {
     .map((value) => String(value).padStart(2, "0")).join(":");
   $("personal-demo-time").textContent = seconds ? time : "已到期";
   $("personal-demo-time").dateTime = profile.expires_at;
-  $("personal-demo-tasks").textContent = `已用 ${profile.jobs_used} / ${profile.job_limit} 次任务`;
+  $("personal-demo-tasks").textContent = `${profile.jobs_used} / ${profile.job_limit}`;
+  $("personal-demo-tasks").setAttribute("aria-label", `本次授权已用 ${profile.jobs_used} / ${profile.job_limit} 次任务`);
   $("personal-demo-slots").textContent = `未完成 ${profile.occupied_slots} / ${profile.concurrent_limit}`;
   const note = seconds === 0 ? "授权已到期；原任务仍可保留编号核查" : state.profileStale
     ? "额度信息暂未更新" : profile.worker_enabled ? "后台按顺序处理队列" : "后台执行器已暂停";

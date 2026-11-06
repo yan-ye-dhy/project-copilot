@@ -12,7 +12,8 @@ const sourceRoot = new URL('../src/project_copilot/web/', import.meta.url);
 const files = new Map();
 for (const [url, path, type] of [
   ['/', 'index.html', 'text/html'], ['/ui-assets/app.js', 'assets/app.js', 'text/javascript'],
-  ['/ui-assets/markdown.js', 'assets/markdown.js', 'text/javascript'], ['/ui-assets/styles.css', 'assets/styles.css', 'text/css'],
+  ['/ui-assets/markdown.js', 'assets/markdown.js', 'text/javascript'], ['/ui-assets/task-center.js', 'assets/task-center.js', 'text/javascript'], ['/ui-assets/styles.css', 'assets/styles.css', 'text/css'],
+  ['/ui-assets/avatar-swordsman.webp', 'assets/avatar-swordsman.webp', 'image/webp'],
   ...['mark', 'ink-mountains', 'bamboo'].map((name) => [`/ui-assets/${name}.svg`, `assets/${name}.svg`, 'image/svg+xml']),
 ]) files.set(url, { body: await readFile(new URL(path, sourceRoot)), type });
 const api = await readFile(new URL('assets/api.js', sourceRoot), 'utf8');
@@ -107,7 +108,7 @@ for (const width of [1440, 390]) {
       await send(page);
       await page.locator('.markdown-answer h2').getByText('知行建议').waitFor();
       const user = page.locator('.message.user'), assistant = page.locator('.message.assistant');
-      assert.equal(await user.locator('.message-avatar svg').count(), 1);
+      assert.equal(await user.locator('.message-avatar img').count(), 1);
       assert.equal(await user.locator('.message-avatar').textContent(), '');
       assert.equal(await user.locator('.message-label').count(), 0);
       assert.doesNotMatch(await user.textContent(), /你|alice/);
@@ -177,13 +178,16 @@ test('unknown keeps the task identifier and recovery as transparent inline guida
     await notice.getByText(/待核实/).waitFor();
     assert.match(await notice.textContent(), new RegExp(JOB));
     const recovery = page.locator('#job-recovery');
+    assert.equal(await recovery.isVisible(), false);
+    await page.locator('#task-center-toggle').click();
     await recovery.waitFor({ state: 'visible' });
-    assert.match(await recovery.textContent(), new RegExp(JOB));
+    assert.match(await recovery.textContent(), new RegExp(JOB.slice(0, 8)));
     await transparent(recovery, { separator: true });
     await transparent(page.locator('.message.assistant .message-body, .message.assistant [role="alert"]'), { inline: true });
     assert.equal(posts(f), 1);
     await page.waitForTimeout(100);
     assert.equal(posts(f), 1);
+    await page.keyboard.press('Escape');
     await noPageOverflow(page);
     await page.screenshot({ path: '/tmp/pc-polish-390-unknown.png', fullPage: true });
     await safe(f);
@@ -204,11 +208,13 @@ test('progress, draft and stopped wait share inline styling without losing the o
     assert.match(await stopped.textContent(), /后台任务可能继续执行/);
     assert.equal(await page.locator('.stream-preview').count(), 0);
     assert.equal(await page.locator('#question-input').isEnabled(), true);
-    assert.equal(await page.locator('#job-recovery').isVisible(), true);
+    assert.equal(await page.locator('#job-recovery').isVisible(), false);
+    assert.equal(await page.locator('#task-center-count').textContent(), '1');
     assert.equal(posts(f), 1);
     await transparent(stopped, { inline: true });
     await page.reload({ waitUntil: 'networkidle' });
     f.done = true;
+    await page.locator('#task-center-toggle').click();
     await page.getByRole('button', { name: '查询 / 恢复等待' }).click();
     await page.locator('.markdown-answer h2').getByText('知行建议').waitFor();
     assert.equal(posts(f), 1);
@@ -226,7 +232,7 @@ for (const width of [1440, 390]) {
     try {
       const meter = page.locator('#personal-demo-meter');
       await meter.waitFor({ state: 'visible' });
-      assert.match(await meter.textContent(), /已用 37 \/ 500 次任务/);
+      assert.match(await meter.textContent(), /37 \/ 500/);
       assert.match(await meter.textContent(), /未完成 2 \/ 3/);
       assert.match(await page.locator('#personal-demo-time').textContent(), /^23:59:\d{2}$/);
       assert.equal(await page.locator('#personal-demo-time').getAttribute('aria-live'), 'off');
@@ -234,6 +240,7 @@ for (const width of [1440, 390]) {
       assert.doesNotMatch(await page.locator('body').textContent(), /PRIVATE_PROFILE_SECRET/);
       await noPageOverflow(page);
       await page.screenshot({ path: `/tmp/pc-capacity-${width}.png`, fullPage: true });
+      await page.locator('#account-panel > summary').click();
       await page.locator('#logout-button').click();
       await page.locator('#auth-screen').waitFor({ state: 'visible' });
       assert.equal(await meter.isVisible(), false);
@@ -251,8 +258,10 @@ test('confirmed Agent budget failure shows reason and recoverable job without pr
     assert.match(await notice.textContent(), /tool_budget/);
     assert.match(await notice.textContent(), new RegExp(JOB));
     assert.doesNotMatch(await notice.textContent(), /结果待核实|执行成功/);
-    assert.equal(await page.locator('#job-recovery').isVisible(), true);
+    assert.equal(await page.locator('#job-recovery').isVisible(), false);
+    assert.equal(await page.locator('#task-center-count').textContent(), '1');
     await page.reload({ waitUntil: 'networkidle' });
+    await page.locator('#task-center-toggle').click();
     await page.getByRole('button', { name: '查询 / 恢复等待' }).click();
     await page.locator('.message.assistant [role="alert"]').getByText(/tool_budget/).waitFor();
     assert.equal(posts(f), 1);

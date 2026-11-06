@@ -10,7 +10,7 @@ const base = new URL('../src/project_copilot/web/', import.meta.url);
 const files = new Map();
 for (const [url, file, type] of [
   ['/', 'index.html', 'text/html'], ['/ui-assets/app.js', 'assets/app.js', 'text/javascript'],
-  ['/ui-assets/markdown.js', 'assets/markdown.js', 'text/javascript'], ['/ui-assets/styles.css', 'assets/styles.css', 'text/css'], ['/ui-assets/mark.svg', 'assets/mark.svg', 'image/svg+xml'],
+  ['/ui-assets/markdown.js', 'assets/markdown.js', 'text/javascript'], ['/ui-assets/task-center.js', 'assets/task-center.js', 'text/javascript'], ['/ui-assets/avatar-swordsman.webp', 'assets/avatar-swordsman.webp', 'image/webp'], ['/ui-assets/styles.css', 'assets/styles.css', 'text/css'], ['/ui-assets/mark.svg', 'assets/mark.svg', 'image/svg+xml'],
   ['/ui-assets/ink-mountains.svg', 'assets/ink-mountains.svg', 'image/svg+xml'], ['/ui-assets/bamboo.svg', 'assets/bamboo.svg', 'image/svg+xml'],
 ]) files.set(url, { body: await readFile(new URL(file, base)), type });
 const source = await readFile(new URL('assets/api.js', base), 'utf8');
@@ -89,6 +89,11 @@ async function fixture(options = {}) {
   return { context, page, f, errors };
 }
 
+async function clickLogout(page) {
+  if (!await page.locator('#account-panel').evaluate((node) => node.open)) await page.locator('#account-panel > summary').click();
+  await page.locator('#logout-button').click();
+}
+
 async function login(page, name = 'alice') {
   await page.locator('#login-username').fill(name);
   await page.locator('#login-password').fill('example-password');
@@ -118,11 +123,11 @@ test('login, ordinary-user upload restriction, proposal warning and logout clear
     assert.equal(preview.headers['x-csrf-token'], CSRF);
     let warning = '';
     page.once('dialog', async (dialog) => { warning = dialog.message(); await dialog.dismiss(); });
-    await page.locator('#logout-button').click();
+    await clickLogout(page);
     assert.match(warning, /提案/);
     assert.equal(f.calls.filter((call) => call.path === '/api/auth/logout').length, 0);
     page.once('dialog', (dialog) => dialog.accept());
-    await page.locator('#logout-button').click();
+    await clickLogout(page);
     await page.locator('#login-form').waitFor({ state: 'visible' });
     const logout = f.calls.filter((call) => call.path === '/api/auth/logout');
     assert.equal(logout.length, 1); assert.equal(logout[0].headers['x-csrf-token'], CSRF);
@@ -149,7 +154,7 @@ test('administrator can upload through jobs, list and delete documents', async (
     await page.getByRole('button', { name: '删除资料' }).click();
     await page.getByText('知识库暂无资料。').waitFor();
     assert.equal(f.calls.find((call) => call.path === `/api/documents/${ID}`).headers['x-csrf-token'], CSRF);
-    await page.locator('#logout-button').click();
+    await clickLogout(page);
     await page.locator('#login-form').waitFor({ state: 'visible' });
     assert.doesNotMatch(await page.locator('#public-documents-list').textContent(), /temporary\.md/);
     assert.equal(await page.locator('#file-input').inputValue(), '');
@@ -189,7 +194,7 @@ test('offline auth and uncertain logout each make one request and show a safe me
   const second = await fixture({ logoutFailure: true });
   try {
     await login(second.page);
-    await second.page.locator('#logout-button').click();
+    await clickLogout(second.page);
     await second.page.getByText(/退出结果尚未确认/).waitFor();
     assert.equal(second.f.calls.filter((call) => call.path === '/api/auth/logout').length, 1);
     assert.equal(await second.page.locator('#app-shell').isVisible(), false);
@@ -238,6 +243,8 @@ test('real event display, stop, refresh and resume preserve identifier without a
     assert.equal(await page.locator('#question-input').isEnabled(), true);
     assert.equal(f.calls.filter((c) => c.path === '/api/jobs' && c.method === 'POST').length, 1);
     await page.reload({ waitUntil: 'networkidle' });
+    assert.equal(await page.locator('#task-center-dialog').isVisible(), false);
+    await page.locator('#task-center-toggle').click();
     await page.locator('#job-recovery').waitFor({ state: 'visible' });
     f.jobDone = true;
     await page.getByRole('button', { name: '查询 / 恢复等待' }).click();
