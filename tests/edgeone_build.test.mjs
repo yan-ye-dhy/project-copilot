@@ -31,13 +31,15 @@ test("static build ships complete assets and sends same-origin API requests thro
   await run(script, output, { env: { ...process.env, ...sentinels } });
   assert.deepEqual((await readdir(output)).sort(), ["index.html", "ui-assets"]);
   const assets = (await readdir(path.join(output, "ui-assets"))).sort();
-  assert.deepEqual(assets, ["api.js", "app.js", "bamboo.svg", "ink-mountains.svg", "mark.svg", "markdown.js", "styles.css"]);
+  assert.deepEqual(assets, ["api.js", "app.js", "avatar-swordsman.webp", "bamboo.svg", "ink-mountains.svg", "mark.svg", "markdown.js", "styles.css", "task-center.js"]);
   const index = await readFile(path.join(output, "index.html"), "utf8");
   assert.match(index, /\/ui-assets\/styles\.css/);
   assert.match(index, /\/ui-assets\/app\.js/);
+  assert.match(index, /\/ui-assets\/avatar-swordsman\.webp/);
   const code = await readFile(path.join(output, "ui-assets", "api.js"), "utf8");
   assert.match(code, /const API_PREFIX = "\/api";/);
   assert.match(await readFile(path.join(output, "ui-assets", "app.js"), "utf8"), /from "\.\/api\.js"/);
+  assert.match(await readFile(path.join(output, "ui-assets", "app.js"), "utf8"), /from "\.\/task-center\.js"/);
   for (const name of ["index.html", ...assets.map((asset) => `ui-assets/${asset}`)]) {
     const contents = await readFile(path.join(output, name));
     for (const secret of Object.values(sentinels)) assert.equal(contents.includes(Buffer.from(secret)), false);
@@ -55,6 +57,26 @@ test("static build ships complete assets and sends same-origin API requests thro
   assert.equal(result.data.status, "ok");
   await assert.rejects(module.apiRequest("/../tickets", { fetchImpl: () => assert.fail("must not fetch") }), /当前服务/);
   await assert.rejects(module.apiRequest("/\\example.invalid", { fetchImpl: () => assert.fail("must not fetch") }), /当前服务/);
+});
+
+test("local swordsman portrait is an optimized WebP and copied byte-for-byte", async () => {
+  const output = path.join(scratch, "portrait-site");
+  await run(script, output);
+  const portrait = await readFile(path.join(source, "assets", "avatar-swordsman.webp"));
+  assert.equal(portrait.subarray(0, 4).toString("ascii"), "RIFF");
+  assert.equal(portrait.subarray(8, 12).toString("ascii"), "WEBP");
+  assert.ok(portrait.length > 1024 && portrait.length < 100 * 1024, "portrait remains under 100 KiB");
+  assert.deepEqual(await readFile(path.join(output, "ui-assets", "avatar-swordsman.webp")), portrait);
+  assert.equal(portrait.includes(Buffer.from("Exif")), false, "generated asset has no EXIF payload");
+});
+
+test("missing portrait fails the allowlisted build before producing a partial site", async () => {
+  const dir = await fixture("missing-portrait-project");
+  await unlink(path.join(dir, "src/project_copilot/web/assets/avatar-swordsman.webp"));
+  const output = path.join(scratch, "missing-portrait-output");
+  await assert.rejects(run(path.join(dir, "scripts/build_edgeone.mjs"), output),
+    (error) => /Missing asset: avatar-swordsman\.webp/.test(error.stderr));
+  await absent(output);
 });
 
 test("existing output directory is refused without touching its contents", async () => {

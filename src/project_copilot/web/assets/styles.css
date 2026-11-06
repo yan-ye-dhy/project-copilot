@@ -402,12 +402,13 @@ button:active:not(:disabled) {
 }
 
 .workspace-header {
-  min-height:123px;
+  min-height:64px;
+  height:64px;
   display:flex;
   align-items:center;
   justify-content:space-between;
-  gap:20px;
-  padding:22px 34px;
+  gap:16px;
+  padding:10px 22px;
   background:#fafcfb;
   border-bottom:1px solid var(--line);
   flex-shrink:0
@@ -2398,7 +2399,7 @@ button:active:not(:disabled) {
     display:none
   }
   .workspace-header {
-    min-height:113px
+    min-height:64px
   }
   .header-actions {
     gap:11px
@@ -2469,8 +2470,8 @@ button:active:not(:disabled) {
     padding-top:20px
   }
   .workspace-header {
-    padding:20px 23px;
-    min-height:109px;
+    padding:8px 16px;
+    min-height:64px;
     gap:12px
   }
   .eyebrow {
@@ -2705,8 +2706,9 @@ button:active:not(:disabled) {
     height:calc(100dvh - 55px)
   }
   .workspace-header {
-    min-height:102px;
-    padding:15px 19px
+    min-height:60px;
+    height:60px;
+    padding:8px 12px
   }
   .eyebrow {
     font-size:10px
@@ -3006,21 +3008,7 @@ body {
   letter-spacing:.02em;
   color:#252c23;
 }
-.page-heading h1 { font-size:29px; font-weight:700; line-height:1.3; }
-.page-heading h1::after {
-  content:"知行";
-  display:inline-block;
-  margin-left:11px;
-  padding:3px 2px;
-  vertical-align:middle;
-  border:1px solid #a94c3d;
-  border-radius:2px;
-  background:#ad5545;
-  color:#fff9ed;
-  font:9px/1.15 "Songti SC",SimSun,serif;
-  letter-spacing:1px;
-  writing-mode:vertical-rl;
-}
+.page-heading h1 { font-size:17px; font-weight:600; line-height:1.3; }
 .page-heading p { color:#666b5e; }
 .connection-status {
   padding:4px 10px;
@@ -3245,21 +3233,20 @@ body {
 .job-progress { margin:0 0 .85em; }
 .stream-preview { padding:0; border:0; background:transparent; box-shadow:none; white-space:pre-wrap; overflow-wrap:anywhere; line-height:1.85; color:#55644e; }
 .waiting-stopped { margin:0; }
-.job-recovery { padding:12px 20px; max-height:190px; overflow-y:auto; border:0; border-top:1px solid #e0e4d5; background:transparent; box-shadow:none; font-size:12px; }
-.recovery-notice { margin:0 0 7px; padding-top:0; padding-bottom:0; }
+/* Recovery records live in the task drawer, outside the conversation layout. */
+.job-recovery { min-height:0; overflow-y:auto; padding:8px 24px 24px; font-size:12px; }
+.recovery-notice { margin:0 0 12px; padding-top:0; padding-bottom:0; }
 .recovery-notice strong { display:block; font-size:12px; font-weight:600; }
 .recovery-notice .notice-text { font-size:11px; color:#65715f; }
-.job-recovery-row { display:flex; flex-wrap:wrap; align-items:center; gap:4px 12px; padding:4px 0 4px 29px; }
+.job-recovery-row { display:flex; flex-wrap:wrap; align-items:center; gap:8px; padding:16px 0; border-bottom:1px solid var(--line); }
 .job-identifier { overflow-wrap:anywhere; color:#5f6d56; }
-.job-recovery-row .button { min-height:30px; padding:3px 8px; font-size:12px; }
-.personal-demo-meter { display:flex; flex-wrap:wrap; align-items:center; gap:3px 15px; flex-shrink:0; padding:8px 24px; border-bottom:1px solid #e1e5d8; color:#65715b; font-size:11px; line-height:1.7; }
+.job-recovery-row .button { min-height:34px; padding:5px 10px; font-size:12px; }
+.personal-demo-meter { position:relative; flex-shrink:0; color:#526949; font-size:12px; line-height:1.6; }
 .personal-demo-meter strong { color:#4c6d45; font-weight:600; }
 .personal-demo-meter time { font-variant-numeric:tabular-nums; }
 .personal-demo-note { color:#737c69; }
 .personal-demo-meter.expired,.personal-demo-meter.expired strong { color:#936443; }
 @media(max-width:600px) {
-  .personal-demo-meter { padding:6px 14px; gap:2px 10px; font-size:10px; }
-  .personal-demo-note { flex-basis:100%; }
   .message { grid-template-columns:27px minmax(0,1fr); column-gap:10px; margin-bottom:25px; }
   .message.user { grid-template-columns:minmax(0,1fr) 27px; margin-bottom:28px; }
   .message-avatar { width:27px; height:27px; }
@@ -3272,6 +3259,170 @@ body {
   .markdown-answer { font-size:14px; line-height:1.85; }
   .markdown-answer pre { padding:.8em; }
   .markdown-table th,.markdown-table td { padding:.45em .65em; }
-  .job-recovery { padding:8px 12px; max-height:150px; }
   .job-identifier { font-size:11px; }
+}
+
+/* Compact workspace: one top bar, one scrolling conversation, a reachable composer. */
+.app-shell { height:100dvh; min-height:0; overflow:hidden; }
+.workspace { height:100%; min-height:0; }
+.workspace-header { position:relative; z-index:15; gap:12px; padding:10px 22px; }
+.page-heading { min-width:0; display:flex; align-items:center; gap:10px; white-space:nowrap; }
+.header-wordmark { font:600 16px/1.3 Georgia,"Songti SC",SimSun,serif; letter-spacing:-.3px; color:#314333; }
+.header-divider { color:#a4aa98; font-size:12px; }
+.page-heading #view-title { margin:0; font-size:16px; font-weight:500; color:#59664f; }
+.page-heading #view-description { margin:0; }
+.header-actions { min-width:0; gap:8px; }
+.header-actions .button { min-height:34px; padding:6px 9px; font-size:12px; }
+.header-actions .button svg { width:16px; height:16px; }
+.header-actions .mode-picker { gap:5px; }
+.mode-picker select { min-height:34px; font-size:12px; padding-right:12px; }
+.header-new-chat { color:#5d7253; }
+.connection-status { font-size:10px; padding:4px 8px; }
+.personal-demo-meter summary,.account-panel summary { display:flex; align-items:center; cursor:pointer; list-style:none; border-radius:7px; }
+.personal-demo-meter summary::-webkit-details-marker,.account-panel summary::-webkit-details-marker { display:none; }
+.personal-demo-meter summary:focus-visible,.account-panel summary:focus-visible { outline:2px solid var(--teal); outline-offset:3px; }
+.personal-demo-meter summary { gap:5px; padding:6px 8px; min-height:34px; background:#eef1e5; border:1px solid #e0e5d5; font-size:11px; font-variant-numeric:tabular-nums; white-space:nowrap; }
+.personal-demo-meter summary svg,.account-panel summary svg { width:12px; height:12px; }
+.quota-leaf { color:#69835b; font-size:14px; }
+.quota-popover,.account-panel .account-menu { position:absolute; z-index:40; top:calc(100% + 10px); right:0; display:flex; flex-direction:column; gap:9px; padding:16px; width:252px; max-width:calc(100vw - 28px); background:#fdfbf6; border:1px solid #dddccd; border-radius:10px; box-shadow:0 12px 36px #39472b1c; white-space:normal; }
+.quota-popover strong { font-size:13px; }
+.quota-popover>span { font-size:12px; color:#66715b; }
+.quota-popover .personal-demo-note { padding-top:8px; border-top:1px solid var(--line); }
+.personal-demo-meter[open] summary { border-color:#b7c6a9; }
+.task-center-toggle { gap:5px; }
+.task-count { min-width:19px; height:19px; padding:0 4px; display:inline-grid; place-items:center; border-radius:10px; background:#e5eadb; color:#4a6841; font-size:10px; font-variant-numeric:tabular-nums; }
+.header-actions .account-panel { display:block; position:relative; padding:0; border:0; text-align:left; }
+.account-panel summary { gap:7px; min-height:36px; }
+.account-panel summary #account-name { display:block; max-width:90px; font-size:12px; }
+.account-avatar { width:36px; height:36px; display:block; object-fit:cover; border:1px solid #d6decb; border-radius:50%; background:#eceee3; }
+.account-panel .account-menu { width:164px; align-items:stretch; }
+.account-menu #account-role { font-size:11px; padding:0 8px; }
+.account-menu .button { justify-content:flex-start; }
+.chat-messages { padding:24px clamp(20px,3vw,40px) 16px; overscroll-behavior:contain; scrollbar-gutter:stable; }
+.message { max-width:880px; margin-bottom:28px; }
+.message.user { margin-bottom:30px; }
+.message.user .message-avatar { width:36px; height:36px; overflow:hidden; margin-top:2px; }
+.message.user .message-avatar img { display:block; width:100%; height:100%; object-fit:cover; }
+.message.user { grid-template-columns:minmax(0,1fr) 36px; }
+.message.user .message-bubble { max-width:min(88%,42rem); padding:10px 15px; }
+.message.assistant .message-block,.message.assistant .message-body,.message.assistant .markdown-answer { background:transparent; border:0; box-shadow:none; }
+.markdown-answer { max-width:78ch; }
+.message-block,.proposal-card,.proposal-card>* { min-width:0; max-width:100%; }
+.composer-area { padding:6px clamp(20px,3vw,40px) 9px; }
+.composer { max-width:880px; margin:0 auto; padding:11px 14px 9px; }
+.composer textarea { --composer-max-height:176px; min-height:52px; max-height:var(--composer-max-height); resize:none; overflow-y:auto; font-size:14px; line-height:1.75; }
+.composer-bottom { gap:8px; }
+.composer-footnote { margin:5px auto 0; max-width:880px; font-size:10px; text-align:center; }
+.evidence-heading { padding:18px 20px; }
+.evidence-heading h2 { font-size:17px; }
+.evidence-heading p { font-size:11px; }
+.evidence-content { padding:16px; }
+.task-center-dialog { position:fixed; inset:12px 12px 12px auto; margin:0; width:min(440px,calc(100vw - 24px)); height:calc(100dvh - 24px); max-height:calc(100dvh - 24px); max-width:calc(100vw - 24px); padding:0; color:var(--ink); background:#fbf9f2; border:1px solid #d9dfcd; border-radius:14px; box-shadow:0 18px 72px #24351f26; overflow:hidden; }
+.task-center-dialog[open] { display:flex; flex-direction:column; }
+.task-center-dialog::backdrop { background:rgba(38,46,32,.28); backdrop-filter:blur(2px); }
+.task-center-header { flex:0 0 auto; padding:22px 24px 12px; display:flex; align-items:center; justify-content:space-between; gap:16px; }
+.task-center-header .section-overline { font-size:10px; margin-bottom:2px; color:#718267; }
+.task-center-header h2 { font:600 22px/1.4 "Songti SC",SimSun,serif; color:#304b31; }
+.task-center-intro { flex:0 0 auto; padding:0 24px 16px; color:#69725f; font-size:12px; line-height:1.8; border-bottom:1px solid var(--line); }
+.task-center-dialog .job-recovery { flex:1; min-height:0; max-height:none; padding:16px 24px 24px; overflow-y:auto; overscroll-behavior:contain; }
+.task-center-dialog .job-recovery-row { display:block; padding:18px 0; }
+.task-center-dialog .job-recovery-row:last-child { border-bottom:0; }
+.task-center-dialog .job-identifier { font:11px/1.6 ui-monospace,SFMono-Regular,Consolas,monospace; }
+.task-center-dialog .recovery-notice { border:0; padding:0; }
+.task-center-dialog .notice-icon { display:none; }
+.task-center-dialog .notice-content { width:100%; }
+@media(max-width:1280px) {
+  .header-wordmark { font-size:15px; }
+  .page-heading { gap:8px; }
+  .header-actions { gap:5px; }
+  .connection-status { display:none; }
+  .chat-view { grid-template-columns:minmax(0,1fr) 264px; }
+}
+@media(max-width:1100px) {
+  .chat-view { grid-template-columns:minmax(0,1fr); }
+  .evidence-panel { display:none; position:fixed; inset:0 0 0 auto; width:min(370px,94vw); z-index:30; }
+  .evidence-panel.is-open,.evidence-panel.mobile-open { display:flex; }
+  .evidence-close { display:grid; }
+  .evidence-mobile-toggle { display:inline-flex; }
+  .header-wordmark,.header-divider { display:none; }
+}
+@media(max-width:720px) {
+  .workspace-header { padding:8px 14px; gap:10px; }
+  .page-heading #view-title { font-size:15px; }
+  .header-actions { flex:1; justify-content:flex-end; gap:4px; }
+  .header-actions .button { padding:6px; }
+  .header-new-chat>span,.task-center-label,.evidence-mobile-toggle>span,.account-panel summary #account-name,.account-panel summary>svg { display:none; }
+  .account-avatar { width:32px; height:32px; }
+  .account-panel .account-menu { right:0; }
+  .personal-demo-meter summary { padding:6px; }
+  .quota-leaf { display:none; }
+  .header-actions .mode-picker select { font-size:12px; padding-right:4px; }
+  .mode-dot { width:6px; height:6px; }
+  .chat-messages { padding:20px 18px 12px; }
+  .composer-area { padding:6px 14px 8px; }
+  .composer { padding:10px 12px 8px; }
+  .composer textarea { --composer-max-height:128px; font-size:14px; }
+  .composer-shortcut { font-size:10px; }
+  .message.user .message-avatar { width:32px; height:32px; }
+  .message.user { grid-template-columns:minmax(0,1fr) 32px; }
+  .message.user .message-bubble { max-width:96%; }
+  .chat-welcome { padding-top:20px; padding-bottom:15px; }
+}
+@media(max-width:600px) {
+  .page-heading { display:none; }
+  .header-actions { justify-content:space-between; gap:4px; width:100%; }
+  .personal-demo-meter summary { font-size:11px; }
+  .quota-popover { right:-80px; width:252px; }
+  .composer-footnote { font-size:9px; }
+  .task-center-header { padding:20px 20px 12px; }
+  .task-center-intro { padding:0 20px 14px; }
+  .task-center-dialog .job-recovery { padding:14px 20px 20px; }
+}
+@media(max-width:440px) {
+  .app-shell { display:grid; grid-template-columns:minmax(0,1fr); grid-template-rows:auto minmax(0,1fr); height:100dvh; min-height:0; }
+  .sidebar { min-width:0; gap:10px; padding:8px 12px; }
+  .brand { flex-shrink:0; }
+  .app-nav { gap:3px; }
+  .nav-item { padding:6px 9px; }
+  .workspace { height:100%; min-height:0; }
+  .workspace-header { padding:8px 12px; height:60px; min-height:60px; }
+  .chat-messages { padding:17px 13px 10px; }
+  .composer-area { padding:5px 10px 7px; }
+  .composer-shortcut { display:none; }
+  .composer-bottom { justify-content:flex-end; }
+  .composer textarea { min-height:52px; }
+  .composer-footnote { margin-top:4px; }
+  .message { column-gap:9px; }
+  .message.user { column-gap:9px; }
+  .header-actions .button { min-height:34px; }
+  .task-count { min-width:18px; height:18px; }
+  .quota-popover { right:-102px; }
+  .task-center-dialog { inset:8px 8px 8px auto; width:calc(100vw - 16px); height:calc(100dvh - 16px); max-height:calc(100dvh - 16px); max-width:calc(100vw - 16px); border-radius:12px; }
+}
+
+/* Task entries separate verified state, local metadata and read-only actions. */
+.task-center-controls { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:0 0 10px; border-bottom:1px solid var(--line); }
+.task-center-count-label { margin:0; color:#6b7563; font-size:11px; white-space:nowrap; }
+.task-center-controls .button { min-height:32px; padding:4px 7px; font-size:11px; }
+.task-center-empty { margin:28px 0; color:#69745f; font-size:13px; line-height:1.9; }
+.job-recovery-heading { display:flex; justify-content:space-between; align-items:center; gap:12px; }
+.job-kind { font-size:14px; font-weight:600; color:#3f5d3c; letter-spacing:.03em; }
+.job-state { display:inline-flex; align-items:center; flex-shrink:0; min-height:25px; padding:2px 8px; border-radius:6px; background:#edf0e5; color:#65725b; font-size:11px; line-height:1.5; }
+.job-state[data-state="unknown"] { background:#f6eee1; color:#8a6843; }
+.job-state[data-state="failed"] { background:#f7ebe5; color:#9b5949; }
+.job-state[data-state="running"],.job-state[data-state="reserved"] { background:#e9efdf; color:#4d7044; }
+.job-state[data-state="succeeded"],.job-state[data-state="completed"] { background:#e8eee1; color:#4a6c43; }
+.job-recovery-meta { display:flex; flex-wrap:wrap; align-items:center; gap:5px 12px; margin-top:9px; color:#74806a; font-size:11px; line-height:1.65; }
+.job-recovery-meta .job-identifier { margin-left:auto; padding:1px 5px; background:#f0f1e8; border-radius:4px; }
+.job-recovery-actions { display:flex; flex-wrap:wrap; gap:6px; margin-top:12px; }
+.job-recovery-actions .button { min-height:32px; padding:5px 8px; border:1px solid #e0e4d5; border-radius:6px; background:#f8f9f1; color:#53724b; font-size:11px; }
+.job-recovery-actions .button:hover:not(:disabled) { background:#edf2e5; border-color:#bccfae; }
+.job-recovery-actions [data-job-action="hide"] { background:transparent; border-color:transparent; color:#7b7f70; }
+.job-local-note { margin:10px 0 0; color:#7b7966; font-size:11px; line-height:1.8; }
+.is-hidden-record .job-kind { color:#737e6b; }
+@media(max-width:440px) {
+  .task-center-dialog .job-recovery-row { padding:17px 0; }
+  .job-recovery-heading { gap:8px; }
+  .job-recovery-actions { gap:5px; }
+  .job-recovery-actions .button { min-height:34px; padding:5px 7px; }
 }
