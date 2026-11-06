@@ -12,6 +12,7 @@ const sourceRoot = new URL('../src/project_copilot/web/', import.meta.url);
 const files = new Map();
 for (const [url, path, type] of [
   ['/', 'index.html', 'text/html'], ['/ui-assets/app.js', 'assets/app.js', 'text/javascript'],
+  ['/ui-assets/conversations.js', 'assets/conversations.js', 'text/javascript'],
   ['/ui-assets/markdown.js', 'assets/markdown.js', 'text/javascript'], ['/ui-assets/task-center.js', 'assets/task-center.js', 'text/javascript'], ['/ui-assets/styles.css', 'assets/styles.css', 'text/css'],
   ['/ui-assets/avatar-swordsman.webp', 'assets/avatar-swordsman.webp', 'image/webp'],
   ...['mark', 'ink-mountains', 'bamboo'].map((name) => [`/ui-assets/${name}.svg`, `assets/${name}.svg`, 'image/svg+xml']),
