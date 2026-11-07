@@ -1,0 +1,94 @@
+name: Reproducible checks
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: checks-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  frontend:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npx --no-install playwright install --with-deps chromium
+      - run: npm run verify -- --frontend
+      - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+        if: always()
+        with:
+          name: frontend-build
+          path: test-results/
+          retention-days: 7
+  python:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version-file: .node-version
+      - uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9 # v7
+        with:
+          version: '0.11.32'
+          python-version: '3.13'
+          enable-cache: true
+      - run: npm run verify -- --python
+      - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+        if: always()
+        with:
+          name: python-results
+          path: test-results/
+          retention-days: 7
+  services:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17.11-bookworm
+        env:
+          POSTGRES_USER: project_copilot_test
+          POSTGRES_PASSWORD: local-test-only
+          POSTGRES_DB: project_copilot_test
+        ports: ['5434:5432']
+        options: >-
+          --health-cmd "pg_isready -U project_copilot_test -d project_copilot_test"
+          --health-interval 2s --health-timeout 3s --health-retries 30
+      qdrant:
+        image: qdrant/qdrant:v1.19.2
+        ports: ['16433:6333']
+    env:
+      PROJECT_COPILOT_QDRANT_URL: http://127.0.0.1:16433
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version-file: .node-version
+      - uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9 # v7
+        with:
+          version: '0.11.32'
+          python-version: '3.13'
+          enable-cache: true
+      - name: Wait for isolated Qdrant
+        run: |
+          for i in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:16433/readyz; then exit 0; fi
+            sleep 1
+          done
+          exit 1
+      - run: npm run verify -- --services
+      - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+        if: always()
+        with:
+          name: service-results
+          path: test-results/
+          retention-days: 7
