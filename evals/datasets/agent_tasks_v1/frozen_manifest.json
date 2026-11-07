@@ -1,0 +1,30 @@
+{
+  "version": "agent_tasks_v1",
+  "dataset_sha256": "3eaa97812ccca75ce53289c6683b56e9cc5ab43930f61f0d236fc37c7e56f7a4",
+  "synthetic": true,
+  "case_count": 30,
+  "splits": {
+    "dev": 20,
+    "holdout": 10
+  },
+  "families": {
+    "knowledge_lookup": "dev",
+    "ticket_filter": "dev",
+    "cross_domain": "dev",
+    "conditional_create": "dev",
+    "insufficient_knowledge": "dev",
+    "repeated_read": "dev",
+    "unavailable_tool": "dev",
+    "invalid_arguments": "dev",
+    "knowledge_failure": "dev",
+    "invalid_final": "dev",
+    "knowledge_comparison": "holdout",
+    "ticket_detail": "holdout",
+    "conditional_no_create": "holdout",
+    "insufficient_ticket": "holdout",
+    "model_failure": "holdout"
+  },
+  "human_gold_review": "pending",
+  "frozen_on": "2026-11-07",
+  "policy": "Keep v1 cases unchanged; revisions require a new dataset version. Holdout is public and not a blind model benchmark."
+}
