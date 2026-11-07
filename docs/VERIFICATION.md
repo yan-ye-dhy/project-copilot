@@ -34,13 +34,13 @@ npm run verify
 
 每轮真实结果在PR及GitHub Checks中记录；本文件不把计划写成通过。JUnit和静态构建保存在独立`test-results/verify-*`目录，CI保留7天。使用`-ra`列出跳过项；GPU、真实供应商、Docker ingress与公网E2E不因CI绿色而被标为已验证。
 
-2026-11-07，Codex在按锁文件新建的Python 3.13 dev-only环境执行最终合并代码：`npm run verify -- --services` **1954通过、0失败、10跳过**（364.49秒；真实隔离PostgreSQL与HTTP Qdrant，模型替身）；`npm run verify -- --frontend` **317通过、0失败、0跳过**，包含实际Chromium、代理回环和11文件静态构建。跳过的是1项GPU与9项Docker入口专项；没有真实供应商请求。这些是本机结果，不是尚未启用的GitHub Actions结果。
+2026-11-07，Codex在按锁文件新建的Python 3.13 dev-only环境执行最终合并代码：`npm run verify -- --services` **1954通过、0失败、10跳过**（364.49秒；真实隔离PostgreSQL与HTTP Qdrant，模型替身）；`npm run verify -- --frontend` **317通过、0失败、0跳过**，包含实际Chromium、代理回环和11文件静态构建。跳过的是1项GPU与9项Docker入口专项；没有真实供应商请求。这些是本机结果；GitHub Actions结果以对应提交的独立运行记录为准。
 
 首次完整执行修复了三处测试环境依赖：Alembic使用当前Python解释器而非固定`.venv`路径；隔离Qdrant客户端不继承宿主代理；历史退役测试在随机测试数据库中按历史时间装载既存提案，避免今日的Context过期门禁阻止测试数据准备。生产迁移、过期门禁和恢复规则均未修改。
 
 ## 6. Git与发布
 
-当前已交付并本机运行上述统一入口。自动GitHub Actions工作流已在独立本机分支`feat/reproducible-checks`实现（三项检查、只读权限、固定动作SHA），但发布因现有凭据缺少`workflow`权限被GitHub拒绝，尚未上传或运行，不能将本机通过称为云端CI通过。仓库管理员完成`gh auth refresh -h github.com -s workflow`后，可继续独立PR审核工作流。EdgeOne既有main自动部署独立运行，也不能把本机构建成功当成EdgeOne发布成功。
+`.github/workflows/checks.yml`在面向main的PR、main推送和手动dispatch时执行三项独立检查：前端/Chromium、离线Python、真实隔离PostgreSQL与Qdrant。工作流只有`contents: read`权限，Actions固定提交SHA，无Secrets、部署或付费模型步骤，测试产物保留7天；同一分支的新运行取消被替代的旧检查。最初推送因缺少`workflow`权限被拒绝，用户完成正常GitHub授权后通过独立PR启用。每次是否通过须核对该提交的Checks，不能将本机通过称为云端CI通过。EdgeOne既有main自动部署独立运行，也不能把CI成功当成EdgeOne发布成功。
 
 ## 7. 复习重点
 
