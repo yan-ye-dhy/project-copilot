@@ -1,0 +1,2600 @@
+{
+  "schema_version": 1,
+  "provenance": {
+    "execution_mode": "scripted_contract",
+    "model_decisions": "preset_script_not_model_decisions",
+    "dataset_sha256": "3eaa97812ccca75ce53289c6683b56e9cc5ab43930f61f0d236fc37c7e56f7a4",
+    "config": {
+      "default_limits": {
+        "max_model_calls": 4,
+        "max_tool_calls": 6,
+        "tool_timeout_seconds": 10.0,
+        "model_timeout_seconds": 30.0,
+        "total_timeout_seconds": 120.0,
+        "max_tool_result_chars": 24000,
+        "max_context_chars": 60000,
+        "max_tools_per_message": 12,
+        "max_no_progress_rounds": 3
+      },
+      "system_prompt_sha256": "02dd139111c49626934b38c65619194bc3acf5b7c912487693e0bd4308ca2cac",
+      "split": "all",
+      "case_limits": {
+        "knowledge_lookup-1": {},
+        "ticket_filter-1": {},
+        "cross_domain-1": {},
+        "conditional_create-1": {},
+        "insufficient_knowledge-1": {},
+        "repeated_read-1": {},
+        "unavailable_tool-1": {},
+        "invalid_arguments-1": {},
+        "knowledge_failure-1": {},
+        "invalid_final-1": {},
+        "knowledge_comparison-1": {},
+        "ticket_detail-1": {},
+        "conditional_no_create-1": {},
+        "insufficient_ticket-1": {},
+        "model_failure-1": {},
+        "knowledge_lookup-2": {},
+        "ticket_filter-2": {},
+        "cross_domain-2": {},
+        "conditional_create-2": {},
+        "insufficient_knowledge-2": {},
+        "repeated_read-2": {},
+        "unavailable_tool-2": {},
+        "invalid_arguments-2": {},
+        "knowledge_failure-2": {},
+        "invalid_final-2": {},
+        "knowledge_comparison-2": {},
+        "ticket_detail-2": {},
+        "conditional_no_create-2": {},
+        "insufficient_ticket-2": {},
+        "model_failure-2": {}
+      },
+      "runner": "actual_compiled_langgraph",
+      "backend": "synthetic_in_memory",
+      "model": "scripted-contract-stub"
+    },
+    "config_sha256": "e8f8be914f511ecf376469666f0e5858e3141faa8c007be45fb506e63dee8c6f",
+    "code_sha256": "23c3bfe2b1f5f718358ecfb641f23120ad1aa675e4f49f3e48bf1db2135b8639",
+    "files": {
+      "evals/agent_tasks/__init__.py": "6408133d3468d9bee7ebc0797ac920901a1afbf2e8fbdadfffb54a6cde2f97d1",
+      "evals/agent_tasks/__main__.py": "77284446786625a44daa2afafd851edcca2083d96a19859cc12815b2a3f341e0",
+      "evals/agent_tasks/dataset.py": "bad72d1b0c0062e695e9d40ea46bca8074ab12bd0ee75e655cf3146208445ae0",
+      "evals/agent_tasks/runner.py": "0e2ed620171e95a774f2fdfec4aafe421c0f03cbc0aa55ef531a3fdf9661d2fc",
+      "evals/agent_tasks/scoring.py": "450e459021078e624ee1400b8be03eaf4a063e83de782cafc18b6b84c69575c8",
+      "src/project_copilot/agent/__init__.py": "7d5a3da53f42b5fd640785c4eeb73a85c5626ab6fca0f7c93a39a70864f66987",
+      "src/project_copilot/agent/backend.py": "de3d757e40b316e3f5ea9163441fb5aba537a0942433a6c7d0ce3e1d340e1689",
+      "src/project_copilot/agent/graph.py": "4c57ae716de24c657d7f4a39c09a5d543cea8314a6581f2de8a72b7edd678865",
+      "src/project_copilot/agent/observations.py": "582c0ea024f89ed15e446c4fa80f3d3b6e6ce71f10f89b8473da76c6d6b34502",
+      "src/project_copilot/agent/proposals.py": "e689141b1e112982a9b8ec3f9112bb226aeb0ef57ffbc24ae46e7be60a8fe42f",
+      "src/project_copilot/agent/service.py": "3be8de24c9992095d8093b74364a0d48bb2b443bb32b1b674461dbea027f8cd3",
+      "src/project_copilot/agent/state.py": "8f0fec16c24f8ba862d881812e91d4969627cc2622e40e517032689b96e8c97b",
+      "src/project_copilot/agent/tools.py": "ebed76d903a5c65e210f6a6e3f89093cdde60d7297b3cdade3207adf21d84edb",
+      "src/project_copilot/schemas/agent.py": "067b2b1a38dcd40f6dac2cab7da21070c2ddedb81b1cd6ffd54ad1542d10ff26",
+      "src/project_copilot/schemas/tickets.py": "c5dc5dda55da02215efd6a80a0994892f09ac506f560c374a93c03aee4e5e113"
+    },
+    "git_head": "484ec52193e95f8afb248bea12e510d63eb39af8",
+    "production_git_head": "484ec52193e95f8afb248bea12e510d63eb39af8",
+    "code_locations": {
+      "evaluator_root": "/tmp/pc-upgrade-evals-20261107",
+      "production_root": "/tmp/pc-upgrade-observations-20261107"
+    },
+    "dependencies": {
+      "langgraph": "1.2.18",
+      "langchain-core": "1.6.9",
+      "pydantic": "2.14.0"
+    }
+  },
+  "records": [
+    {
+      "case_id": "knowledge_lookup-1",
+      "result": {
+        "run_id": "contract-knowledge_lookup-1",
+        "status": "answered",
+        "answer": "先检查合成队列积压，再调整消费者数量。",
+        "sources": [
+          {
+            "id": "knowledge:synthetic-1",
+            "kind": "knowledge",
+            "data": {
+              "text": "先检查合成队列积压，再调整消费者数量。",
+              "document_name": "合成操作手册",
+              "page": 1
+            }
+          }
+        ],
+        "events": [
+          {
+            "tool_call_id": "k1",
+            "name": "search_knowledge",
+            "status": "ok",
+            "failure_type": null,
+            "elapsed_ms": 0.16760899961809628,
+            "executed": true
+          }
+        ],
+        "model_calls": 2,
+        "tool_calls": 1,
+        "tool_executions": 1,
+        "tool_failures": 0,
+        "usage": null,
+        "model_events": [
+          {
+            "step": 1,
+            "status": "ok",
+            "model": "scripted-contract-stub",
+            "usage": null,
+            "elapsed_ms": 1.8984979997185292
+          },
+          {
+            "step": 2,
+            "status": "ok",
+            "model": "scripted-contract-stub",
+            "usage": null,
+            "elapsed_ms": 0.85928399948898
+          }
+        ],
+        "elapsed_ms": 12.499499999648833,
+        "failure_type": null,
+        "trace_exported": false
+      },
+      "prompt_observations": [
+        {
+          "message_chars": 962,
+          "tool_schema_chars": 1318,
+          "tool_observation_chars": 0,
+          "distinct_tool_observation_chars": 0,
+          "tool_message_count": 0
+        },
+        {
+          "message_chars": 1580,
+          "tool_schema_chars": 1318,
+          "tool_observation_chars": 172,
+          "distinct_tool_observation_chars": 172,
+          "tool_message_count": 1
+        }
+      ],
+      "backend_executions": [
+        {
+          "name": "search_knowledge",
+          "args": {
+            "query": "SYN-A17"
+          }
+        }
+      ],
+      "unmatched_fixtures": [],
+      "unused_script_steps": 0,
+      "external_model_requests": 0,
+      "real_service_executions": 0
+    },
+    {
+      "case_id": "ticket_filter-1",
+      "result": {
+        "run_id": "contract-ticket_filter-1",
+        "status": "answered",
+        "answer": "当前匹配工单状态为open。",
+        "sources": [
+          {
+            "id": "ticket:00000000-0000-4000-8000-000000000001",
+            "kind": "ticket",
+            "data": {
+              "id": "00000000-0000-4000-8000-000000000001",
+              "title": "SYN-A17 合成告警",
+              "description": "仅用于离线评测。",
+              "status": "open"
+            }
+          }
+        ],
+        "events": [
+          {
+            "tool_call_id": "t1",
+            "name": "search_tickets",
+            "status": "ok",
+            "failure_type": null,
+            "elapsed_ms": 0.1698039995972067,
+            "executed": true
+          }
+        ],
+        "model_calls": 2,
+        "tool_calls": 1,
+        "tool_executions": 1,
+        "tool_failures": 0,
+        "usage": null,
+        "model_events": [
+          {
+            "step": 1,
+            "status": "ok",
+            "model": "scripted-contract-stub",
+            "usage": null,
+            "elapsed_ms": 1.0818900000231224
+          },
+          {
+            "step": 2,
+            "status": "ok",
+            "model": "scripted-contract-stub",
+            "usage": null,
+            "elapsed_ms": 0.9301899999627494
+          }
+        ],
+        "elapsed_ms": 5.111380000016652,
+        "failure_type": null,
+        "trace_exported": false
+      },
+      "prompt_observations": [
+        {
+          "message_chars": 972,
+          "tool_schema_chars": 1318,
+          "tool_observation_chars": 0,
+          "distinct_tool_observation_chars": 0,
+          "tool_message_count": 0
+        },
+        {
+          "message_chars": 1668,
+          "tool_schema_chars": 1318,
+          "tool_observation_chars": 236,
+          "distinct_tool_observation_chars": 236,
+          "tool_message_count": 1
+        }
+      ],
+      "backend_executions": [
+        {
+          "name": "search_tickets",
+          "args": {
+            "status": "open",
+            "q": "SYN-A17",
+            "limit": 5
+          }
+        }
+      ],
+      "unmatched_fixtures": [],
+      "unused_script_steps": 0,
+      "external_model_requests": 0,
+      "real_service_executions": 0
+    },
+    {
+      "case_id": "cross_domain-1",
+      "result": {
+        "run_id": "contract-cross_domain-1",
+        "status": "answered",
+        "answer": "当前合成工单open；手册建议：先检查合成队列积压，再调整消费者数量。",
+        "sources": [
+          {
+            "id": "ticket:00000000-0000-4000-8000-000000000001",
+            "kind": "ticket",
+            "data": {
+              "id": "00000000-0000-4000-8000-000000000001",
+              "title": "SYN-A17 合成告警",
+              "description": "仅用于离线评测。",
+              "status": "open"
+            }
+          },
+          {
+            "id": "knowledge:synthetic-1",
+            "kind": "knowledge",
+            "data": {
+              "text": "先检查合成队列积压，再调整消费者数量。",
+              "document_name": "合成操作手册",
+              "page": 1
+            }
+          }
+        ],
+        "events": [
+          {
+            "tool_call_id": "t1",
+            "name": "search_tickets",
+            "status": "ok",
+            "failure_type": null,
+            "elapsed_ms": 0.12443099967640592,
+            "executed": true
+          },
+          {
+            "tool_call_id": "k1",
+            "name": "search_knowledge",
+            "status": "ok",
+            "failure_type": null,
+            "elapsed_ms": 0.07696699958614772,
+            "executed": true
+          }
+        ],
+        "model_calls": 2,
+        "tool_calls": 2,
+        "tool_executions": 2,
+        "tool_failures": 0,
+        "usage": null,
+        "model_events": [
+          {
+            "step": 1,
+            "status": "ok",
+            "model": "scripted-contract-stub",
+            "usage": null,
+            "elapsed_ms": 1.0948239996650955
+          },
+          {
+            "step": 2,
+            "status": "ok",
+            "model": "scripted-contract-stub",
+            "usage": null,
+            "elapsed_ms": 0.8095390003290959
+          }
+        ],
+        "elapsed_ms": 4.3432869997559465,
+        "failure_type": null,
+        "trace_exported": false
+      },
+      "prompt_observations": [
+        {
+          "message_chars": 972,
+          "tool_schema_chars": 1318,
+          "tool_observation_chars": 0,
+          "distinct_tool_observation_chars": 0,
+          "tool_message_count": 0
+        },
+        {
+          "message_chars": 2093,
+          "tool_schema_chars": 1318,
+          "tool_observation_chars": 408,
+          "distinct_tool_observation_chars": 408,
+          "tool_message_count": 2
+        }
+      ],
+      "backend_executions": [
+        {
+          "name": "search_tickets",
+          "args": {
+            "status": null,
+            "q": "SYN-A17",
+            "limit": 5
+          }
+        },
+        {
+          "name": "search_knowledge",
+          "args": {
+            "query": "SYN-A17"
+          }
+        }
+      ],
+      "unmatched_fixtures": [],
+      "unused_script_steps": 0,
+      "external_model_requests": 0,
+      "real_service_executions": 0
+    },
+    {
+      "case_id": "conditional_create-1",
+      "result": {
+        "run_id": "contract-conditional_create-1",
+        "status": "pending_confirmation",
+        "answer": "已生成待确认工单提案；请查看预览并明确确认或拒绝。",
+        "sources": [
+          {
+            "id": "knowledge:synthetic-1",
+            "kind": "knowledge",
+            "data": {
+              "text": "先检查合成队列积压，再调整消费者数量。",
+              "document_name": "合成操作手册",
+              "page": 1
+            }
+          },
+          {
+            "id": "proposal:synthetic-1",
+            "kind": "proposal",
+            "data": {
+              "status": "pending",
+              "title": "SYN-A17 合成待确认提案"
+            }
+          }
+        ],
+        "events": [
+          {
+            "tool_call_id": "t1",
+            "name": "search_tickets",
+            "status": "ok",
+            "failure_type": null,
+            "elapsed_ms": 0.12308799978200113,
+            "executed": true
+          },
+          {
+            "tool_call_id": "k1",
+            "name": "search_knowledge",
+            "status": "ok",
+            "failure_type": null,
+            "elapsed_ms": 0.08446100036962889,
+            "executed": true
+          },
+          {
+            "tool_call_id": "p1",
+            "name": "propose_ticket",
+            "status": "ok",
+            "failure_type": null,
+            "elapsed_ms": 0.132987000142748,
+            "executed": true
+          }
+        ],
+        "model_calls": 2,
+        "tool_calls": 3,
+        "tool_executions": 3,
+        "tool_failures": 0,
+        "usage": null,
+        "model_events": [
+          {
+            "step": 1,
+            "status": "ok",
+            "model": "scripted-contract-stub",
+            "usage": null,
+            "elapsed_ms": 1.3618410002891324
+          },
+          {
+            "step": 2,
+            "status": "ok",
+            "model": "scripted-contract-stub",
+            "usage": null,
+            "elapsed_ms": 1.1360950002199388
+          }
+        ],
+        "elapsed_ms": 6.934939999155176,
+        "failure_type": null,
+        "trace_exported": false
+      },
+      "prompt_observations": [
+        {
+          "message_chars": 980,
+          "tool_schema_chars": 1777,
+          "tool_observation_chars": 0,
+          "distinct_tool_observation_chars": 0,
+          "tool_message_count": 0
+        },
+        {
+          "message_chars": 1875,
+          "tool_schema_chars": 1777,
+          "tool_observation_chars": 210,
+          "distinct_tool_observation_chars": 210,
+          "tool_message_count": 2
+        }
+      ],
+      "backend_executions": [
+        {
+          "name": "search_tickets",
+          "args": {
+            "status": null,
+            "q": "SYN-A17",
+            "limit": 5
+          }
+        },
+        {
+          "name": "search_knowledge",
+          "args": {
+            "query": "SYN-A17"
+          }
+        },
+        {
+          "name": "propose_ticket",
+          "args": {
+            "title": "SYN-A17 合成待确认提案",
+            "description": "根据合成手册检查；必须由用户明确确认。"
+          }
+        }
+      ],
+      "unmatched_fixtures": [],
+      "unused_script_steps": 0,
+      "external_model_requests": 0,
+      "real_service_executions": 0
+    },
+    {
+      "case_id": "insufficient_knowledge-1",
+      "result": {
+        "run_id": "contract-insufficient_knowledge-1",
+        "status": "insufficient_evidence",
+        "answer": "证据不足，需要补充相关资料。",
+        "sources": [],
+        "events": [
+          {
+            "tool_call_id": "k1",
+            "name": "search_knowledge",
+            "status": "ok",
+            "failure_type": null,
+            "elapsed_ms": 0.11643600009847432,
+            "executed": true
+          }
+        ],
+        "model_calls": 2,
+        "tool_calls": 1,
+        "tool_executions": 1,
+        "tool_failures": 0,
+        "usage": null,
+        "model_events": [
+          {
+            "step": 1,
+            "status": "ok",
+            "model": "scripted-contract-stub",
+            "usage": null,
+            "elapsed_ms": 1.1238520000915742
+          },
+          {
+            "step": 2,
+            "status": "ok",
+            "model": "scripted-contract-stub",
+            "usage": null,
+            "elapsed_ms": 0.9325499995611608
+          }
+        ],
+        "elapsed_ms": 4.641069000172138,
+        "failure_type": null,
+        "trace_exported": false
+      },
+      "prompt_observations": [
+        {
+          "message_chars": 966,
+          "tool_schema_chars": 1318,
+          "tool_observation_chars": 0,
+          "distinct_tool_observation_chars": 0,
+          "tool_message_count": 0
+        },
+        {
+          "message_chars": 1430,
+          "tool_schema_chars": 1318,
+          "tool_observation_chars": 38,
+          "distinct_tool_observation_chars": 38,
+          "tool_message_count": 1
+        }
+      ],
+      "backend_executions": [
+        {
+          "name": "search_knowledge",
+          "args": {
+            "query": "UNKNOWN-1"
+          }
+        }
+      ],
+      "unmatched_fixtures": [],
+      "unused_script_steps": 0,
+      "external_model_requests": 0,
+      "real_service_executions": 0
+    },
+    {
+      "case_id": "repeated_read-1",
+      "result": {
+        "run_id": "contract-repeated_read-1",
+        "status": "answered",
+        "answer": "当前合成工单状态为open。",
+        "sources": [
+          {
+            "id": "ticket:00000000-0000-4000-8000-000000000001",
+            "kind": "ticket",
+            "data": {
+              "id": "00000000-0000-4000-8000-000000000001",
+              "title": "SYN-A17 合成告警",
+              "description": "仅用于离线评测。",
+              "status": "open"
+            }
+          }
+        ],
+        "events": [
+          {
+            "tool_call_id": "t1",
+            "name": "search_tickets",
+            "status": "ok",
+            "failure_type": null,
+            "elapsed_ms": 0.1592030002939282,
+            "executed": true
+          },
+          {
+            "tool_call_id": "t2",
+            "name": "search_tickets",
+            "status": "error",
+            "failure_type": "duplicate_read",
+            "elapsed_ms": 0.046178000047802925,
+            "executed": false
+          }
+        ],
+        "model_calls": 3,
+        "tool_calls": 2,
+        "tool_executions": 1,
+        "tool_failures": 1,
+        "usage": null,
+        "model_events": [
+          {
+            "step": 1,
+            "status": "ok",
+            "model": "scripted-contract-stub",
+            "usage": null,
+            "elapsed_ms": 0.9392969996042666
+          },
+          {
+            "step": 2,
+            "status": "ok",
+            "model": "scripted-contract-stub",
+            "usage": null,
+            "elapsed_ms": 0.8358550003322307
+          },
+          {
+            "step": 3,
+            "status": "ok",
+            "model": "scripted-contract-stub",
+            "usage": null,
+            "elapsed_ms": 0.8434340006715502
+          }
+        ],
+        "elapsed_ms": 6.240187000003061,
+        "failure_type": null,
+        "trace_exported": false
+      },
+      "prompt_observations": [
+        {
+          "message_chars": 970,
+          "tool_schema_chars": 1318,
+          "tool_observation_chars": 0,
+          "distinct_tool_observation_chars": 0,
+          "tool_message_count": 0
+        },
+        {
+          "message_chars": 1650,
+          "tool_schema_chars": 1318,
+          "tool_observation_chars": 236,
+          "distinct_tool_observation_chars": 236,
+          "tool_message_count": 1
+        },
+        {
+          "message_chars": 2213,
+          "tool_schema_chars": 1318,
+          "tool_observation_chars": 377,
+          "distinct_tool_observation_chars": 377,
+          "tool_message_count": 2
+        }
+      ],
+      "backend_executions": [
+        {
+          "name": "search_tickets",
+          "args": {
+            "status": null,
+            "q": "SYN-A17",
+            "limit": 5
+          }
+        }
+      ],
+      "unmatched_fixtures": [],
+      "unused_script_steps": 0,
+      "external_model_requests": 0,
+      "real_service_executions": 0
+    },
+    {
+      "case_id": "unavailable_tool-1",
+      "result": {
+        "run_id": "contract-unavailable_tool-1",
+        "status": "insufficient_evidence",
+        "answer": "无法直接创建工单，缺少确认与证据。",
+        "sources": [],
+        "events": [
+          {
+            "tool_call_id": "x1",
+            "name": "create_ticket",
+            "status": "error",
+            "failure_type": "unknown_tool",
+            "elapsed_ms": 0.04050999996252358,
+            "executed": false
+          }
+        ],
+        "model_calls": 2,
+        "tool_calls": 1,
+        "tool_executions": 0,
+        "tool_failures": 1,
+        "usage": null,
+        "model_events": [
+          {
+            "step": 1,
+            "status": "ok",
+            "model": "scripted-contract-stub",
+            "usage": null,
+            "elapsed_ms": 1.0025600004155422
+          },
+          {
+            "step": 2,
+            "status": "ok",
+            "model": "scripted-contract-stub",
+            "usage": null,
+            "elapsed_ms": 0.9524919996692915
+          }
+        ],
+        "elapsed_ms": 5.029676000049221,
+        "failure_type": null,
+        "trace_exported": false
+      },
+      "prompt_observations": [
+        {
+          "message_chars": 969,
+          "tool_schema_chars": 1318,
+          "tool_observation_chars": 0,
+          "distinct_tool_observation_chars": 0,
+          "tool_message_count": 0
+        },
+        {
+          "message_chars": 1472,
+          "tool_schema_chars": 1318,
+          "tool_observation_chars": 83,
+          "distinct_tool_observation_chars": 83,
+          "tool_message_count": 1
+        }
+      ],
+      "backend_executions": [],
+      "unmatched_fixtures": [],
+      "unused_script_steps": 0,
+      "external_model_requests": 0,
+      "real_service_executions": 0
+    },
+    {
+      "case_id": "invalid_arguments-1",
+      "result": {
+        "run_id": "contract-invalid_arguments-1",
+        "status": "answered",
+        "answer": "匹配工单状态为open。",
+        "sources": [
+          {
+            "id": "ticket:00000000-0000-4000-8000-000000000001",
+            "kind": "ticket",
+            "data": {
+              "id": "00000000-0000-4000-8000-000000000001",
+              "title": "SYN-A17 合成告警",
+              "description": "仅用于离线评测。",
+              "status": "open"
+            }
+          }
+        ],
+        "events": [
+          {
+            "tool_call_id": "t1",
+            "name": "get_ticket",
+            "status": "error",
+            "failure_type": "arguments_invalid",
+            "elapsed_ms": 0.049618999582889955,
+            "executed": false
+          },
+          {
+            "tool_call_id": "t2",
+            "name": "search_tickets",
+            "status": "ok",
+            "failure_type": null,
+            "elapsed_ms": 0.15503799932048423,
+            "executed": true
+          }
+        ],
+        "model_calls": 3,
+        "tool_calls": 2,
+        "tool_executions": 1,
+        "tool_failures": 1,
+        "usage": null,
+        "model_events": [
+          {
+            "step": 1,
+            "status": "ok",
+            "model": "scripted-contract-stub",
+            "usage": null,
+            "elapsed_ms": 0.9048179999808781
+          },
+          {
+            "step": 2,
+            "status": "ok",
+            "model": "scripted-contract-stub",
+            "usage": null,
+            "elapsed_ms": 0.8094160002656281
+          },
+          {
+            "step": 3,
+            "status": "ok",
+            "model": "scripted-contract-stub",
+            "usage": null,
+            "elapsed_ms": 1.4878909996696166
+          }
+        ],
+        "elapsed_ms": 8.333780999237206,
+        "failure_type": null,
+        "trace_exported": false
+      },
+      "prompt_observations": [
+        {
+          "message_chars": 963,
+          "tool_schema_chars": 1318,
+          "tool_observation_chars": 0,
+          "distinct_tool_observation_chars": 0,
+          "tool_message_count": 0
+        },
+        {
+          "message_chars": 1472,
+          "tool_schema_chars": 1318,
+          "tool_observation_chars": 88,
+          "distinct_tool_observation_chars": 88,
+          "tool_message_count": 1
+        },
+        {
+          "message_chars": 2152,
+          "tool_schema_chars": 1318,
+          "tool_observation_chars": 324,
+          "distinct_tool_observation_chars": 324,
+          "tool_message_count": 2
+        }
+      ],
+      "backend_executions": [
+        {
+          "name": "search_tickets",
+          "args": {
+            "status": null,
+            "q": "SYN-A17",
+            "limit": 5
+          }
+        }
+      ],
+      "unmatched_fixtures": [],
+      "unused_script_steps": 0,
+      "external_model_requests": 0,
+      "real_service_executions": 0
+    },
+    {
+      "case_id": "knowledge_failure-1",
+      "result": {
+        "run_id": "contract-knowledge_failure-1",
+        "status": "failed",
+        "answer": "本次执行未完成，请根据run_id检查失败类型。",
+        "sources": [],
+        "events": [
+          {
+            "tool_call_id": "k1",
+            "name": "search_knowledge",
+            "status": "error",
+            "failure_type": "tool_timeout",
+            "elapsed_ms": 0.13703799959330354,
+            "executed": true
+          }
+        ],
+        "model_calls": 1,
+        "tool_calls": 1,
+        "tool_executions": 1,
+        "tool_failures": 1,
+        "usage": null,
+        "model_events": [
+          {
+            "step": 1,
+            "status": "ok",
+            "model": "scripted-contract-stub",
+            "usage": null,
+            "elapsed_ms": 1.1637240004347404
+          }
+        ],
+        "elapsed_ms": 4.099789000065357,
+        "failure_type": "knowledge_retrieval_failed",
+        "trace_exported": false
+      },
+      "prompt_observations": [
+        {
+          "message_chars": 971,
+          "tool_schema_chars": 1318,
+          "tool_observation_chars": 0,
+          "distinct_tool_observation_chars": 0,
+          "tool_message_count": 0
+        }
+      ],
+      "backend_executions": [
+        {
+          "name": "search_knowledge",
+          "args": {
+            "query": "SYN-A17"
+          }
+        }
+      ],
+      "unmatched_fixtures": [],
+      "unused_script_steps": 0,
+      "external_model_requests": 0,
+      "real_service_executions": 0
+    },
+    {
+      "case_id": "invalid_final-1",
+      "result": {
+        "run_id": "contract-invalid_final-1",
+        "status": "failed",
+        "answer": "本次执行未完成，请根据run_id检查失败类型。",
+        "sources": [],
+        "events": [],
+        "model_calls": 1,
+        "tool_calls": 0,
+        "tool_executions": 0,
+        "tool_failures": 0,
+        "usage": null,
+        "model_events": [
+          {
+            "step": 1,
+            "status": "ok",
+            "model": "scripted-contract-stub",
+            "usage": null,
+            "elapsed_ms": 1.7058399998859386
+          }
+        ],
+        "elapsed_ms": 3.8864230000399402,
+        "failure_type": "invalid_final",
+        "trace_exported": false
+      },
+      "prompt_observations": [
+        {
+          "message_chars": 970,
+          "tool_schema_chars": 1318,
+          "tool_observation_chars": 0,
+          "distinct_tool_observation_chars": 0,
+          "tool_message_count": 0
+        }
+      ],
+      "backend_executions": [],
+      "unmatched_fixtures": [],
+      "unused_script_steps": 0,
+      "external_model_requests": 0,
+      "real_service_executions": 0
+    },
+    {
+      "case_id": "knowledge_comparison-1",
+      "result": {
+        "run_id": "contract-knowledge_comparison-1",
+        "status": "answered",
+        "answer": "先检查合成队列积压，再调整消费者数量。",
+        "sources": [
+          {
+            "id": "knowledge:synthetic-1",
+            "kind": "knowledge",
+            "data": {
+              "text": "先检查合成队列积压，再调整消费者数量。",
+              "document_name": "合成操作手册",
+              "page": 1
+            }
+          }
+        ],
+        "events": [
+          {
+            "tool_call_id": "k1",
+            "name": "search_knowledge",
+            "status": "ok",
+            "failure_type": null,
+            "elapsed_ms": 0.15581800016661873,
+            "executed": true
+          },
+          {
+            "tool_call_id": "k2",
+            "name": "search_knowledge",
+            "status": "ok",
+            "failure_type": null,
+            "elapsed_ms": 0.12533700009953463,
+            "executed": true
+          }
+        ],
+        "model_calls": 3,
+        "tool_calls": 2,
+        "tool_executions": 2,
+        "tool_failures": 0,
+        "usage": null,
+        "model_events": [
+          {
+            "step": 1,
+            "status": "ok",
+            "model": "scripted-contract-stub",
+            "usage": null,
+            "elapsed_ms": 1.238623000062944
+          },
+          {
+            "step": 2,
+            "status": "ok",
+            "model": "scripted-contract-stub",
+            "usage": null,
+            "elapsed_ms": 1.2561200001073303
+          },
+          {
+            "step": 3,
+            "status": "ok",
+            "model": "scripted-contract-stub",
+            "usage": null,
+            "elapsed_ms": 0.7828760008123936
+          }
+        ],
+        "elapsed_ms": 7.2403789999953005,
+        "failure_type": null,
+        "trace_exported": false
+      },
+      "prompt_observations": [
+        {
+          "message_chars": 974,
+          "tool_schema_chars": 1318,
+          "tool_observation_chars": 0,
+          "distinct_tool_observation_chars": 0,
+          "tool_message_count": 0
+        },
+        {
+          "message_chars": 1592,
+          "tool_schema_chars": 1318,
+          "tool_observation_chars": 172,
+          "distinct_tool_observation_chars": 172,
+          "tool_message_count": 1
+        },
+        {
+          "message_chars": 2215,
+          "tool_schema_chars": 1318,
+          "tool_observation_chars": 344,
+          "distinct_tool_observation_chars": 172,
+          "tool_message_count": 2
+        }
+      ],
+      "backend_executions": [
+        {
+          "name": "search_knowledge",
+          "args": {
+            "query": "SYN-A17"
+          }
+        },
+        {
+          "name": "search_knowledge",
+          "args": {
+            "query": "SYN-A17 处置手册"
+          }
+        }
+      ],
+      "unmatched_fixtures": [],
+      "unused_script_steps": 0,
+      "external_model_requests": 0,
+      "real_service_executions": 0
+    },
+    {
+      "case_id": "ticket_detail-1",
+      "result": {
+        "run_id": "contract-ticket_detail-1",
+        "status": "answered",
+        "answer": "状态open，描述为仅用于离线评测。",
+        "sources": [
+          {
+            "id": "ticket:00000000-0000-4000-8000-000000000001",
+            "kind": "ticket",
+            "data": {
+              "id": "00000000-0000-4000-8000-000000000001",
+              "title": "SYN-A17 合成告警",
+              "description": "仅用于离线评测。",
+              "status": "open"
+            }
+          }
+        ],
+        "events": [
+          {
+            "tool_call_id": "t1",
+            "name": "search_tickets",
+            "status": "ok",
+            "failure_type": null,
+            "elapsed_ms": 0.15782599984959234,
+            "executed": true
+          },
+          {
+            "tool_call_id": "t2",
+            "name": "get_ticket",
+            "status": "ok",
+            "failure_type": null,
+            "elapsed_ms": 0.1612759997442481,
+            "executed": true
+          }
+        ],
+        "model_calls": 3,
+        "tool_calls": 2,
+        "tool_executions": 2,
+        "tool_failures": 0,
+        "usage": null,
+        "model_events": [
+          {
+            "step": 1,
+            "status": "ok",
+            "model": "scripted-contract-stub",
+            "usage": null,
+            "elapsed_ms": 1.2570279995998135
+          },
+          {
+            "step": 2,
+            "status": "ok",
+            "model": "scripted-contract-stub",
+            "usage": null,
+            "elapsed_ms": 0.9202609999192646
+          },
+          {
+            "step": 3,
+            "status": "ok",
+            "model": "scripted-contract-stub",
+            "usage": null,
+            "elapsed_ms": 1.0458510005264543
+          }
+        ],
+        "elapsed_ms": 7.890022000538011,
+        "failure_type": null,
+        "trace_exported": false
+      },
+      "prompt_observations": [
+        {
+          "message_chars": 978,
+          "tool_schema_chars": 1318,
+          "tool_observation_chars": 0,
+          "distinct_tool_observation_chars": 0,
+          "tool_message_count": 0
+        },
+        {
+          "message_chars": 1658,
+          "tool_schema_chars": 1318,
+          "tool_observation_chars": 236,
+          "distinct_tool_observation_chars": 236,
+          "tool_message_count": 1
+        },
+        {
+          "message_chars": 2363,
+          "tool_schema_chars": 1318,
+          "tool_observation_chars": 468,
+          "distinct_tool_observation_chars": 468,
+          "tool_message_count": 2
+        }
+      ],
+      "backend_executions": [
+        {
+          "name": "search_tickets",
+          "args": {
+            "status": null,
+            "q": "SYN-A17",
+            "limit": 5
+          }
+        },
+        {
+          "name": "get_ticket",
+          "args": {
+            "ticket_id": "00000000-0000-4000-8000-000000000001"
+          }
+        }
+      ],
+      "unmatched_fixtures": [],
+      "unused_script_steps": 0,
+      "external_model_requests": 0,
+      "real_service_executions": 0
+    },
+    {
+      "case_id": "conditional_no_create-1",
+      "result": {
+        "run_id": "contract-conditional_no_create-1",
+        "status": "answered",
+        "answer": "已有open相似工单，条件不满足，不生成提案。",
+        "sources": [
+          {
+            "id": "ticket:00000000-0000-4000-8000-000000000001",
+            "kind": "ticket",
+            "data": {
+              "id": "00000000-0000-4000-8000-000000000001",
+              "title": "SYN-A17 合成告警",
+              "description": "仅用于离线评测。",
+              "status": "open"
+            }
+          }
+        ],
+        "events": [
+          {
+            "tool_call_id": "t1",
+            "name": "search_tickets",
+            "status": "ok",
+            "failure_type": null,
+            "elapsed_ms": 0.16105200029414846,
+            "executed": true
+          }
+        ],
+        "model_calls": 2,
+        "tool_calls": 1,
+        "tool_executions": 1,
+        "tool_failures": 0,
+        "usage": null,
+        "model_events": [
+          {
+            "step": 1,
+            "status": "ok",
+            "model": "scripted-contract-stub",
+            "usage": null,
+            "elapsed_ms": 1.5083569996932056
+          },
+          {
+            "step": 2,
+            "status": "ok",
+            "model": "scripted-contract-stub",
+            "usage": null,
+            "elapsed_ms": 1.2607870003193966
+          }
+        ],
+        "elapsed_ms": 5.961716000456363,
+        "failure_type": null,
+        "trace_exported": false
+      },
+      "prompt_observations": [
+        {
+          "message_chars": 975,
+          "tool_schema_chars": 1777,
+          "tool_observation_chars": 0,
+          "distinct_tool_observation_chars": 0,
+          "tool_message_count": 0
+        },
+        {
+          "message_chars": 1655,
+          "tool_schema_chars": 1777,
+          "tool_observation_chars": 236,
+          "distinct_tool_observation_chars": 236,
+          "tool_message_count": 1
+        }
+      ],
+      "backend_executions": [
+        {
+          "name": "search_tickets",
+          "args": {
+            "status": null,
+            "q": "SYN-A17",
+            "limit": 5
+          }
+        }
+      ],
+      "unmatched_fixtures": [],
+      "unused_script_steps": 0,
+      "external_model_requests": 0,
+      "real_service_executions": 0
+    },
+    {
+      "case_id": "insufficient_ticket-1",
+      "result": {
+        "run_id": "contract-insufficient_ticket-1",
+        "status": "insufficient_evidence",
+        "answer": "本轮未找到该工单，不能确认历史陈述。",
+        "sources": [],
+        "events": [
+          {
+            "tool_call_id": "t1",
+            "name": "get_ticket",
+            "status": "error",
+            "failure_type": "not_found",
+            "elapsed_ms": 0.10928300071100239,
+            "executed": true
+          }
+        ],
+        "model_calls": 2,
+        "tool_calls": 1,
+        "tool_executions": 1,
+        "tool_failures": 1,
+        "usage": null,
+        "model_events": [
+          {
+            "step": 1,
+            "status": "ok",
+            "model": "scripted-contract-stub",
+            "usage": null,
+            "elapsed_ms": 0.9822769998208969
+          },
+          {
+            "step": 2,
+            "status": "ok",
+            "model": "scripted-contract-stub",
+            "usage": null,
+            "elapsed_ms": 0.8911690001696115
+          }
+        ],
+        "elapsed_ms": 5.339305000234162,
+        "failure_type": null,
+        "trace_exported": false
+      },
+      "prompt_observations": [
+        {
+          "message_chars": 1165,
+          "tool_schema_chars": 1318,
+          "tool_observation_chars": 0,
+          "distinct_tool_observation_chars": 0,
+          "tool_message_count": 0
+        },
+        {
+          "message_chars": 1692,
+          "tool_schema_chars": 1318,
+          "tool_observation_chars": 80,
+          "distinct_tool_observation_chars": 80,
+          "tool_message_count": 1
+        }
+      ],
+      "backend_executions": [
+        {
+          "name": "get_ticket",
+          "args": {
+            "ticket_id": "00000000-0000-4000-8000-000000000101"
+          }
+        }
+      ],
+      "unmatched_fixtures": [],
+      "unused_script_steps": 0,
+      "external_model_requests": 0,
+      "real_service_executions": 0
+    },
+    {
+      "case_id": "model_failure-1",
+      "result": {
+        "run_id": "contract-model_failure-1",
+        "status": "failed",
+        "answer": "本次执行未完成，请根据run_id检查失败类型。",
+        "sources": [],
+        "events": [],
+        "model_calls": 1,
+        "tool_calls": 0,
+        "tool_executions": 0,
+        "tool_failures": 0,
+        "usage": null,
+        "model_events": [
+          {
+            "step": 1,
+            "status": "error",
+            "model": null,
+            "usage": null,
+            "failure_type": "model_timeout",
+            "elapsed_ms": 1.0956109999824548
+          }
+        ],
+        "elapsed_ms": 2.659570999639982,
+        "failure_type": "model_timeout",
+        "trace_exported": false
+      },
+      "prompt_observations": [
+        {
+          "message_chars": 971,
+          "tool_schema_chars": 1318,
+          "tool_observation_chars": 0,
+          "distinct_tool_observation_chars": 0,
+          "tool_message_count": 0
+        }
+      ],
+      "backend_executions": [],
+      "unmatched_fixtures": [],
+      "unused_script_steps": 0,
+      "external_model_requests": 0,
+      "real_service_executions": 0
+    },
+    {
+      "case_id": "knowledge_lookup-2",
+      "result": {
+        "run_id": "contract-knowledge_lookup-2",
+        "status": "answered",
+        "answer": "先确认合成连接池使用量，再检查超时配置。",
+        "sources": [
+          {
+            "id": "knowledge:synthetic-2",
+            "kind": "knowledge",
+            "data": {
+              "text": "先确认合成连接池使用量，再检查超时配置。",
+              "document_name": "合成操作手册",
+              "page": 2
+            }
+          }
+        ],
+        "events": [
+          {
+            "tool_call_id": "k1",
+            "name": "search_knowledge",
+            "status": "ok",
+            "failure_type": null,
+            "elapsed_ms": 0.13866900007997174,
+            "executed": true
+          }
+        ],
+        "model_calls": 2,
+        "tool_calls": 1,
+        "tool_executions": 1,
+        "tool_failures": 0,
+        "usage": null,
+        "model_events": [
+          {
+            "step": 1,
+            "status": "ok",
+            "model": "scripted-contract-stub",
+            "usage": null,
+            "elapsed_ms": 0.9324599996034522
+          },
+          {
+            "step": 2,
+            "status": "ok",
+            "model": "scripted-contract-stub",
+            "usage": null,
+            "elapsed_ms": 0.8587370002715033
+          }
+        ],
+        "elapsed_ms": 6.985563999478472,
+        "failure_type": null,
+        "trace_exported": false
+      },
+      "prompt_observations": [
+        {
+          "message_chars": 962,
+          "tool_schema_chars": 1318,
+          "tool_observation_chars": 0,
+          "distinct_tool_observation_chars": 0,
+          "tool_message_count": 0
+        },
+        {
+          "message_chars": 1581,
+          "tool_schema_chars": 1318,
+          "tool_observation_chars": 173,
+          "distinct_tool_observation_chars": 173,
+          "tool_message_count": 1
+        }
+      ],
+      "backend_executions": [
+        {
+          "name": "search_knowledge",
+          "args": {
+            "query": "SYN-B28"
+          }
+        }
+      ],
+      "unmatched_fixtures": [],
+      "unused_script_steps": 0,
+      "external_model_requests": 0,
+      "real_service_executions": 0
+    },
+    {
+      "case_id": "ticket_filter-2",
+      "result": {
+        "run_id": "contract-ticket_filter-2",
+        "status": "answered",
+        "answer": "当前匹配工单状态为open。",
+        "sources": [
+          {
+            "id": "ticket:00000000-0000-4000-8000-000000000002",
+            "kind": "ticket",
+            "data": {
+              "id": "00000000-0000-4000-8000-000000000002",
+              "title": "SYN-B28 合成告警",
+              "description": "仅用于离线评测。",
+              "status": "open"
+            }
+          }
+        ],
+        "events": [
+          {
+            "tool_call_id": "t1",
+            "name": "search_tickets",
+            "status": "ok",
+            "failure_type": null,
+            "elapsed_ms": 0.3013479999935953,
+            "executed": true
+          }
+        ],
+        "model_calls": 2,
+        "tool_calls": 1,
+        "tool_executions": 1,
+        "tool_failures": 0,
+        "usage": null,
+        "model_events": [
+          {
+            "step": 1,
+            "status": "ok",
+            "model": "scripted-contract-stub",
+            "usage": null,
+            "elapsed_ms": 1.167983999948774
+          },
+          {
+            "step": 2,
+            "status": "ok",
+            "model": "scripted-contract-stub",
+            "usage": null,
+            "elapsed_ms": 1.4025469999978668
+          }
+        ],
+        "elapsed_ms": 6.292752000263135,
+        "failure_type": null,
+        "trace_exported": false
+      },
+      "prompt_observations": [
+        {
+          "message_chars": 972,
+          "tool_schema_chars": 1318,
+          "tool_observation_chars": 0,
+          "distinct_tool_observation_chars": 0,
+          "tool_message_count": 0
+        },
+        {
+          "message_chars": 1668,
+          "tool_schema_chars": 1318,
+          "tool_observation_chars": 236,
+          "distinct_tool_observation_chars": 236,
+          "tool_message_count": 1
+        }
+      ],
+      "backend_executions": [
+        {
+          "name": "search_tickets",
+          "args": {
+            "status": "open",
+            "q": "SYN-B28",
+            "limit": 5
+          }
+        }
+      ],
+      "unmatched_fixtures": [],
+      "unused_script_steps": 0,
+      "external_model_requests": 0,
+      "real_service_executions": 0
+    },
+    {
+      "case_id": "cross_domain-2",
+      "result": {
+        "run_id": "contract-cross_domain-2",
+        "status": "answered",
+        "answer": "当前合成工单open；手册建议：先确认合成连接池使用量，再检查超时配置。",
+        "sources": [
+          {
+            "id": "ticket:00000000-0000-4000-8000-000000000002",
+            "kind": "ticket",
+            "data": {
+              "id": "00000000-0000-4000-8000-000000000002",
+              "title": "SYN-B28 合成告警",
+              "description": "仅用于离线评测。",
+              "status": "open"
+            }
+          },
+          {
+            "id": "knowledge:synthetic-2",
+            "kind": "knowledge",
+            "data": {
+              "text": "先确认合成连接池使用量，再检查超时配置。",
+              "document_name": "合成操作手册",
+              "page": 2
+            }
+          }
+        ],
+        "events": [
+          {
+            "tool_call_id": "t1",
+            "name": "search_tickets",
+            "status": "ok",
+            "failure_type": null,
+            "elapsed_ms": 0.18730100055108778,
+            "executed": true
+          },
+          {
+            "tool_call_id": "k1",
+            "name": "search_knowledge",
+            "status": "ok",
+            "failure_type": null,
+            "elapsed_ms": 0.08902900026441785,
+            "executed": true
+          }
+        ],
+        "model_calls": 2,
+        "tool_calls": 2,
+        "tool_executions": 2,
+        "tool_failures": 0,
+        "usage": null,
+        "model_events": [
+          {
+            "step": 1,
+            "status": "ok",
+            "model": "scripted-contract-stub",
+            "usage": null,
+            "elapsed_ms": 1.4423769998757052
+          },
+          {
+            "step": 2,
+            "status": "ok",
+            "model": "scripted-contract-stub",
+            "usage": null,
+            "elapsed_ms": 1.133646000198496
+          }
+        ],
+        "elapsed_ms": 6.170675000248593,
+        "failure_type": null,
+        "trace_exported": false
+      },
+      "prompt_observations": [
+        {
+          "message_chars": 972,
+          "tool_schema_chars": 1318,
+          "tool_observation_chars": 0,
+          "distinct_tool_observation_chars": 0,
+          "tool_message_count": 0
+        },
+        {
+          "message_chars": 2094,
+          "tool_schema_chars": 1318,
+          "tool_observation_chars": 409,
+          "distinct_tool_observation_chars": 409,
+          "tool_message_count": 2
+        }
+      ],
+      "backend_executions": [
+        {
+          "name": "search_tickets",
+          "args": {
+            "status": null,
+            "q": "SYN-B28",
+            "limit": 5
+          }
+        },
+        {
+          "name": "search_knowledge",
+          "args": {
+            "query": "SYN-B28"
+          }
+        }
+      ],
+      "unmatched_fixtures": [],
+      "unused_script_steps": 0,
+      "external_model_requests": 0,
+      "real_service_executions": 0
+    },
+    {
+      "case_id": "conditional_create-2",
+      "result": {
+        "run_id": "contract-conditional_create-2",
+        "status": "pending_confirmation",
+        "answer": "已生成待确认工单提案；请查看预览并明确确认或拒绝。",
+        "sources": [
+          {
+            "id": "knowledge:synthetic-2",
+            "kind": "knowledge",
+            "data": {
+              "text": "先确认合成连接池使用量，再检查超时配置。",
+              "document_name": "合成操作手册",
+              "page": 2
+            }
+          },
+          {
+            "id": "proposal:synthetic-2",
+            "kind": "proposal",
+            "data": {
+              "status": "pending",
+              "title": "SYN-B28 合成待确认提案"
+            }
+          }
+        ],
+        "events": [
+          {
+            "tool_call_id": "t1",
+            "name": "search_tickets",
+            "status": "ok",
+            "failure_type": null,
+            "elapsed_ms": 0.1256989999092184,
+            "executed": true
+          },
+          {
+            "tool_call_id": "k1",
+            "name": "search_knowledge",
+            "status": "ok",
+            "failure_type": null,
+            "elapsed_ms": 0.08914600039133802,
+            "executed": true
+          },
+          {
+            "tool_call_id": "p1",
+            "name": "propose_ticket",
+            "status": "ok",
+            "failure_type": null,
+            "elapsed_ms": 0.12564500048029004,
+            "executed": true
+          }
+        ],
+        "model_calls": 2,
+        "tool_calls": 3,
+        "tool_executions": 3,
+        "tool_failures": 0,
+        "usage": null,
+        "model_events": [
+          {
+            "step": 1,
+            "status": "ok",
+            "model": "scripted-contract-stub",
+            "usage": null,
+            "elapsed_ms": 1.5885699995124014
+          },
+          {
+            "step": 2,
+            "status": "ok",
+            "model": "scripted-contract-stub",
+            "usage": null,
+            "elapsed_ms": 1.1271889998170082
+          }
+        ],
+        "elapsed_ms": 6.382777999533573,
+        "failure_type": null,
+        "trace_exported": false
+      },
+      "prompt_observations": [
+        {
+          "message_chars": 980,
+          "tool_schema_chars": 1777,
+          "tool_observation_chars": 0,
+          "distinct_tool_observation_chars": 0,
+          "tool_message_count": 0
+        },
+        {
+          "message_chars": 1876,
+          "tool_schema_chars": 1777,
+          "tool_observation_chars": 211,
+          "distinct_tool_observation_chars": 211,
+          "tool_message_count": 2
+        }
+      ],
+      "backend_executions": [
+        {
+          "name": "search_tickets",
+          "args": {
+            "status": null,
+            "q": "SYN-B28",
+            "limit": 5
+          }
+        },
+        {
+          "name": "search_knowledge",
+          "args": {
+            "query": "SYN-B28"
+          }
+        },
+        {
+          "name": "propose_ticket",
+          "args": {
+            "title": "SYN-B28 合成待确认提案",
+            "description": "根据合成手册检查；必须由用户明确确认。"
+          }
+        }
+      ],
+      "unmatched_fixtures": [],
+      "unused_script_steps": 0,
+      "external_model_requests": 0,
+      "real_service_executions": 0
+    },
+    {
+      "case_id": "insufficient_knowledge-2",
+      "result": {
+        "run_id": "contract-insufficient_knowledge-2",
+        "status": "insufficient_evidence",
+        "answer": "证据不足，需要补充相关资料。",
+        "sources": [],
+        "events": [
+          {
+            "tool_call_id": "k1",
+            "name": "search_knowledge",
+            "status": "ok",
+            "failure_type": null,
+            "elapsed_ms": 0.12194199916848447,
+            "executed": true
+          }
+        ],
+        "model_calls": 2,
+        "tool_calls": 1,
+        "tool_executions": 1,
+        "tool_failures": 0,
+        "usage": null,
+        "model_events": [
+          {
+            "step": 1,
+            "status": "ok",
+            "model": "scripted-contract-stub",
+            "usage": null,
+            "elapsed_ms": 1.1209030008103582
+          },
+          {
+            "step": 2,
+            "status": "ok",
+            "model": "scripted-contract-stub",
+            "usage": null,
+            "elapsed_ms": 1.497960999586212
+          }
+        ],
+        "elapsed_ms": 5.7622670001364895,
+        "failure_type": null,
+        "trace_exported": false
+      },
+      "prompt_observations": [
+        {
+          "message_chars": 966,
+          "tool_schema_chars": 1318,
+          "tool_observation_chars": 0,
+          "distinct_tool_observation_chars": 0,
+          "tool_message_count": 0
+        },
+        {
+          "message_chars": 1430,
+          "tool_schema_chars": 1318,
+          "tool_observation_chars": 38,
+          "distinct_tool_observation_chars": 38,
+          "tool_message_count": 1
+        }
+      ],
+      "backend_executions": [
+        {
+          "name": "search_knowledge",
+          "args": {
+            "query": "UNKNOWN-2"
+          }
+        }
+      ],
+      "unmatched_fixtures": [],
+      "unused_script_steps": 0,
+      "external_model_requests": 0,
+      "real_service_executions": 0
+    },
+    {
+      "case_id": "repeated_read-2",
+      "result": {
+        "run_id": "contract-repeated_read-2",
+        "status": "answered",
+        "answer": "当前合成工单状态为open。",
+        "sources": [
+          {
+            "id": "ticket:00000000-0000-4000-8000-000000000002",
+            "kind": "ticket",
+            "data": {
+              "id": "00000000-0000-4000-8000-000000000002",
+              "title": "SYN-B28 合成告警",
+              "description": "仅用于离线评测。",
+              "status": "open"
+            }
+          }
+        ],
+        "events": [
+          {
+            "tool_call_id": "t1",
+            "name": "search_tickets",
+            "status": "ok",
+            "failure_type": null,
+            "elapsed_ms": 0.15282399999705376,
+            "executed": true
+          },
+          {
+            "tool_call_id": "t2",
+            "name": "search_tickets",
+            "status": "error",
+            "failure_type": "duplicate_read",
+            "elapsed_ms": 0.07474500034732046,
+            "executed": false
+          }
+        ],
+        "model_calls": 3,
+        "tool_calls": 2,
+        "tool_executions": 1,
+        "tool_failures": 1,
+        "usage": null,
+        "model_events": [
+          {
+            "step": 1,
+            "status": "ok",
+            "model": "scripted-contract-stub",
+            "usage": null,
+            "elapsed_ms": 1.2773400003425195
+          },
+          {
+            "step": 2,
+            "status": "ok",
+            "model": "scripted-contract-stub",
+            "usage": null,
+            "elapsed_ms": 1.1990640005024034
+          },
+          {
+            "step": 3,
+            "status": "ok",
+            "model": "scripted-contract-stub",
+            "usage": null,
+            "elapsed_ms": 0.9870699996099574
+          }
+        ],
+        "elapsed_ms": 9.18650399944454,
+        "failure_type": null,
+        "trace_exported": false
+      },
+      "prompt_observations": [
+        {
+          "message_chars": 970,
+          "tool_schema_chars": 1318,
+          "tool_observation_chars": 0,
+          "distinct_tool_observation_chars": 0,
+          "tool_message_count": 0
+        },
+        {
+          "message_chars": 1650,
+          "tool_schema_chars": 1318,
+          "tool_observation_chars": 236,
+          "distinct_tool_observation_chars": 236,
+          "tool_message_count": 1
+        },
+        {
+          "message_chars": 2213,
+          "tool_schema_chars": 1318,
+          "tool_observation_chars": 377,
+          "distinct_tool_observation_chars": 377,
+          "tool_message_count": 2
+        }
+      ],
+      "backend_executions": [
+        {
+          "name": "search_tickets",
+          "args": {
+            "status": null,
+            "q": "SYN-B28",
+            "limit": 5
+          }
+        }
+      ],
+      "unmatched_fixtures": [],
+      "unused_script_steps": 0,
+      "external_model_requests": 0,
+      "real_service_executions": 0
+    },
+    {
+      "case_id": "unavailable_tool-2",
+      "result": {
+        "run_id": "contract-unavailable_tool-2",
+        "status": "insufficient_evidence",
+        "answer": "无法直接创建工单，缺少确认与证据。",
+        "sources": [],
+        "events": [
+          {
+            "tool_call_id": "x1",
+            "name": "create_ticket",
+            "status": "error",
+            "failure_type": "unknown_tool",
+            "elapsed_ms": 0.03509299949655542,
+            "executed": false
+          }
+        ],
+        "model_calls": 2,
+        "tool_calls": 1,
+        "tool_executions": 0,
+        "tool_failures": 1,
+        "usage": null,
+        "model_events": [
+          {
+            "step": 1,
+            "status": "ok",
+            "model": "scripted-contract-stub",
+            "usage": null,
+            "elapsed_ms": 1.006874999802676
+          },
+          {
+            "step": 2,
+            "status": "ok",
+            "model": "scripted-contract-stub",
+            "usage": null,
+            "elapsed_ms": 1.2035680001645233
+          }
+        ],
+        "elapsed_ms": 4.7436659997401875,
+        "failure_type": null,
+        "trace_exported": false
+      },
+      "prompt_observations": [
+        {
+          "message_chars": 969,
+          "tool_schema_chars": 1318,
+          "tool_observation_chars": 0,
+          "distinct_tool_observation_chars": 0,
+          "tool_message_count": 0
+        },
+        {
+          "message_chars": 1472,
+          "tool_schema_chars": 1318,
+          "tool_observation_chars": 83,
+          "distinct_tool_observation_chars": 83,
+          "tool_message_count": 1
+        }
+      ],
+      "backend_executions": [],
+      "unmatched_fixtures": [],
+      "unused_script_steps": 0,
+      "external_model_requests": 0,
+      "real_service_executions": 0
+    },
+    {
+      "case_id": "invalid_arguments-2",
+      "result": {
+        "run_id": "contract-invalid_arguments-2",
+        "status": "answered",
+        "answer": "匹配工单状态为open。",
+        "sources": [
+          {
+            "id": "ticket:00000000-0000-4000-8000-000000000002",
+            "kind": "ticket",
+            "data": {
+              "id": "00000000-0000-4000-8000-000000000002",
+              "title": "SYN-B28 合成告警",
+              "description": "仅用于离线评测。",
+              "status": "open"
+            }
+          }
+        ],
+        "events": [
+          {
+            "tool_call_id": "t1",
+            "name": "get_ticket",
+            "status": "error",
+            "failure_type": "arguments_invalid",
+            "elapsed_ms": 0.054443999943032395,
+            "executed": false
+          },
+          {
+            "tool_call_id": "t2",
+            "name": "search_tickets",
+            "status": "ok",
+            "failure_type": null,
+            "elapsed_ms": 0.17056500018952647,
+            "executed": true
+          }
+        ],
+        "model_calls": 3,
+        "tool_calls": 2,
+        "tool_executions": 1,
+        "tool_failures": 1,
+        "usage": null,
+        "model_events": [
+          {
+            "step": 1,
+            "status": "ok",
+            "model": "scripted-contract-stub",
+            "usage": null,
+            "elapsed_ms": 1.1515760006659548
+          },
+          {
+            "step": 2,
+            "status": "ok",
+            "model": "scripted-contract-stub",
+            "usage": null,
+            "elapsed_ms": 0.937728000280913
+          },
+          {
+            "step": 3,
+            "status": "ok",
+            "model": "scripted-contract-stub",
+            "usage": null,
+            "elapsed_ms": 0.9607560004951665
+          }
+        ],
+        "elapsed_ms": 7.188434000454436,
+        "failure_type": null,
+        "trace_exported": false
+      },
+      "prompt_observations": [
+        {
+          "message_chars": 963,
+          "tool_schema_chars": 1318,
+          "tool_observation_chars": 0,
+          "distinct_tool_observation_chars": 0,
+          "tool_message_count": 0
+        },
+        {
+          "message_chars": 1472,
+          "tool_schema_chars": 1318,
+          "tool_observation_chars": 88,
+          "distinct_tool_observation_chars": 88,
+          "tool_message_count": 1
+        },
+        {
+          "message_chars": 2152,
+          "tool_schema_chars": 1318,
+          "tool_observation_chars": 324,
+          "distinct_tool_observation_chars": 324,
+          "tool_message_count": 2
+        }
+      ],
+      "backend_executions": [
+        {
+          "name": "search_tickets",
+          "args": {
+            "status": null,
+            "q": "SYN-B28",
+            "limit": 5
+          }
+        }
+      ],
+      "unmatched_fixtures": [],
+      "unused_script_steps": 0,
+      "external_model_requests": 0,
+      "real_service_executions": 0
+    },
+    {
+      "case_id": "knowledge_failure-2",
+      "result": {
+        "run_id": "contract-knowledge_failure-2",
+        "status": "failed",
+        "answer": "本次执行未完成，请根据run_id检查失败类型。",
+        "sources": [],
+        "events": [
+          {
+            "tool_call_id": "k1",
+            "name": "search_knowledge",
+            "status": "error",
+            "failure_type": "tool_exception",
+            "elapsed_ms": 0.14748300054634456,
+            "executed": true
+          }
+        ],
+        "model_calls": 1,
+        "tool_calls": 1,
+        "tool_executions": 1,
+        "tool_failures": 1,
+        "usage": null,
+        "model_events": [
+          {
+            "step": 1,
+            "status": "ok",
+            "model": "scripted-contract-stub",
+            "usage": null,
+            "elapsed_ms": 0.930386000618455
+          }
+        ],
+        "elapsed_ms": 2.961447999950906,
+        "failure_type": "knowledge_retrieval_failed",
+        "trace_exported": false
+      },
+      "prompt_observations": [
+        {
+          "message_chars": 971,
+          "tool_schema_chars": 1318,
+          "tool_observation_chars": 0,
+          "distinct_tool_observation_chars": 0,
+          "tool_message_count": 0
+        }
+      ],
+      "backend_executions": [
+        {
+          "name": "search_knowledge",
+          "args": {
+            "query": "SYN-B28"
+          }
+        }
+      ],
+      "unmatched_fixtures": [],
+      "unused_script_steps": 0,
+      "external_model_requests": 0,
+      "real_service_executions": 0
+    },
+    {
+      "case_id": "invalid_final-2",
+      "result": {
+        "run_id": "contract-invalid_final-2",
+        "status": "failed",
+        "answer": "本次执行未完成，请根据run_id检查失败类型。",
+        "sources": [],
+        "events": [],
+        "model_calls": 1,
+        "tool_calls": 0,
+        "tool_executions": 0,
+        "tool_failures": 0,
+        "usage": null,
+        "model_events": [
+          {
+            "step": 1,
+            "status": "ok",
+            "model": "scripted-contract-stub",
+            "usage": null,
+            "elapsed_ms": 1.0216300006504753
+          }
+        ],
+        "elapsed_ms": 2.9693289998249384,
+        "failure_type": "invalid_final",
+        "trace_exported": false
+      },
+      "prompt_observations": [
+        {
+          "message_chars": 970,
+          "tool_schema_chars": 1318,
+          "tool_observation_chars": 0,
+          "distinct_tool_observation_chars": 0,
+          "tool_message_count": 0
+        }
+      ],
+      "backend_executions": [],
+      "unmatched_fixtures": [],
+      "unused_script_steps": 0,
+      "external_model_requests": 0,
+      "real_service_executions": 0
+    },
+    {
+      "case_id": "knowledge_comparison-2",
+      "result": {
+        "run_id": "contract-knowledge_comparison-2",
+        "status": "answered",
+        "answer": "先确认合成连接池使用量，再检查超时配置。",
+        "sources": [
+          {
+            "id": "knowledge:synthetic-2",
+            "kind": "knowledge",
+            "data": {
+              "text": "先确认合成连接池使用量，再检查超时配置。",
+              "document_name": "合成操作手册",
+              "page": 2
+            }
+          }
+        ],
+        "events": [
+          {
+            "tool_call_id": "k1",
+            "name": "search_knowledge",
+            "status": "ok",
+            "failure_type": null,
+            "elapsed_ms": 0.1248580001629307,
+            "executed": true
+          },
+          {
+            "tool_call_id": "k2",
+            "name": "search_knowledge",
+            "status": "ok",
+            "failure_type": null,
+            "elapsed_ms": 0.11450900001364062,
+            "executed": true
+          }
+        ],
+        "model_calls": 3,
+        "tool_calls": 2,
+        "tool_executions": 2,
+        "tool_failures": 0,
+        "usage": null,
+        "model_events": [
+          {
+            "step": 1,
+            "status": "ok",
+            "model": "scripted-contract-stub",
+            "usage": null,
+            "elapsed_ms": 0.960956999733753
+          },
+          {
+            "step": 2,
+            "status": "ok",
+            "model": "scripted-contract-stub",
+            "usage": null,
+            "elapsed_ms": 0.8812999994916026
+          },
+          {
+            "step": 3,
+            "status": "ok",
+            "model": "scripted-contract-stub",
+            "usage": null,
+            "elapsed_ms": 1.5866939993429696
+          }
+        ],
+        "elapsed_ms": 7.119873000192456,
+        "failure_type": null,
+        "trace_exported": false
+      },
+      "prompt_observations": [
+        {
+          "message_chars": 974,
+          "tool_schema_chars": 1318,
+          "tool_observation_chars": 0,
+          "distinct_tool_observation_chars": 0,
+          "tool_message_count": 0
+        },
+        {
+          "message_chars": 1593,
+          "tool_schema_chars": 1318,
+          "tool_observation_chars": 173,
+          "distinct_tool_observation_chars": 173,
+          "tool_message_count": 1
+        },
+        {
+          "message_chars": 2217,
+          "tool_schema_chars": 1318,
+          "tool_observation_chars": 346,
+          "distinct_tool_observation_chars": 173,
+          "tool_message_count": 2
+        }
+      ],
+      "backend_executions": [
+        {
+          "name": "search_knowledge",
+          "args": {
+            "query": "SYN-B28"
+          }
+        },
+        {
+          "name": "search_knowledge",
+          "args": {
+            "query": "SYN-B28 处置手册"
+          }
+        }
+      ],
+      "unmatched_fixtures": [],
+      "unused_script_steps": 0,
+      "external_model_requests": 0,
+      "real_service_executions": 0
+    },
+    {
+      "case_id": "ticket_detail-2",
+      "result": {
+        "run_id": "contract-ticket_detail-2",
+        "status": "answered",
+        "answer": "状态open，描述为仅用于离线评测。",
+        "sources": [
+          {
+            "id": "ticket:00000000-0000-4000-8000-000000000002",
+            "kind": "ticket",
+            "data": {
+              "id": "00000000-0000-4000-8000-000000000002",
+              "title": "SYN-B28 合成告警",
+              "description": "仅用于离线评测。",
+              "status": "open"
+            }
+          }
+        ],
+        "events": [
+          {
+            "tool_call_id": "t1",
+            "name": "search_tickets",
+            "status": "ok",
+            "failure_type": null,
+            "elapsed_ms": 0.17198300065501826,
+            "executed": true
+          },
+          {
+            "tool_call_id": "t2",
+            "name": "get_ticket",
+            "status": "ok",
+            "failure_type": null,
+            "elapsed_ms": 0.17740699968271656,
+            "executed": true
+          }
+        ],
+        "model_calls": 3,
+        "tool_calls": 2,
+        "tool_executions": 2,
+        "tool_failures": 0,
+        "usage": null,
+        "model_events": [
+          {
+            "step": 1,
+            "status": "ok",
+            "model": "scripted-contract-stub",
+            "usage": null,
+            "elapsed_ms": 1.0845430006156676
+          },
+          {
+            "step": 2,
+            "status": "ok",
+            "model": "scripted-contract-stub",
+            "usage": null,
+            "elapsed_ms": 1.2289930000406457
+          },
+          {
+            "step": 3,
+            "status": "ok",
+            "model": "scripted-contract-stub",
+            "usage": null,
+            "elapsed_ms": 0.8208859999285778
+          }
+        ],
+        "elapsed_ms": 7.241589999466669,
+        "failure_type": null,
+        "trace_exported": false
+      },
+      "prompt_observations": [
+        {
+          "message_chars": 978,
+          "tool_schema_chars": 1318,
+          "tool_observation_chars": 0,
+          "distinct_tool_observation_chars": 0,
+          "tool_message_count": 0
+        },
+        {
+          "message_chars": 1658,
+          "tool_schema_chars": 1318,
+          "tool_observation_chars": 236,
+          "distinct_tool_observation_chars": 236,
+          "tool_message_count": 1
+        },
+        {
+          "message_chars": 2363,
+          "tool_schema_chars": 1318,
+          "tool_observation_chars": 468,
+          "distinct_tool_observation_chars": 468,
+          "tool_message_count": 2
+        }
+      ],
+      "backend_executions": [
+        {
+          "name": "search_tickets",
+          "args": {
+            "status": null,
+            "q": "SYN-B28",
+            "limit": 5
+          }
+        },
+        {
+          "name": "get_ticket",
+          "args": {
+            "ticket_id": "00000000-0000-4000-8000-000000000002"
+          }
+        }
+      ],
+      "unmatched_fixtures": [],
+      "unused_script_steps": 0,
+      "external_model_requests": 0,
+      "real_service_executions": 0
+    },
+    {
+      "case_id": "conditional_no_create-2",
+      "result": {
+        "run_id": "contract-conditional_no_create-2",
+        "status": "answered",
+        "answer": "已有open相似工单，条件不满足，不生成提案。",
+        "sources": [
+          {
+            "id": "ticket:00000000-0000-4000-8000-000000000002",
+            "kind": "ticket",
+            "data": {
+              "id": "00000000-0000-4000-8000-000000000002",
+              "title": "SYN-B28 合成告警",
+              "description": "仅用于离线评测。",
+              "status": "open"
+            }
+          }
+        ],
+        "events": [
+          {
+            "tool_call_id": "t1",
+            "name": "search_tickets",
+            "status": "ok",
+            "failure_type": null,
+            "elapsed_ms": 0.17234200004168088,
+            "executed": true
+          }
+        ],
+        "model_calls": 2,
+        "tool_calls": 1,
+        "tool_executions": 1,
+        "tool_failures": 0,
+        "usage": null,
+        "model_events": [
+          {
+            "step": 1,
+            "status": "ok",
+            "model": "scripted-contract-stub",
+            "usage": null,
+            "elapsed_ms": 1.4705240000694175
+          },
+          {
+            "step": 2,
+            "status": "ok",
+            "model": "scripted-contract-stub",
+            "usage": null,
+            "elapsed_ms": 1.0735510004451498
+          }
+        ],
+        "elapsed_ms": 5.6094709998433245,
+        "failure_type": null,
+        "trace_exported": false
+      },
+      "prompt_observations": [
+        {
+          "message_chars": 975,
+          "tool_schema_chars": 1777,
+          "tool_observation_chars": 0,
+          "distinct_tool_observation_chars": 0,
+          "tool_message_count": 0
+        },
+        {
+          "message_chars": 1655,
+          "tool_schema_chars": 1777,
+          "tool_observation_chars": 236,
+          "distinct_tool_observation_chars": 236,
+          "tool_message_count": 1
+        }
+      ],
+      "backend_executions": [
+        {
+          "name": "search_tickets",
+          "args": {
+            "status": null,
+            "q": "SYN-B28",
+            "limit": 5
+          }
+        }
+      ],
+      "unmatched_fixtures": [],
+      "unused_script_steps": 0,
+      "external_model_requests": 0,
+      "real_service_executions": 0
+    },
+    {
+      "case_id": "insufficient_ticket-2",
+      "result": {
+        "run_id": "contract-insufficient_ticket-2",
+        "status": "insufficient_evidence",
+        "answer": "本轮未找到该工单，不能确认历史陈述。",
+        "sources": [],
+        "events": [
+          {
+            "tool_call_id": "t1",
+            "name": "get_ticket",
+            "status": "error",
+            "failure_type": "not_found",
+            "elapsed_ms": 0.08782500026427442,
+            "executed": true
+          }
+        ],
+        "model_calls": 2,
+        "tool_calls": 1,
+        "tool_executions": 1,
+        "tool_failures": 1,
+        "usage": null,
+        "model_events": [
+          {
+            "step": 1,
+            "status": "ok",
+            "model": "scripted-contract-stub",
+            "usage": null,
+            "elapsed_ms": 0.9486819999438012
+          },
+          {
+            "step": 2,
+            "status": "ok",
+            "model": "scripted-contract-stub",
+            "usage": null,
+            "elapsed_ms": 1.2371689999781665
+          }
+        ],
+        "elapsed_ms": 4.528270999799133,
+        "failure_type": null,
+        "trace_exported": false
+      },
+      "prompt_observations": [
+        {
+          "message_chars": 1165,
+          "tool_schema_chars": 1318,
+          "tool_observation_chars": 0,
+          "distinct_tool_observation_chars": 0,
+          "tool_message_count": 0
+        },
+        {
+          "message_chars": 1692,
+          "tool_schema_chars": 1318,
+          "tool_observation_chars": 80,
+          "distinct_tool_observation_chars": 80,
+          "tool_message_count": 1
+        }
+      ],
+      "backend_executions": [
+        {
+          "name": "get_ticket",
+          "args": {
+            "ticket_id": "00000000-0000-4000-8000-000000000102"
+          }
+        }
+      ],
+      "unmatched_fixtures": [],
+      "unused_script_steps": 0,
+      "external_model_requests": 0,
+      "real_service_executions": 0
+    },
+    {
+      "case_id": "model_failure-2",
+      "result": {
+        "run_id": "contract-model_failure-2",
+        "status": "failed",
+        "answer": "本次执行未完成，请根据run_id检查失败类型。",
+        "sources": [],
+        "events": [],
+        "model_calls": 1,
+        "tool_calls": 0,
+        "tool_executions": 0,
+        "tool_failures": 0,
+        "usage": null,
+        "model_events": [
+          {
+            "step": 1,
+            "status": "error",
+            "model": null,
+            "usage": null,
+            "failure_type": "model_error",
+            "elapsed_ms": 1.3751110000157496
+          }
+        ],
+        "elapsed_ms": 2.9813910005032085,
+        "failure_type": "model_error",
+        "trace_exported": false
+      },
+      "prompt_observations": [
+        {
+          "message_chars": 971,
+          "tool_schema_chars": 1318,
+          "tool_observation_chars": 0,
+          "distinct_tool_observation_chars": 0,
+          "tool_message_count": 0
+        }
+      ],
+      "backend_executions": [],
+      "unmatched_fixtures": [],
+      "unused_script_steps": 0,
+      "external_model_requests": 0,
+      "real_service_executions": 0
+    }
+  ]
+}

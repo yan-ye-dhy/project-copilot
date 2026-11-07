@@ -1,0 +1,13 @@
+{
+  "before_code_sha256": "fa5ed395db6bab49687d7c2f99525420540abf4ca37fc19031f1f0c4e766e664",
+  "after_code_sha256": "23c3bfe2b1f5f718358ecfb641f23120ad1aa675e4f49f3e48bf1db2135b8639",
+  "denominator": 30,
+  "contract_success_delta": 0,
+  "tool_execution_delta": 0,
+  "prompt_character_deltas": {
+    "known_message_chars": -2698,
+    "known_tool_observation_chars": -2350,
+    "known_distinct_tool_observation_chars": -2247
+  },
+  "claim_boundary": "A scripted replay delta is not a measured model-quality improvement."
+}
