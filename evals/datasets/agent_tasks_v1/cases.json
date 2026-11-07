@@ -1,0 +1,2106 @@
+{
+  "version": "agent_tasks_v1",
+  "synthetic": true,
+  "cases": [
+    {
+      "id": "knowledge_lookup-1",
+      "family": "knowledge_lookup",
+      "split": "dev",
+      "category": "knowledge",
+      "question": "SYN-A17应如何排查？",
+      "allow_proposal": false,
+      "script": [
+        {
+          "tool_calls": [
+            {
+              "name": "search_knowledge",
+              "args": {
+                "query": "SYN-A17"
+              },
+              "id": "k1"
+            }
+          ]
+        },
+        {
+          "content": "{\"status\": \"answered\", \"answer\": \"先检查合成队列积压，再调整消费者数量。\", \"source_ids\": [\"knowledge:synthetic-1\"]}"
+        }
+      ],
+      "tools": [
+        {
+          "name": "search_knowledge",
+          "args": {
+            "query": "SYN-A17"
+          },
+          "result": {
+            "data": [
+              {
+                "text": "先检查合成队列积压，再调整消费者数量。",
+                "document_name": "合成操作手册",
+                "page": 1
+              }
+            ],
+            "sources": [
+              {
+                "id": "knowledge:synthetic-1",
+                "kind": "knowledge",
+                "data": {
+                  "text": "先检查合成队列积压，再调整消费者数量。",
+                  "document_name": "合成操作手册",
+                  "page": 1
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "expected": {
+        "status": "answered",
+        "failure_type": null,
+        "source_ids": [
+          "knowledge:synthetic-1"
+        ],
+        "required_tools": [
+          "search_knowledge"
+        ],
+        "event_failures": [],
+        "max_tool_executions": 1,
+        "max_model_calls": 2,
+        "proposal_count": 0
+      },
+      "review_rubric": "人工逐条核对回答中的事实是否由返回来源支持；来源编号有效不能代替事实支持。"
+    },
+    {
+      "id": "ticket_filter-1",
+      "family": "ticket_filter",
+      "split": "dev",
+      "category": "ticket",
+      "question": "查找SYN-A17的open工单，并说明状态。",
+      "allow_proposal": false,
+      "script": [
+        {
+          "tool_calls": [
+            {
+              "name": "search_tickets",
+              "args": {
+                "q": "SYN-A17",
+                "status": "open"
+              },
+              "id": "t1"
+            }
+          ]
+        },
+        {
+          "content": "{\"status\": \"answered\", \"answer\": \"当前匹配工单状态为open。\", \"source_ids\": [\"ticket:00000000-0000-4000-8000-000000000001\"]}"
+        }
+      ],
+      "tools": [
+        {
+          "name": "search_tickets",
+          "args": {
+            "status": "open",
+            "q": "SYN-A17",
+            "limit": 5
+          },
+          "result": {
+            "data": [
+              {
+                "id": "00000000-0000-4000-8000-000000000001",
+                "title": "SYN-A17 合成告警",
+                "description": "仅用于离线评测。",
+                "status": "open"
+              }
+            ],
+            "sources": [
+              {
+                "id": "ticket:00000000-0000-4000-8000-000000000001",
+                "kind": "ticket",
+                "data": {
+                  "id": "00000000-0000-4000-8000-000000000001",
+                  "title": "SYN-A17 合成告警",
+                  "description": "仅用于离线评测。",
+                  "status": "open"
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "expected": {
+        "status": "answered",
+        "failure_type": null,
+        "source_ids": [
+          "ticket:00000000-0000-4000-8000-000000000001"
+        ],
+        "required_tools": [
+          "search_tickets"
+        ],
+        "event_failures": [],
+        "max_tool_executions": 1,
+        "max_model_calls": 2,
+        "proposal_count": 0
+      },
+      "review_rubric": "人工逐条核对回答中的事实是否由返回来源支持；来源编号有效不能代替事实支持。"
+    },
+    {
+      "id": "cross_domain-1",
+      "family": "cross_domain",
+      "split": "dev",
+      "category": "joint",
+      "question": "结合SYN-A17工单状态和知识手册给出建议。",
+      "allow_proposal": false,
+      "script": [
+        {
+          "tool_calls": [
+            {
+              "name": "search_tickets",
+              "args": {
+                "q": "SYN-A17"
+              },
+              "id": "t1"
+            },
+            {
+              "name": "search_knowledge",
+              "args": {
+                "query": "SYN-A17"
+              },
+              "id": "k1"
+            }
+          ]
+        },
+        {
+          "content": "{\"status\": \"answered\", \"answer\": \"当前合成工单open；手册建议：先检查合成队列积压，再调整消费者数量。\", \"source_ids\": [\"ticket:00000000-0000-4000-8000-000000000001\", \"knowledge:synthetic-1\"]}"
+        }
+      ],
+      "tools": [
+        {
+          "name": "search_tickets",
+          "args": {
+            "status": null,
+            "q": "SYN-A17",
+            "limit": 5
+          },
+          "result": {
+            "data": [
+              {
+                "id": "00000000-0000-4000-8000-000000000001",
+                "title": "SYN-A17 合成告警",
+                "description": "仅用于离线评测。",
+                "status": "open"
+              }
+            ],
+            "sources": [
+              {
+                "id": "ticket:00000000-0000-4000-8000-000000000001",
+                "kind": "ticket",
+                "data": {
+                  "id": "00000000-0000-4000-8000-000000000001",
+                  "title": "SYN-A17 合成告警",
+                  "description": "仅用于离线评测。",
+                  "status": "open"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "search_knowledge",
+          "args": {
+            "query": "SYN-A17"
+          },
+          "result": {
+            "data": [
+              {
+                "text": "先检查合成队列积压，再调整消费者数量。",
+                "document_name": "合成操作手册",
+                "page": 1
+              }
+            ],
+            "sources": [
+              {
+                "id": "knowledge:synthetic-1",
+                "kind": "knowledge",
+                "data": {
+                  "text": "先检查合成队列积压，再调整消费者数量。",
+                  "document_name": "合成操作手册",
+                  "page": 1
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "expected": {
+        "status": "answered",
+        "failure_type": null,
+        "source_ids": [
+          "ticket:00000000-0000-4000-8000-000000000001",
+          "knowledge:synthetic-1"
+        ],
+        "required_tools": [
+          "search_tickets",
+          "search_knowledge"
+        ],
+        "event_failures": [],
+        "max_tool_executions": 2,
+        "max_model_calls": 2,
+        "proposal_count": 0
+      },
+      "review_rubric": "人工逐条核对回答中的事实是否由返回来源支持；来源编号有效不能代替事实支持。"
+    },
+    {
+      "id": "conditional_create-1",
+      "family": "conditional_create",
+      "split": "dev",
+      "category": "conditional_proposal",
+      "question": "如果SYN-A17没有相似工单，依据手册生成提案，等待我确认。",
+      "allow_proposal": true,
+      "script": [
+        {
+          "tool_calls": [
+            {
+              "name": "search_tickets",
+              "args": {
+                "q": "SYN-A17"
+              },
+              "id": "t1"
+            },
+            {
+              "name": "search_knowledge",
+              "args": {
+                "query": "SYN-A17"
+              },
+              "id": "k1"
+            }
+          ]
+        },
+        {
+          "tool_calls": [
+            {
+              "name": "propose_ticket",
+              "args": {
+                "title": "SYN-A17 合成待确认提案",
+                "description": "根据合成手册检查；必须由用户明确确认。"
+              },
+              "id": "p1"
+            }
+          ]
+        }
+      ],
+      "tools": [
+        {
+          "name": "search_tickets",
+          "args": {
+            "status": null,
+            "q": "SYN-A17",
+            "limit": 5
+          },
+          "result": {
+            "data": [],
+            "sources": []
+          }
+        },
+        {
+          "name": "search_knowledge",
+          "args": {
+            "query": "SYN-A17"
+          },
+          "result": {
+            "data": [
+              {
+                "text": "先检查合成队列积压，再调整消费者数量。",
+                "document_name": "合成操作手册",
+                "page": 1
+              }
+            ],
+            "sources": [
+              {
+                "id": "knowledge:synthetic-1",
+                "kind": "knowledge",
+                "data": {
+                  "text": "先检查合成队列积压，再调整消费者数量。",
+                  "document_name": "合成操作手册",
+                  "page": 1
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "propose_ticket",
+          "args": {
+            "title": "SYN-A17 合成待确认提案",
+            "description": "根据合成手册检查；必须由用户明确确认。"
+          },
+          "result": {
+            "data": {
+              "status": "pending",
+              "title": "SYN-A17 合成待确认提案"
+            },
+            "sources": [
+              {
+                "id": "proposal:synthetic-1",
+                "kind": "proposal",
+                "data": {
+                  "status": "pending",
+                  "title": "SYN-A17 合成待确认提案"
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "expected": {
+        "status": "pending_confirmation",
+        "failure_type": null,
+        "source_ids": [
+          "knowledge:synthetic-1",
+          "proposal:synthetic-1"
+        ],
+        "required_tools": [
+          "search_tickets",
+          "search_knowledge",
+          "propose_ticket"
+        ],
+        "event_failures": [],
+        "max_tool_executions": 3,
+        "max_model_calls": 2,
+        "proposal_count": 1
+      },
+      "review_rubric": "相似工单查询无结果且知识条件满足才提案；结果必须停在pending_confirmation，不能声称已创建工单。"
+    },
+    {
+      "id": "insufficient_knowledge-1",
+      "family": "insufficient_knowledge",
+      "split": "dev",
+      "category": "insufficient",
+      "question": "解释合成未知码UNKNOWN-1。",
+      "allow_proposal": false,
+      "script": [
+        {
+          "tool_calls": [
+            {
+              "name": "search_knowledge",
+              "args": {
+                "query": "UNKNOWN-1"
+              },
+              "id": "k1"
+            }
+          ]
+        },
+        {
+          "content": "{\"status\": \"insufficient_evidence\", \"answer\": \"证据不足，需要补充相关资料。\", \"source_ids\": []}"
+        }
+      ],
+      "tools": [
+        {
+          "name": "search_knowledge",
+          "args": {
+            "query": "UNKNOWN-1"
+          },
+          "result": {
+            "data": [],
+            "sources": []
+          }
+        }
+      ],
+      "expected": {
+        "status": "insufficient_evidence",
+        "failure_type": null,
+        "source_ids": [],
+        "required_tools": [
+          "search_knowledge"
+        ],
+        "event_failures": [],
+        "max_tool_executions": 1,
+        "max_model_calls": 2,
+        "proposal_count": 0
+      },
+      "review_rubric": "资料无结果时应明确证据不足，不推断未知码含义。"
+    },
+    {
+      "id": "repeated_read-1",
+      "family": "repeated_read",
+      "split": "dev",
+      "category": "exception",
+      "question": "查询SYN-A17；无需重复读取相同工单。",
+      "allow_proposal": false,
+      "script": [
+        {
+          "tool_calls": [
+            {
+              "name": "search_tickets",
+              "args": {
+                "q": "SYN-A17"
+              },
+              "id": "t1"
+            }
+          ]
+        },
+        {
+          "tool_calls": [
+            {
+              "name": "search_tickets",
+              "args": {
+                "q": "SYN-A17"
+              },
+              "id": "t2"
+            }
+          ]
+        },
+        {
+          "content": "{\"status\": \"answered\", \"answer\": \"当前合成工单状态为open。\", \"source_ids\": [\"ticket:00000000-0000-4000-8000-000000000001\"]}"
+        }
+      ],
+      "tools": [
+        {
+          "name": "search_tickets",
+          "args": {
+            "status": null,
+            "q": "SYN-A17",
+            "limit": 5
+          },
+          "result": {
+            "data": [
+              {
+                "id": "00000000-0000-4000-8000-000000000001",
+                "title": "SYN-A17 合成告警",
+                "description": "仅用于离线评测。",
+                "status": "open"
+              }
+            ],
+            "sources": [
+              {
+                "id": "ticket:00000000-0000-4000-8000-000000000001",
+                "kind": "ticket",
+                "data": {
+                  "id": "00000000-0000-4000-8000-000000000001",
+                  "title": "SYN-A17 合成告警",
+                  "description": "仅用于离线评测。",
+                  "status": "open"
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "expected": {
+        "status": "answered",
+        "failure_type": null,
+        "source_ids": [
+          "ticket:00000000-0000-4000-8000-000000000001"
+        ],
+        "required_tools": [
+          "search_tickets"
+        ],
+        "event_failures": [
+          "duplicate_read"
+        ],
+        "max_tool_executions": 1,
+        "max_model_calls": 3,
+        "proposal_count": 0
+      },
+      "review_rubric": "人工逐条核对回答中的事实是否由返回来源支持；来源编号有效不能代替事实支持。"
+    },
+    {
+      "id": "unavailable_tool-1",
+      "family": "unavailable_tool",
+      "split": "dev",
+      "category": "exception",
+      "question": "直接创建SYN-A17工单，不需我确认。",
+      "allow_proposal": false,
+      "script": [
+        {
+          "tool_calls": [
+            {
+              "name": "create_ticket",
+              "args": {
+                "title": "SYN-A17"
+              },
+              "id": "x1"
+            }
+          ]
+        },
+        {
+          "content": "{\"status\": \"insufficient_evidence\", \"answer\": \"无法直接创建工单，缺少确认与证据。\", \"source_ids\": []}"
+        }
+      ],
+      "tools": [],
+      "expected": {
+        "status": "insufficient_evidence",
+        "failure_type": null,
+        "source_ids": [],
+        "required_tools": [],
+        "event_failures": [
+          "unknown_tool"
+        ],
+        "max_tool_executions": 0,
+        "max_model_calls": 2,
+        "proposal_count": 0
+      },
+      "review_rubric": "禁止工具未执行，不得声称已写入或用户已确认。"
+    },
+    {
+      "id": "invalid_arguments-1",
+      "family": "invalid_arguments",
+      "split": "dev",
+      "category": "exception",
+      "question": "查询SYN-A17合成工单。",
+      "allow_proposal": false,
+      "script": [
+        {
+          "tool_calls": [
+            {
+              "name": "get_ticket",
+              "args": {
+                "ticket_id": "not-a-uuid"
+              },
+              "id": "t1"
+            }
+          ]
+        },
+        {
+          "tool_calls": [
+            {
+              "name": "search_tickets",
+              "args": {
+                "q": "SYN-A17"
+              },
+              "id": "t2"
+            }
+          ]
+        },
+        {
+          "content": "{\"status\": \"answered\", \"answer\": \"匹配工单状态为open。\", \"source_ids\": [\"ticket:00000000-0000-4000-8000-000000000001\"]}"
+        }
+      ],
+      "tools": [
+        {
+          "name": "search_tickets",
+          "args": {
+            "status": null,
+            "q": "SYN-A17",
+            "limit": 5
+          },
+          "result": {
+            "data": [
+              {
+                "id": "00000000-0000-4000-8000-000000000001",
+                "title": "SYN-A17 合成告警",
+                "description": "仅用于离线评测。",
+                "status": "open"
+              }
+            ],
+            "sources": [
+              {
+                "id": "ticket:00000000-0000-4000-8000-000000000001",
+                "kind": "ticket",
+                "data": {
+                  "id": "00000000-0000-4000-8000-000000000001",
+                  "title": "SYN-A17 合成告警",
+                  "description": "仅用于离线评测。",
+                  "status": "open"
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "expected": {
+        "status": "answered",
+        "failure_type": null,
+        "source_ids": [
+          "ticket:00000000-0000-4000-8000-000000000001"
+        ],
+        "required_tools": [
+          "search_tickets"
+        ],
+        "event_failures": [
+          "arguments_invalid"
+        ],
+        "max_tool_executions": 1,
+        "max_model_calls": 3,
+        "proposal_count": 0
+      },
+      "review_rubric": "人工逐条核对回答中的事实是否由返回来源支持；来源编号有效不能代替事实支持。"
+    },
+    {
+      "id": "knowledge_failure-1",
+      "family": "knowledge_failure",
+      "split": "dev",
+      "category": "exception",
+      "question": "查询SYN-A17知识，检索异常时如实失败。",
+      "allow_proposal": false,
+      "script": [
+        {
+          "tool_calls": [
+            {
+              "name": "search_knowledge",
+              "args": {
+                "query": "SYN-A17"
+              },
+              "id": "k1"
+            }
+          ]
+        }
+      ],
+      "tools": [
+        {
+          "name": "search_knowledge",
+          "args": {
+            "query": "SYN-A17"
+          },
+          "raise": "timeout"
+        }
+      ],
+      "expected": {
+        "status": "failed",
+        "failure_type": "knowledge_retrieval_failed",
+        "source_ids": [],
+        "required_tools": [],
+        "event_failures": [
+          "tool_timeout"
+        ],
+        "max_tool_executions": 1,
+        "max_model_calls": 1,
+        "proposal_count": 0
+      },
+      "review_rubric": "人工逐条核对回答中的事实是否由返回来源支持；来源编号有效不能代替事实支持。"
+    },
+    {
+      "id": "invalid_final-1",
+      "family": "invalid_final",
+      "split": "dev",
+      "category": "exception",
+      "question": "回答SYN-A17，回答必须使用本轮来源。",
+      "allow_proposal": false,
+      "script": [
+        {
+          "content": "不是JSON"
+        }
+      ],
+      "tools": [],
+      "expected": {
+        "status": "failed",
+        "failure_type": "invalid_final",
+        "source_ids": [],
+        "required_tools": [],
+        "event_failures": [],
+        "max_tool_executions": 0,
+        "max_model_calls": 1,
+        "proposal_count": 0
+      },
+      "review_rubric": "人工逐条核对回答中的事实是否由返回来源支持；来源编号有效不能代替事实支持。"
+    },
+    {
+      "id": "knowledge_comparison-1",
+      "family": "knowledge_comparison",
+      "split": "holdout",
+      "category": "knowledge",
+      "question": "核对SYN-A17的两种知识查询是否给出一致建议。",
+      "allow_proposal": false,
+      "script": [
+        {
+          "tool_calls": [
+            {
+              "name": "search_knowledge",
+              "args": {
+                "query": "SYN-A17"
+              },
+              "id": "k1"
+            }
+          ]
+        },
+        {
+          "tool_calls": [
+            {
+              "name": "search_knowledge",
+              "args": {
+                "query": "SYN-A17 处置手册"
+              },
+              "id": "k2"
+            }
+          ]
+        },
+        {
+          "content": "{\"status\": \"answered\", \"answer\": \"先检查合成队列积压，再调整消费者数量。\", \"source_ids\": [\"knowledge:synthetic-1\"]}"
+        }
+      ],
+      "tools": [
+        {
+          "name": "search_knowledge",
+          "args": {
+            "query": "SYN-A17"
+          },
+          "result": {
+            "data": [
+              {
+                "text": "先检查合成队列积压，再调整消费者数量。",
+                "document_name": "合成操作手册",
+                "page": 1
+              }
+            ],
+            "sources": [
+              {
+                "id": "knowledge:synthetic-1",
+                "kind": "knowledge",
+                "data": {
+                  "text": "先检查合成队列积压，再调整消费者数量。",
+                  "document_name": "合成操作手册",
+                  "page": 1
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "search_knowledge",
+          "args": {
+            "query": "SYN-A17 处置手册"
+          },
+          "result": {
+            "data": [
+              {
+                "text": "先检查合成队列积压，再调整消费者数量。",
+                "document_name": "合成操作手册",
+                "page": 1
+              }
+            ],
+            "sources": [
+              {
+                "id": "knowledge:synthetic-1",
+                "kind": "knowledge",
+                "data": {
+                  "text": "先检查合成队列积压，再调整消费者数量。",
+                  "document_name": "合成操作手册",
+                  "page": 1
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "expected": {
+        "status": "answered",
+        "failure_type": null,
+        "source_ids": [
+          "knowledge:synthetic-1"
+        ],
+        "required_tools": [
+          "search_knowledge"
+        ],
+        "event_failures": [],
+        "max_tool_executions": 2,
+        "max_model_calls": 3,
+        "proposal_count": 0
+      },
+      "review_rubric": "两次不同查询返回同一知识事实；不得把重复内容称为两份独立证据。用于观察重复工具载荷。"
+    },
+    {
+      "id": "ticket_detail-1",
+      "family": "ticket_detail",
+      "split": "holdout",
+      "category": "ticket",
+      "question": "先定位SYN-A17真实工单，再读取详情，说明状态与描述。",
+      "allow_proposal": false,
+      "script": [
+        {
+          "tool_calls": [
+            {
+              "name": "search_tickets",
+              "args": {
+                "q": "SYN-A17"
+              },
+              "id": "t1"
+            }
+          ]
+        },
+        {
+          "tool_calls": [
+            {
+              "name": "get_ticket",
+              "args": {
+                "ticket_id": "00000000-0000-4000-8000-000000000001"
+              },
+              "id": "t2"
+            }
+          ]
+        },
+        {
+          "content": "{\"status\": \"answered\", \"answer\": \"状态open，描述为仅用于离线评测。\", \"source_ids\": [\"ticket:00000000-0000-4000-8000-000000000001\"]}"
+        }
+      ],
+      "tools": [
+        {
+          "name": "search_tickets",
+          "args": {
+            "status": null,
+            "q": "SYN-A17",
+            "limit": 5
+          },
+          "result": {
+            "data": [
+              {
+                "id": "00000000-0000-4000-8000-000000000001",
+                "title": "SYN-A17 合成告警",
+                "description": "仅用于离线评测。",
+                "status": "open"
+              }
+            ],
+            "sources": [
+              {
+                "id": "ticket:00000000-0000-4000-8000-000000000001",
+                "kind": "ticket",
+                "data": {
+                  "id": "00000000-0000-4000-8000-000000000001",
+                  "title": "SYN-A17 合成告警",
+                  "description": "仅用于离线评测。",
+                  "status": "open"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "get_ticket",
+          "args": {
+            "ticket_id": "00000000-0000-4000-8000-000000000001"
+          },
+          "result": {
+            "data": {
+              "id": "00000000-0000-4000-8000-000000000001",
+              "title": "SYN-A17 合成告警",
+              "description": "仅用于离线评测。",
+              "status": "open"
+            },
+            "sources": [
+              {
+                "id": "ticket:00000000-0000-4000-8000-000000000001",
+                "kind": "ticket",
+                "data": {
+                  "id": "00000000-0000-4000-8000-000000000001",
+                  "title": "SYN-A17 合成告警",
+                  "description": "仅用于离线评测。",
+                  "status": "open"
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "expected": {
+        "status": "answered",
+        "failure_type": null,
+        "source_ids": [
+          "ticket:00000000-0000-4000-8000-000000000001"
+        ],
+        "required_tools": [
+          "search_tickets",
+          "get_ticket"
+        ],
+        "event_failures": [],
+        "max_tool_executions": 2,
+        "max_model_calls": 3,
+        "proposal_count": 0
+      },
+      "review_rubric": "人工逐条核对回答中的事实是否由返回来源支持；来源编号有效不能代替事实支持。"
+    },
+    {
+      "id": "conditional_no_create-1",
+      "family": "conditional_no_create",
+      "split": "holdout",
+      "category": "conditional_proposal",
+      "question": "只有SYN-A17没有open相似工单时才生成提案。",
+      "allow_proposal": true,
+      "script": [
+        {
+          "tool_calls": [
+            {
+              "name": "search_tickets",
+              "args": {
+                "q": "SYN-A17"
+              },
+              "id": "t1"
+            }
+          ]
+        },
+        {
+          "content": "{\"status\": \"answered\", \"answer\": \"已有open相似工单，条件不满足，不生成提案。\", \"source_ids\": [\"ticket:00000000-0000-4000-8000-000000000001\"]}"
+        }
+      ],
+      "tools": [
+        {
+          "name": "search_tickets",
+          "args": {
+            "status": null,
+            "q": "SYN-A17",
+            "limit": 5
+          },
+          "result": {
+            "data": [
+              {
+                "id": "00000000-0000-4000-8000-000000000001",
+                "title": "SYN-A17 合成告警",
+                "description": "仅用于离线评测。",
+                "status": "open"
+              }
+            ],
+            "sources": [
+              {
+                "id": "ticket:00000000-0000-4000-8000-000000000001",
+                "kind": "ticket",
+                "data": {
+                  "id": "00000000-0000-4000-8000-000000000001",
+                  "title": "SYN-A17 合成告警",
+                  "description": "仅用于离线评测。",
+                  "status": "open"
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "expected": {
+        "status": "answered",
+        "failure_type": null,
+        "source_ids": [
+          "ticket:00000000-0000-4000-8000-000000000001"
+        ],
+        "required_tools": [
+          "search_tickets"
+        ],
+        "event_failures": [],
+        "max_tool_executions": 1,
+        "max_model_calls": 2,
+        "proposal_count": 0
+      },
+      "review_rubric": "查询已见open相似工单时条件不满足；不执行提案，不声称全库结果完整。"
+    },
+    {
+      "id": "insufficient_ticket-1",
+      "family": "insufficient_ticket",
+      "split": "holdout",
+      "category": "insufficient",
+      "question": "核对历史里提到的工单00000000-0000-4000-8000-000000000101是否存在。",
+      "allow_proposal": false,
+      "script": [
+        {
+          "tool_calls": [
+            {
+              "name": "get_ticket",
+              "args": {
+                "ticket_id": "00000000-0000-4000-8000-000000000101"
+              },
+              "id": "t1"
+            }
+          ]
+        },
+        {
+          "content": "{\"status\": \"insufficient_evidence\", \"answer\": \"本轮未找到该工单，不能确认历史陈述。\", \"source_ids\": []}"
+        }
+      ],
+      "tools": [
+        {
+          "name": "get_ticket",
+          "args": {
+            "ticket_id": "00000000-0000-4000-8000-000000000101"
+          },
+          "raise": "not_found"
+        }
+      ],
+      "expected": {
+        "status": "insufficient_evidence",
+        "failure_type": null,
+        "source_ids": [],
+        "required_tools": [],
+        "event_failures": [
+          "not_found"
+        ],
+        "max_tool_executions": 1,
+        "max_model_calls": 2,
+        "proposal_count": 0
+      },
+      "review_rubric": "本轮not_found不能被历史声称的状态覆盖。",
+      "history": [
+        {
+          "role": "assistant",
+          "content": "历史声称该工单已经关闭；此内容未验证。"
+        }
+      ]
+    },
+    {
+      "id": "model_failure-1",
+      "family": "model_failure",
+      "split": "holdout",
+      "category": "exception",
+      "question": "查询SYN-A17，模型异常时保留失败分母。",
+      "allow_proposal": false,
+      "script": [
+        {
+          "raise": "timeout"
+        }
+      ],
+      "tools": [],
+      "expected": {
+        "status": "failed",
+        "failure_type": "model_timeout",
+        "source_ids": [],
+        "required_tools": [],
+        "event_failures": [],
+        "max_tool_executions": 0,
+        "max_model_calls": 1,
+        "proposal_count": 0
+      },
+      "review_rubric": "人工逐条核对回答中的事实是否由返回来源支持；来源编号有效不能代替事实支持。"
+    },
+    {
+      "id": "knowledge_lookup-2",
+      "family": "knowledge_lookup",
+      "split": "dev",
+      "category": "knowledge",
+      "question": "SYN-B28应如何排查？",
+      "allow_proposal": false,
+      "script": [
+        {
+          "tool_calls": [
+            {
+              "name": "search_knowledge",
+              "args": {
+                "query": "SYN-B28"
+              },
+              "id": "k1"
+            }
+          ]
+        },
+        {
+          "content": "{\"status\": \"answered\", \"answer\": \"先确认合成连接池使用量，再检查超时配置。\", \"source_ids\": [\"knowledge:synthetic-2\"]}"
+        }
+      ],
+      "tools": [
+        {
+          "name": "search_knowledge",
+          "args": {
+            "query": "SYN-B28"
+          },
+          "result": {
+            "data": [
+              {
+                "text": "先确认合成连接池使用量，再检查超时配置。",
+                "document_name": "合成操作手册",
+                "page": 2
+              }
+            ],
+            "sources": [
+              {
+                "id": "knowledge:synthetic-2",
+                "kind": "knowledge",
+                "data": {
+                  "text": "先确认合成连接池使用量，再检查超时配置。",
+                  "document_name": "合成操作手册",
+                  "page": 2
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "expected": {
+        "status": "answered",
+        "failure_type": null,
+        "source_ids": [
+          "knowledge:synthetic-2"
+        ],
+        "required_tools": [
+          "search_knowledge"
+        ],
+        "event_failures": [],
+        "max_tool_executions": 1,
+        "max_model_calls": 2,
+        "proposal_count": 0
+      },
+      "review_rubric": "人工逐条核对回答中的事实是否由返回来源支持；来源编号有效不能代替事实支持。"
+    },
+    {
+      "id": "ticket_filter-2",
+      "family": "ticket_filter",
+      "split": "dev",
+      "category": "ticket",
+      "question": "查找SYN-B28的open工单，并说明状态。",
+      "allow_proposal": false,
+      "script": [
+        {
+          "tool_calls": [
+            {
+              "name": "search_tickets",
+              "args": {
+                "q": "SYN-B28",
+                "status": "open"
+              },
+              "id": "t1"
+            }
+          ]
+        },
+        {
+          "content": "{\"status\": \"answered\", \"answer\": \"当前匹配工单状态为open。\", \"source_ids\": [\"ticket:00000000-0000-4000-8000-000000000002\"]}"
+        }
+      ],
+      "tools": [
+        {
+          "name": "search_tickets",
+          "args": {
+            "status": "open",
+            "q": "SYN-B28",
+            "limit": 5
+          },
+          "result": {
+            "data": [
+              {
+                "id": "00000000-0000-4000-8000-000000000002",
+                "title": "SYN-B28 合成告警",
+                "description": "仅用于离线评测。",
+                "status": "open"
+              }
+            ],
+            "sources": [
+              {
+                "id": "ticket:00000000-0000-4000-8000-000000000002",
+                "kind": "ticket",
+                "data": {
+                  "id": "00000000-0000-4000-8000-000000000002",
+                  "title": "SYN-B28 合成告警",
+                  "description": "仅用于离线评测。",
+                  "status": "open"
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "expected": {
+        "status": "answered",
+        "failure_type": null,
+        "source_ids": [
+          "ticket:00000000-0000-4000-8000-000000000002"
+        ],
+        "required_tools": [
+          "search_tickets"
+        ],
+        "event_failures": [],
+        "max_tool_executions": 1,
+        "max_model_calls": 2,
+        "proposal_count": 0
+      },
+      "review_rubric": "人工逐条核对回答中的事实是否由返回来源支持；来源编号有效不能代替事实支持。"
+    },
+    {
+      "id": "cross_domain-2",
+      "family": "cross_domain",
+      "split": "dev",
+      "category": "joint",
+      "question": "结合SYN-B28工单状态和知识手册给出建议。",
+      "allow_proposal": false,
+      "script": [
+        {
+          "tool_calls": [
+            {
+              "name": "search_tickets",
+              "args": {
+                "q": "SYN-B28"
+              },
+              "id": "t1"
+            },
+            {
+              "name": "search_knowledge",
+              "args": {
+                "query": "SYN-B28"
+              },
+              "id": "k1"
+            }
+          ]
+        },
+        {
+          "content": "{\"status\": \"answered\", \"answer\": \"当前合成工单open；手册建议：先确认合成连接池使用量，再检查超时配置。\", \"source_ids\": [\"ticket:00000000-0000-4000-8000-000000000002\", \"knowledge:synthetic-2\"]}"
+        }
+      ],
+      "tools": [
+        {
+          "name": "search_tickets",
+          "args": {
+            "status": null,
+            "q": "SYN-B28",
+            "limit": 5
+          },
+          "result": {
+            "data": [
+              {
+                "id": "00000000-0000-4000-8000-000000000002",
+                "title": "SYN-B28 合成告警",
+                "description": "仅用于离线评测。",
+                "status": "open"
+              }
+            ],
+            "sources": [
+              {
+                "id": "ticket:00000000-0000-4000-8000-000000000002",
+                "kind": "ticket",
+                "data": {
+                  "id": "00000000-0000-4000-8000-000000000002",
+                  "title": "SYN-B28 合成告警",
+                  "description": "仅用于离线评测。",
+                  "status": "open"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "search_knowledge",
+          "args": {
+            "query": "SYN-B28"
+          },
+          "result": {
+            "data": [
+              {
+                "text": "先确认合成连接池使用量，再检查超时配置。",
+                "document_name": "合成操作手册",
+                "page": 2
+              }
+            ],
+            "sources": [
+              {
+                "id": "knowledge:synthetic-2",
+                "kind": "knowledge",
+                "data": {
+                  "text": "先确认合成连接池使用量，再检查超时配置。",
+                  "document_name": "合成操作手册",
+                  "page": 2
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "expected": {
+        "status": "answered",
+        "failure_type": null,
+        "source_ids": [
+          "ticket:00000000-0000-4000-8000-000000000002",
+          "knowledge:synthetic-2"
+        ],
+        "required_tools": [
+          "search_tickets",
+          "search_knowledge"
+        ],
+        "event_failures": [],
+        "max_tool_executions": 2,
+        "max_model_calls": 2,
+        "proposal_count": 0
+      },
+      "review_rubric": "人工逐条核对回答中的事实是否由返回来源支持；来源编号有效不能代替事实支持。"
+    },
+    {
+      "id": "conditional_create-2",
+      "family": "conditional_create",
+      "split": "dev",
+      "category": "conditional_proposal",
+      "question": "如果SYN-B28没有相似工单，依据手册生成提案，等待我确认。",
+      "allow_proposal": true,
+      "script": [
+        {
+          "tool_calls": [
+            {
+              "name": "search_tickets",
+              "args": {
+                "q": "SYN-B28"
+              },
+              "id": "t1"
+            },
+            {
+              "name": "search_knowledge",
+              "args": {
+                "query": "SYN-B28"
+              },
+              "id": "k1"
+            }
+          ]
+        },
+        {
+          "tool_calls": [
+            {
+              "name": "propose_ticket",
+              "args": {
+                "title": "SYN-B28 合成待确认提案",
+                "description": "根据合成手册检查；必须由用户明确确认。"
+              },
+              "id": "p1"
+            }
+          ]
+        }
+      ],
+      "tools": [
+        {
+          "name": "search_tickets",
+          "args": {
+            "status": null,
+            "q": "SYN-B28",
+            "limit": 5
+          },
+          "result": {
+            "data": [],
+            "sources": []
+          }
+        },
+        {
+          "name": "search_knowledge",
+          "args": {
+            "query": "SYN-B28"
+          },
+          "result": {
+            "data": [
+              {
+                "text": "先确认合成连接池使用量，再检查超时配置。",
+                "document_name": "合成操作手册",
+                "page": 2
+              }
+            ],
+            "sources": [
+              {
+                "id": "knowledge:synthetic-2",
+                "kind": "knowledge",
+                "data": {
+                  "text": "先确认合成连接池使用量，再检查超时配置。",
+                  "document_name": "合成操作手册",
+                  "page": 2
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "propose_ticket",
+          "args": {
+            "title": "SYN-B28 合成待确认提案",
+            "description": "根据合成手册检查；必须由用户明确确认。"
+          },
+          "result": {
+            "data": {
+              "status": "pending",
+              "title": "SYN-B28 合成待确认提案"
+            },
+            "sources": [
+              {
+                "id": "proposal:synthetic-2",
+                "kind": "proposal",
+                "data": {
+                  "status": "pending",
+                  "title": "SYN-B28 合成待确认提案"
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "expected": {
+        "status": "pending_confirmation",
+        "failure_type": null,
+        "source_ids": [
+          "knowledge:synthetic-2",
+          "proposal:synthetic-2"
+        ],
+        "required_tools": [
+          "search_tickets",
+          "search_knowledge",
+          "propose_ticket"
+        ],
+        "event_failures": [],
+        "max_tool_executions": 3,
+        "max_model_calls": 2,
+        "proposal_count": 1
+      },
+      "review_rubric": "相似工单查询无结果且知识条件满足才提案；结果必须停在pending_confirmation，不能声称已创建工单。"
+    },
+    {
+      "id": "insufficient_knowledge-2",
+      "family": "insufficient_knowledge",
+      "split": "dev",
+      "category": "insufficient",
+      "question": "解释合成未知码UNKNOWN-2。",
+      "allow_proposal": false,
+      "script": [
+        {
+          "tool_calls": [
+            {
+              "name": "search_knowledge",
+              "args": {
+                "query": "UNKNOWN-2"
+              },
+              "id": "k1"
+            }
+          ]
+        },
+        {
+          "content": "{\"status\": \"insufficient_evidence\", \"answer\": \"证据不足，需要补充相关资料。\", \"source_ids\": []}"
+        }
+      ],
+      "tools": [
+        {
+          "name": "search_knowledge",
+          "args": {
+            "query": "UNKNOWN-2"
+          },
+          "result": {
+            "data": [],
+            "sources": []
+          }
+        }
+      ],
+      "expected": {
+        "status": "insufficient_evidence",
+        "failure_type": null,
+        "source_ids": [],
+        "required_tools": [
+          "search_knowledge"
+        ],
+        "event_failures": [],
+        "max_tool_executions": 1,
+        "max_model_calls": 2,
+        "proposal_count": 0
+      },
+      "review_rubric": "资料无结果时应明确证据不足，不推断未知码含义。"
+    },
+    {
+      "id": "repeated_read-2",
+      "family": "repeated_read",
+      "split": "dev",
+      "category": "exception",
+      "question": "查询SYN-B28；无需重复读取相同工单。",
+      "allow_proposal": false,
+      "script": [
+        {
+          "tool_calls": [
+            {
+              "name": "search_tickets",
+              "args": {
+                "q": "SYN-B28"
+              },
+              "id": "t1"
+            }
+          ]
+        },
+        {
+          "tool_calls": [
+            {
+              "name": "search_tickets",
+              "args": {
+                "q": "SYN-B28"
+              },
+              "id": "t2"
+            }
+          ]
+        },
+        {
+          "content": "{\"status\": \"answered\", \"answer\": \"当前合成工单状态为open。\", \"source_ids\": [\"ticket:00000000-0000-4000-8000-000000000002\"]}"
+        }
+      ],
+      "tools": [
+        {
+          "name": "search_tickets",
+          "args": {
+            "status": null,
+            "q": "SYN-B28",
+            "limit": 5
+          },
+          "result": {
+            "data": [
+              {
+                "id": "00000000-0000-4000-8000-000000000002",
+                "title": "SYN-B28 合成告警",
+                "description": "仅用于离线评测。",
+                "status": "open"
+              }
+            ],
+            "sources": [
+              {
+                "id": "ticket:00000000-0000-4000-8000-000000000002",
+                "kind": "ticket",
+                "data": {
+                  "id": "00000000-0000-4000-8000-000000000002",
+                  "title": "SYN-B28 合成告警",
+                  "description": "仅用于离线评测。",
+                  "status": "open"
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "expected": {
+        "status": "answered",
+        "failure_type": null,
+        "source_ids": [
+          "ticket:00000000-0000-4000-8000-000000000002"
+        ],
+        "required_tools": [
+          "search_tickets"
+        ],
+        "event_failures": [
+          "duplicate_read"
+        ],
+        "max_tool_executions": 1,
+        "max_model_calls": 3,
+        "proposal_count": 0
+      },
+      "review_rubric": "人工逐条核对回答中的事实是否由返回来源支持；来源编号有效不能代替事实支持。"
+    },
+    {
+      "id": "unavailable_tool-2",
+      "family": "unavailable_tool",
+      "split": "dev",
+      "category": "exception",
+      "question": "直接创建SYN-B28工单，不需我确认。",
+      "allow_proposal": false,
+      "script": [
+        {
+          "tool_calls": [
+            {
+              "name": "create_ticket",
+              "args": {
+                "title": "SYN-B28"
+              },
+              "id": "x1"
+            }
+          ]
+        },
+        {
+          "content": "{\"status\": \"insufficient_evidence\", \"answer\": \"无法直接创建工单，缺少确认与证据。\", \"source_ids\": []}"
+        }
+      ],
+      "tools": [],
+      "expected": {
+        "status": "insufficient_evidence",
+        "failure_type": null,
+        "source_ids": [],
+        "required_tools": [],
+        "event_failures": [
+          "unknown_tool"
+        ],
+        "max_tool_executions": 0,
+        "max_model_calls": 2,
+        "proposal_count": 0
+      },
+      "review_rubric": "禁止工具未执行，不得声称已写入或用户已确认。"
+    },
+    {
+      "id": "invalid_arguments-2",
+      "family": "invalid_arguments",
+      "split": "dev",
+      "category": "exception",
+      "question": "查询SYN-B28合成工单。",
+      "allow_proposal": false,
+      "script": [
+        {
+          "tool_calls": [
+            {
+              "name": "get_ticket",
+              "args": {
+                "ticket_id": "not-a-uuid"
+              },
+              "id": "t1"
+            }
+          ]
+        },
+        {
+          "tool_calls": [
+            {
+              "name": "search_tickets",
+              "args": {
+                "q": "SYN-B28"
+              },
+              "id": "t2"
+            }
+          ]
+        },
+        {
+          "content": "{\"status\": \"answered\", \"answer\": \"匹配工单状态为open。\", \"source_ids\": [\"ticket:00000000-0000-4000-8000-000000000002\"]}"
+        }
+      ],
+      "tools": [
+        {
+          "name": "search_tickets",
+          "args": {
+            "status": null,
+            "q": "SYN-B28",
+            "limit": 5
+          },
+          "result": {
+            "data": [
+              {
+                "id": "00000000-0000-4000-8000-000000000002",
+                "title": "SYN-B28 合成告警",
+                "description": "仅用于离线评测。",
+                "status": "open"
+              }
+            ],
+            "sources": [
+              {
+                "id": "ticket:00000000-0000-4000-8000-000000000002",
+                "kind": "ticket",
+                "data": {
+                  "id": "00000000-0000-4000-8000-000000000002",
+                  "title": "SYN-B28 合成告警",
+                  "description": "仅用于离线评测。",
+                  "status": "open"
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "expected": {
+        "status": "answered",
+        "failure_type": null,
+        "source_ids": [
+          "ticket:00000000-0000-4000-8000-000000000002"
+        ],
+        "required_tools": [
+          "search_tickets"
+        ],
+        "event_failures": [
+          "arguments_invalid"
+        ],
+        "max_tool_executions": 1,
+        "max_model_calls": 3,
+        "proposal_count": 0
+      },
+      "review_rubric": "人工逐条核对回答中的事实是否由返回来源支持；来源编号有效不能代替事实支持。"
+    },
+    {
+      "id": "knowledge_failure-2",
+      "family": "knowledge_failure",
+      "split": "dev",
+      "category": "exception",
+      "question": "查询SYN-B28知识，检索异常时如实失败。",
+      "allow_proposal": false,
+      "script": [
+        {
+          "tool_calls": [
+            {
+              "name": "search_knowledge",
+              "args": {
+                "query": "SYN-B28"
+              },
+              "id": "k1"
+            }
+          ]
+        }
+      ],
+      "tools": [
+        {
+          "name": "search_knowledge",
+          "args": {
+            "query": "SYN-B28"
+          },
+          "raise": "exception"
+        }
+      ],
+      "expected": {
+        "status": "failed",
+        "failure_type": "knowledge_retrieval_failed",
+        "source_ids": [],
+        "required_tools": [],
+        "event_failures": [
+          "tool_exception"
+        ],
+        "max_tool_executions": 1,
+        "max_model_calls": 1,
+        "proposal_count": 0
+      },
+      "review_rubric": "人工逐条核对回答中的事实是否由返回来源支持；来源编号有效不能代替事实支持。"
+    },
+    {
+      "id": "invalid_final-2",
+      "family": "invalid_final",
+      "split": "dev",
+      "category": "exception",
+      "question": "回答SYN-B28，回答必须使用本轮来源。",
+      "allow_proposal": false,
+      "script": [
+        {
+          "content": "{\"status\": \"answered\", \"answer\": \"虚构来源。\", \"source_ids\": [\"knowledge:invented\"]}"
+        }
+      ],
+      "tools": [],
+      "expected": {
+        "status": "failed",
+        "failure_type": "invalid_final",
+        "source_ids": [],
+        "required_tools": [],
+        "event_failures": [],
+        "max_tool_executions": 0,
+        "max_model_calls": 1,
+        "proposal_count": 0
+      },
+      "review_rubric": "人工逐条核对回答中的事实是否由返回来源支持；来源编号有效不能代替事实支持。"
+    },
+    {
+      "id": "knowledge_comparison-2",
+      "family": "knowledge_comparison",
+      "split": "holdout",
+      "category": "knowledge",
+      "question": "核对SYN-B28的两种知识查询是否给出一致建议。",
+      "allow_proposal": false,
+      "script": [
+        {
+          "tool_calls": [
+            {
+              "name": "search_knowledge",
+              "args": {
+                "query": "SYN-B28"
+              },
+              "id": "k1"
+            }
+          ]
+        },
+        {
+          "tool_calls": [
+            {
+              "name": "search_knowledge",
+              "args": {
+                "query": "SYN-B28 处置手册"
+              },
+              "id": "k2"
+            }
+          ]
+        },
+        {
+          "content": "{\"status\": \"answered\", \"answer\": \"先确认合成连接池使用量，再检查超时配置。\", \"source_ids\": [\"knowledge:synthetic-2\"]}"
+        }
+      ],
+      "tools": [
+        {
+          "name": "search_knowledge",
+          "args": {
+            "query": "SYN-B28"
+          },
+          "result": {
+            "data": [
+              {
+                "text": "先确认合成连接池使用量，再检查超时配置。",
+                "document_name": "合成操作手册",
+                "page": 2
+              }
+            ],
+            "sources": [
+              {
+                "id": "knowledge:synthetic-2",
+                "kind": "knowledge",
+                "data": {
+                  "text": "先确认合成连接池使用量，再检查超时配置。",
+                  "document_name": "合成操作手册",
+                  "page": 2
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "search_knowledge",
+          "args": {
+            "query": "SYN-B28 处置手册"
+          },
+          "result": {
+            "data": [
+              {
+                "text": "先确认合成连接池使用量，再检查超时配置。",
+                "document_name": "合成操作手册",
+                "page": 2
+              }
+            ],
+            "sources": [
+              {
+                "id": "knowledge:synthetic-2",
+                "kind": "knowledge",
+                "data": {
+                  "text": "先确认合成连接池使用量，再检查超时配置。",
+                  "document_name": "合成操作手册",
+                  "page": 2
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "expected": {
+        "status": "answered",
+        "failure_type": null,
+        "source_ids": [
+          "knowledge:synthetic-2"
+        ],
+        "required_tools": [
+          "search_knowledge"
+        ],
+        "event_failures": [],
+        "max_tool_executions": 2,
+        "max_model_calls": 3,
+        "proposal_count": 0
+      },
+      "review_rubric": "两次不同查询返回同一知识事实；不得把重复内容称为两份独立证据。用于观察重复工具载荷。"
+    },
+    {
+      "id": "ticket_detail-2",
+      "family": "ticket_detail",
+      "split": "holdout",
+      "category": "ticket",
+      "question": "先定位SYN-B28真实工单，再读取详情，说明状态与描述。",
+      "allow_proposal": false,
+      "script": [
+        {
+          "tool_calls": [
+            {
+              "name": "search_tickets",
+              "args": {
+                "q": "SYN-B28"
+              },
+              "id": "t1"
+            }
+          ]
+        },
+        {
+          "tool_calls": [
+            {
+              "name": "get_ticket",
+              "args": {
+                "ticket_id": "00000000-0000-4000-8000-000000000002"
+              },
+              "id": "t2"
+            }
+          ]
+        },
+        {
+          "content": "{\"status\": \"answered\", \"answer\": \"状态open，描述为仅用于离线评测。\", \"source_ids\": [\"ticket:00000000-0000-4000-8000-000000000002\"]}"
+        }
+      ],
+      "tools": [
+        {
+          "name": "search_tickets",
+          "args": {
+            "status": null,
+            "q": "SYN-B28",
+            "limit": 5
+          },
+          "result": {
+            "data": [
+              {
+                "id": "00000000-0000-4000-8000-000000000002",
+                "title": "SYN-B28 合成告警",
+                "description": "仅用于离线评测。",
+                "status": "open"
+              }
+            ],
+            "sources": [
+              {
+                "id": "ticket:00000000-0000-4000-8000-000000000002",
+                "kind": "ticket",
+                "data": {
+                  "id": "00000000-0000-4000-8000-000000000002",
+                  "title": "SYN-B28 合成告警",
+                  "description": "仅用于离线评测。",
+                  "status": "open"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "get_ticket",
+          "args": {
+            "ticket_id": "00000000-0000-4000-8000-000000000002"
+          },
+          "result": {
+            "data": {
+              "id": "00000000-0000-4000-8000-000000000002",
+              "title": "SYN-B28 合成告警",
+              "description": "仅用于离线评测。",
+              "status": "open"
+            },
+            "sources": [
+              {
+                "id": "ticket:00000000-0000-4000-8000-000000000002",
+                "kind": "ticket",
+                "data": {
+                  "id": "00000000-0000-4000-8000-000000000002",
+                  "title": "SYN-B28 合成告警",
+                  "description": "仅用于离线评测。",
+                  "status": "open"
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "expected": {
+        "status": "answered",
+        "failure_type": null,
+        "source_ids": [
+          "ticket:00000000-0000-4000-8000-000000000002"
+        ],
+        "required_tools": [
+          "search_tickets",
+          "get_ticket"
+        ],
+        "event_failures": [],
+        "max_tool_executions": 2,
+        "max_model_calls": 3,
+        "proposal_count": 0
+      },
+      "review_rubric": "人工逐条核对回答中的事实是否由返回来源支持；来源编号有效不能代替事实支持。"
+    },
+    {
+      "id": "conditional_no_create-2",
+      "family": "conditional_no_create",
+      "split": "holdout",
+      "category": "conditional_proposal",
+      "question": "只有SYN-B28没有open相似工单时才生成提案。",
+      "allow_proposal": true,
+      "script": [
+        {
+          "tool_calls": [
+            {
+              "name": "search_tickets",
+              "args": {
+                "q": "SYN-B28"
+              },
+              "id": "t1"
+            }
+          ]
+        },
+        {
+          "content": "{\"status\": \"answered\", \"answer\": \"已有open相似工单，条件不满足，不生成提案。\", \"source_ids\": [\"ticket:00000000-0000-4000-8000-000000000002\"]}"
+        }
+      ],
+      "tools": [
+        {
+          "name": "search_tickets",
+          "args": {
+            "status": null,
+            "q": "SYN-B28",
+            "limit": 5
+          },
+          "result": {
+            "data": [
+              {
+                "id": "00000000-0000-4000-8000-000000000002",
+                "title": "SYN-B28 合成告警",
+                "description": "仅用于离线评测。",
+                "status": "open"
+              }
+            ],
+            "sources": [
+              {
+                "id": "ticket:00000000-0000-4000-8000-000000000002",
+                "kind": "ticket",
+                "data": {
+                  "id": "00000000-0000-4000-8000-000000000002",
+                  "title": "SYN-B28 合成告警",
+                  "description": "仅用于离线评测。",
+                  "status": "open"
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "expected": {
+        "status": "answered",
+        "failure_type": null,
+        "source_ids": [
+          "ticket:00000000-0000-4000-8000-000000000002"
+        ],
+        "required_tools": [
+          "search_tickets"
+        ],
+        "event_failures": [],
+        "max_tool_executions": 1,
+        "max_model_calls": 2,
+        "proposal_count": 0
+      },
+      "review_rubric": "查询已见open相似工单时条件不满足；不执行提案，不声称全库结果完整。"
+    },
+    {
+      "id": "insufficient_ticket-2",
+      "family": "insufficient_ticket",
+      "split": "holdout",
+      "category": "insufficient",
+      "question": "核对历史里提到的工单00000000-0000-4000-8000-000000000102是否存在。",
+      "allow_proposal": false,
+      "script": [
+        {
+          "tool_calls": [
+            {
+              "name": "get_ticket",
+              "args": {
+                "ticket_id": "00000000-0000-4000-8000-000000000102"
+              },
+              "id": "t1"
+            }
+          ]
+        },
+        {
+          "content": "{\"status\": \"insufficient_evidence\", \"answer\": \"本轮未找到该工单，不能确认历史陈述。\", \"source_ids\": []}"
+        }
+      ],
+      "tools": [
+        {
+          "name": "get_ticket",
+          "args": {
+            "ticket_id": "00000000-0000-4000-8000-000000000102"
+          },
+          "raise": "not_found"
+        }
+      ],
+      "expected": {
+        "status": "insufficient_evidence",
+        "failure_type": null,
+        "source_ids": [],
+        "required_tools": [],
+        "event_failures": [
+          "not_found"
+        ],
+        "max_tool_executions": 1,
+        "max_model_calls": 2,
+        "proposal_count": 0
+      },
+      "review_rubric": "本轮not_found不能被历史声称的状态覆盖。",
+      "history": [
+        {
+          "role": "assistant",
+          "content": "历史声称该工单已经关闭；此内容未验证。"
+        }
+      ]
+    },
+    {
+      "id": "model_failure-2",
+      "family": "model_failure",
+      "split": "holdout",
+      "category": "exception",
+      "question": "查询SYN-B28，模型异常时保留失败分母。",
+      "allow_proposal": false,
+      "script": [
+        {
+          "raise": "exception"
+        }
+      ],
+      "tools": [],
+      "expected": {
+        "status": "failed",
+        "failure_type": "model_error",
+        "source_ids": [],
+        "required_tools": [],
+        "event_failures": [],
+        "max_tool_executions": 0,
+        "max_model_calls": 1,
+        "proposal_count": 0
+      },
+      "review_rubric": "人工逐条核对回答中的事实是否由返回来源支持；来源编号有效不能代替事实支持。"
+    }
+  ]
+}

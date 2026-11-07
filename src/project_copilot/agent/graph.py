@@ -16,6 +16,7 @@ from project_copilot.infrastructure.tracing import trace_span
 from project_copilot.infrastructure.job_progress import progress
 from project_copilot.agent.state import AgentState, GraphLimits
 from project_copilot.agent.tools import ToolRegistry, ToolResult
+from project_copilot.agent.observations import model_observation
 from project_copilot.schemas.agent import AgentFinal, AgentQuestion, AgentRun, AgentSource, ToolEvent
 from project_copilot.services.quotas import QuotaExceeded
 
@@ -297,7 +298,7 @@ class AgentRunner:
                                     )
                                     parsed = ToolResult.model_validate(result)
                                     tool_span.set_attribute("tool.source_count", len(parsed.sources))
-                                output = {"status": "ok", **parsed.model_dump(mode="json")}
+                                output = model_observation(parsed)
                                 if len(_json(output)) > self.limits.max_tool_result_chars:
                                     kind = "tool_output_too_large"
                                 else:

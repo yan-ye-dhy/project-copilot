@@ -199,13 +199,16 @@ test('a stalled transaction is aborted before fallback and never treated as a su
 
 test('a synchronous storage quota or write error inside an IDB callback aborts atomically and degrades safely', async () => {
   let aborted = false, closed = false;
-  const store = { index() { return { getAllKeys() {
+  const store = { get() {
+    const request = { result: { enabled: true, revision: 0 } };
+    queueMicrotask(() => request.onsuccess()); return request;
+  }, index() { return { getAllKeys() {
     const request = { result: [[id(), id(2)]] };
     queueMicrotask(() => request.onsuccess()); return request;
   } }; }, delete() { throw Error('SECRET_QUOTA_FAILURE'); } };
   const tx = { abort() { aborted = true; }, objectStore() { return store; } };
   const db = { close() { closed = true; }, transaction() { return tx; } };
   const indexedDB = { open() { const request = { result: db }; queueMicrotask(() => request.onsuccess()); return request; } };
-  await assert.rejects(new HistoryStore({ indexedDB }).save(id(), [conversation()]), HistoryStorageError);
+  await assert.rejects(new HistoryStore({ indexedDB }).save(id(), [conversation()], 0), HistoryStorageError);
   assert.equal(aborted, true); assert.equal(closed, true);
 });
