@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import logging
 import re
 import time
 from collections.abc import Sequence
@@ -14,6 +15,9 @@ from opentelemetry.trace import StatusCode
 
 from project_copilot.infrastructure.tracing import trace_span
 from project_copilot.infrastructure.job_progress import progress
+from project_copilot.infrastructure.agent_model import (
+    AGENT_MODEL_FAILURE_TYPES, AgentModelRequestError, AgentModelResponseError,
+)
 from project_copilot.agent.state import AgentState, GraphLimits
 from project_copilot.agent.tools import ToolRegistry, ToolResult
 from project_copilot.agent.observations import model_observation
@@ -38,6 +42,7 @@ status为answered或insufficient_evidence；answer为非空文字；source_ids�
 准确区分工单现状与知识建议，不编造ID、状态、时间、文档原文或业务确认结果。"""
 
 _READONLY_TOOLS = frozenset({"get_ticket", "search_tickets", "search_knowledge"})
+logger = logging.getLogger(__name__)
 
 
 class AgentModel(Protocol):
@@ -105,6 +110,8 @@ class AgentRunner:
                 event = events[-1]
                 span.set_attribute("agent.model.step", event["step"])
                 span.set_attribute("status", event["status"])
+                if "provider_http_status" in event:
+                    span.set_attribute("provider.http_status", event["provider_http_status"])
                 if event.get("model") in {"deepseek-flash", "deepseek-v4-pro"}:
                     span.set_attribute("llm.model_name", event["model"])
                 usage = event.get("usage")
@@ -146,6 +153,19 @@ class AgentRunner:
             event.update(status="error", failure_type=kind, elapsed_ms=(time.monotonic() - started) * 1000)
             return {**base, "model_events": [*state["model_events"], event],
                     "usage": None, "usage_complete": False, **_failure(kind, budget=kind == "total_timeout")}
+        except (AgentModelRequestError, AgentModelResponseError) as exc:
+            # Only explicit adapter codes cross the graph boundary. Provider
+            # text, bodies, headers and arbitrary exception attributes do not.
+            kind = (exc.failure_type if isinstance(exc.failure_type, str)
+                    and exc.failure_type in AGENT_MODEL_FAILURE_TYPES else "model_error")
+            status = getattr(exc, "status_code", None)
+            if type(status) is int and 100 <= status <= 599:
+                event["provider_http_status"] = status
+            event.update(status="error", failure_type=kind, elapsed_ms=(time.monotonic() - started) * 1000)
+            logger.warning("agent_model_failure step=%s failure_type=%s http_status=%s",
+                           count, kind, event.get("provider_http_status", "unavailable"))
+            return {**base, "model_events": [*state["model_events"], event],
+                    "usage": None, "usage_complete": False, **_failure(kind)}
         except QuotaExceeded as exc:
             kind = "provider_budget" if exc.reason == "provider_attempts" else "model_error"
             event.update(status="error", failure_type=kind, elapsed_ms=(time.monotonic() - started) * 1000)

@@ -10,7 +10,9 @@ from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, Tool
 import pytest
 
 from project_copilot.config import Settings
-from project_copilot.infrastructure.agent_model import DeepSeekToolModel, create_agent_model, encode_messages
+from project_copilot.infrastructure.agent_model import (
+    AgentModelRequestError, DeepSeekToolModel, create_agent_model, encode_messages,
+)
 from project_copilot.infrastructure.models import ChatConfigError, ChatRequestError, ChatResponseError
 
 
@@ -194,6 +196,10 @@ def test_http_failure_is_sanitized_not_retried_and_closes_client(status):
             async with create_agent_model(settings(), http_client=client) as model:
                 await model.ainvoke(MESSAGES, TOOLS)
         assert caught.value.status_code == status
+        assert isinstance(caught.value, AgentModelRequestError)
+        expected = {401: "model_auth_error", 403: "model_auth_error",
+                    429: "model_rate_limit", 500: "model_provider_error"}
+        assert caught.value.failure_type == expected.get(status, "model_request_rejected")
         assert PRIVATE not in "".join(traceback.format_exception(caught.value))
         assert FAKE_KEY not in str(caught.value)
         assert len(requests) == 1 and client.is_closed
@@ -215,6 +221,7 @@ def test_transport_timeout_and_connection_failure_are_sanitized_without_retry(er
             async with create_agent_model(settings(), http_client=client) as model:
                 await model.ainvoke(MESSAGES, TOOLS)
         assert PRIVATE not in "".join(traceback.format_exception(caught.value))
+        assert caught.value.failure_type == ("model_timeout" if error_type is httpx.ReadTimeout else "model_connection_error")
         assert count == 1 and client.is_closed
     asyncio.run(run())
 
@@ -255,8 +262,9 @@ def test_tool_schema_structure_is_validated_before_network(tools):
         def forbidden(_request):
             pytest.fail("非法Schema不得请求模型")
         client = httpx.AsyncClient(transport=httpx.MockTransport(forbidden))
-        with pytest.raises(ValueError):
+        with pytest.raises(AgentModelRequestError) as caught:
             async with create_agent_model(settings(), http_client=client) as model:
                 await model.ainvoke(MESSAGES, tools)
+        assert caught.value.failure_type == "model_input_invalid"
         assert client.is_closed
     asyncio.run(run())
