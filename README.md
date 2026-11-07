@@ -46,6 +46,8 @@ flowchart LR
 | 证据 | 能证明的范围 |
 | --- | --- |
 | [本地模拟验收](docs/INTERVIEW_GUIDE.md#自动验证与截图) | 当前真实前端构建、浏览器交互、合成响应、确认与恢复边界 |
+| [Agent 任务合同基线](docs/AGENT_TASK_BENCHMARK_REPORT.md) | 实际编译图＋脚本模型的30个场景，30/30合同通过；不代表真实模型自主决策质量 |
+| [工具观察去重对照](docs/AGENT_OBSERVATIONS.md) | 同配置观察字符减少24.05%，工具执行与合同结果不变；不等于实测token或费用减少 |
 | [历史最终验收](docs/FINAL_ACCEPTANCE.md) / [原始审计](docs/evidence/D32_FINAL_ACCEPTANCE.json) | 记录当时的真实 Docker、PostgreSQL、模型及 Phoenix 回读；不是本轮重测 |
 | [前端真实验收](docs/evidence/FRONTEND_VERIFICATION_20261031.json) | 当时的浏览器与后端闭环，具体调用数和失败见记录 |
 | [冻结保留集](evals/reports/FINAL_HOLDOUT.md) | 9 道可答题 MRR@5：0.944444 → 1；Recall@5 均为 1，另 1 道无答案不入均值 |
