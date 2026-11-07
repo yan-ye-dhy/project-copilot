@@ -14,6 +14,7 @@ from project_copilot.agent.tools import (
     GetTicketArguments, SearchKnowledgeArguments, SearchTicketsArguments, ToolRegistry, build_readonly_registry,
 )
 from project_copilot.schemas.agent import AgentFinal, AgentQuestion
+from project_copilot.infrastructure.agent_model import AgentModelRequestError, AgentModelResponseError
 
 
 TICKET_ID = "359903a9-6303-46d2-a5b0-7f33de7e133f"
@@ -88,6 +89,96 @@ def run(script, *, backend=None, limits=None, payload=None):
     runner = ObservedRunner(model, build_readonly_registry(backend), limits)
     result = asyncio.run(runner.run(payload or AgentQuestion(question="请查询工单。"), "run-test"))
     return result, runner, model, backend
+
+
+@pytest.mark.parametrize("error", [
+    AgentModelRequestError("model_auth_error", status_code=401),
+    AgentModelRequestError("model_rate_limit", status_code=429),
+    AgentModelRequestError("model_request_rejected", status_code=400),
+    AgentModelRequestError("model_provider_error", status_code=503),
+    AgentModelRequestError("model_timeout"),
+    AgentModelRequestError("model_connection_error"),
+    AgentModelRequestError("model_input_invalid"),
+    AgentModelResponseError("model_response_invalid"),
+    AgentModelResponseError("model_output_limit"),
+    AgentModelResponseError("model_tool_protocol"),
+])
+def test_classified_model_failure_ends_actual_graph_without_retry_or_tool_execution(error, caplog):
+    # Even an accidentally attached private provider message is never exported.
+    error.args = ("private-model-error-canary",)
+    result, _, model, backend = run([error])
+    assert result.status == "failed" and result.failure_type == error.failure_type
+    assert result.model_calls == 1 and len(model.received) == 1
+    assert result.tool_calls == result.tool_executions == 0 and backend.calls == []
+    assert result.usage is None and result.sources == []
+    event = result.model_events[0]
+    assert event["failure_type"] == error.failure_type and event["usage"] is None
+    status = getattr(error, "status_code", None)
+    assert event.get("provider_http_status") == status
+    assert "private-model-error-canary" not in result.model_dump_json() + caplog.text
+    assert f"failure_type={error.failure_type}" in caplog.text
+
+
+def test_later_classified_failure_does_not_invent_complete_usage_or_reexecute_tool():
+    result, _, model, backend = run([
+        call(usage=USAGE), AgentModelResponseError("model_output_limit"),
+    ])
+    assert result.status == "failed" and result.failure_type == "model_output_limit"
+    assert result.model_calls == len(model.received) == 2
+    assert len(backend.calls) == result.tool_executions == 1
+    assert result.usage is None
+    assert result.model_events[0]["usage"] == USAGE
+    assert result.model_events[1]["usage"] is None
+
+
+@pytest.mark.parametrize("category", ["private-model-category-canary", ["private-model-category-canary"]])
+def test_mutated_adapter_category_and_http_status_cannot_escape_allowlist(category, caplog):
+    error = AgentModelRequestError("model_auth_error", status_code=401)
+    error.failure_type = category
+    error.status_code = "private-model-status-canary"
+    result, _, _, _ = run([error])
+    assert result.failure_type == "model_error"
+    assert "provider_http_status" not in result.model_events[0]
+    assert "private-model-" not in result.model_dump_json() + caplog.text
+
+
+def test_actual_adapter_keeps_provider_admission_budget_out_of_response_errors(monkeypatch):
+    import httpx
+    from project_copilot.config import Settings
+    from project_copilot.infrastructure import call_accounting
+    from project_copilot.infrastructure.agent_model import create_agent_model
+    from project_copilot.services.quotas import QuotaExceeded
+
+    def reject_before_network():
+        raise QuotaExceeded("provider_attempts")
+
+    monkeypatch.setattr(call_accounting, "record_provider_attempt", reject_before_network)
+
+    async def invoke():
+        client = httpx.AsyncClient(transport=httpx.MockTransport(
+            lambda _: pytest.fail("budget rejection must precede any HTTP request")))
+        settings = Settings(_env_file=None, deepseek_api_key="synthetic-budget-test-key")
+        backend = Backend()
+        async with create_agent_model(settings, http_client=client) as model:
+            runner = AgentRunner(model, build_readonly_registry(backend))
+            result = await runner.run(AgentQuestion(question="合成预算拒绝"), run_id="budget-test")
+        assert not backend.calls and client.is_closed
+        return result
+
+    result = asyncio.run(invoke())
+    assert result.status == "budget_exhausted" and result.failure_type == "provider_budget"
+    assert result.model_calls == 1 and result.tool_calls == 0
+    assert result.usage is None
+
+
+def test_arbitrary_exception_cannot_claim_a_trusted_model_failure_category(caplog):
+    error = RuntimeError("private-local-error-canary")
+    error.failure_type = "model_auth_error"
+    error.status_code = 401
+    result, _, _, _ = run([error])
+    assert result.failure_type == "model_error"
+    assert "provider_http_status" not in result.model_events[0]
+    assert "private-local-error-canary" not in result.model_dump_json() + caplog.text
 
 
 @pytest.mark.parametrize("payload", [

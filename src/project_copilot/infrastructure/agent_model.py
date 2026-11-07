@@ -16,9 +16,39 @@ from project_copilot.config import Settings
 from project_copilot.infrastructure.models import (
     ChatConfigError, ChatRequestError, ChatResponseError, DeepSeekChat,
 )
+from project_copilot.services.quotas import QuotaExceeded
 
 
 _TOOL_NAME = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
+
+_REQUEST_FAILURES = frozenset({
+    "model_auth_error", "model_rate_limit", "model_provider_error", "model_request_rejected",
+    "model_timeout", "model_connection_error", "model_input_invalid",
+})
+_RESPONSE_FAILURES = frozenset({"model_response_invalid", "model_output_limit", "model_tool_protocol"})
+AGENT_MODEL_FAILURE_TYPES = _REQUEST_FAILURES | _RESPONSE_FAILURES
+
+
+class AgentModelRequestError(ChatRequestError):
+    """Agent-only safe category; no provider text, body, headers or arguments."""
+
+    def __init__(self, failure_type: str, *, status_code: int | None = None) -> None:
+        if not isinstance(failure_type, str) or failure_type not in _REQUEST_FAILURES:
+            raise ValueError("Invalid Agent request failure category")
+        if status_code is not None and (type(status_code) is not int or not 100 <= status_code <= 599):
+            raise ValueError("Invalid Agent HTTP status")
+        super().__init__(failure_type, status_code=status_code)
+        self.failure_type = failure_type
+
+
+class AgentModelResponseError(ChatResponseError):
+    """Agent-only fixed category for a response rejected by existing contracts."""
+
+    def __init__(self, failure_type: str) -> None:
+        if not isinstance(failure_type, str) or failure_type not in _RESPONSE_FAILURES:
+            raise ValueError("Invalid Agent response failure category")
+        super().__init__(failure_type)
+        self.failure_type = failure_type
 
 
 def _reject_constant(_value: str) -> None:
@@ -37,22 +67,22 @@ def _unique_object(pairs: list[tuple[str, object]]) -> dict:
 def _parse_calls(value: object) -> tuple[list[dict], list[dict], list[dict]]:
     """协议不完整则拒绝；有ID的坏参数保留，供执行器配对返回校验错误。"""
     if not isinstance(value, list) or not 1 <= len(value) <= 32:
-        raise ChatResponseError("Agent工具调用列表不合法")
+        raise AgentModelResponseError("model_tool_protocol")
     valid, invalid, raw = [], [], []
     seen = set()
     for item in value:
         if not isinstance(item, dict) or item.get("type") != "function":
-            raise ChatResponseError("Agent工具调用类型不合法")
+            raise AgentModelResponseError("model_tool_protocol")
         call_id = item.get("id")
         function = item.get("function")
         if (not isinstance(call_id, str) or not call_id.strip() or len(call_id) > 256
                 or call_id in seen or not isinstance(function, dict)):
-            raise ChatResponseError("Agent工具调用ID缺失、重复或非法")
+            raise AgentModelResponseError("model_tool_protocol")
         seen.add(call_id)
         name, arguments = function.get("name"), function.get("arguments")
         if (not isinstance(name, str) or not _TOOL_NAME.fullmatch(name)
                 or not isinstance(arguments, str) or len(arguments) > 20000):
-            raise ChatResponseError("Agent工具名或参数载荷不合法")
+            raise AgentModelResponseError("model_tool_protocol")
         raw.append({"id": call_id, "type": "function",
                     "function": {"name": name, "arguments": arguments}})
         try:
@@ -155,8 +185,11 @@ class DeepSeekToolModel:
         self.max_tokens = max_tokens
 
     async def ainvoke(self, messages: Sequence[BaseMessage], tools: list[dict]) -> AIMessage:
-        encoded = encode_messages(messages)
-        tools = _validate_tools(tools)
+        try:
+            encoded = encode_messages(messages)
+            tools = _validate_tools(tools)
+        except (ValueError, TypeError, KeyError, RecursionError):
+            raise AgentModelRequestError("model_input_invalid") from None
         try:
             with provider_request() as attempt:
                 raw_response = await self._client.chat.completions.with_raw_response.create(
@@ -166,47 +199,62 @@ class DeepSeekToolModel:
                 )
                 attempt.completed()
                 response = raw_response.http_response.json()
+        except QuotaExceeded:
+            # Admission rejects before HTTP. Do not label our own quota as a
+            # malformed provider response (QuotaExceeded is a ValueError).
+            raise
         except APITimeoutError:
-            raise ChatRequestError("DeepSeek Agent请求超时") from None
+            raise AgentModelRequestError("model_timeout") from None
         except APIConnectionError:
-            raise ChatRequestError("无法连接DeepSeek Agent服务") from None
+            raise AgentModelRequestError("model_connection_error") from None
         except APIStatusError as exc:
             status = exc.status_code
-            message = ("DeepSeek Agent认证或权限失败" if status in (401, 403) else
-                       "DeepSeek Agent请求受限" if status == 429 else
-                       "DeepSeek Agent上游服务暂不可用" if status >= 500 else
-                       "DeepSeek Agent请求被拒绝")
-            raise ChatRequestError(message, status_code=status) from None
+            failure_type = ("model_auth_error" if status in (401, 403) else
+                            "model_rate_limit" if status == 429 else
+                            "model_provider_error" if status >= 500 else
+                            "model_request_rejected")
+            raise AgentModelRequestError(failure_type, status_code=status) from None
         except (APIResponseValidationError, ValueError, TypeError):
-            raise ChatResponseError("DeepSeek Agent响应无法解析") from None
-        return self._validate_response(response)
+            raise AgentModelResponseError("model_response_invalid") from None
+        try:
+            return self._validate_response(response)
+        except AgentModelResponseError:
+            raise
+        except (ChatResponseError, ValueError, TypeError):
+            raise AgentModelResponseError("model_response_invalid") from None
 
     @staticmethod
     def _validate_response(response: object) -> AIMessage:
         if not isinstance(response, dict):
-            raise ChatResponseError("Agent响应必须是JSON对象")
+            raise AgentModelResponseError("model_response_invalid")
         model, choices = response.get("model"), response.get("choices")
         if (not isinstance(model, str) or not model.strip() or not isinstance(choices, list)
                 or len(choices) != 1 or not isinstance(choices[0], dict)):
-            raise ChatResponseError("Agent响应模型或回答数量不合法")
+            raise AgentModelResponseError("model_response_invalid")
         choice = choices[0]
         message, reason = choice.get("message"), choice.get("finish_reason")
         if (not isinstance(message, dict) or message.get("role") != "assistant"
-                or message.get("refusal") is not None or message.get("function_call") is not None):
-            raise ChatResponseError("Agent响应不是有效Assistant消息")
+                or message.get("refusal") is not None):
+            raise AgentModelResponseError("model_response_invalid")
+        if message.get("function_call") is not None:
+            raise AgentModelResponseError("model_tool_protocol")
         content, calls = message.get("content"), message.get("tool_calls")
         if content is not None and not isinstance(content, str):
-            raise ChatResponseError("Agent响应内容必须是文本")
+            raise AgentModelResponseError("model_response_invalid")
         if isinstance(content, str) and len(content) > 64000:
-            raise ChatResponseError("Agent响应内容超过限制")
+            raise AgentModelResponseError("model_response_invalid")
+        if reason == "length":
+            raise AgentModelResponseError("model_output_limit")
         usage = DeepSeekChat._validate_usage(response["usage"]) if "usage" in response else None
         metadata = {"model": model, "usage": usage}
         if reason == "tool_calls":
             valid, invalid, raw = _parse_calls(calls)
             return AIMessage(content=content or "", tool_calls=valid, invalid_tool_calls=invalid,
                              additional_kwargs={"tool_calls": raw}, response_metadata=metadata)
-        if reason != "stop" or (calls is not None and calls != []) or not content or not content.strip():
-            raise ChatResponseError("Agent回答未正常完成或工具调用协议不匹配")
+        if calls is not None and calls != []:
+            raise AgentModelResponseError("model_tool_protocol")
+        if reason != "stop" or not content or not content.strip():
+            raise AgentModelResponseError("model_response_invalid")
         return AIMessage(content=content, response_metadata=metadata)
 
     async def close(self) -> None:
