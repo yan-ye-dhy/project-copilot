@@ -30,7 +30,7 @@ class FakeEmbedding:
 
 def test_real_http_delete_interruption_and_recovery(tmp_path, monkeypatch):
     # The fixed port is intentionally different from the project's 6433.
-    client = QdrantClient(url="http://127.0.0.1:16433", check_compatibility=False)
+    client = QdrantClient(url="http://127.0.0.1:16433", trust_env=False, check_compatibility=False)
     name = "pc_web_test_" + uuid4().hex
     split = SplitConfig(chunk_size=80, chunk_overlap=10)
     spec = DenseIndexSpec(collection_name=name, embedding_model="embedding-3", dimensions=2, splitter_version=split.index_version)

@@ -259,9 +259,17 @@ def test_result_owner_and_missing_execution_record_are_checked(legacy, change):
 def test_potential_business_side_effects_prevent_retirement(legacy, side_effect):
     with legacy.db.transaction() as session:
         if side_effect == "pending_action":
+            # Seed an already-existing historical side effect. This isolated
+            # random database must remain reproducible after CREATED + 24h;
+            # inserting a new action through today's expiry guard is unrelated
+            # to the retirement refusal this test exercises.
+            session.execute(text("ALTER TABLE pending_actions DISABLE TRIGGER public_action_limit"))
             session.add(PendingAction(context_id=legacy.context, owner_user_id=legacy.user,
                 title="synthetic unresolved proposal", description="must not be discarded",
-                payload_fingerprint="b" * 64, status="pending", expires_at=CREATED + timedelta(hours=12)))
+                payload_fingerprint="b" * 64, status="pending", created_at=CREATED,
+                expires_at=CREATED + timedelta(hours=12)))
+            session.flush()
+            session.execute(text("ALTER TABLE pending_actions ENABLE TRIGGER public_action_limit"))
         else:
             session.add(Ticket(owner_user_id=legacy.user, creation_key=uuid4(),
                 title="synthetic orphan business result", description="unreconciled creation key"))

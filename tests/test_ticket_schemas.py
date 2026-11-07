@@ -1,6 +1,7 @@
 """阶段B离线契约/DDL；实际约束另由真实PostgreSQL测试验证。"""
 
 import subprocess
+import sys
 import ast
 import shutil
 from datetime import datetime, timezone
@@ -62,7 +63,7 @@ def test_postgres_ddl_has_database_generated_uuid_timestamps_and_constraints():
 
 def test_alembic_offline_ddl_works_without_database_or_env():
     root = Path(__file__).resolve().parents[1]
-    result = subprocess.run([str(root / ".venv/bin/alembic"), "-c", "alembic.ini", "upgrade", "head", "--sql"],
+    result = subprocess.run([sys.executable, "-m", "alembic", "-c", "alembic.ini", "upgrade", "head", "--sql"],
                             cwd=root, capture_output=True, text=True)
     assert result.returncode == 0, result.stderr
     assert "CREATE TABLE tickets" in result.stdout and "0001_tickets" in result.stdout
