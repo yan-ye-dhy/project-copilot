@@ -4,7 +4,7 @@ import { apiRequest, ApiError, ContextSession, boundHistory, validateAction, run
 
 import { renderMarkdown } from "./markdown.js";
 import { recoveryRecords, jobObservation, jobStateLabel, canHideJob, setRecoveryHidden } from "./task-center.js";
-import { createConversation, conversationTitle, sanitizeConversation, sanitizeSources, boundedConversations, HistoryStore, HISTORY_LIMITS } from "./conversations.js";
+import { createConversation, conversationTitle, sanitizeConversation, sanitizeSources, boundedConversations, HistoryStore, HistoryConflictError, HISTORY_LIMITS } from "./conversations.js";
 
 const $ = (id) => document.getElementById(id);
 const session = new ContextSession();
@@ -17,7 +17,7 @@ const state = {
   personalDemo: null, profileStale: false, configPending: null,
   jobObservations: new Map(), jobReadErrors: new Set(), taskCenterReads: null, showHiddenJobs: false,
   conversations: [], conversation: createConversation(), historyEnabled: false, historyLoading: false,
-  historySaving: false, historyMessage: "", submissionInFlight: 0,
+  historySaving: false, historyMessage: "", historyRevision: null, historyConflict: false, submissionInFlight: 0,
 };
 const auth = { user: null, busy: false };
 const views = {
@@ -58,6 +58,7 @@ function resetWorkspace() {
   closeHistory();
   state.conversations = []; state.conversation = createConversation(); state.historyEnabled = false;
   state.historyLoading = false; state.historySaving = false; state.historyMessage = ""; state.submissionInFlight = 0;
+  state.historyRevision = null; state.historyConflict = false;
   state.jobObservations.clear(); state.jobReadErrors.clear(); state.showHiddenJobs = false;
   for (const id of ["account-panel", "personal-demo-meter"]) if ($(id)?.tagName === "DETAILS") $(id).open = false;
   state.epoch += 1; state.ticketsRequest += 1; state.detailRequest += 1;
@@ -208,14 +209,25 @@ function queueHistoryWrite(work) {
   return historyWrites;
 }
 
+function handleHistoryConflict(error) {
+  if (!(error instanceof HistoryConflictError)) return false;
+  state.historyConflict = true; state.historyEnabled = false;
+  state.historyMessage = error.message;
+  notify(error.message, "error"); renderHistory();
+  return true;
+}
+
 function persistConversations() {
-  if (!state.historyEnabled || !auth.user) return;
+  if (!state.historyEnabled || state.historyConflict || !auth.user) return;
   const owner = auth.user.id, epoch = state.epoch, snapshot = conversationSnapshots();
   queueHistoryWrite(async () => {
-    if (epoch !== state.epoch || owner !== auth.user?.id || !state.historyEnabled) return;
-    try { await historyStore.save(owner, snapshot); }
-    catch {
+    if (epoch !== state.epoch || owner !== auth.user?.id || !state.historyEnabled || state.historyConflict) return;
+    try {
+      const saved = await historyStore.save(owner, snapshot, state.historyRevision);
+      if (epoch === state.epoch && owner === auth.user?.id) state.historyRevision = saved.revision;
+    } catch (error) {
       if (epoch === state.epoch && owner === auth.user?.id) {
+        if (handleHistoryConflict(error)) return;
         state.historyEnabled = false;
         state.historyMessage = "本机历史保存失败，已降级为仅本页历史；此前存储是否清理尚未核实。";
         renderHistory();
@@ -235,6 +247,7 @@ async function initializeConversations() {
     const loaded = await historyStore.load(owner);
     if (epoch !== state.epoch || owner !== auth.user?.id) return;
     state.conversations = loaded.conversations; state.historyEnabled = loaded.enabled;
+    state.historyRevision = loaded.revision; state.historyConflict = false;
   } catch {
     if (epoch === state.epoch) state.historyMessage = "IndexedDB不可用，安全降级为仅本页历史；刷新后不会保留正文。";
   } finally {
@@ -244,7 +257,7 @@ async function initializeConversations() {
 
 async function changeHistoryPersistence() {
   const requested = $("history-persist").checked, owner = auth.user?.id, epoch = state.epoch;
-  if (!owner || state.historyLoading || state.historySaving) { renderHistory(); return; }
+  if (!owner || state.historyLoading || state.historySaving || state.historyConflict) { renderHistory(); return; }
   const warning = requested
     ? "将在此浏览器的IndexedDB保存普通对话正文和引用。内容并非端到端加密，共用设备不建议开启，请勿在对话中粘贴密钥。是否开启？"
     : "关闭保存并删除此账号在本浏览器的持久历史？本页内存历史仍保留，后台任务和费用不受影响。";
@@ -252,11 +265,17 @@ async function changeHistoryPersistence() {
   state.historySaving = true; state.historyEnabled = requested; renderHistory();
   const snapshot = conversationSnapshots();
   try {
-    await queueHistoryWrite(() => historyStore.save(owner, snapshot, requested));
+    await queueHistoryWrite(async () => {
+      if (epoch !== state.epoch || owner !== auth.user?.id) return;
+      if (state.historyConflict) throw new HistoryConflictError();
+      const saved = await historyStore.setPersistence(owner, snapshot, requested, state.historyRevision);
+      if (epoch === state.epoch && owner === auth.user?.id) state.historyRevision = saved.revision;
+    });
     if (epoch !== state.epoch || owner !== auth.user?.id) return;
     state.historyMessage = requested ? "已开启本浏览器保存，仅记录展示内容。" : "已关闭并清除持久历史，本页历史仍可切换。";
-  } catch {
+  } catch (error) {
     if (epoch === state.epoch) {
+      if (handleHistoryConflict(error)) return;
       state.historyEnabled = false;
       state.historyMessage = "IndexedDB操作失败，当前仅保留内存历史；未确认清除的旧数据请在浏览器网站数据中管理。";
     }
@@ -265,13 +284,18 @@ async function changeHistoryPersistence() {
 
 async function clearPersistentHistory() {
   const owner = auth.user?.id, epoch = state.epoch;
-  if (!owner || state.historySaving || state.historyLoading || !window.confirm("清空此账号在本浏览器保存的历史并关闭保存？本页会话仍保留，后台任务、工单及其他账号记录不变。")) return;
+  if (!owner || state.historySaving || state.historyLoading || state.historyConflict || !window.confirm("清空此账号在本浏览器保存的历史并关闭保存？本页会话仍保留，后台任务、工单及其他账号记录不变。")) return;
   state.historyEnabled = false; state.historySaving = true; renderHistory();
   try {
-    await queueHistoryWrite(() => historyStore.clear(owner));
+    await queueHistoryWrite(async () => {
+      if (epoch !== state.epoch || owner !== auth.user?.id) return;
+      if (state.historyConflict) throw new HistoryConflictError();
+      const cleared = await historyStore.clear(owner, state.historyRevision);
+      if (epoch === state.epoch && owner === auth.user?.id) state.historyRevision = cleared.revision;
+    });
     if (epoch === state.epoch) state.historyMessage = "本机持久历史已清空；本页会话暂留内存，刷新后消失。";
-  } catch {
-    if (epoch === state.epoch) state.historyMessage = "清空未能确认，请使用浏览器网站数据管理；当前不会继续保存。";
+  } catch (error) {
+    if (epoch === state.epoch && !handleHistoryConflict(error)) state.historyMessage = "清空未能确认，请使用浏览器网站数据管理；当前不会继续保存。";
   } finally { if (epoch === state.epoch) { state.historySaving = false; renderHistory(); } }
 }
 
@@ -328,8 +352,8 @@ function deleteConversation(id) {
 function renderHistory() {
   const list = $("history-list"); if (!list) return;
   $("history-persist").checked = state.historyEnabled;
-  $("history-persist").disabled = !auth.user || state.historyLoading || state.historySaving;
-  $("history-clear").disabled = !auth.user || state.historyLoading || state.historySaving;
+  $("history-persist").disabled = !auth.user || state.historyLoading || state.historySaving || state.historyConflict;
+  $("history-clear").disabled = !auth.user || state.historyLoading || state.historySaving || state.historyConflict;
   $("history-status").textContent = state.historyLoading ? "正在读取此账号的本机历史…" : state.historyMessage || (state.historyEnabled ? "已开启本机保存；普通正文仅供展示，不恢复审批授权。" : "仅本页内存历史；刷新后消失。最多50个会话、每会话50条消息、30天、每账号5MiB。");
   const query = $("history-search").value.trim().toLocaleLowerCase();
   const chats = conversationSnapshots().filter((chat) => !query || chat.title.toLocaleLowerCase().includes(query));
