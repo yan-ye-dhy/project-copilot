@@ -1,89 +1,91 @@
-# Project Copilot 最终工程架构
+# Project Copilot 当前工程架构
 
-Project Copilot把中文研发知识检索和真实工单业务连接起来：模型负责提出工具调用，后端负责参数、来源、执行预算、上下文权限及数据库事务。所有业务知识入口使用同一个Hybrid＋BGE重排服务。
+本文描述当前源码的两条运行路径：公网形态的 EdgeOne → gateway → jobs → Worker，以及本机 FastAPI 同步入口。默认发布状态 CLOSED；PERSONAL_DEMO 是独立的限时、已有账号授权模式，不代表 STAGING/PUBLIC 验收。历史 D32 的本机部署证据见 [FINAL_ACCEPTANCE](FINAL_ACCEPTANCE.md)。
 
 ```mermaid
 flowchart TD
-    U[浏览器工作台 / 本机 HTTP 客户端] --> API[FastAPI / run_id]
-    API --> UI[HTML / CSS / JavaScript Modules]
-    UI --> HTTP[同域请求 / 当前页面会话]
-    HTTP --> API
-    API --> RAG[/rag/ask]
-    API --> G[LangGraph Agent]
-    G --> M[DeepSeek 生成 Tool Call]
-    M --> T[后端工具白名单 / Schema / 预算]
-    T --> K[search_knowledge]
-    RAG --> F[FinalRetriever]
-    K --> F
-    F --> D[智谱 Embedding → Qdrant Dense 10]
-    F --> B[BM25 10]
-    D --> R[RRF c=60 → 10]
-    B --> R
-    R --> E[固定 BGE Cross-Encoder → 5]
-    E --> A[原文与真实来源 → 回答或 ToolMessage]
-    A --> G
-    T --> S[get_ticket / search_tickets]
-    S --> PG[(PostgreSQL 工单)]
-    T --> P[propose_ticket → pending 提案]
-    P --> V[用户预览]
-    V --> C[独立确认或拒绝 API]
-    C --> L[上下文 / 指纹 / 有效期 / 行锁]
-    L --> PG
-    API -. HTTP 与业务阶段 Span .-> PH[Phoenix OTLP / UI]
-    G -. 模型与工具 Span .-> PH
-    F -. 检索与重排 Span .-> PH
-    L -. flush / commit / rollback Span .-> PH
+    B[浏览器工作台] --> E[EdgeOne 静态 HTML / CSS / JS]
+    B --> P[EdgeOne 同域 /api Node 代理]
+    P --> I[受控 Tunnel / Nginx ingress]
+    I --> G[FastAPI public gateway]
+    G --> A[Cookie 身份 / CSRF / Owner / 发布门禁]
+    A --> J[POST jobs: 幂等提交 / 配额 / 并发槽]
+    J --> PG[(PostgreSQL: jobs / events / 业务状态)]
+    PG --> W[独立 Worker: 领取 / 执行租约 / 停止门禁]
+    W --> R[RAG / LangGraph Agent]
+    R --> M[DeepSeek / 智谱 embedding]
+    R --> K[Dense 10 + BM25 10 → RRF 10 → BGE 5]
+    K --> Q[(Qdrant / BM25 快照)]
+    R --> T[白名单工具 / Schema / 调用预算]
+    T --> PG
+    T --> Proposal[pending 不可变提案]
+    Proposal --> B
+    B --> Confirm[独立确认 API: Context / 指纹 / 有效期 / 行锁]
+    Confirm --> PG
+    PG --> Read[GET job / GET events SSE: Owner 校验]
+    Read --> B
+    W -. 脱敏模型与工具 Trace .-> PH[Phoenix]
+    G -. HTTP / 事务 Trace .-> PH
 ```
 
-## 组件与职责
+## 组件与接口
 
-| 组件 | 职责与持久化 |
-| --- | --- |
-| 浏览器工作台 | 智能协作、资料上传、工单列表/详情与提案确认；当前页内存保存历史/凭据/上传记录，服务端持久化仍由既有业务模块负责 |
-| FastAPI | 请求校验、独立Session、返回实际结果；服务端生成run_id |
-| LangGraph | model/tools节点、条件路由、消息历史、工具调用ID配对、确定性预算与终止 |
-| DeepSeek | 非思考模式生成回答或Tool Call；不执行SQL、不拥有确认工具 |
-| 智谱embedding-3 | 文档与问题的2048维向量；请求错误无自动重试 |
-| Qdrant | Dense候选和原文metadata，使用既有qdrant_data卷 |
-| BM25 / RRF | 相同完成文档的词法候选；基于名次融合，不直接相加不同分数 |
-| BGE重排 | 固定本地revision，query/passage成对评分后保留原文；logit不是概率或可信度 |
-| PostgreSQL | 实际工单、上下文哈希和提案；postgres_data卷保存业务状态 |
-| Phoenix | 接收真实OTLP/protobuf Trace，独立phoenix_data卷保存本机追踪数据库；不替代业务PostgreSQL |
+| 层 | 源码入口 | 职责 |
+| --- | --- | --- |
+| 页面与历史 | `web/assets/app.js`、`api.js`、`conversations.js`、`task-center.js` | 同域请求、最终回答与引用、安全 Markdown、提案确认、展示历史和任务恢复 |
+| 静态构建 / 云函数 | `scripts/build_edgeone.mjs`、`cloud-functions/` | 显式资产白名单；只将 API 前缀替换为 `/api`；代理校验方法、路径、来源和请求大小 |
+| 公网入口 | `infrastructure/public_gateway.py`、`api/access.py` | 校验代理身份、真实登录、发布状态、Owner 和写入 CSRF；拒绝旧同步模型接口和调试入口 |
+| 持久任务 | `api/jobs.py`、`db/jobs.py` | 一次幂等提交、额度预留、账号/会话/Context 绑定；状态与事件保存在 PostgreSQL |
+| 执行 | `services/ai_worker.py`、执行租约模块 | 独立领取、门禁复核、实际模型/工具调用、终态保存；不因浏览器断线重放任务 |
+| Agent / RAG | `agent/`、`rag/` | LangGraph 条件路由与工具循环；共享最终 Hybrid＋BGE 检索 |
+| 业务事务 | `services/approvals.py`、`db/` | 不可变提案、Context 校验、指纹、行锁、唯一创建键与事务提交 |
+| 观测 | `infrastructure/tracing.py`、Phoenix | run_id / trace_id 与脱敏 Span；存储需 Phoenix 实际回读核实 |
 
-## 浏览器界面与API边界
+Node 只用于 EdgeOne 云函数、构建、测试及独立面试模拟。包内本机页面由 `api/web.py` 直接提供，没有 Node 运行时要求。浏览器不持有供应商密钥，不直连 PostgreSQL、Qdrant 或 Phoenix。
 
-`api/web.py`在`/`返回包内`web/index.html`，仅将`web/assets`挂到`/ui-assets`；`/ui/config`只返回当前上传大小限制。界面与API在同一来源运行，无独立前端服务、跨域代理或Node运行时。HTML设置严格CSP及no-store，应用代码通过外部JavaScript Modules加载；模型回答、引用及错误文字以文本节点渲染。
+## 一次任务和流式读取
 
-`web/assets/api.js`负责同域请求、有限历史及页面内存中的上下文凭据；`app.js`负责对话、上传、工单和提案视图。浏览器不取得供应商密钥、不访问PostgreSQL或Qdrant。提案按钮先读取后端不可变预览，再向独立确认/拒绝API发送对应上下文与指纹；界面按钮禁用只改善重复点击体验，真实幂等与权限约束仍由数据库事务和后端校验保证。
+1. 浏览器通过 Cookie 身份与 CSRF 发起一次 `POST /jobs`，携带幂等键；Agent 操作还使用页面内 Context。后端原子记录任务与额度预留。
+2. Worker 领取任务，复核执行许可和租约；调用 RAG 或编译的 LangGraph，实际阶段写入事件 journal。
+3. 浏览器使用 `GET /jobs/{id}` 和 `GET /jobs/{id}/events` 读取原任务。SSE 的 progress/delta 是过程展示；终态后再 GET 已校验结果，替换草稿。
+4. 停止等待、刷新或流断线只影响读取。恢复按同一 job_id 查询，不重发 POST，不再次执行模型。failed/unknown 不能被界面自行改成成功；没有取消后台或退款语义。
 
-页面刷新后不恢复对话、凭据或本页上传记录，既有入库资料和已提交工单仍在服务端；这不构成持久聊天或LangGraph恢复。列表仅显示当前页条数，未推算后端未提供的总量。网络/超时后的写入结果可能不明确，界面查询提案状态而不自动重发确认请求。前端没有增加普通工单直建捷径、编辑/删除、账户或多人授权。
+任务持久化与图状态恢复不同：当前保存任务和结果，不持久化 LangGraph checkpoint。Worker 崩溃后的未知任务必须按运行手册调查，不自动重放可能产生副作用的步骤。详见[事件与失败语义](CHAT_EXPERIENCE.md)、[执行槽](PERSONAL_EXECUTION_SLOTS.md)。
 
-## 最终检索与索引一致性
+## Cookie、执行 Context 与展示 history
 
-固定业务参数：embedding-3/2048、切分750/150、Dense 10＋BM25 10、RRF常数60取10、BGE取5。模型为`BAAI/bge-reranker-v2-m3` revision `953dc6f6f85a1b2dbfca4c34a2796e7dde08d41e`、batch2、max_length512、本地缓存。GPU显式使用cuda/float16；CPU显式使用cpu/float32，同一算法不自动降级。
+| 数据 | 位置和寿命 | 授权边界 |
+| --- | --- | --- |
+| 登录 Cookie | 浏览器 HttpOnly Cookie；服务器保存会话状态 | 标识真实账号；公开写操作还校验 CSRF / Owner / 发布门禁 |
+| CSRF | 从已认证会话取得，页面内存 | 写请求防护；不进入历史或恢复索引 |
+| 执行 Context | 页面 `ContextSession` 内存；服务端只保留令牌哈希等权限状态 | 工具提案与确认的局部能力；不是 history，也不替代登录 |
+| 展示 history | 默认页面内存；用户主动开启后为按账号隔离的 IndexedDB 白名单 DTO | 普通问答、最终来源、只读历史提案；不含 Cookie/CSRF/Context token/审批指纹，不恢复确认权限 |
+| 任务恢复索引 | 按账号隔离的 localStorage 有限元数据 | 保存 job_id、类型、时间等，仍须后端鉴权 GET；不保存正文或凭据 |
 
-完成清单、查询和入库写入共用文件锁；BM25与清单不匹配时在锁内读取完成片段，验证临时快照后fsync并原子替换。上传只有在匹配快照发布后才成功；失败时可能已有完成清单，D18安全重试会核对并恢复同步。快照过期、模型/检索失败不能继续用旧快照或只返回Dense。该锁要求进程共享支持flock和原子rename的文件系统，不是跨不共享文件系统的分布式协议。
+切换或返回历史时丢弃可执行 Context；旧提案只供查看。继续对话由一次新的主动发送建立新 Context。模型接收的有界 history 是普通消息文本，不是授权凭据。IndexedDB 不是端到端加密，也不保证跨设备、隐私模式或清理存储后的保留。详见[历史对话](CHAT_HISTORY.md)。
 
-模型每API进程首次准备时加载和预热，之后复用，线程池串行推断；单进程适配本机8GB GPU。多个worker各自占显存。重排等待默认90秒、Agent单工具240秒、总300秒；超时不能强杀已在运行的CUDA线程，服务关闭等待工作结束后释放对象。部署默认限制CPU数值计算线程为2，可按机器显式调整。
+## 检索与索引一致性
 
-## 工单权限与事务
+当前业务参数为切分 750/150、embedding-3 的 2048 维向量、Dense 10＋BM25 10、RRF c=60 取 10、BGE 重排取 5。`BAAI/bge-reranker-v2-m3` 固定 revision `953dc6f6f85a1b2dbfca4c34a2796e7dde08d41e`，batch2、max_length512、本地模型缓存。GPU 为 cuda/float16，CPU 为显式 cpu/float32；重排 logit 不是置信概率。
 
-没有上下文凭据的Agent只有三个只读工具，工单查询事务声明READ ONLY。存在有效凭据时可额外提出`propose_ticket`，后端保存不可变pending内容与指纹，并以`pending_confirmation`返回；模型不能注册或调用确认工具。
+上传与查询共享完成清单及文件锁；BM25 快照不匹配时校验临时文件、fsync 并原子替换。检索错误明确失败，不静默使用过期快照或降级纯 Dense。锁要求共享且支持 flock/rename 的文件系统，不是分布式索引协议。GPU 按进程占显存；等待超时不能强杀正在运行的 CUDA 线程。
 
-确认API要求上下文凭据与指纹，锁定提案后按数据库当前时间校验有效期。工单以action ID作为唯一创建键，和completed/ticket_id更新一起提交；重复确认同action返回原ID，确认/拒绝竞争返回实际终态。不同action不保证语义去重。上下文是局部bearer能力，数据库只保存哈希；不等于用户登录或租户授权。普通D20 `POST /tickets`仍为本地未鉴权直建接口，对外部署必须为全部写接口增加真实认证和授权。
+## 工单确认与事务
 
-## Trace 数据流与失败语义
+模型只能调用白名单工具。无有效 Context 时只有只读查询；有凭据时可提出 `propose_ticket`，不会获得确认工具。聊天中的“确认”不是写授权。
 
-HTTP中间件建立根Span并通过contextvars传播到异步工具和线程；Span只记录阶段名、状态、ID、数量、数字usage和错误类型。原始问题、文档正文、请求头、上下文令牌、模型密钥、SQL参数及异常原文不进入Trace。
+浏览器先读取服务端不可变提案，再由独立确认接口检查身份、Context、payload_fingerprint 和有效期。事务持行锁，以 action ID 的唯一创建键创建工单并更新 completed/ticket_id；重复确认同一 action 返回同一工单，不保证不同 action 的语义去重。写入响应不明确时只读查询实际状态，不自动重发。
 
-业务阶段包括agent.model/tool.execute/tool.result/run、rag.dense/bm25/rrf/rerank/generate、embedding.request，以及工单、提案和db.transaction。提案确认的Service只能记录awaiting_commit，真正db.transaction退出Session.begin成功才记录committed；失败记录rolled_back。同步依赖的事务Span不跨yield附着线程上下文，以适应FastAPI在不同线程进入和退出依赖。
+本机旧 `POST /tickets` 是兼容本地直建接口；公网形态通过 gateway/入口限制和业务鉴权使用受控路径，不能直接对外暴露旧本机接口。
 
-每个请求按trace_id独立收集完成Span，在根Span结束后单次导出OTLP。只有Phoenix返回接受且未部分拒绝，HTTP头`X-Trace-Exported=true`和已有响应字段才写true；`X-Trace-ID`可用于查询，run_id贯穿日志和Span。实际存储仍由Phoenix查询回读验证，内部日志本身不算导出证明。导出失败保留业务结果、记录脱敏诊断并标false；避免将已提交业务伪装成失败而诱发重复业务操作。
+## Trace 与部署边界
 
-当前API均为有限JSON响应，追踪最多缓存16MiB响应、每请求最多256个Span；超限明确报告未完整导出。关追踪时继续原业务响应。迟到的工具线程不被挂到其他请求；超时Trace可能不含尚未结束的子Span。Trace各阶段存在嵌套，不能将父子耗时相加当端到端延迟。
+HTTP 与 Worker 执行分别建立 Trace；Worker 使用 job_id 关联执行。Span 只含阶段名、状态、数量、数字 usage 等安全元数据，不含原文、请求头、Context token、密钥或异常原文。事务明确区分等待提交、提交和回滚。
 
-## 部署与工程边界
+OTLP 接受回执不等于查询收存证明，仍需 Phoenix 回读。导出失败保留业务结果并记录脱敏诊断；SSE 不为回填 Trace header 缓存整个流。父子 Span 嵌套耗时不能直接相加当作端到端延迟。
 
-[Docker部署](DEPLOYMENT.md)使用独立API镜像、一次性迁移、PostgreSQL、Qdrant与Phoenix；容器间服务名通信，宿主端口仅绑定127.0.0.1。源码和锁定依赖在镜像中；真实.env、固定模型缓存只读挂载，清单/快照可写挂载，存储服务使用命名卷。健康检查证明进程/服务就绪，模型缓存与业务链路由实际请求验收。
+本机 Docker 运行 API、迁移、PostgreSQL、Qdrant、Phoenix；公开模式另有 ingress 和独立 Worker。密钥、模型与私有证据不进入前端构建。新增迁移、源码或发布条件需按运行手册重新核对，不能用环境开关或模拟证据绕过 CLOSED。[部署](DEPLOYMENT.md)、[公网安全](SECURITY_MODEL.md)、[发布清单](RELEASE_CHECKLIST.md)分别记录边界。
 
-当前是本地单用户可演示工程，尚无完整账户/租户授权、持久聊天/Graph恢复、分布式索引锁或生产压测SLA；Phoenix本机部署也没有登录。历史冻结评测和当前线上业务分别记录，保留优化中的退化案例及未采集指标。
+## 本地面试模拟的隔离
+
+`node scripts/interview_demo.mjs` 是独立 Node 原生服务，只绑定 127.0.0.1，在系统临时目录调用真实静态构建。它只在内存 HTML 中注入模拟标识和场景工具栏；生产 JS/CSS、EdgeOne 构建白名单和后端均无模拟开关。固定 fixture 模拟 API 与 SSE，不调用模型、数据库、追踪或任何上游；所有未知路由失败关闭。它验证交互合同，不证明真实部署的权限、并发或模型质量，详见[面试指南](INTERVIEW_GUIDE.md)。
