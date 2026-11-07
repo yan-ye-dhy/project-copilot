@@ -5,3 +5,7 @@ WORKDIR /app
 COPY --chown=1000:1000 src/ src/
 COPY --chown=1000:1000 scripts/ scripts/
 COPY --chown=1000:1000 migrations/ migrations/
+# Release admission binds these reviewed entry files to the same source tree.
+COPY --chown=1000:1000 cloud-functions/ cloud-functions/
+COPY --chown=1000:1000 edgeone.json docker-compose.public-demo.yml ./
+COPY --chown=1000:1000 deploy/nginx/ deploy/nginx/
