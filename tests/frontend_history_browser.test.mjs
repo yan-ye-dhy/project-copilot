@@ -101,6 +101,10 @@ async function fixture({ width = 1440, records = [], unavailable = false, propos
     if (/^\/api\/actions\/[\da-f-]+$/.test(p) && req.method() === 'GET') return reply(f.actions.get(p.split('/').at(-1)));
     f.unexpected.push(`${req.method()} ${p}`); return reply({ detail: 'unexpected mock request' }, 599);
   });
+  const page = await historyPage(context, f);
+  return { context, page, f };
+}
+async function historyPage(context, f) {
   const page = await context.newPage(); page.setDefaultTimeout(10000);
   page.on('pageerror', error => f.errors.push(error.message));
   page.on('dialog', async dialog => {
@@ -113,7 +117,7 @@ async function fixture({ width = 1440, records = [], unavailable = false, propos
   if (qaFont) await page.addStyleTag({ content: '@font-face{font-family:"Microsoft YaHei";src:url("/__qa_font")} @font-face{font-family:"Noto Serif SC";src:url("/__qa_font")}' });
   if (qaSerif) await page.addStyleTag({ content: '@font-face{font-family:SimSun;src:url("/__qa_serif")} :root{--font-display:SimSun,serif} .markdown-answer code{font-family:ui-monospace,SimSun,monospace}' });
   await page.evaluate(() => document.fonts.ready);
-  return { context, page, f };
+  return page;
 }
 const posts = f => f.calls.filter(c => c.method === 'POST' && c.path === '/api/jobs');
 async function send(page, question, mode = 'rag') {
@@ -160,6 +164,166 @@ async function assertLayout(page) {
   assert.ok(composer.y >= 0 && composer.y + composer.height <= geometry.h + 1);
   assert.ok((await page.locator('.workspace-header').boundingBox()).height <= 72);
 }
+
+for (const action of ['disable', 'clear', 'delete', 'rename']) {
+  test(`two tabs reject a stale snapshot after another tab performs ${action}`, async () => {
+    const { context, page, f } = await fixture();
+    try {
+      await send(page, '跨页已保存会话');
+      await openHistory(page); await page.locator('#history-persist').check();
+      await waitForStored(page, '跨页已保存会话');
+      const stale = await historyPage(context, f);
+      await openHistory(stale);
+      assert.equal(await stale.locator('.history-row').count(), 1);
+      assert.equal(await stale.locator('#history-persist').isChecked(), true);
+      if (action === 'disable') await page.locator('#history-persist').uncheck();
+      else if (action === 'clear') await page.locator('#history-clear').click();
+      else if (action === 'delete') await page.getByRole('button', { name: '删除对话', exact: true }).click();
+      else {
+        f.nextDialog = '其他标签页的新标题';
+        await page.getByRole('button', { name: '重命名', exact: true }).click();
+      }
+      await waitForStored(page, action === 'rename' ? '其他标签页的新标题' : '跨页已保存会话', action === 'rename');
+      // This page still holds the old full snapshot. Its local rename must not
+      // re-enable saving, restore a deleted row or overwrite the newer title.
+      f.nextDialog = '过期标签页试图覆盖';
+      await stale.getByRole('button', { name: '重命名', exact: true }).click();
+      await stale.waitForFunction(() => /其他标签页.*刷新/.test(document.querySelector('#history-status').textContent));
+      const persisted = JSON.parse(await storedData(page));
+      const rows = persisted.filter(row => row.messages);
+      assert.equal(rows.length, action === 'rename' ? 1 : 0);
+      if (action === 'rename') assert.equal(rows[0].title, '其他标签页的新标题');
+      assert.equal(persisted.find(row => row.owner === USER && 'enabled' in row).enabled, action === 'rename' || action === 'delete');
+      assert.equal(await stale.locator('#history-persist').isDisabled(), true);
+      assert.match(await stale.locator('.history-title').textContent(), /过期标签页/);
+      await stale.reload({ waitUntil: 'networkidle' }); await openHistory(stale);
+      assert.equal(await stale.locator('.history-row').count(), action === 'rename' ? 1 : 0);
+      assert.equal(await stale.locator('#history-persist').isChecked(), action === 'rename' || action === 'delete');
+      assert.equal(posts(f).length, 1); await safe(f);
+    } finally { await context.close(); }
+  });
+}
+
+test('two tabs retain the first new conversation and reject a conflicting new snapshot', async () => {
+  const { context, page, f } = await fixture();
+  try {
+    await openHistory(page); await page.locator('#history-persist').check();
+    await page.waitForFunction(() => /已开启本浏览器保存/.test(document.querySelector('#history-status').textContent));
+    const stale = await historyPage(context, f);
+    await page.keyboard.press('Escape');
+    await send(page, '第一个标签页新增'); await waitForStored(page, '第一个标签页新增');
+    await send(stale, '第二个标签页新增'); await openHistory(stale);
+    await stale.waitForFunction(() => /其他标签页.*刷新/.test(document.querySelector('#history-status').textContent));
+    const stored = await storedData(page);
+    assert.match(stored, /第一个标签页新增/); assert.doesNotMatch(stored, /第二个标签页新增/);
+    assert.match(await stale.locator('.history-title').textContent(), /第二个标签页新增/);
+    assert.equal(posts(f).length, 2); await safe(f);
+  } finally { await context.close(); }
+});
+
+test('simultaneous tab transactions accept exactly one writer for a revision', async () => {
+  const { context, page, f } = await fixture();
+  try {
+    await send(page, '事务竞争会话'); await openHistory(page);
+    await page.locator('#history-persist').check(); await waitForStored(page, '事务竞争会话');
+    const other = await historyPage(context, f);
+    const read = async tab => tab.evaluate(async owner => {
+      const { HistoryStore } = await import('/ui-assets/conversations.js');
+      const loaded = await new HistoryStore().load(owner);
+      return loaded;
+    }, USER);
+    const [first, second] = await Promise.all([read(page), read(other)]);
+    assert.equal(first.revision, second.revision, 'reading another tab does not invalidate an unchanged snapshot');
+    const write = (tab, snapshot, title) => tab.evaluate(async ({ owner, snapshot, title }) => {
+      const { HistoryStore } = await import('/ui-assets/conversations.js');
+      snapshot.conversations[0].title = title;
+      try {
+        const result = await new HistoryStore().save(owner, snapshot.conversations, snapshot.revision);
+        return { revision: result.revision, title };
+      } catch (error) { return { error: error.name }; }
+    }, { owner: USER, snapshot, title });
+    const results = await Promise.all([write(page, first, '事务甲成功'), write(other, second, '事务乙成功')]);
+    assert.equal(results.filter(result => result.error === 'HistoryConflictError').length, 1);
+    const winner = results.find(result => result.revision);
+    assert.equal(winner.revision, first.revision + 1);
+    const loaded = await read(page);
+    assert.equal(loaded.conversations[0].title, winner.title);
+    assert.equal(loaded.revision, winner.revision); await safe(f);
+  } finally { await context.close(); }
+});
+
+test('stale explicit preferences cannot clear a newer tab snapshot', async () => {
+  const { context, page, f } = await fixture();
+  try {
+    await openHistory(page); await page.locator('#history-persist').check();
+    await page.waitForFunction(() => /已开启本浏览器保存/.test(document.querySelector('#history-status').textContent));
+    const stale = await historyPage(context, f); await openHistory(stale);
+    await page.keyboard.press('Escape'); await send(page, '更新后的会话必须保留');
+    await waitForStored(page, '更新后的会话必须保留');
+    await stale.locator('#history-clear').click();
+    await stale.waitForFunction(() => /其他标签页.*刷新/.test(document.querySelector('#history-status').textContent));
+    assert.match(await storedData(page), /更新后的会话必须保留/);
+    assert.equal(JSON.parse(await storedData(page)).find(row => row.owner === USER && 'enabled' in row).enabled, true);
+    await safe(f);
+  } finally { await context.close(); }
+});
+
+test('v1 IndexedDB history upgrades intact, keeps account isolation and blocks old writers', async () => {
+  const { context, page, f } = await fixture();
+  try {
+    await page.evaluate(async ({ owner, other }) => {
+      const name = 'project-copilot-chat-history-v1';
+      const requestResult = request => new Promise((resolve, reject) => {
+        request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error);
+      });
+      await requestResult(indexedDB.deleteDatabase(name));
+      const request = indexedDB.open(name, 1);
+      request.onupgradeneeded = () => {
+        request.result.createObjectStore('conversations', { keyPath: ['owner', 'id'] }).createIndex('owner', 'owner');
+        request.result.createObjectStore('preferences', { keyPath: 'owner' });
+      };
+      const db = await requestResult(request), tx = db.transaction(['conversations', 'preferences'], 'readwrite');
+      for (const [account, content] of [[owner, '旧版保留会话'], [other, '其他账号旧版内容']]) {
+        tx.objectStore('preferences').put({ owner: account, enabled: true });
+        tx.objectStore('conversations').put({ owner: account, id: crypto.randomUUID(), title: content,
+          createdAt: Date.now(), updatedAt: Date.now(), mode: 'rag', messages: [{ role: 'user', content, mode: 'rag' }], jobs: [] });
+      }
+      await new Promise((resolve, reject) => { tx.oncomplete = resolve; tx.onabort = tx.onerror = reject; }); db.close();
+    }, { owner: USER, other: OTHER });
+    await page.reload({ waitUntil: 'networkidle' }); await openHistory(page);
+    assert.equal(await page.locator('.history-title').textContent(), '旧版保留会话');
+    assert.equal(await page.locator('#history-persist').isChecked(), true);
+    const stored = JSON.parse(await storedData(page));
+    assert.equal(stored.filter(row => row.messages).length, 2);
+    assert.equal(stored.find(row => row.owner === USER && 'enabled' in row).revision, 0);
+    const legacyError = await page.evaluate(() => new Promise(resolve => {
+      const request = indexedDB.open('project-copilot-chat-history-v1', 1);
+      request.onerror = () => resolve(request.error.name);
+      request.onsuccess = () => { request.result.close(); resolve('unexpected success'); };
+    }));
+    assert.equal(legacyError, 'VersionError');
+    await page.locator('#history-clear').click(); await waitForStored(page, '旧版保留会话', false);
+    const afterClear = JSON.parse(await storedData(page));
+    assert.equal(afterClear.find(row => row.owner === USER && 'enabled' in row).revision, 1);
+    assert.equal(afterClear.filter(row => row.messages).length, 1);
+    assert.match(JSON.stringify(afterClear), /其他账号旧版内容/); await safe(f);
+  } finally { await context.close(); }
+});
+
+test('automatic saves cannot opt in or revive history even with the current disabled revision', async () => {
+  const { context, page, f } = await fixture();
+  try {
+    const result = await page.evaluate(async owner => {
+      const { HistoryStore } = await import('/ui-assets/conversations.js');
+      const store = new HistoryStore(), loaded = await store.load(owner);
+      try { await store.save(owner, [], loaded.revision); return 'unexpected success'; }
+      catch (error) { return error.name; }
+    }, USER);
+    assert.equal(result, 'HistoryConflictError');
+    assert.equal(JSON.parse(await storedData(page)).find(row => row.owner === USER && 'enabled' in row).enabled, false);
+    await safe(f);
+  } finally { await context.close(); }
+});
 
 test('new chat archives content and switching restores safe Markdown/citations without any POST', async () => {
   const { context, page, f } = await fixture();

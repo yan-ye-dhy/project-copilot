@@ -120,6 +120,16 @@ export class HistoryStorageError extends Error {
   constructor() { super("本机历史存储不可用，当前对话仅保留在本页。"); this.name = "HistoryStorageError"; }
 }
 
+export class HistoryConflictError extends Error {
+  constructor() { super("其他标签页已更新此账号的本机历史；本页内容暂留内存，请刷新页面后再保存。"); this.name = "HistoryConflictError"; }
+}
+
+const revisionOf = (preference) => {
+  const revision = preference?.revision ?? 0;
+  if (!Number.isSafeInteger(revision) || revision < 0 || revision >= Number.MAX_SAFE_INTEGER) throw new HistoryStorageError();
+  return revision;
+};
+
 export class HistoryStore {
   constructor(options = {}) {
     this.indexedDB = null;
@@ -144,7 +154,9 @@ export class HistoryStore {
       const timer = setTimeout(fail, this.timeoutMs);
       try {
         if (typeof this.indexedDB.open !== "function") { fail(); return; }
-        request = this.indexedDB.open("project-copilot-chat-history-v1", 1);
+        // Bump the schema so an old deployed tab cannot keep using the v1
+        // unconditional writer after a current tab has upgraded the database.
+        request = this.indexedDB.open("project-copilot-chat-history-v1", 2);
         request.onupgradeneeded = () => {
           if (done) { try { request.transaction?.abort(); } catch {} return; }
           try {
@@ -170,7 +182,7 @@ export class HistoryStore {
       let tx, done = false, result;
       const finish = (error) => {
         if (done) return; done = true; clearTimeout(timer); db.close();
-        if (error) reject(new HistoryStorageError()); else resolve(result);
+        if (error) reject(error instanceof HistoryConflictError ? error : new HistoryStorageError()); else resolve(result);
       };
       const timer = setTimeout(() => { try { tx?.abort(); } catch {} finish(true); }, this.timeoutMs);
       try {
@@ -180,7 +192,7 @@ export class HistoryStore {
         const guarded = (handler) => (...args) => {
           if (done) return;
           try { handler(...args); }
-          catch { try { tx.abort(); } catch {} finish(true); }
+          catch (error) { try { tx.abort(); } catch {} finish(error); }
         };
         work(tx, (value) => { result = value; }, guarded);
       } catch { try { tx?.abort(); } catch {} finish(true); }
@@ -196,40 +208,61 @@ export class HistoryStore {
       const ready = () => {
         if (--remaining) return;
         const enabled = preference.result?.enabled === true;
+        let revision = revisionOf(preference.result);
         const conversations = enabled ? boundedConversations(data.result) : [];
         // Enforce retention and byte limits on the next authenticated browser
-        // visit. Cleanup is scoped to this owner and never enables persistence.
-        for (const key of keys.result) rows.delete(key);
-        for (const item of conversations) rows.put({ owner, ...item });
-        setResult({ enabled, conversations });
+        // visit. A read without cleanup must not invalidate another reader.
+        const stored = data.result.map(({ owner: ignored, ...item }) => item);
+        const ordered = (items) => [...items].sort((a, b) => String(a.id).localeCompare(String(b.id)));
+        if (JSON.stringify(ordered(stored)) !== JSON.stringify(ordered(conversations))) {
+          for (const key of keys.result) rows.delete(key);
+          for (const item of conversations) rows.put({ owner, ...item });
+          revision += 1;
+        }
+        // Existing v1 records have implicit revision 0; retain their opt-in
+        // and conversations, and persist the revision on their first read.
+        if (revision !== preference.result?.revision) prefs.put({ owner, enabled, revision });
+        setResult({ enabled, conversations, revision });
       };
       data.onsuccess = keys.onsuccess = preference.onsuccess = guarded(ready);
     });
   }
 
-  async save(owner, value, enabled = true) {
+  async _write(owner, value, expectedRevision, enabled) {
     this._owner(owner);
-    const conversations = enabled === true ? boundedConversations(value) : [];
+    const conversations = enabled === false ? [] : boundedConversations(value);
     return this._transaction((tx, setResult, guarded) => {
       const rows = tx.objectStore("conversations"), prefs = tx.objectStore("preferences");
-      const keys = rows.index("owner").getAllKeys(owner);
-      keys.onsuccess = guarded(() => {
-        for (const key of keys.result) rows.delete(key);
-        for (const item of conversations) rows.put({ owner, ...item });
-        prefs.put({ owner, enabled: enabled === true });
-        setResult({ enabled: enabled === true, conversations });
+      const preference = prefs.get(owner);
+      preference.onsuccess = guarded(() => {
+        const revision = revisionOf(preference.result);
+        // This check and the replacement share one readwrite transaction.
+        // Automatic saves cannot create or re-enable a persistence preference.
+        if (revision !== expectedRevision || (enabled === undefined && preference.result?.enabled !== true)) throw new HistoryConflictError();
+        const nextEnabled = enabled ?? preference.result.enabled;
+        const keys = rows.index("owner").getAllKeys(owner);
+        keys.onsuccess = guarded(() => {
+          for (const key of keys.result) rows.delete(key);
+          for (const item of conversations) rows.put({ owner, ...item });
+          prefs.put({ owner, enabled: nextEnabled, revision: revision + 1 });
+          setResult({ enabled: nextEnabled, conversations, revision: revision + 1 });
+        });
       });
     });
   }
 
-  async clear(owner) {
-    this._owner(owner);
-    return this._transaction((tx, setResult, guarded) => {
-      const rows = tx.objectStore("conversations"), keys = rows.index("owner").getAllKeys(owner);
-      keys.onsuccess = guarded(() => {
-        for (const key of keys.result) rows.delete(key);
-        tx.objectStore("preferences").delete(owner); setResult(undefined);
-      });
-    });
+  async save(owner, value, expectedRevision) {
+    return this._write(owner, value, expectedRevision);
+  }
+
+  async setPersistence(owner, value, enabled, expectedRevision) {
+    if (typeof enabled !== "boolean") throw new HistoryStorageError();
+    return this._write(owner, value, expectedRevision, enabled);
+  }
+
+  async clear(owner, expectedRevision) {
+    // Keep the disabled revision as a tombstone: deleting it would let a
+    // stale revision-0 page revive old history after a clear.
+    return this.setPersistence(owner, [], false, expectedRevision);
   }
 }
