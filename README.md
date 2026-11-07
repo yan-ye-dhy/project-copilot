@@ -1,56 +1,59 @@
 # Project Copilot
 
-基于RAG与LangGraph的研发知识及工单协作智能体。面向“查询研发资料、参考真实工单、分析问题、提出后续工单”的场景，将可核对的知识引用与PostgreSQL业务结果连接起来。模型提出工具调用，后端控制参数、权限、执行预算和事务；创建工单必须经过独立确认。
+中文研发知识与工单协作工作台：通过 RAG 核对资料，使用 LangGraph 联合查询工单，并在用户独立确认后创建工单。模型提出工具调用；后端控制权限、预算和事务。
 
-**普通用户入口：[研发协作工作台](http://127.0.0.1:8002/)**。服务启动后直接在浏览器上传资料、提问、查看工单及确认提案，无需手工填写API请求头。开发接口文档继续保留在[Swagger](http://127.0.0.1:8002/docs)。
+## 当前界面
 
-项目包含浏览器工作台、容器化部署与可视化追踪。可查看[工作台截图](docs/evidence/FRONTEND_DESKTOP_20261031.png)、[前端验收记录](docs/evidence/FRONTEND_VERIFICATION_20261031.json)和[端到端验收结果](docs/FINAL_ACCEPTANCE.md)。
+支持知识引用、工单提案、任务进度与只读恢复；历史对话默认仅在页面内存，主动开启后按账号保存展示内容。当前代码包含 EdgeOne 同域代理、Cookie 登录、持久任务及独立 Worker；发布状态默认 **CLOSED**，源码功能不等于公网安全验收通过。
 
-公网演示改造正在进行：新界面参考[桌面预览](docs/evidence/PUBLIC_WEB_DESKTOP.png)和[移动端预览](docs/evidence/PUBLIC_WEB_MOBILE.png)。EdgeOne前端已部署，完整公网安全验收仍待完成，后端默认CLOSED。个人体验可单独启用 [PERSONAL_DEMO](docs/PERSONAL_DEMO.md)：一个已有账号、最长24小时、每次授权最多500个AI任务，三任务占槽、单Worker顺序执行，不冒充STAGING/PUBLIC。[高额度、0015迁移与升级说明](docs/PERSONAL_DEMO_CAPACITY.md)包含模式隔离、预算及失败边界。正式准备工作和限制见[部署准备](docs/EDGEONE_DEPLOYMENT.md)、[安全模型](docs/SECURITY_MODEL.md)与[运行手册](docs/PUBLIC_DEMO_RUNBOOK.md)。
+![当前真实静态构建的桌面模拟演示](docs/evidence/INTERVIEW_DEMO_1440.png)
 
-阶段1.5已增加持久发布状态、Worker门禁、数据库创建限额、异常任务调查及新资源冷备恢复；当前默认CLOSED。测试边界和下一步受控STAGING条件见[阶段报告](docs/STAGE15_REPORT.md)与[发布清单](docs/RELEASE_CHECKLIST.md)。
+[390px 手机预览](docs/evidence/INTERVIEW_DEMO_390.png) · [历史对话与执行权限](docs/CHAT_HISTORY.md) · [聊天事件协议](docs/CHAT_EXPERIENCE.md)
 
-聊天体验支持安全 Markdown、真实任务阶段、RAG 流式草稿、停止等待和任务编号恢复，架构、事件协议及部署边界见[聊天体验说明](docs/CHAT_EXPERIENCE.md)。停止等待不取消后台任务或退款；刷新不会重新提交。
+截图来自固定合成 fixture，展示当前界面；不是新的真实模型、数据库或公网运行证据。
 
-聊天界面使用紧凑顶栏、可展开额度和默认收起的任务中心，长回答与工单提案拥有更大的阅读空间。用户头像采用本地原创剑客绘像；历史失败/待核实任务可在本浏览器隐藏并恢复，不改变后台结果或额度。[布局、桌面/手机预览及测试说明](docs/CHAT_SPACE_AVATAR.md)包含静态部署影响；EdgeOne前端更新无需重建后端镜像。
+## 快速体验：无需密钥的本地模拟
 
-[历史对话](docs/CHAT_HISTORY.md)支持返回、搜索、重命名、删除和主动开启IndexedDB保存；默认仅本页内存。旧提案只读，继续对话建立新的安全Context。任务中心可经GET核实后删除failed/unknown的本地恢复索引，不取消后台任务或退还额度。
+安装 Node.js 22 或更新版本，在仓库根目录运行：
 
-## 在浏览器中使用
+```bash
+node scripts/interview_demo.mjs
+```
 
-| 页面 | 操作 |
+打开 **http://127.0.0.1:4173/**，选择顶部场景并点击发送：知识引用 → 联合查询与提案独立确认 → 任务失败与原编号只读恢复。端口被占用可加 `--port 4174`。退出按 Ctrl+C。
+
+仅监听 `127.0.0.1`；启动时使用真实 `build_edgeone.mjs` 生成独立临时静态目录。所有答案、工单、身份和 SSE 事件均为模拟，零模型、数据库和公网请求，无需 `.env`、Docker 或 npm 安装。工具栏始终注明模拟；重置只清除本演示状态和合成账号的任务恢复索引。没有任意上游代理，生产构建不包含模拟逻辑。
+
+[3 分钟 / 10 分钟面试路线与验证命令](docs/INTERVIEW_GUIDE.md)。需真实模型和存储时使用下方 Docker 流程；公网模式另按[部署准备](docs/EDGEONE_DEPLOYMENT.md)和[安全模型](docs/SECURITY_MODEL.md)，本地模拟不授予任何发布权限。
+
+## 架构
+
+```mermaid
+flowchart LR
+    UI[浏览器 / EdgeOne 静态页面] --> Proxy[同域 Node API 代理]
+    Proxy --> Gateway[Ingress / FastAPI gateway]
+    Gateway --> Jobs[(PostgreSQL jobs / 配额)]
+    Jobs --> Worker[独立 Worker / 租约]
+    Worker --> Logic[LangGraph / RAG]
+    Logic --> Stores[(PostgreSQL / Qdrant / BM25)]
+    Worker -. 脱敏 Trace .-> Phoenix[Phoenix]
+```
+
+身份 Cookie、页面内执行 Context、可选展示 history 分开管理；恢复任务只读 GET/SSE，不重放 POST 或模型调用。提案确认走独立接口，经过账号、Context、指纹、有效期和事务校验。完整数据流见[架构说明](docs/ARCHITECTURE.md)。
+
+## 证据与限制
+
+| 证据 | 能证明的范围 |
 | --- | --- |
-| 智能协作 | 输入研发问题并发送；“智能协作”可联合查询知识与真实工单，“知识问答”只查询资料。点击回答依据可查看原文或工单详情；运行详情提供实际请求编号和可用usage |
-| 知识资料 | 选择或拖入TXT、Markdown、PDF，点击“上传并加入知识库”；成功后回到智能协作提问。文件大小依据当前后端配置显示 |
-| 工单 | 按关键词和状态查询、翻页及查看真实详情。“新建工单”先生成待确认提案；核对标题/描述后，点击确认创建或拒绝 |
+| [本地模拟验收](docs/INTERVIEW_GUIDE.md#自动验证与截图) | 当前真实前端构建、浏览器交互、合成响应、确认与恢复边界 |
+| [Agent 任务合同基线](docs/AGENT_TASK_BENCHMARK_REPORT.md) | 实际编译图＋脚本模型的30个场景，30/30合同通过；不代表真实模型自主决策质量 |
+| [工具观察去重对照](docs/AGENT_OBSERVATIONS.md) | 同配置观察字符减少24.05%，工具执行与合同结果不变；不等于实测token或费用减少 |
+| [历史最终验收](docs/FINAL_ACCEPTANCE.md) / [原始审计](docs/evidence/D32_FINAL_ACCEPTANCE.json) | 记录当时的真实 Docker、PostgreSQL、模型及 Phoenix 回读；不是本轮重测 |
+| [前端真实验收](docs/evidence/FRONTEND_VERIFICATION_20261031.json) | 当时的浏览器与后端闭环，具体调用数和失败见记录 |
+| [冻结保留集](evals/reports/FINAL_HOLDOUT.md) | 9 道可答题 MRR@5：0.944444 → 1；Recall@5 均为 1，另 1 道无答案不入均值 |
+| [发布清单](docs/RELEASE_CHECKLIST.md) | 公网门禁、证据和仍需完成的验收；不能由本地模拟替代 |
 
-Agent也可在对话中提出工单提案。浏览器会从后端重新读取提案内容，并带对应上下文凭据及指纹调用独立确认接口；聊天中的“确认”不会替代按钮操作。确认结果不明确时，界面提供查询状态，不自动重发创建操作。
-
-上下文凭据和本次上传记录仅保存在当前页面内存；对话默认也只保留本页，用户主动开启后可将展示正文保存至本浏览器IndexedDB，按认证账号隔离且不恢复执行权限。公开聊天任务的localStorage仅保存账号隔离的任务编号等非凭据元数据，可查询原任务；成功入库的资料和已提交工单仍由服务端保存。工单页显示实际本页条数，后端没有提供全局总数。本机模式不要求登录，历史仅内存；面向公网的账户、多用户隔离和资料管理仍须完成发布前安全与部署验收。当前不支持工单编辑或删除。
-
-## 技术栈和主要职责
-
-| 组件 | 作用 |
-| --- | --- |
-| HTML / CSS / JavaScript Modules | 中文响应式工作台、同域API交互、依据查看和明确确认；由FastAPI直接提供，无Node运行时依赖 |
-| FastAPI / Pydantic | HTTP请求、上传及结构化输出校验，真实来源与业务DTO |
-| LangGraph / DeepSeek | State、节点、条件路由、模型Tool Call与ToolMessage循环 |
-| 智谱embedding-3 / Qdrant | 2048维文档与问题向量、Dense候选及原文metadata |
-| jieba / BM25 / RRF | 中文与技术词分词、词法检索、按名次融合 |
-| 本地BGE Cross-Encoder | 固定revision对融合候选重新排序，保留原文和来源身份 |
-| SQLAlchemy / Psycopg / Alembic / PostgreSQL | 工单、不可变提案、行锁、唯一创建键、事务与迁移 |
-| OpenTelemetry / Phoenix | HTTP、模型、工具、检索、重排与事务的真实Trace |
-| Docker Compose / uv | 锁定依赖、API镜像、容器网络、健康及持久化卷 |
-
-完整模块、数据流及权限图见[架构说明](docs/ARCHITECTURE.md)。
-
-## 核心业务流程
-
-用户描述研发问题 → Agent查询工单和知识 → 综合真实来源 → 后端生成pending提案 → 用户预览 → 独立确认接口 → PostgreSQL事务创建 → 返回真实ticket_id，并按run_id/Trace ID观察执行。
-
-知识检索固定为 **Dense 10＋BM25 10 → RRF c=60取10 → BGE重排取5**。切分750/150，模型`BAAI/bge-reranker-v2-m3`固定revision `953dc6f6f85a1b2dbfca4c34a2796e7dde08d41e`、batch2、max_length512。GPU为cuda/float16，CPU为显式cpu/float32；检索异常明确失败，不静默回退纯Dense。
-
-上传成功前同步匹配完成清单的BM25快照；跨进程文件锁、临时文件校验和原子发布保护一致性。重复上传及失败恢复沿用稳定ID与D18成功清单，模型缓存只从本地读取。
+小型自建评测不证明普遍质量提升；没有生产压测或 SLA、跨设备聊天同步、持久化 LangGraph/checkpoint 恢复。浏览器停止等待不取消后台任务、不退款；展示历史不会恢复确认权限。本机旧同步入口与公网受控任务入口有不同边界，不能把本机 `POST /tickets` 当作已开放公网写接口。真实模型请求、数据库状态和 Phoenix 收存均需独立验证。
 
 ## Docker运行
 
@@ -99,7 +102,7 @@ Agent带`X-Copilot-Context-ID`和`X-Copilot-Context-Token`且认证有效时，�
 
 响应X-Run-ID与X-Trace-ID可关联Phoenix。只有当前请求OTLP导出收到接受回执才显示X-Trace-Exported=true；仍需从Phoenix回读证明存储。导出失败保留业务响应并记录明确诊断，关追踪不影响业务。Span仅含安全元数据，不记录原文、请求头、令牌或异常原文。
 
-## 七项能力和真实证据
+## 历史能力验收与原始证据
 
 最终逐项结果、样本量、成功/失败Trace及费用边界见[最终验收](docs/FINAL_ACCEPTANCE.md)，原始记录见[最终审计](docs/evidence/D32_FINAL_ACCEPTANCE.json)。
 
@@ -115,7 +118,7 @@ Agent带`X-Copilot-Context-ID`和`X-Copilot-Context-Token`且认证有效时，�
 
 开发集26道可答题的Hybrid→Rerank证据MRR@5为0.897436→0.971154，Recall@5均1；Recall@3从1降至0.935897，保留4题改善/2题退化。冻结后的保留集9道可答题，V0→Final的MRR@5为0.944444→1，Recall@5均1；另1道无答案排除于这些均值。自建小数据集不证明普遍提升或回答准确率，保留集未用于重新调参。
 
-## 测试与复现
+## 真实服务测试与复现（历史批次）
 
 后端开发验收完整回归为 **1386 passed、0 failed、0 skipped**，启用真实PG、Qdrant及GPU；另有最终指标边界定向测试。Docker CPU/GPU镜像实际构建、CPU和GPU模型实际推断、存储容器重建以及Phoenix真实收存分别留证。前端扩展的自动检查与浏览器验证记录在[前端验收记录](docs/evidence/FRONTEND_VERIFICATION_20261031.json)；Mock、受控模型、真实服务和真实模型按证据区分。
 
@@ -129,7 +132,3 @@ PROJECT_COPILOT_RUN_FINAL_QDRANT=1 PROJECT_COPILOT_RUN_FINAL_GPU=1 HF_HUB_OFFLIN
 ```
 
 真实PG测试需先启动独立postgres-test服务；测试保留远端Qdrant集合。最终演示脚本为[scripts/final_acceptance.py](scripts/final_acceptance.py)，新输出目录与显式`--live`才允许模型请求；Phoenix回读和指标脚本为[scripts/final_metrics.py](scripts/final_metrics.py)。历史实验verify只读原档案，不重新调用模型或重签历史SHA。
-
-## 已知限制
-
-原D20 `POST /tickets`仍是本地未鉴权直建接口；D29 bearer上下文不替代登录、租户和完整授权。GPU模型按进程占显存；Python等待超时不能强杀CUDA线程；文件锁依赖共享文件系统。没有生产压测、持续监控SLA、持久聊天/Graph恢复或完整语义事实裁判。费用估算基于已返回usage，不等于实际账单；首次上游失败未返回usage，未把它从调用记录中删除。

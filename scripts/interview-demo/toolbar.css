@@ -1,0 +1,7 @@
+/* Local demo label is always visible; production CSS is served byte-for-byte. */
+body{display:flex;flex-direction:column;height:100dvh;overflow:hidden}
+#demo-toolbar{flex:none;background:#fff6dc;color:#493d24;border-bottom:1px solid #d5b96b;padding:9px 18px;display:flex;align-items:center;gap:8px 14px;flex-wrap:wrap;font:12px/1.5 system-ui,sans-serif;z-index:30}
+#demo-toolbar strong{font-size:13px}#demo-toolbar button{font:inherit;border:1px solid #ccb675;background:#fffdf6;color:#493d24;border-radius:6px;padding:4px 9px;cursor:pointer}#demo-toolbar button:focus-visible{outline:2px solid #4b7666;outline-offset:2px}#demo-scenarios{display:flex;gap:6px;flex-wrap:wrap}#demo-status{font-size:11px;color:#6b5f42}
+body>.app-shell{flex:1;min-height:0;height:auto}body>.auth-screen{flex:1;min-height:0}
+@media(max-width:600px){#demo-toolbar{padding:7px 10px;gap:4px 8px}#demo-toolbar>span{font-size:10px}#demo-scenarios{gap:4px}#demo-toolbar button{padding:3px 6px;font-size:11px}#demo-status{display:block;width:100%}}
+body>.app-shell>.sidebar{height:100%;min-height:0}body>.app-shell>.workspace{height:100%;min-height:0}
