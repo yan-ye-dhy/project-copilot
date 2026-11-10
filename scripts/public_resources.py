@@ -18,6 +18,12 @@ LABEL = "io.project-copilot.scope"
 PROJECT = "project-copilot-public-demo"
 VOLUMES = {"postgres_data": "pc-public-v2-postgres", "qdrant_data": "pc-public-v2-qdrant",
            "phoenix_data": "pc-public-v2-phoenix", "manifests": "pc-public-v2-manifests"}
+# Redis is optional acceleration/admission state, outside the authoritative
+# backup roles imported by public_backup and existing maintenance commands.
+REDIS_VOLUMES = {"redis_data": "pc-public-v2-redis"}
+REDIS_IMAGE = "redis:8.2.3-alpine@sha256:08ad0b1d280850169a790dba1393ff7a90aef951fc19632cf4d3ce4f78e679ba"
+REDIS_COMMAND = ["redis-server", "--appendonly", "yes", "--appendfsync", "always", "--maxmemory", "64mb",
+                 "--maxmemory-policy", "noeviction", "--save", ""]
 NETWORKS = {"backend": "pc-public-v2-backend", "egress": "pc-public-v2-egress",
             "ingress": "pc-public-v2-ingress"}
 MOUNTS = {"postgres": {"/var/lib/postgresql/data": VOLUMES["postgres_data"]},
@@ -60,14 +66,24 @@ def validate_volume(info, name, role):
         raise ResourceError("only ordinary local dedicated volumes are supported")
 
 
-def check_volumes(*, initialize=False):
+def selected_volumes(*, with_redis=False):
+    return {**VOLUMES, **(REDIS_VOLUMES if with_redis else {})}
+
+
+def compose_files(*, with_redis=False):
+    files = ("-f", str(ROOT / "docker-compose.public-demo.yml"))
+    return files + (("-f", str(ROOT / "deploy/public-demo.redis.yml")) if with_redis else ())
+
+
+def check_volumes(*, initialize=False, with_redis=False):
+    volumes = selected_volumes(with_redis=with_redis)
     existing = {}
-    for role, name in VOLUMES.items():
+    for role, name in volumes.items():
         info = inspect_volume(name)
         if info is not None:
             validate_volume(info, name, role)
         existing[role] = info
-    for role, name in VOLUMES.items():
+    for role, name in volumes.items():
         info = existing[role]
         if info is None:
             if not initialize:
@@ -122,20 +138,38 @@ def host_bind_paths(values):
     return result
 
 
-def validate_rendered_env(path, values):
-    command = ("compose", "--env-file", str(path), "-f", str(ROOT / "docker-compose.public-demo.yml"), "config")
-    raw = json.loads(docker(*command, "--no-env-resolution", "--format", "json"))
+def validate_rendered_env(path, values, *, with_redis=False):
+    command = ("compose", "--env-file", str(path), *compose_files(with_redis=with_redis), "config")
+    # Compose 2.40 drops env_file after interpolation even with
+    # --no-env-resolution. Preserve its declaration before inspecting it.
+    raw = json.loads(docker(*command, "--no-interpolate", "--no-env-resolution", "--format", "json"))
     rendered = json.loads(docker(*command, "--format", "json"))
     if rendered.get("name") != PROJECT or raw.get("name") != PROJECT:
         raise ResourceError("rendered project differs from dedicated public deployment")
     for role in ("api", "worker", "migrate"):
         files = raw["services"][role].get("env_file", [])
-        if len(files) != 1 or Path(files[0]["path"]).resolve() != Path(path).resolve():
+        if len(files) != 1 or _env_file_path(files[0]["path"], values) != Path(path).resolve():
             raise ResourceError("rendered application env-file differs from reviewed private file")
         if rendered["services"][role]["environment"].get("PROJECT_COPILOT_DATABASE_URL") != values["PROJECT_COPILOT_DATABASE_URL"]:
             raise ResourceError("rendered database target differs from reviewed private file")
     if rendered["services"]["postgres"]["environment"].get("POSTGRES_PASSWORD") != values["PROJECT_COPILOT_PUBLIC_POSTGRES_PASSWORD"]:
         raise ResourceError("rendered datastore credentials differ")
+    if with_redis:
+        _check_redis_config(rendered)
+
+
+def _env_file_path(declaration, values):
+    # Only the base deployment's exact expression may select the file. Never
+    # interpolate arbitrary variables or consult exported process credentials.
+    expression = "${PROJECT_COPILOT_PUBLIC_ENV_FILE:-.env.public-demo}"
+    if not isinstance(declaration, str):
+        raise ResourceError("invalid application env-file declaration")
+    if declaration in {expression, str(ROOT / expression)}:
+        declaration = values.get("PROJECT_COPILOT_PUBLIC_ENV_FILE") or ".env.public-demo"
+    if not isinstance(declaration, str) or "$" in declaration:
+        raise ResourceError("unsupported application env-file expression")
+    selected = Path(declaration)
+    return (selected if selected.is_absolute() else ROOT / selected).resolve()
 
 
 def check_networks(*, initialize=False):
@@ -163,14 +197,44 @@ def check_networks(*, initialize=False):
 
 
 def service_networks(service):
-    return ({"backend"} if service in {"postgres", "qdrant", "phoenix"}
+    return ({"backend"} if service in {"postgres", "qdrant", "phoenix", "redis"}
             else {"ingress"} if service == "cloudflared"
             else {"backend", "ingress"} if service == "ingress"
             else {"backend", "egress"})
 
 
-def check_config():
-    config = json.loads(docker("compose", "-f", str(ROOT / "docker-compose.public-demo.yml"), "config",
+def _check_redis_config(config):
+    volume = config["volumes"].get("redis_data", {})
+    redis = config["services"].get("redis", {})
+    if volume.get("name") != REDIS_VOLUMES["redis_data"] or not volume.get("external"):
+        raise ResourceError("optional Redis must use its dedicated external volume")
+    if (redis.get("image") != REDIS_IMAGE or redis.get("command") != REDIS_COMMAND
+            or (redis.get("labels") or {}).get(LABEL) != SCOPE
+            or set(redis.get("networks", {})) != {"backend"} or redis.get("ports")):
+        raise ResourceError("optional Redis image, role or isolation differs")
+    mounts = redis.get("volumes", [])
+    if (len(mounts) != 1 or mounts[0].get("type") != "volume"
+            or mounts[0].get("source") != "redis_data" or mounts[0].get("target") != "/data"):
+        raise ResourceError("optional Redis storage role differs")
+    for role in ("api", "worker"):
+        environment = config["services"][role].get("environment", {})
+        # The noninterpolated JSON form in Compose 2.40 can retain KEY=value
+        # lists rather than the mapping emitted after interpolation.
+        if isinstance(environment, list):
+            pairs = [item.split("=", 1) for item in environment if isinstance(item, str) and "=" in item]
+            if len(pairs) != len(environment) or len({pair[0] for pair in pairs}) != len(pairs):
+                raise ResourceError("invalid application Redis environment")
+            environment = dict(pairs)
+        if not isinstance(environment, dict):
+            raise ResourceError("invalid application Redis environment")
+        if (environment.get("PROJECT_COPILOT_REDIS_ENABLED") != "true"
+                or environment.get("PROJECT_COPILOT_REDIS_ADMISSION_ENABLED") != "true"
+                or environment.get("PROJECT_COPILOT_REDIS_URL") != "redis://redis:6379/0"):
+            raise ResourceError("application Redis configuration differs from optional overlay")
+
+
+def check_config(*, with_redis=False):
+    config = json.loads(docker("compose", *compose_files(with_redis=with_redis), "config",
                                "--no-interpolate", "--no-env-resolution", "--format", "json"))
     if config.get("name") != PROJECT:
         raise ResourceError("unexpected Compose project")
@@ -189,6 +253,8 @@ def check_config():
             raise ResourceError("rendered service network boundary changed")
         if service.get("ports"):
             raise ResourceError("public-demo services must not publish host ports")
+    if with_redis:
+        _check_redis_config(config)
 
 
 def check_containers(values=None):
@@ -196,7 +262,9 @@ def check_containers(values=None):
     # Enumerate volume consumers too: changing -p must not hide another writer
     # attached to the same fixed physical resources.
     ids = set(docker("ps", "-aq", "--filter", f"label=com.docker.compose.project={PROJECT}").decode().split())
-    for volume in VOLUMES.values():
+    # Old maintenance/backup entry points also inspect a present optional Redis,
+    # without adding it to their capture/restore roles or requiring it to exist.
+    for volume in selected_volumes(with_redis=True).values():
         ids.update(docker("ps", "-aq", "--filter", f"volume={volume}").decode().split())
     running_ingress = 0
     for cid in ids:
@@ -209,10 +277,24 @@ def check_containers(values=None):
             running_ingress += 1
             if running_ingress > 1:
                 raise ResourceError("only one shared-zone ingress instance is supported")
-        if service not in {*MOUNTS, "cloudflared", "ingress"}:
+        if service not in {*MOUNTS, "cloudflared", "ingress", "redis"}:
             raise ResourceError("unknown service consumes dedicated resources")
-        wanted = MOUNTS.get(service, {})
+        is_redis = service == "redis"
+        if is_redis:
+            redis_volume = inspect_volume(REDIS_VOLUMES["redis_data"])
+            if redis_volume is None:
+                raise ResourceError("optional Redis volume missing")
+            validate_volume(redis_volume, REDIS_VOLUMES["redis_data"], "redis_data")
+            if (labels.get(LABEL) != SCOPE or info.get("Config", {}).get("Image") != REDIS_IMAGE
+                    or info.get("Config", {}).get("Cmd") != REDIS_COMMAND
+                    or info.get("HostConfig", {}).get("PortBindings")
+                    or info.get("HostConfig", {}).get("PublishAllPorts")
+                    or any((info.get("NetworkSettings", {}).get("Ports") or {}).values())):
+                raise ResourceError("optional Redis container image, role or published ports differ")
+        wanted = {"/data": REDIS_VOLUMES["redis_data"]} if is_redis else MOUNTS.get(service, {})
         actual = {item["Destination"]: item for item in info.get("Mounts", [])}
+        if is_redis and set(actual) != {"/data"}:
+            raise ResourceError("optional Redis must mount only its dedicated data volume")
         for target, volume in wanted.items():
             item = actual.get(target, {})
             if item.get("Type") != "volume" or item.get("Name") != volume:
@@ -223,18 +305,19 @@ def check_containers(values=None):
                 if (item.get("Type") != "bind" or item.get("RW") or
                         Path(item.get("Source", "/")).resolve() != source):
                     raise ResourceError("application read-only host mount is missing or differs")
+        allowed_volumes = REDIS_VOLUMES.values() if is_redis else VOLUMES.values()
         for item in actual.values():
-            if item.get("Type") == "volume" and item.get("Name") not in VOLUMES.values():
+            if item.get("Type") == "volume" and item.get("Name") not in allowed_volumes:
                 raise ResourceError("unexpected persistent volume attached")
             if item.get("Type") == "bind":
                 target = item.get("Destination")
-                if target not in {"/app/models/huggingface", "/app/release"} or item.get("RW"):
+                if is_redis or target not in {"/app/models/huggingface", "/app/release"} or item.get("RW"):
                     raise ResourceError("unexpected or writable host bind attached")
                 if binds is not None and Path(item["Source"]).resolve() != binds[target]:
                     raise ResourceError("actual host bind differs from reviewed private setting")
         attached = set(info.get("NetworkSettings", {}).get("Networks", {}))
         expected = {NETWORKS[role] for role in service_networks(service)}
-        if attached and attached != expected:
+        if (attached or is_redis) and attached != expected:
             raise ResourceError("container attached to unexpected network")
 
 
@@ -242,19 +325,20 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("operation", choices=("check", "initialize"))
     parser.add_argument("--env-file", default=str(ROOT / ".env.public-demo"))
+    parser.add_argument("--with-redis", action="store_true", help="include the optional dedicated Redis overlay and volume")
     args = parser.parse_args()
     try:
         values = validate_env(args.env_file)
         host_bind_paths(values)
-        check_config()
-        validate_rendered_env(args.env_file, values)
-        check_volumes(initialize=args.operation == "initialize")
+        check_config(with_redis=args.with_redis)
+        validate_rendered_env(args.env_file, values, with_redis=args.with_redis)
+        check_volumes(initialize=args.operation == "initialize", with_redis=args.with_redis)
         check_networks(initialize=args.operation == "initialize")
         check_containers(values)
     except (ResourceError, OSError, ValueError, KeyError):
         print(json.dumps({"status": "error", "message": "public resource preflight failed; no old volume was adopted or removed"}))
         return 1
-    print(json.dumps({"status": "ok", "scope": SCOPE, "volumes": VOLUMES}))
+    print(json.dumps({"status": "ok", "scope": SCOPE, "volumes": selected_volumes(with_redis=args.with_redis)}))
     return 0
 
 

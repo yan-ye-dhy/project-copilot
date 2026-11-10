@@ -1,0 +1,41 @@
+# Optional overlay; the base public deployment keeps Redis disabled.
+# Initialize the separately labelled volume with public_resources --with-redis.
+services:
+  redis:
+    image: redis:8.2.3-alpine@sha256:08ad0b1d280850169a790dba1393ff7a90aef951fc19632cf4d3ce4f78e679ba
+    labels:
+      io.project-copilot.scope: public-demo-v2
+    command: ["redis-server", "--appendonly", "yes", "--appendfsync", "always", "--maxmemory", "64mb", "--maxmemory-policy", "noeviction", "--save", ""]
+    volumes: ["redis_data:/data"]
+    networks: [backend]
+    mem_limit: 128m
+    pids_limit: 64
+    security_opt: ["no-new-privileges:true"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 2s
+      retries: 20
+
+  api:
+    environment:
+      PROJECT_COPILOT_REDIS_ENABLED: "true"
+      PROJECT_COPILOT_REDIS_ADMISSION_ENABLED: "true"
+      PROJECT_COPILOT_REDIS_URL: redis://redis:6379/0
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  worker:
+    environment:
+      PROJECT_COPILOT_REDIS_ENABLED: "true"
+      PROJECT_COPILOT_REDIS_ADMISSION_ENABLED: "true"
+      PROJECT_COPILOT_REDIS_URL: redis://redis:6379/0
+    depends_on:
+      redis:
+        condition: service_healthy
+
+volumes:
+  redis_data:
+    name: pc-public-v2-redis
+    external: true

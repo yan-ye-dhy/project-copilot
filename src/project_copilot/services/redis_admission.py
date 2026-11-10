@@ -3,9 +3,11 @@ from hashlib import sha256
 import json
 import math
 import re
+import time
 from uuid import UUID
 
 from project_copilot.infrastructure.redis_runtime import RedisUnavailable, get_redis_runtime
+from project_copilot.infrastructure.tracing import trace_span
 
 
 class RateLimited(RuntimeError):
@@ -43,17 +45,17 @@ end
 
 local global_tokens, global_updated = read_bucket(KEYS[1], global_capacity, global_rate)
 local user_tokens, user_updated = read_bucket(KEYS[2], user_capacity, user_rate)
-local wait_global = math.max(0, (1 - global_tokens) / global_rate)
-local wait_user = math.max(0, (1 - user_tokens) / user_rate)
+local wait_global = global_tokens < 1 and (math.max(0, global_updated - now) + (1 - global_tokens) / global_rate) or 0
+local wait_user = user_tokens < 1 and (math.max(0, user_updated - now) + (1 - user_tokens) / user_rate) or 0
 local retry_ms = math.ceil(math.max(wait_global, wait_user))
 if global_tokens < 1 or user_tokens < 1 then
     return {0, math.max(1, retry_ms)}
 end
 
 redis.call('HSET', KEYS[1], 'tokens', global_tokens - 1, 'updated_ms', global_updated)
-redis.call('PEXPIRE', KEYS[1], math.max(1000, math.ceil(global_capacity / global_rate) + 1000))
+redis.call('PEXPIRE', KEYS[1], math.max(1000, math.ceil(math.max(0, global_updated - now) + global_capacity / global_rate) + 1000))
 redis.call('HSET', KEYS[2], 'tokens', user_tokens - 1, 'updated_ms', user_updated)
-redis.call('PEXPIRE', KEYS[2], math.max(1000, math.ceil(user_capacity / user_rate) + 1000))
+redis.call('PEXPIRE', KEYS[2], math.max(1000, math.ceil(math.max(0, user_updated - now) + user_capacity / user_rate) + 1000))
 return {1, 0}
 """
 
@@ -94,6 +96,22 @@ def admit(settings, user_id, scope="jobs"):
     """Consume one unit, or fail closed. Disabled admission does no work."""
     if not getattr(settings, "redis_admission_enabled", False):
         return
+    started = time.perf_counter()
+    with trace_span("admission.redis", {"admission.scope": scope if scope in {"jobs", "provider"} else "invalid"}) as span:
+        try:
+            return _admit(settings, user_id, scope)
+        except RateLimited:
+            span.set_attribute("rate_limit_rejected", True)
+            raise
+        except RedisUnavailable:
+            span.set_attribute("admission.unavailable", True)
+            raise
+        finally:
+            # End-to-end gate duration, not a claim of pure server execution.
+            span.set_attribute("admission_wait_ms", (time.perf_counter() - started) * 1000)
+
+
+def _admit(settings, user_id, scope):
     try:
         keys, arguments = bucket_keys(settings, user_id, scope)
         runtime = get_redis_runtime(settings)

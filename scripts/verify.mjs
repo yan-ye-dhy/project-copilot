@@ -17,11 +17,18 @@ if (mode === '--services' && process.env.PROJECT_COPILOT_QDRANT_URL &&
   console.error('Service checks require the dedicated test Qdrant at http://127.0.0.1:16433.');
   process.exit(2);
 }
+if (mode === '--services' && process.env.PROJECT_COPILOT_TEST_REDIS_URL &&
+    process.env.PROJECT_COPILOT_TEST_REDIS_URL !== 'redis://127.0.0.1:16379/15') {
+  console.error('Service checks require dedicated Redis at redis://127.0.0.1:16379/15.');
+  process.exit(2);
+}
 const env = { ...process.env, PYTHONPATH: root + path.delimiter + path.join(root, 'src'),
   PROJECT_COPILOT_QDRANT_URL: 'http://127.0.0.1:16433',
   HF_HUB_OFFLINE: '1', OMP_NUM_THREADS: '2', MKL_NUM_THREADS: '2',
   PROJECT_COPILOT_RUN_FINAL_GPU: '0', PROJECT_COPILOT_RUN_INGRESS_DOCKER: '0',
   PROJECT_COPILOT_RUN_POSTGRES_INTEGRATION: mode === '--services' ? '1' : '0',
+  PROJECT_COPILOT_RUN_REDIS_INTEGRATION: mode === '--services' ? '1' : '0',
+  PROJECT_COPILOT_TEST_REDIS_URL: 'redis://127.0.0.1:16379/15',
   PROJECT_COPILOT_RUN_QDRANT_INTEGRATION: mode === '--services' ? '1' : '0',
   PROJECT_COPILOT_RUN_FINAL_QDRANT: mode === '--services' ? '1' : '0',
   PC_TEST_WEB_QDRANT: mode === '--services' ? '1' : '0' };

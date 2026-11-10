@@ -12,6 +12,12 @@
 
 截图来自固定合成 fixture，展示当前界面；不是新的真实模型、数据库或公网运行证据。
 
+## 可选后端工程能力
+
+保留 PostgreSQL 持久任务队列，在显式配置下增加 Redis Lua 全局/账号令牌桶、版本与账号隔离的检索排名缓存，以及 PG 队列背压。缓存不保存正文，命中仍验证当前 Qdrant/BM25/模型；Worker 复用个人配置与模型资源，CUDA 常驻所有者由共享目录上的 OS 锁保护。Redis 不替代业务事务、执行证明或工单确认，也不自动重试 unknown。
+
+[知识与源码对应](docs/WEEK1_BACKEND_ENGINEERING.md) · [现状审计](docs/WEEK1_BACKEND_AUDIT.md) · [验证与测量边界](docs/WEEK1_BACKEND_VERIFICATION.md)。默认关闭 Redis 和新增容量选项；合并代码不等于启用能力或更新现有部署。隔离实验可使用 `docker-compose.week1-lab.yml`，不挂载业务数据。
+
 ## 快速体验：无需密钥的本地模拟
 
 安装 Node.js 22 或更新版本，在仓库根目录运行：

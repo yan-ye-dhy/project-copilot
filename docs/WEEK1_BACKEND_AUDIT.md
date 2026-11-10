@@ -35,4 +35,4 @@
 - Redis 断线、锁 TTL 或 HTTP 超时不证明旧模型/GPU执行终止。
 - 无真实付费模型/GPU压测；合成吞吐仅证明所测组件和资源边界。
 
-验收结果、执行环境及三个手动验证入口在 `WEEK1_BACKEND_ENGINEERING.md` 汇总；实现前的本表不代表各阶段已经验收通过。
+阶段1–4已完成本机实现及隔离自动验证，详细结果见[验证记录](WEEK1_BACKEND_VERIFICATION.md)；教学和三个手动入口见[源码说明](WEEK1_BACKEND_ENGINEERING.md)。真实模型/GPU、Docker容器启动和公网部署未执行，不登记为通过；新增可选公网overlay的资源预检保持固定卷/镜像/内部网络边界。

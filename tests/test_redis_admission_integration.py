@@ -65,6 +65,25 @@ def test_real_refill_retry_after_and_millisecond_ttl():
         assert float(runtime.client.hget(keys[1], "tokens")) < 0.01
 
 
+def test_clock_rollback_cannot_expire_future_buckets_early():
+    with isolated_redis(redis_admission_global_capacity=2, redis_admission_user_capacity=2,
+                        redis_admission_global_refill_per_second=1,
+                        redis_admission_user_refill_per_second=1) as (settings, runtime):
+        user = uuid4()
+        keys, _ = bucket_keys(settings, user)
+        seconds, micros = runtime.client.time()
+        future = seconds * 1000 + micros // 1000 + 10000
+        for key in keys:
+            runtime.client.hset(key, mapping={"tokens": 2, "updated_ms": future})
+        admit(settings, user)
+        assert all(runtime.client.pttl(key) > 12000 for key in keys)
+        admit(settings, user)
+        with pytest.raises(RateLimited) as denied:
+            admit(settings, user)
+        assert 10 <= denied.value.retry_after <= 11
+        assert all(float(runtime.client.hget(key, "tokens")) == 0 for key in keys)
+
+
 def test_real_denial_does_not_create_account_and_cold_runtime_preserves_state():
     with isolated_redis(redis_admission_global_capacity=1,
                         redis_admission_global_refill_per_second=0.000001) as (settings, runtime):

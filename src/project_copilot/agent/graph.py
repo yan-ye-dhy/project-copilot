@@ -14,7 +14,7 @@ from pydantic import ValidationError
 from opentelemetry.trace import StatusCode
 
 from project_copilot.infrastructure.tracing import trace_span
-from project_copilot.infrastructure.job_progress import progress
+from project_copilot.infrastructure.job_progress import progress_async
 from project_copilot.infrastructure.agent_model import (
     AGENT_MODEL_FAILURE_TYPES, AgentModelRequestError, AgentModelResponseError,
 )
@@ -23,6 +23,8 @@ from project_copilot.agent.tools import ToolRegistry, ToolResult
 from project_copilot.agent.observations import model_observation
 from project_copilot.schemas.agent import AgentFinal, AgentQuestion, AgentRun, AgentSource, ToolEvent
 from project_copilot.services.quotas import QuotaExceeded
+from project_copilot.services.redis_admission import RateLimited
+from project_copilot.infrastructure.redis_runtime import RedisUnavailable
 
 
 SYSTEM_PROMPT = """你是Project Copilot业务助手。仅通过后端提供的工具读取真实工单和知识。
@@ -137,7 +139,7 @@ class AgentRunner:
         count = state["model_calls"] + 1
         event = {"step": count, "status": "ok", "model": None, "usage": None}
         base = {"model_calls": count}
-        progress("model")
+        await progress_async("model")
         try:
             message = await asyncio.wait_for(
                 self.model.ainvoke(list(state["messages"]), self.registry.schemas()),
@@ -166,6 +168,11 @@ class AgentRunner:
                            count, kind, event.get("provider_http_status", "unavailable"))
             return {**base, "model_events": [*state["model_events"], event],
                     "usage": None, "usage_complete": False, **_failure(kind)}
+        except (RateLimited, RedisUnavailable) as exc:
+            kind = "admission_rate_limited" if isinstance(exc, RateLimited) else "admission_unavailable"
+            event.update(status="error", failure_type=kind, elapsed_ms=(time.monotonic() - started) * 1000)
+            return {**base, "model_events": [*state["model_events"], event],
+                    "usage": state["usage"], "usage_complete": state["usage_complete"], **_failure(kind)}
         except QuotaExceeded as exc:
             kind = "provider_budget" if exc.reason == "provider_attempts" else "model_error"
             event.update(status="error", failure_type=kind, elapsed_ms=(time.monotonic() - started) * 1000)
@@ -194,7 +201,7 @@ class AgentRunner:
         calls = [*message.tool_calls, *message.invalid_tool_calls]
         if calls:
             return base
-        progress("validate")
+        await progress_async("validate")
         try:
             if not isinstance(message.content, str):
                 raise ValueError("最终回答必须为JSON文本")
@@ -307,7 +314,7 @@ class AgentRunner:
                         # no stale cached ticket or extra backend call is returned.
                         if kind is None:
                             try:
-                                progress(name if name in {"get_ticket", "search_tickets", "search_knowledge", "propose_ticket"} else "tool")
+                                await progress_async(name if name in {"get_ticket", "search_tickets", "search_knowledge", "propose_ticket"} else "tool")
                                 executions += 1
                                 executed = True
                                 with trace_span("agent.tool.execute", {"openinference.span.kind": "TOOL",
@@ -339,6 +346,9 @@ class AgentRunner:
                                 kind = "tool_timeout"
                             except LookupError:
                                 kind = "not_found"
+                            except (RateLimited, RedisUnavailable) as exc:
+                                kind = "admission_rate_limited" if isinstance(exc, RateLimited) else "admission_unavailable"
+                                updates = _failure(kind)
                             except QuotaExceeded as exc:
                                 if exc.reason == "provider_attempts":
                                     kind = "provider_budget"
@@ -361,7 +371,7 @@ class AgentRunner:
             assert output is not None
             messages.append(ToolMessage(content=_json(output), tool_call_id=call_id, name=event_name,
                                         status="error" if kind else "success"))
-            progress("tool_done")
+            await progress_async("tool_done")
             events.append(ToolEvent(tool_call_id=call_id, name=event_name,
                                     status="error" if kind else "ok", failure_type=kind,
                                     executed=executed,

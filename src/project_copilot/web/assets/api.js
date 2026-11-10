@@ -54,10 +54,14 @@ const FAILURE_LABELS = Object.freeze({
   authentication_error: "执行身份或上下文校验失效", knowledge_retrieval_failed: "知识检索未能完成",
   execution_error: "后台执行未能完成", tool_protocol_error: "工具调用格式未通过校验",
   grant_ended: "授权已结束，排队任务未执行；不会自动重试或退款",
+  admission_rate_limited: "模型请求准入暂时受限，本次任务不会自动重试",
+  admission_unavailable: "请求准入服务暂不可用，本次任务不会自动重试",
   context_budget: "上下文达到处理上限",
   tool_output_invalid: "工具结果未通过校验", tool_output_too_large: "工具结果超过处理上限",
 });
 const QUOTA_LABELS = Object.freeze({
+  queue_backlog: "后台等待队列已满，请稍后再提交新任务。",
+  admission_rate: "请求过于频繁，请按提示稍后再试。",
   personal_demo_limit: "本次个人授权的任务次数已用完。",
   user_daily: "你的 UTC 每日任务额度已用完。",
   global_daily: "全站 UTC 每日任务额度已用完。",

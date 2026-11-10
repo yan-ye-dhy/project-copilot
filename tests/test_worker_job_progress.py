@@ -238,7 +238,12 @@ def test_worker_creates_independent_trace_and_exports_once_using_controlled_otlp
     assert len(roots) == 1
     assert all(span.attributes["copilot.run_id"] == str(job_id) for span in spans)
     stage = next(span for span in spans if span.name == "controlled.stage")
-    assert stage.parent.span_id == roots[0].context.span_id
+    execution = next(span for span in spans if span.name == "worker.execution")
+    assert stage.parent.span_id == execution.context.span_id
+    assert execution.parent.span_id == roots[0].context.span_id
+    assert execution.attributes["worker_execution_ms"] >= 0
+    assert execution.attributes["queue_wait_ms"] >= 0
+    assert execution.attributes["retry_attempts"] == 0
     assert tracing.current_run_id() is None and tracing.current_trace_id() is None
 
 

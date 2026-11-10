@@ -61,6 +61,10 @@ class Settings(BaseSettings):
     public_job_queue_ttl_seconds: int = Field(default=86400, ge=60, le=30 * 86400)
     public_upload_max_chunks: int = Field(default=64, ge=1, le=1000)
     public_upload_max_chars: int = Field(default=32000, ge=1, le=500000)
+    # Zero retains the existing deployment's capacity policy. Explicit bounds
+    # are global across Worker processes and enforced transactionally in PG.
+    queue_max_pending_jobs: int = Field(default=0, ge=0, le=10000)
+    worker_max_active_jobs: int = Field(default=0, ge=0, le=32)
 
     # Optional backend-only acceleration/admission; PG remains authoritative.
     redis_enabled: bool = False
@@ -77,6 +81,12 @@ class Settings(BaseSettings):
     redis_provider_global_refill_per_second: float = Field(default=2, ge=0.000001, le=10000, allow_inf_nan=False)
     redis_provider_user_capacity: int = Field(default=40, ge=1, le=10000)
     redis_provider_user_refill_per_second: float = Field(default=1, ge=0.000001, le=10000, allow_inf_nan=False)
+    redis_cache_enabled: bool = False
+    redis_cache_hmac_key: SecretStr | None = None
+    redis_cache_ttl_seconds: int = Field(default=300, ge=1, le=86400)
+    redis_cache_negative_ttl_seconds: int = Field(default=10, ge=1, le=60)
+    redis_cache_ttl_jitter_ratio: float = Field(default=0.1, ge=0, le=0.5, allow_inf_nan=False)
+    redis_cache_lock_ttl_seconds: float = Field(default=120, ge=0.05, le=600, allow_inf_nan=False)
 
     zhipu_api_key: SecretStr | None = None
     zhipu_base_url: HttpUrl = "https://open.bigmodel.cn/api/paas/v4/"
@@ -111,6 +121,8 @@ class Settings(BaseSettings):
     database_url: SecretStr | None = None
     database_connect_timeout_seconds: int = Field(default=5, ge=1, le=30)
     database_pool_timeout_seconds: int = Field(default=5, ge=1, le=30)
+    database_pool_size: int = Field(default=5, ge=1, le=20)
+    database_max_overflow: int = Field(default=5, ge=0, le=20)
 
     agent_max_model_calls: int = Field(default=4, ge=1, le=8)
     agent_max_tool_calls: int = Field(default=6, ge=1, le=12)
@@ -128,6 +140,10 @@ class Settings(BaseSettings):
             raise ValueError("Redis准入必须显式启用Redis连接")
         if self.redis_enabled and self.redis_url is None:
             raise ValueError("启用Redis必须配置后端Redis地址")
+        if self.redis_cache_enabled and (not self.redis_enabled or self.redis_cache_hmac_key is None):
+            raise ValueError("排名缓存必须显式启用Redis并配置独立HMAC密钥")
+        if self.redis_cache_negative_ttl_seconds > self.redis_cache_ttl_seconds:
+            raise ValueError("排名负缓存TTL不能长于普通缓存TTL")
         if (self.final_rerank_device, self.final_rerank_dtype) not in {("cuda", "float16"), ("cpu", "float32")}:
             raise ValueError("最终重排须显式选择cuda/float16或cpu/float32")
         if self.agent_tool_timeout_seconds <= self.final_rerank_timeout_seconds:
@@ -139,6 +155,13 @@ class Settings(BaseSettings):
             if not re.fullmatch(r"[A-Za-z0-9_-]{32,128}", secret) or self.auth_public_origin is None:
                 raise ValueError("公开模式必须配置有效的代理共享密钥和HTTPS站点来源")
         return self
+
+    @field_validator("redis_cache_hmac_key")
+    @classmethod
+    def validate_redis_cache_hmac_key(cls, value: SecretStr | None) -> SecretStr | None:
+        if value is not None and not 32 <= len(value.get_secret_value()) <= 512:
+            raise ValueError("排名缓存HMAC密钥必须为32至512字符")
+        return value
 
     @field_validator("redis_url")
     @classmethod

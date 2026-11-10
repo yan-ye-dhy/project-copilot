@@ -26,11 +26,15 @@ npm run verify
 | --- | --- | --- |
 | `npm run verify -- --frontend` | 真实静态构建、Node代理回环、Chromium受控业务响应、IndexedDB与布局 | 真实公网、真实模型和真实业务写入 |
 | `npm run verify -- --python` | Python默认单测/合同测试；输出全部跳过原因 | PostgreSQL、HTTP Qdrant、GPU或供应商可用性 |
-| `npm run verify -- --services` | 显式启用既有真实隔离PG、HTTP Qdrant、上传/删除、Graph/事务回归；模型仍为替身 | 真实模型质量、GPU和公网链路 |
+| `npm run verify -- --services` | 显式启用真实隔离PG、Redis Lua、HTTP Qdrant、上传/删除、Graph/事务回归；模型仍为替身 | 真实模型质量、GPU和公网链路 |
 
 `--services`只连接已准备的独立测试服务，不自动启动Docker：PG为127.0.0.1:5434的`project_copilot_test`角色/数据库；每个测试仅创建和删除它自己新建的随机数据库。Qdrant需全新临时实例，`PROJECT_COPILOT_QDRANT_URL=http://127.0.0.1:16433`；旧上传测试固定用16433。不要指向演示集合。CI服务随job销毁，不挂载任何业务卷。
 
+第一周升级后，服务回归还要求独立Redis：`redis://127.0.0.1:16379/15`。测试只清理自己新建的随机namespace，不执行FLUSHDB/FLUSHALL；默认离线入口强制关闭真实Redis测试。需要统一准备时可显式运行 `docker compose -p pc-week1-lab -f docker-compose.week1-lab.yml --profile full-regression up -d --wait`；该文件使用tmpfs，无业务env/模型/持久化卷。Redis原生进程重启专项另需`PROJECT_COPILOT_TEST_REDIS_SERVER_BIN`指向显式测试二进制；没有时如实跳过，不重启共享服务。
+
 ## 5. 自动测试结果
+
+2026-11-10后端工程升级的最终本机/CI统计、真实服务版本及合成压测见[本批验证记录](WEEK1_BACKEND_VERIFICATION.md)。下文保留既有历史批次原结果，不替新代码背书。
 
 每轮真实结果在PR及GitHub Checks中记录；本文件不把计划写成通过。JUnit和静态构建保存在独立`test-results/verify-*`目录，CI保留7天。使用`-ra`列出跳过项；GPU、真实供应商、Docker ingress与公网E2E不因CI绿色而被标为已验证。
 

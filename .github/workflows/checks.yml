@@ -66,6 +66,12 @@ jobs:
       qdrant:
         image: qdrant/qdrant:v1.19.2
         ports: ['16433:6333']
+      redis:
+        image: redis:8.2.3-alpine@sha256:08ad0b1d280850169a790dba1393ff7a90aef951fc19632cf4d3ce4f78e679ba
+        ports: ['16379:6379']
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 2s --health-timeout 3s --health-retries 30
     env:
       PROJECT_COPILOT_QDRANT_URL: http://127.0.0.1:16433
     steps:

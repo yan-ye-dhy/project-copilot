@@ -6,6 +6,7 @@ import logging
 from datetime import timedelta
 from hashlib import sha256
 from io import BytesIO
+import time
 from uuid import UUID
 
 from sqlalchemy import func, select
@@ -22,6 +23,7 @@ from project_copilot.services.execution_slots import (ExecutionLease, register_e
 from project_copilot.services.personal_profile import personal_runtime_settings
 from project_copilot.services.job_failures import safe_failure
 from project_copilot.infrastructure.tracing import create_trace_runtime, current_trace_id
+from project_copilot.infrastructure.tracing import trace_span
 from project_copilot.services.job_events import EventWriter, append_event
 from project_copilot.rag.answering import create_answer_service
 from project_copilot.schemas.agent import AgentQuestion
@@ -44,6 +46,7 @@ class ClaimedJob:
     media_type: str | None = None
     content_sha256: str | None = None
     execution_lease: object | None = None
+    queue_wait_ms: float = 0
 
 
 def expire_unclaimed(database, *, ttl_seconds: int, batch_size: int = 100) -> int:
@@ -90,6 +93,9 @@ def _claim_one(database, *, ttl_seconds, settings, leases):
     with database.transaction() as session:
         statement = select(AiJob, AiRequestReservation).join(AiRequestReservation).where(AiRequestReservation.state == "reserved")
         release = require_open(session, settings, worker=True) if settings is not None else None
+        if settings is not None:
+            from project_copilot.services.queue_control import can_claim, lock_claim_capacity
+            lock_claim_capacity(session, settings)
         if release is not None and release.state == "PERSONAL_DEMO":
             # An old grant's queued task remains evidence, never an implicit
             # retry. Filtering also prevents it blocking the current grant.
@@ -100,6 +106,12 @@ def _claim_one(database, *, ttl_seconds, settings, leases):
             )
         else:
             statement = statement.where(AiRequestReservation.personal_demo_grant_id.is_(None))
+        # Proof-based reclaim must precede the capacity count; otherwise a
+        # dead, reclaimable personal execution could permanently block claims.
+        # Re-taking the transaction-scoped capacity lock is harmless and keeps
+        # can_claim safe for its other callers.
+        if settings is not None and not can_claim(session, settings):
+            return None
         if ttl_seconds is not None:
             if type(ttl_seconds) is not int or not 60 <= ttl_seconds <= 30 * 86400:
                 raise ValueError("invalid queue lifetime")
@@ -112,6 +124,8 @@ def _claim_one(database, *, ttl_seconds, settings, leases):
         if row is None:
             return None
         job, reservation = row
+        claimed_at = session.scalar(select(func.clock_timestamp()))
+        queue_wait_ms = max(0, (claimed_at - reservation.created_at).total_seconds() * 1000)
         if settings is not None:
             require_open(session, settings, user_id=reservation.user_id, worker=True, reservation=reservation)
         if not QuotaService(session).claim(reservation.user_id, reservation.id):
@@ -127,7 +141,7 @@ def _claim_one(database, *, ttl_seconds, settings, leases):
                             bytes(attachment.content) if attachment else None,
                             attachment.source_name if attachment else None,
                             attachment.media_type if attachment else None,
-                            attachment.content_sha256 if attachment else None, lease)
+                            attachment.content_sha256 if attachment else None, lease, queue_wait_ms)
         # Once claimed, the bytes are not retained in PostgreSQL or replayed after a crash.
         if attachment is not None:
             session.delete(attachment)
@@ -218,7 +232,23 @@ def _run_traced(database, settings, job, *, runner):
     try:
         with runtime.activate(str(job.id), name="worker.job") if runtime else nullcontext():
             trace_id = current_trace_id() if runtime else None
-            return _execute_claimed(database, settings, job, runner=runner)
+            started = time.perf_counter()
+            with trace_span("worker.execution", {"queue_wait_ms": job.queue_wait_ms, "job.kind": job.kind,
+                                                  "retry_attempts": 0}) as span:
+                try:
+                    if runtime is not None:
+                        from sqlalchemy.exc import SQLAlchemyError
+                        try:
+                            with database.transaction() as session:
+                                held = session.scalar(select(func.count()).select_from(AiRequestReservation).where(
+                                    AiRequestReservation.state != "reserved",
+                                    AiRequestReservation.slot_released_at.is_(None)))
+                            span.set_attribute("active_execution_slots", held)
+                        except SQLAlchemyError:
+                            span.set_attribute("queue.metrics_unavailable", True)
+                    return _execute_claimed(database, settings, job, runner=runner)
+                finally:
+                    span.set_attribute("worker_execution_ms", (time.perf_counter() - started) * 1000)
     finally:
         if runtime is not None:
             try:

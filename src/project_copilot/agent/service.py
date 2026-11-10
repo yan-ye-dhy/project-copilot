@@ -9,6 +9,7 @@ from project_copilot.agent.proposals import ProposalBackend
 from project_copilot.config import Settings
 from project_copilot.db.session import Database
 from project_copilot.infrastructure.agent_model import create_agent_model
+from project_copilot.infrastructure.execution_tracking import tracked_to_thread
 
 
 def graph_limits(settings: Settings) -> GraphLimits:
@@ -24,6 +25,6 @@ async def create_agent_service(settings: Settings, database: Database | None, *,
     backend = (ProposalBackend(settings, database, *context, auth_token=auth_token, auth_session_id=auth_session_id) if context
                else ReadOnlyBackend(settings, database, auth_token=auth_token, auth_session_id=auth_session_id))
     if context:
-        backend.authenticate()
+        await tracked_to_thread(backend.authenticate)
     async with create_agent_model(settings) as model:
         yield AgentRunner(model, build_proposal_registry(backend) if context else build_readonly_registry(backend), graph_limits(settings))

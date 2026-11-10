@@ -82,6 +82,8 @@ class QuotaService:
             # Replayed requests are resolved above. Redis is an additional rate
             # gate, never a replacement for the durable quota transaction.
             admit(self.settings, user_id, scope="jobs")
+            from project_copilot.services.queue_control import check_enqueue
+            check_enqueue(self.session, self.settings)
 
         # Read wall-clock time *after* the lock wait; PostgreSQL now() is fixed at
         # transaction start and would give the wrong day around UTC midnight.

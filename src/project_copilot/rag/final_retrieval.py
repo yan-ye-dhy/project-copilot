@@ -2,14 +2,18 @@
 
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeout
 from contextlib import contextmanager
+from copy import deepcopy
+from dataclasses import asdict
 import os
 from pathlib import Path
-from threading import Lock
+from threading import Lock, RLock
 from uuid import uuid4
 
 from project_copilot.infrastructure.tracing import trace_span
 from project_copilot.infrastructure.job_progress import progress
 from project_copilot.infrastructure.execution_tracking import tracked_submit
+from project_copilot.infrastructure.ranking_cache import RankingRecord, create_ranking_cache
+from project_copilot.infrastructure.resource_limits import GpuModelOwner
 from project_copilot.config import Settings
 from project_copilot.infrastructure.models import create_embedding_client
 from project_copilot.infrastructure.qdrant import create_qdrant_store
@@ -100,20 +104,57 @@ class SharedReranker:
         self.reranker = Reranker(self.scorer, config=config)
         self.timeout = settings.final_rerank_timeout_seconds
         self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="final-rerank")
-        self._guard = Lock()
+        self._guard = RLock()
+        self._close_guard = Lock()
+        self._pending_future = None
+        self._closed = False
+        self._manifest_dir = settings.manifest_dir
+        self._gpu_owner = None
         self._warm = False
         self._unavailable = False
 
     def _run(self, query, candidates):
+        self._own_gpu()
         if not self._warm:
             self.scorer.score("预热", ["本地模型预热。"])
             self._warm = True
         return self.reranker.rerank(query, candidates)
 
     def _prepare(self):
+        self._own_gpu()
         if not self._warm:
             self.scorer.score("预热", ["本地模型预热。"])
             self._warm = True
+
+    def _own_gpu(self):
+        # Executed by the one physical executor thread before any model load.
+        if self.scorer.config.device == "cuda" and self._gpu_owner is None:
+            self._gpu_owner = GpuModelOwner.acquire(self._manifest_dir)
+
+    def _submit(self, function, *args):
+        with self._guard:
+            if self._unavailable:
+                raise FinalRetrievalError("重排实例不可用，请检查模型后重启服务")
+            # One running submission and zero queued submissions. A timed-out
+            # caller cannot leave an unbounded executor backlog behind it.
+            if self._pending_future is not None and not self._pending_future.done():
+                raise FinalRetrievalError("重排资源繁忙，请稍后提交新任务")
+            future = tracked_submit(self._executor, function, *args)
+            self._pending_future = future
+            future.add_done_callback(self._submission_finished)
+            return future
+
+    @property
+    def _pending(self):
+        with self._guard:
+            return int(self._pending_future is not None and not self._pending_future.done())
+
+    def _submission_finished(self, future):
+        with self._guard:
+            # Future.result may wake before callbacks run. A late callback must
+            # not clear a newer submission or falsely reject a serial caller.
+            if self._pending_future is future:
+                self._pending_future = None
 
     def prepare(self):
         with trace_span("rag.rerank.prepare", {"openinference.span.kind": "CHAIN", "rerank.device": self.scorer.config.device,
@@ -121,10 +162,7 @@ class SharedReranker:
             self._prepare_wait()
 
     def _prepare_wait(self):
-        with self._guard:
-            if self._unavailable:
-                raise FinalRetrievalError("重排实例不可用，请检查模型后重启服务")
-            future = tracked_submit(self._executor, self._prepare)
+        future = self._submit(self._prepare)
         try:
             future.result(timeout=self.timeout)
         except FutureTimeout:
@@ -145,10 +183,7 @@ class SharedReranker:
     def _rerank_wait(self, query, candidates):
         if not candidates:
             return []
-        with self._guard:
-            if self._unavailable:
-                raise FinalRetrievalError("重排实例不可用，请检查模型后重启服务")
-            future = tracked_submit(self._executor, self._run, query, candidates)
+        future = self._submit(self._run, query, candidates)
         try:
             return future.result(timeout=self.timeout)
         except FutureTimeout:
@@ -159,16 +194,24 @@ class SharedReranker:
             raise FinalRetrievalError("本地重排失败；未返回替代排名") from exc
 
     def close(self):
-        with self._guard:
-            self._unavailable = True
-        # A running CUDA call cannot safely be killed by cancelling its Python future.
-        self._executor.shutdown(wait=True, cancel_futures=True)
-        torch = self.scorer._torch
-        self.scorer._model = None
-        self.scorer._tokenizer = None
-        self.scorer._torch = None
-        if torch is not None and self.scorer.config.device == "cuda":
-            torch.cuda.empty_cache()
+        with self._close_guard:
+            if self._closed:
+                return
+            with self._guard:
+                self._unavailable = True
+            # Timeout/cancel is not completion: retain ownership through real
+            # executor drain, resident model disposal and allocator cleanup.
+            self._executor.shutdown(wait=True, cancel_futures=True)
+            torch = self.scorer._torch
+            self.scorer._model = None
+            self.scorer._tokenizer = None
+            if torch is not None and self.scorer.config.device == "cuda":
+                torch.cuda.empty_cache()
+            self.scorer._torch = None
+            if self._gpu_owner is not None:
+                self._gpu_owner.close()
+                self._gpu_owner = None
+            self._closed = True
 
 
 class FinalRetriever:
@@ -199,7 +242,17 @@ class FinalRetriever:
         if not isinstance(query, str) or not query.strip():
             raise ValueError("检索问题必须是非空文本")
         with index_lock(self.manifest.path):
-            if not self.manifest.load().documents:
+            current = self.manifest.load()
+            if not current.documents:
+                cache, identity = self._cache_context(query, current)
+                if cache is not None and self._cached_ranking(cache, identity, set(), negative=True) is None:
+                    lease = cache.acquire(identity) if cache.last_status != "unavailable" else None
+                    if lease is not None:
+                        try:
+                            self._verify_cache_generation(current)
+                            cache.publish(identity, lease, [], negative=True)
+                        finally:
+                            cache.release(identity, lease)
                 return []
             with create_embedding_client(self.settings) as embeddings, create_qdrant_store(self.settings) as store:
                 index = self.snapshots.get_locked(store._client)
@@ -215,20 +268,66 @@ class FinalRetriever:
                 if sorted(current_chunks, key=by_chunk_id) != sorted(index.snapshot.chunks, key=by_chunk_id):
                     raise BM25Error("Qdrant完成片段与BM25快照不一致；拒绝检索")
                 self.reranker.prepare()
-                dense = DenseRetriever(embeddings, store, self.manifest, top_k=10)
-                hybrid = HybridRetriever(dense, index, dense_candidates=10, bm25_candidates=10,
-                                         top_k=10, rank_constant=60)
-                candidates = hybrid.search(query)
-                progress("rerank")
-                ranked = self.reranker.rerank(query, candidates)
-                return [RetrievedChunk(text=item.hit.text, metadata=item.hit.metadata, score=item.rerank_score)
-                        for item in ranked]
+                cache, identity = self._cache_context(query, current, index=index)
+                by_id = {chunk.metadata.chunk_id: chunk for chunk in current_chunks}
+                cached = self._cached_ranking(cache, identity, set(by_id)) if cache is not None else None
+                if cached is not None:
+                    return [RetrievedChunk(**by_id[item.chunk_id].model_dump(), score=item.score)
+                            for item in cached]
+                # The existing file lock still protects the complete business
+                # operation. Never wait here for a Redis owner: contention or a
+                # failed Redis operation takes the original path without filling.
+                lease = cache.acquire(identity) if cache is not None and cache.last_status != "unavailable" else None
+                try:
+                    dense = DenseRetriever(embeddings, store, self.manifest, top_k=10)
+                    hybrid = HybridRetriever(dense, index, dense_candidates=10, bm25_candidates=10,
+                                             top_k=10, rank_constant=60)
+                    candidates = hybrid.search(query)
+                    progress("rerank")
+                    ranked = self.reranker.rerank(query, candidates)
+                    result = [RetrievedChunk(text=item.hit.text, metadata=item.hit.metadata, score=item.rerank_score)
+                              for item in ranked]
+                    if lease is not None:
+                        self._verify_cache_generation(current)
+                        cache.publish(identity, lease,
+                            [RankingRecord(item.metadata.chunk_id, item.score) for item in result])
+                    return result
+                finally:
+                    if lease is not None:
+                        cache.release(identity, lease)
+
+    def _cache_context(self, query, manifest, *, index=None):
+        cache = create_ranking_cache(self.settings)
+        if cache is None:
+            return None, None
+        config = RerankConfig(device=self.settings.final_rerank_device, dtype=self.settings.final_rerank_dtype,
+                              max_length=512, batch_size=2, max_candidates=10, top_k=5)
+        pipeline = {"contract": "final-hybrid-rerank-v1", "dense_candidates": 10,
+                    "bm25_candidates": 10, "fusion_candidates": 10, "rank_constant": 60,
+                    "rerank": asdict(config),
+                    "bm25": {"tokenizer": index.snapshot.tokenizer,
+                             "config": index.snapshot.config.model_dump(mode="json")} if index else "empty"}
+        return cache, cache.identity(query, manifest, pipeline=pipeline)
+
+    @staticmethod
+    def _cached_ranking(cache, identity, allowed_ids, *, negative=False):
+        with trace_span("rag.cache", {"openinference.span.kind": "CHAIN"}) as span:
+            result = cache.get(identity, allowed_ids, allow_negative=negative)
+            span.set_attribute("cache.status", cache.last_status)
+            span.set_attribute("cache.hit", result is not None)
+            return result
+
+    def _verify_cache_generation(self, current):
+        # All supported writers take this same flock. Recheck at publication so
+        # an unexpected external manifest replacement cannot seed a stale key.
+        if self.manifest.load() != current:
+            raise BM25Error("排名重建期间完成清单发生变化；拒绝发布缓存")
 
     def close(self):
         self.reranker.close()
 
 
-_instances: dict[int, tuple[Settings, FinalRetriever]] = {}
+_instances: dict[int, tuple[Settings, dict, FinalRetriever]] = {}
 _instances_lock = Lock()
 
 
@@ -236,13 +335,15 @@ def get_final_retriever(settings: Settings) -> FinalRetriever:
     with _instances_lock:
         entry = _instances.get(id(settings))
         if entry is None:
-            entry = (settings, FinalRetriever(settings))
+            entry = (settings, deepcopy(settings.model_dump(mode="python")), FinalRetriever(settings))
             _instances[id(settings)] = entry
-        return entry[1]
+        elif entry[0] is not settings or entry[1] != settings.model_dump(mode="python"):
+            raise FinalRetrievalError("检索配置已变更，请释放资源并重启服务")
+        return entry[2]
 
 
 def close_final_retriever(settings: Settings) -> None:
     with _instances_lock:
         entry = _instances.pop(id(settings), None)
     if entry is not None:
-        entry[1].close()
+        entry[2].close()

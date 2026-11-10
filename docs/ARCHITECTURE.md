@@ -10,12 +10,15 @@ flowchart TD
     I --> G[FastAPI public gateway]
     G --> A[Cookie 身份 / CSRF / Owner / 发布门禁]
     A --> J[POST jobs: 幂等提交 / 配额 / 并发槽]
+    J -.新任务可选准入.-> RD[(Redis Lua全局/账号桶)]
     J --> PG[(PostgreSQL: jobs / events / 业务状态)]
     PG --> W[独立 Worker: 领取 / 执行租约 / 停止门禁]
     W --> R[RAG / LangGraph Agent]
+    W -.每次外呼可选准入.-> RD
     R --> M[DeepSeek / 智谱 embedding]
     R --> K[Dense 10 + BM25 10 → RRF 10 → BGE 5]
     K --> Q[(Qdrant / BM25 快照)]
+    K -.当前索引验证后可选读取.-> RC[(Redis排名元数据缓存)]
     R --> T[白名单工具 / Schema / 调用预算]
     T --> PG
     T --> Proposal[pending 不可变提案]
@@ -49,6 +52,10 @@ Node 只用于 EdgeOne 云函数、构建、测试及独立面试模拟。包内
 2. Worker 领取任务，复核执行许可和租约；调用 RAG 或编译的 LangGraph，实际阶段写入事件 journal。
 3. 浏览器使用 `GET /jobs/{id}` 和 `GET /jobs/{id}/events` 读取原任务。SSE 的 progress/delta 是过程展示；终态后再 GET 已校验结果，替换草稿。
 4. 停止等待、刷新或流断线只影响读取。恢复按同一 job_id 查询，不重发 POST，不再次执行模型。failed/unknown 不能被界面自行改成成功；没有取消后台或退款语义。
+
+可选 Redis 双桶只对新的幂等请求扣一次准入token，每次供应商调用另有独立速率桶；PG日额度、授权、执行槽和最终事务仍是权威。Lua拒绝返回429/Retry-After，Redis准入故障返回503，不绕过原安全检查。新增队列/执行容量默认0沿用旧政策，启用后按原quota锁顺序原子核对；held unknown仍占用执行容量。
+
+Worker CLI通过`worker_resource_scope`稳定复用base/个人配置并关闭模型和连接。重排只允许一个真实pending Future；同主机共享manifest目录下的GPU模型owner保持到推断真实结束并卸载。不同目录或跨主机不具有这一互斥保证。缓存租约仅协调排名回填，不能作为旧Worker/远程请求已经停止的证据。详细机制与取舍见[后端工程化说明](WEEK1_BACKEND_ENGINEERING.md)。
 
 任务持久化与图状态恢复不同：当前保存任务和结果，不持久化 LangGraph checkpoint。Worker 崩溃后的未知任务必须按运行手册调查，不自动重放可能产生副作用的步骤。详见[事件与失败语义](CHAT_EXPERIENCE.md)、[执行槽](PERSONAL_EXECUTION_SLOTS.md)。
 

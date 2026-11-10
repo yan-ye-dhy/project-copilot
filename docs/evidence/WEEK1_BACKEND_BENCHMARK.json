@@ -1,0 +1,459 @@
+{
+  "format": 1,
+  "baseline_commit": "bbbfb2cc78f20e12098e7f55cefa362943065a4b",
+  "environment": {
+    "os": "Ubuntu 24.04 WSL2",
+    "python": "3.13.14",
+    "logical_cpus": 20,
+    "postgresql": "16.15 native isolated test cluster",
+    "redis": "8.2.3 native isolated test instance; persistence disabled for benchmarks",
+    "qdrant": "1.19.2 native isolated test instance; not part of measured Redis workload",
+    "model_calls": 0,
+    "gpu_inference": false,
+    "docker_daemon_used": false,
+    "host_exclusive": false,
+    "benchmark_capture": "after local regressions; lazy connections included; not a production capacity result"
+  },
+  "code_fingerprint": "04eba60e3e27086d94ecd4e87ccf1b084031cf1855bf7945db9c13b1886540df",
+  "source_sha256": {
+    "src/project_copilot/infrastructure/ranking_cache.py": "30511037af7db4d040ee88c0e4582de8b47f70f01fcd72d06f4af0ee9af10fde",
+    "src/project_copilot/services/redis_admission.py": "2939bd6bea25d604a0c4628cbcf71167e9c79209e798c5e107e50f6ce37046ba",
+    "src/project_copilot/services/queue_control.py": "6a645b95693271827652472780dba196695f0a105e5c5d3aa50e39c44ba2f156",
+    "scripts/week1_backend_lab.py": "1b99cf739f40b04c0c38f8f0b0ceb7f37edffc7bcfbae4a41e53cd7431fa02e8",
+    "scripts/week1_queue_lab.py": "45deedc999b6f7ffe5b49b4de01b8e9ba1d7cbd49130da429ce349db361499f9"
+  },
+  "rate_and_cache": {
+    "format": 1,
+    "experiment": "rate",
+    "mode": "measured",
+    "recorded_at": "2026-11-10T14:00:18.190766+00:00",
+    "isolated_namespace": true,
+    "cases": [
+      {
+        "concurrency": 10,
+        "samples": 100,
+        "global_capacity": 20,
+        "pool_max_connections": 10,
+        "elapsed_seconds": 0.048817,
+        "rps": 2048.447001,
+        "admitted_rps": 409.6894,
+        "admitted": 20,
+        "quota_rejected": 80,
+        "unexpected_error": 0,
+        "quota_rejection_rate": 0.8,
+        "unexpected_error_rate": 0.0,
+        "tokens_not_overissued": true,
+        "latency_all": {
+          "count": 100,
+          "mean_ms": 4.522696,
+          "p50_ms": 3.454942,
+          "p95_ms": 13.57878,
+          "p99_ms": 18.730883
+        },
+        "latency_admitted": {
+          "count": 20,
+          "mean_ms": 9.376585,
+          "p50_ms": 8.880931,
+          "p95_ms": 18.806537,
+          "p99_ms": 20.243975
+        },
+        "latency_quota_rejected": {
+          "count": 80,
+          "mean_ms": 3.309224,
+          "p50_ms": 3.390147,
+          "p95_ms": 3.981529,
+          "p99_ms": 4.620995
+        },
+        "latency_unexpected_error": {
+          "count": 0,
+          "mean_ms": null,
+          "p50_ms": null,
+          "p95_ms": null,
+          "p99_ms": null
+        }
+      },
+      {
+        "concurrency": 50,
+        "samples": 100,
+        "global_capacity": 20,
+        "pool_max_connections": 50,
+        "elapsed_seconds": 0.101438,
+        "rps": 985.82258,
+        "admitted_rps": 197.164516,
+        "admitted": 20,
+        "quota_rejected": 80,
+        "unexpected_error": 0,
+        "quota_rejection_rate": 0.8,
+        "unexpected_error_rate": 0.0,
+        "tokens_not_overissued": true,
+        "latency_all": {
+          "count": 100,
+          "mean_ms": 48.709684,
+          "p50_ms": 48.744804,
+          "p95_ms": 83.907822,
+          "p99_ms": 93.206562
+        },
+        "latency_admitted": {
+          "count": 20,
+          "mean_ms": 81.228201,
+          "p50_ms": 81.278119,
+          "p95_ms": 82.182462,
+          "p99_ms": 82.28788
+        },
+        "latency_quota_rejected": {
+          "count": 80,
+          "mean_ms": 40.580054,
+          "p50_ms": 15.993441,
+          "p95_ms": 85.404272,
+          "p99_ms": 93.233285
+        },
+        "latency_unexpected_error": {
+          "count": 0,
+          "mean_ms": null,
+          "p50_ms": null,
+          "p95_ms": null,
+          "p99_ms": null
+        }
+      },
+      {
+        "concurrency": 100,
+        "samples": 100,
+        "global_capacity": 20,
+        "pool_max_connections": 100,
+        "elapsed_seconds": 0.192147,
+        "rps": 520.435439,
+        "admitted_rps": 104.087088,
+        "admitted": 20,
+        "quota_rejected": 80,
+        "unexpected_error": 0,
+        "quota_rejection_rate": 0.8,
+        "unexpected_error_rate": 0.0,
+        "tokens_not_overissued": true,
+        "latency_all": {
+          "count": 100,
+          "mean_ms": 185.41942,
+          "p50_ms": 185.575411,
+          "p95_ms": 185.684247,
+          "p99_ms": 185.733185
+        },
+        "latency_admitted": {
+          "count": 20,
+          "mean_ms": 184.759533,
+          "p50_ms": 184.924599,
+          "p95_ms": 185.599612,
+          "p99_ms": 185.603938
+        },
+        "latency_quota_rejected": {
+          "count": 80,
+          "mean_ms": 185.584391,
+          "p50_ms": 185.586944,
+          "p95_ms": 185.685737,
+          "p99_ms": 185.734605
+        },
+        "latency_unexpected_error": {
+          "count": 0,
+          "mean_ms": null,
+          "p50_ms": null,
+          "p95_ms": null,
+          "p99_ms": null
+        }
+      }
+    ],
+    "measurement_scope": "local Redis admission only; excludes HTTP, PostgreSQL and models",
+    "latency_clock": "worker entry to admission return; excludes executor queue wait",
+    "warmup": "one Redis PING/connection; additional connection setup is measured",
+    "refill_per_second": 1e-06,
+    "accounts": "distinct synthetic UUID per attempt",
+    "cache_comparison": {
+      "concurrency": 100,
+      "paired_inputs": 100,
+      "total_attempts": 200,
+      "synthetic_compute_ms": 8,
+      "disabled": {
+        "samples": 100,
+        "elapsed_seconds": 0.012232,
+        "rps": 8175.40829,
+        "cache_hits": 0,
+        "initial_misses": 0,
+        "compute_calls": 100,
+        "lease_busy": 0,
+        "cache_failures": 0,
+        "fallback_computes": 0,
+        "unexpected_error": 0,
+        "unexpected_error_rate": 0.0,
+        "results_match": true,
+        "latency": {
+          "count": 100,
+          "mean_ms": 8.930864,
+          "p50_ms": 9.106352,
+          "p95_ms": 10.209899,
+          "p99_ms": 10.643732
+        },
+        "groups": {
+          "distinct_keys": {
+            "samples": 50,
+            "elapsed_seconds": 0.011214,
+            "rps": 4458.748506,
+            "cache_hits": 0,
+            "initial_misses": 0,
+            "compute_calls": 50,
+            "lease_busy": 0,
+            "cache_failures": 0,
+            "fallback_computes": 0,
+            "unexpected_error": 0,
+            "unexpected_error_rate": 0.0,
+            "results_match": true,
+            "latency": {
+              "count": 50,
+              "mean_ms": 8.928891,
+              "p50_ms": 8.52227,
+              "p95_ms": 10.59207,
+              "p99_ms": 10.855827
+            }
+          },
+          "shared_hotspot": {
+            "samples": 50,
+            "elapsed_seconds": 0.010246,
+            "rps": 4879.968393,
+            "cache_hits": 0,
+            "initial_misses": 0,
+            "compute_calls": 50,
+            "lease_busy": 0,
+            "cache_failures": 0,
+            "fallback_computes": 0,
+            "unexpected_error": 0,
+            "unexpected_error_rate": 0.0,
+            "results_match": true,
+            "latency": {
+              "count": 50,
+              "mean_ms": 8.932838,
+              "p50_ms": 9.200725,
+              "p95_ms": 9.352496,
+              "p99_ms": 9.85692
+            }
+          }
+        }
+      },
+      "enabled": {
+        "samples": 100,
+        "elapsed_seconds": 0.238843,
+        "rps": 418.685611,
+        "cache_hits": 49,
+        "initial_misses": 100,
+        "compute_calls": 51,
+        "lease_busy": 49,
+        "cache_failures": 0,
+        "fallback_computes": 0,
+        "unexpected_error": 0,
+        "unexpected_error_rate": 0.0,
+        "results_match": true,
+        "latency": {
+          "count": 100,
+          "mean_ms": 230.21249,
+          "p50_ms": 232.639481,
+          "p95_ms": 236.174712,
+          "p99_ms": 237.12511
+        },
+        "groups": {
+          "distinct_keys": {
+            "samples": 50,
+            "elapsed_seconds": 0.237847,
+            "rps": 210.219035,
+            "cache_hits": 0,
+            "initial_misses": 50,
+            "compute_calls": 50,
+            "lease_busy": 0,
+            "cache_failures": 0,
+            "fallback_computes": 0,
+            "unexpected_error": 0,
+            "unexpected_error_rate": 0.0,
+            "results_match": true,
+            "latency": {
+              "count": 50,
+              "mean_ms": 233.236657,
+              "p50_ms": 234.206691,
+              "p95_ms": 236.495491,
+              "p99_ms": 237.489781
+            }
+          },
+          "shared_hotspot": {
+            "samples": 50,
+            "elapsed_seconds": 0.236477,
+            "rps": 211.436822,
+            "cache_hits": 49,
+            "initial_misses": 50,
+            "compute_calls": 1,
+            "lease_busy": 49,
+            "cache_failures": 0,
+            "fallback_computes": 0,
+            "unexpected_error": 0,
+            "unexpected_error_rate": 0.0,
+            "results_match": true,
+            "latency": {
+              "count": 50,
+              "mean_ms": 227.188324,
+              "p50_ms": 228.261422,
+              "p95_ms": 234.075042,
+              "p99_ms": 235.611678
+            }
+          }
+        }
+      },
+      "checks": {
+        "same_input_sequence": true,
+        "results_match": true,
+        "disabled_computes_every_input": true,
+        "enabled_hotspot_computed_once": true,
+        "no_unexpected_errors": true,
+        "cache_available": true
+      },
+      "measurement_scope": "8ms synthetic read-only work and real Redis metadata; excludes models, GPU, HTTP and business databases",
+      "latency_clock": "worker entry to result; excludes executor queue wait",
+      "counter_semantics": "initial_misses and cache_hits overlap when a lease waiter later reads the published value",
+      "group_rps": "each group's own overlapping execution window; do not sum group RPS",
+      "redis_retry_boundary": "No automatic retries. A plain GET may use a short bounded read retry; never retry ambiguous EVAL or SET outcomes."
+    }
+  },
+  "locks": {
+    "format": 1,
+    "experiment": "locks",
+    "mode": "measured",
+    "recorded_at": "2026-11-10T13:59:34.048186+00:00",
+    "isolated_namespace": true,
+    "lease_seconds": 0.15,
+    "events": [
+      {
+        "event": "A_acquired",
+        "elapsed_ms": 0.443335
+      },
+      {
+        "event": "B_blocked_before_expiry",
+        "elapsed_ms": 0.759019
+      },
+      {
+        "event": "B_acquired_after_expiry",
+        "elapsed_ms": 153.031526
+      },
+      {
+        "event": "A_stale_release_rejected",
+        "elapsed_ms": 153.358764
+      },
+      {
+        "event": "A_stale_publish_rejected",
+        "elapsed_ms": 153.720105
+      },
+      {
+        "event": "B_published",
+        "elapsed_ms": 154.322476
+      }
+    ],
+    "checks": {
+      "B_blocked_before_expiry": true,
+      "B_fence_increased": true,
+      "A_cannot_release_B_lease": true,
+      "A_cannot_publish_under_B_lease": true,
+      "B_published": true,
+      "B_value_read_back": true
+    },
+    "elapsed_seconds": 0.15466,
+    "fences": {
+      "A": 1,
+      "B": 2
+    },
+    "implementation": "project_copilot.infrastructure.ranking_cache.RankingCache"
+  },
+  "queue": {
+    "format": 1,
+    "experiment": "queue",
+    "mode": "measured",
+    "recorded_at": "2026-11-10T13:59:34.674679+00:00",
+    "isolated_namespace": true,
+    "plan": {
+      "workers": 2,
+      "new_owned_database": true,
+      "queue_capacity": 3,
+      "execution_capacity": 2,
+      "external_provider_calls": 0,
+      "release_boundary": "controlled",
+      "dependency_health": "controlled",
+      "runner": "synthetic CPU result; no model loading",
+      "personal_recovery_certified": false,
+      "faults": {
+        "redis_admission": "injected RedisUnavailable; no Redis server contacted",
+        "worker": "actual os._exit(73) after committed claim"
+      }
+    },
+    "checks": {
+      "queue_cap_rejected_new_request": true,
+      "saturated_idempotent_replay": true,
+      "two_distinct_cpu_processes": true,
+      "both_workers_claimed": true,
+      "every_initial_job_executed_once": true,
+      "success_and_terminal_committed_once": true,
+      "crash_claimed_expected_job": true,
+      "unknown_and_crashed_slots_stay_held": true,
+      "held_slots_block_new_claim": true,
+      "no_provider_requests": true,
+      "failure_view_read_only": true
+    },
+    "workers": [
+      {
+        "pid": 89483,
+        "executed": [
+          "3383f2e6-3249-461b-ab60-a683bbab4a17"
+        ],
+        "ok": true
+      },
+      {
+        "pid": 89484,
+        "executed": [
+          "74c2e974-e651-4ff5-8b3d-b7d9e6529996",
+          "e09975f5-11f5-4842-aed0-43fc532b0107"
+        ],
+        "ok": true
+      }
+    ],
+    "crash": {
+      "job_id": "b7d40ec7-f4ca-43ac-b855-8535d2f93d0c",
+      "exit_code": 73
+    },
+    "failure_view": [
+      {
+        "job_id": "ca9267ae-a531-4bb7-98a7-65079cc91633",
+        "kind": "rag",
+        "state": "unknown",
+        "created_at": "2026-11-10T21:59:37.435598+08:00",
+        "failure_type": "admission_unavailable",
+        "provider_attempts": 0,
+        "provider_open": null,
+        "provider_uncertain": null,
+        "slot_held": true,
+        "has_action": null,
+        "automatic_replay_allowed": false
+      }
+    ],
+    "network_accessed": true,
+    "elapsed_seconds": 3.018334,
+    "measurement_scope": "real PostgreSQL queue/advisory locks/journal; controlled release, health and provider boundaries",
+    "replay_policy": "running and unknown are never automatically rerun; this lab supplies no personal release proof"
+  },
+  "pre_fix_hotspot_race": {
+    "recorded_at": "2026-11-10T13:48:28.064494+00:00",
+    "enabled_compute_calls": 52,
+    "cache_checks": {
+      "same_input_sequence": true,
+      "results_match": true,
+      "disabled_computes_every_input": true,
+      "enabled_hotspot_computed_once": false,
+      "no_unexpected_errors": true,
+      "cache_available": true
+    },
+    "description": "A published before B acquired its lease; B held an older miss. Fixed by atomic existing-data check."
+  },
+  "limits": [
+    "Synthetic 8ms work is not model/GPU throughput.",
+    "No AOF fsync cost is included in Redis benchmark; deployment uses AOF always.",
+    "Per-attempt latency excludes executor queue time; end-to-end sample RPS includes all attempts.",
+    "Queue release/health/provider boundaries are controlled; PostgreSQL and process exit are real."
+  ]
+}

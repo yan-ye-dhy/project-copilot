@@ -35,6 +35,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         database = Database(
             active.database_url.get_secret_value(), connect_timeout=active.database_connect_timeout_seconds,
             pool_timeout=active.database_pool_timeout_seconds,
+            pool_size=active.database_pool_size, max_overflow=active.database_max_overflow,
         ) if active.database_url is not None else None
         application.state.database = database
         application.state.tracing = create_trace_runtime(active)

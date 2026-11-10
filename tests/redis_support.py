@@ -3,6 +3,7 @@ from contextlib import contextmanager
 import os
 from types import SimpleNamespace
 from uuid import uuid4
+from urllib.parse import urlsplit
 
 import pytest
 from pydantic import SecretStr
@@ -13,7 +14,7 @@ from project_copilot.infrastructure.redis_runtime import close_redis_runtime, ge
 def redis_settings(**overrides):
     values = {
         "redis_enabled": True,
-        "redis_url": SecretStr("redis://127.0.0.1:6379/15"),
+        "redis_url": SecretStr("redis://127.0.0.1:16379/15"),
         "redis_namespace": "pc-test-" + uuid4().hex,
         "redis_socket_timeout_seconds": 0.5,
         "redis_pool_max_connections": 16,
@@ -31,8 +32,13 @@ def redis_settings(**overrides):
 def isolated_redis(**overrides):
     if os.environ.get("PROJECT_COPILOT_RUN_REDIS_INTEGRATION") != "1":
         pytest.skip("real Redis tests require explicit opt-in")
+    url = os.environ.get("PROJECT_COPILOT_TEST_REDIS_URL", "redis://127.0.0.1:16379/15")
+    parsed = urlsplit(url)
+    if (parsed.scheme != "redis" or parsed.hostname not in {"127.0.0.1", "localhost", "::1"}
+            or parsed.port not in {16379, 16380} or parsed.path != "/15" or parsed.query or parsed.fragment):
+        raise ValueError("Redis集成测试仅允许独立loopback测试端口和数据库15")
     settings = redis_settings(
-        redis_url=SecretStr(os.environ.get("PROJECT_COPILOT_TEST_REDIS_URL", "redis://127.0.0.1:6379/15")),
+        redis_url=SecretStr(url),
         **overrides,
     )
     runtime = get_redis_runtime(settings)

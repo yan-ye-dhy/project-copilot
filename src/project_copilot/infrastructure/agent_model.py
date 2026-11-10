@@ -6,7 +6,7 @@ import re
 from typing import Self
 
 import httpx
-from project_copilot.infrastructure.execution_tracking import provider_request
+from project_copilot.infrastructure.execution_tracking import async_provider_request
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage, ToolMessage
 from openai import (
     APIConnectionError, APIResponseValidationError, APIStatusError, APITimeoutError, AsyncOpenAI,
@@ -191,7 +191,7 @@ class DeepSeekToolModel:
         except (ValueError, TypeError, KeyError, RecursionError):
             raise AgentModelRequestError("model_input_invalid") from None
         try:
-            with provider_request() as attempt:
+            async with async_provider_request() as attempt:
                 raw_response = await self._client.chat.completions.with_raw_response.create(
                     model=self.model, messages=encoded, tools=tools,
                     temperature=self.temperature, max_tokens=self.max_tokens, stream=False,

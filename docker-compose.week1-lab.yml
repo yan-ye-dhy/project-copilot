@@ -1,0 +1,31 @@
+# Synthetic tests only. No business env-file, model, bind mount or data volume.
+name: pc-week1-lab
+services:
+  redis:
+    image: redis:8.2.3-alpine@sha256:08ad0b1d280850169a790dba1393ff7a90aef951fc19632cf4d3ce4f78e679ba
+    command: ["redis-server", "--save", "", "--appendonly", "no", "--maxmemory", "64mb", "--maxmemory-policy", "noeviction"]
+    ports: ["127.0.0.1:16379:6379"]
+    tmpfs: ["/data:size=96m"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 2s
+      retries: 20
+  postgres:
+    image: postgres:17.11-bookworm
+    environment:
+      POSTGRES_USER: project_copilot_test
+      POSTGRES_PASSWORD: local-test-only
+      POSTGRES_DB: project_copilot_test
+    ports: ["127.0.0.1:5434:5432"]
+    tmpfs: ["/var/lib/postgresql/data:size=512m"]
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "project_copilot_test", "-d", "project_copilot_test"]
+      interval: 2s
+      timeout: 2s
+      retries: 20
+  qdrant:
+    profiles: ["full-regression"]
+    image: qdrant/qdrant:v1.19.2
+    ports: ["127.0.0.1:16433:6333"]
+    tmpfs: ["/qdrant/storage:size=256m"]

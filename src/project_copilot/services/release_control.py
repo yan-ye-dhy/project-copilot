@@ -60,6 +60,11 @@ def config_fingerprint(settings) -> str:
     payload = settings.model_dump(mode="json", include=_SECURITY_FIELDS)
     if set(payload) != _SECURITY_FIELDS:
         raise ReleaseClosed("security configuration cannot be fingerprinted")
+    if getattr(settings, "queue_max_pending_jobs", 0) or getattr(settings, "worker_max_active_jobs", 0):
+        payload["queue_capacity"] = {name: getattr(settings, name) for name in
+                                     ("queue_max_pending_jobs", "worker_max_active_jobs")}
+    if getattr(settings, "database_pool_size", 5) != 5 or getattr(settings, "database_max_overflow", 5) != 5:
+        payload["database_pool"] = {"size": settings.database_pool_size, "overflow": settings.database_max_overflow}
     if getattr(settings, "redis_enabled", False):
         from urllib.parse import urlsplit
         # Bind an enabled backend's safety configuration; credentials remain
