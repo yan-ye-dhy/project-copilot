@@ -273,6 +273,14 @@ def _execute_claimed(database, settings, job, *, runner):
         from project_copilot.services.quotas import QuotaExceeded
         if isinstance(exc, QuotaExceeded) and exc.reason == "provider_attempts":
             failure = "provider_budget"
+        from project_copilot.services.redis_admission import RateLimited
+        from project_copilot.infrastructure.redis_runtime import RedisUnavailable
+        if isinstance(exc, (RateLimited, RedisUnavailable)):
+            failure = "admission_rate_limited" if isinstance(exc, RateLimited) else "admission_unavailable"
+            # No new upstream request was started. Physical drain and business
+            # evidence still decide whether the personal outcome is certain.
+            if personal:
+                outcome = "failed"
         if personal and (isinstance(exc, AnswerResponseError) or failure == "provider_budget"):
             outcome = "failed"
     writer.flush()

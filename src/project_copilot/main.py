@@ -2,7 +2,7 @@
 
 import logging
 from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
+from contextlib import ExitStack, asynccontextmanager
 from uuid import uuid4
 
 from fastapi import FastAPI, Request
@@ -43,13 +43,18 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         try:
             yield
         finally:
-            if database is not None:
-                database.close()
-            if application.state.tracing is not None:
-                application.state.tracing.close()
             from project_copilot.rag.final_retrieval import close_final_retriever
-            close_final_retriever(application.state.settings)
-            logger.info("Stopping %s", application.state.settings.app_name)
+            from project_copilot.infrastructure.redis_runtime import close_redis_runtime
+            # Every close runs even if another resource fails during shutdown.
+            # Inference drains before its supporting clients are disconnected.
+            with ExitStack() as cleanup:
+                cleanup.callback(logger.info, "Stopping %s", active.app_name)
+                if database is not None:
+                    cleanup.callback(database.close)
+                if application.state.tracing is not None:
+                    cleanup.callback(application.state.tracing.close)
+                cleanup.callback(close_redis_runtime, active)
+                cleanup.callback(close_final_retriever, active)
 
     application = FastAPI(title="Project Copilot", version="0.1.0", lifespan=lifespan)
     application.add_middleware(PublicGatewayMiddleware)

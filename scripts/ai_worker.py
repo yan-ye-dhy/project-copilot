@@ -49,7 +49,11 @@ def main():
             if not worked:
                 stopping.wait(1)
     finally:
-        database.close()
+        from project_copilot.infrastructure.redis_runtime import close_redis_runtime
+        try:
+            close_redis_runtime(settings)
+        finally:
+            database.close()
 
 
 if __name__ == "__main__":

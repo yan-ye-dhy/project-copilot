@@ -60,6 +60,16 @@ def config_fingerprint(settings) -> str:
     payload = settings.model_dump(mode="json", include=_SECURITY_FIELDS)
     if set(payload) != _SECURITY_FIELDS:
         raise ReleaseClosed("security configuration cannot be fingerprinted")
+    if getattr(settings, "redis_enabled", False):
+        from urllib.parse import urlsplit
+        # Bind an enabled backend's safety configuration; credentials remain
+        # excluded. Disabled mode retains the previous fingerprint contract.
+        fields = {name for name in type(settings).model_fields if name.startswith("redis_")
+                  and name not in {"redis_url", "redis_cache_hmac_key"}}
+        payload["redis"] = settings.model_dump(mode="json", include=fields)
+        target = urlsplit(settings.redis_url.get_secret_value())
+        payload["redis"]["target"] = sha256(
+            f"{target.scheme}://{target.hostname}:{target.port}{target.path}".encode()).hexdigest()
     return sha256(json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
 
 

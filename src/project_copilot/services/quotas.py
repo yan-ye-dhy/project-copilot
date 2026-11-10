@@ -77,6 +77,12 @@ class QuotaService:
                 require_open(self.session, self.settings, user_id=user_id, reservation=existing)
             return existing, True
 
+        if self.settings is not None:
+            from project_copilot.services.redis_admission import admit
+            # Replayed requests are resolved above. Redis is an additional rate
+            # gate, never a replacement for the durable quota transaction.
+            admit(self.settings, user_id, scope="jobs")
+
         # Read wall-clock time *after* the lock wait; PostgreSQL now() is fixed at
         # transaction start and would give the wrong day around UTC midnight.
         now = self.session.scalar(select(func.clock_timestamp()))

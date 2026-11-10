@@ -3,6 +3,7 @@
 from pathlib import Path
 import re
 from typing import Literal
+from urllib.parse import urlsplit
 
 from pydantic import Field, HttpUrl, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -61,6 +62,22 @@ class Settings(BaseSettings):
     public_upload_max_chunks: int = Field(default=64, ge=1, le=1000)
     public_upload_max_chars: int = Field(default=32000, ge=1, le=500000)
 
+    # Optional backend-only acceleration/admission; PG remains authoritative.
+    redis_enabled: bool = False
+    redis_url: SecretStr | None = None
+    redis_namespace: str = Field(default="pc-week1", pattern=r"^[A-Za-z0-9_-]{3,64}$")
+    redis_socket_timeout_seconds: float = Field(default=0.5, gt=0, le=5, allow_inf_nan=False)
+    redis_pool_max_connections: int = Field(default=16, ge=1, le=128)
+    redis_admission_enabled: bool = False
+    redis_admission_global_capacity: int = Field(default=30, ge=1, le=10000)
+    redis_admission_global_refill_per_second: float = Field(default=1, ge=0.000001, le=10000, allow_inf_nan=False)
+    redis_admission_user_capacity: int = Field(default=5, ge=1, le=10000)
+    redis_admission_user_refill_per_second: float = Field(default=0.2, ge=0.000001, le=10000, allow_inf_nan=False)
+    redis_provider_global_capacity: int = Field(default=80, ge=1, le=10000)
+    redis_provider_global_refill_per_second: float = Field(default=2, ge=0.000001, le=10000, allow_inf_nan=False)
+    redis_provider_user_capacity: int = Field(default=40, ge=1, le=10000)
+    redis_provider_user_refill_per_second: float = Field(default=1, ge=0.000001, le=10000, allow_inf_nan=False)
+
     zhipu_api_key: SecretStr | None = None
     zhipu_base_url: HttpUrl = "https://open.bigmodel.cn/api/paas/v4/"
     embedding_model: Literal["embedding-3"] = "embedding-3"
@@ -107,6 +124,10 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def validate_final_retrieval(self):
+        if self.redis_admission_enabled and not self.redis_enabled:
+            raise ValueError("Redis准入必须显式启用Redis连接")
+        if self.redis_enabled and self.redis_url is None:
+            raise ValueError("启用Redis必须配置后端Redis地址")
         if (self.final_rerank_device, self.final_rerank_dtype) not in {("cuda", "float16"), ("cpu", "float32")}:
             raise ValueError("最终重排须显式选择cuda/float16或cpu/float32")
         if self.agent_tool_timeout_seconds <= self.final_rerank_timeout_seconds:
@@ -118,6 +139,23 @@ class Settings(BaseSettings):
             if not re.fullmatch(r"[A-Za-z0-9_-]{32,128}", secret) or self.auth_public_origin is None:
                 raise ValueError("公开模式必须配置有效的代理共享密钥和HTTPS站点来源")
         return self
+
+    @field_validator("redis_url")
+    @classmethod
+    def validate_redis_url(cls, value: SecretStr | None) -> SecretStr | None:
+        if value is None:
+            return value
+        try:
+            parsed = urlsplit(value.get_secret_value())
+            valid = (parsed.scheme in {"redis", "rediss"} and parsed.hostname and
+                     parsed.port is not None and 1 <= parsed.port <= 65535 and
+                     re.fullmatch(r"/[0-9]{1,2}", parsed.path) and int(parsed.path[1:]) <= 15 and
+                     not parsed.query and not parsed.fragment)
+        except ValueError:
+            valid = False
+        if not valid:
+            raise ValueError("Redis地址须为含主机、端口、数据库编号的redis/rediss地址，不能含查询参数")
+        return value
 
     @field_validator("auth_public_origin")
     @classmethod

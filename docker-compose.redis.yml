@@ -1,0 +1,30 @@
+# Optional LOCAL deployment overlay: add after docker-compose.deploy.yml.
+# Public-demo uses deploy/public-demo.redis.yml instead; neither is automatic.
+services:
+  redis:
+    image: redis:8.2.3-alpine@sha256:08ad0b1d280850169a790dba1393ff7a90aef951fc19632cf4d3ce4f78e679ba
+    command: ["redis-server", "--appendonly", "yes", "--appendfsync", "always", "--maxmemory", "64mb", "--maxmemory-policy", "noeviction"]
+    volumes: ["week1_redis:/data"]
+    networks: [redis_backend]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 2s
+      retries: 10
+    mem_limit: 128m
+    pids_limit: 64
+    security_opt: ["no-new-privileges:true"]
+  api:
+    environment:
+      PROJECT_COPILOT_REDIS_ENABLED: "true"
+      PROJECT_COPILOT_REDIS_ADMISSION_ENABLED: "true"
+      PROJECT_COPILOT_REDIS_URL: redis://redis:6379/0
+    networks: [default, redis_backend]
+    depends_on:
+      redis:
+        condition: service_healthy
+volumes:
+  week1_redis: {}
+networks:
+  redis_backend:
+    internal: true

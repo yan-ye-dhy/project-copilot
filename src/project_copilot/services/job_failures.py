@@ -8,6 +8,7 @@ SAFE_FAILURE_TYPES = frozenset({
     "tool_timeout", "model_budget", "tool_budget", "context_budget", "tool_protocol_error",
     "execution_error", "invalid_schema", "invalid_json", "invalid_citation", "authentication_error",
     "repeated_tool_loop", "tool_no_progress", "provider_budget", "grant_ended",
+    "admission_rate_limited", "admission_unavailable",
 })
 
 
