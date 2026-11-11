@@ -163,7 +163,7 @@ pc_mq_compose=(docker compose --env-file .env.public-demo -f docker-compose.publ
 以下为未来手测入口，本轮不自动带练、不触发模型费用。合成服务必须使用测试端口/专用随机库；不要把测试变量指向演示数据库。
 
 1. **投递和提交顺序**：按 [VERIFICATION.md](VERIFICATION.md) 准备消息测试PG/broker及补充Redis/Qdrant，运行 `npm run verify -- --services` 或针对 `tests/test_rabbitmq_native.py` 的原生测试，观察 publisher confirm、丢失ACK后的同event重投及PG仅一次业务写入。失败先查测试broker连通/固定vhost与Outbox/Inbox断言；不重放用户旧任务。
-2. **恢复与业务幂等**：在同一隔离环境运行 `tests/test_agent_checkpoints_postgres.py`、`tests/test_rag_checkpoint_postgres.py` 和 `tests/test_checkpoint_recovery_postgres.py`，观察原model/tool收据、第二attempt、旧token拒绝及原提案action_id。供应商替身计数应保持无额外调用；权限或索引变化测试应拒绝。失败先查原deadline、绑定摘要和完整停止证明，不能通过放宽规则使其通过。
+2. **恢复与业务幂等**：在同一隔离环境运行 `tests/test_agent_checkpoints_postgres.py`、`tests/test_rag_checkpoint_postgres.py` 和 `tests/test_checkpoint_recovery_postgres.py`，观察原model/tool收据、第二attempt、旧token拒绝及原提案action_id。完整收据复用场景不增加供应商调用；明确授权的只读工具重试或尚未执行的新步骤按测试断言消耗剩余预算。权限或索引变化测试应拒绝。失败先查原deadline、绑定摘要和完整停止证明，不能通过放宽规则使其通过。
 3. **浏览器恢复边界**：`npm run verify -- --frontend` 在模拟API的真实Chromium中演示attempt切换清旧草稿、停止等待、GET恢复、历史/提案独立确认。确认没有额外POST，桌面/手机不回归。真实公网SSE和模型质量需另行授权验收；这里的模拟响应不能证明公网已部署。
 
 真实结果及限制见[第一批](MESSAGING_PHASE1_REPORT.md)、[第二批](MESSAGING_PHASE2_REPORT.md)、[第三批](MESSAGING_PHASE3_REPORT.md)报告与对应PR检查。
