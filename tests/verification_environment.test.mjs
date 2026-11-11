@@ -16,6 +16,7 @@ async function verify(mode, overrides = {}) {
     const executable = path.join(temporary, 'inspect-python.mjs');
     await writeFile(executable, `#!/usr/bin/env node
 const names = ['PROJECT_COPILOT_MESSAGE_QUEUE_ENABLED', 'PROJECT_COPILOT_RABBITMQ_URL',
+  'PROJECT_COPILOT_JOB_RECOVERY_ENABLED', 'PROJECT_COPILOT_JOB_RECOVERY_ALLOW_MODEL_REPEAT',
   'PROJECT_COPILOT_RABBITMQ_HEARTBEAT_SECONDS', 'PROJECT_COPILOT_TEST_RABBITMQ_URL',
   'PROJECT_COPILOT_TEST_DATABASE_URL', 'PROJECT_COPILOT_RUN_POSTGRES_INTEGRATION'];
 console.log('VERIFY_ENV:' + JSON.stringify(Object.fromEntries(names.map(name => [name, process.env[name]]))));
@@ -25,6 +26,8 @@ console.log('VERIFY_ENV:' + JSON.stringify(Object.fromEntries(names.map(name => 
       cwd: root, encoding: 'utf8', timeout: 10000,
       env: { ...process.env, PC_TEST_PYTHON: executable,
         PROJECT_COPILOT_MESSAGE_QUEUE_ENABLED: 'true',
+        PROJECT_COPILOT_JOB_RECOVERY_ENABLED: 'true',
+        PROJECT_COPILOT_JOB_RECOVERY_ALLOW_MODEL_REPEAT: 'true',
         PROJECT_COPILOT_RABBITMQ_URL: 'amqp://synthetic:private-canary@live.invalid:5672/live',
         PROJECT_COPILOT_RABBITMQ_HEARTBEAT_SECONDS: '999',
         PROJECT_COPILOT_TEST_RABBITMQ_URL: broker,
@@ -47,6 +50,8 @@ function captured(result) {
 test('offline verification removes inherited broker authorization and native-test opt-in', async () => {
   const environment = captured(await verify('--python'));
   assert.equal(environment.PROJECT_COPILOT_MESSAGE_QUEUE_ENABLED, 'false');
+  assert.equal(environment.PROJECT_COPILOT_JOB_RECOVERY_ENABLED, 'false');
+  assert.equal(environment.PROJECT_COPILOT_JOB_RECOVERY_ALLOW_MODEL_REPEAT, undefined);
   assert.equal(environment.PROJECT_COPILOT_RABBITMQ_URL, undefined);
   assert.equal(environment.PROJECT_COPILOT_RABBITMQ_HEARTBEAT_SECONDS, undefined);
   assert.equal(environment.PROJECT_COPILOT_TEST_RABBITMQ_URL, undefined);
@@ -56,6 +61,7 @@ test('offline verification removes inherited broker authorization and native-tes
 test('service verification opts into only the owned PostgreSQL and synthetic broker', async () => {
   const environment = captured(await verify('--services'));
   assert.equal(environment.PROJECT_COPILOT_MESSAGE_QUEUE_ENABLED, 'false');
+  assert.equal(environment.PROJECT_COPILOT_JOB_RECOVERY_ENABLED, 'false');
   assert.equal(environment.PROJECT_COPILOT_RABBITMQ_URL, undefined);
   assert.equal(environment.PROJECT_COPILOT_TEST_RABBITMQ_URL, broker);
   assert.equal(environment.PROJECT_COPILOT_TEST_DATABASE_URL, database);

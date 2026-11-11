@@ -1,0 +1,16 @@
+# Optional local MQ GPU overlay, last after gpu.yml and rabbitmq.yml.
+# The ordinary CPU/GPU deployment files keep their existing behavior.
+services:
+  worker:
+    image: ${PROJECT_COPILOT_GPU_API_IMAGE:-project-copilot-api:gpu}
+    build:
+      args:
+        RERANK_GROUP: rerank-gpu
+    environment:
+      PROJECT_COPILOT_FINAL_RERANK_DEVICE: cuda
+      PROJECT_COPILOT_FINAL_RERANK_DTYPE: float16
+    gpus: all
+  migrate:
+    environment:
+      PROJECT_COPILOT_FINAL_RERANK_DEVICE: cuda
+      PROJECT_COPILOT_FINAL_RERANK_DTYPE: float16

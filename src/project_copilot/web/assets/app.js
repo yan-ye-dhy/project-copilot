@@ -1,6 +1,6 @@
 import { apiRequest, ApiError, ContextSession, boundHistory, validateAction, runPublicJob, resumePublicJob,
   PUBLIC_BUILD, setCsrfToken, onAuthenticationFailure, personalDemoProfile, personalJobWaitOptions,
-  safeFailureType, jobFailureLabel } from "./api.js";
+  safeFailureType, jobFailureLabel, jobExecution, jobExecutionLabel } from "./api.js";
 
 import { renderMarkdown } from "./markdown.js";
 import { recoveryRecords, jobObservation, jobStateLabel, canHideJob, setRecoveryHidden } from "./task-center.js";
@@ -839,6 +839,17 @@ function startWaiting(message, mode) {
 }
 function updateJobEvent(wait, event) {
   if (state.activeWait !== wait || wait.controller.signal.aborted) return;
+  const execution = jobExecution(event.data?.execution);
+  if (execution) {
+    if (wait.execution && execution.attempt_no < wait.execution.attempt_no) return;
+    if (wait.execution && execution.attempt_no !== wait.execution.attempt_no) {
+      wait.draft = ""; wait.preview.replaceChildren(); wait.preview.hidden = true;
+      wait.sequence = execution.event_floor;
+    }
+    wait.execution = execution;
+    if (Number.isSafeInteger(event.id) && event.id < execution.event_floor) return;
+    if (event.event === "snapshot") wait.progressText.textContent = jobExecutionLabel(execution);
+  }
   if (Number.isSafeInteger(event.id)) {
     if (event.id <= wait.sequence && !(event.event === "reset" && event.data.cursor_reset === true)) return;
     wait.sequence = event.id;
@@ -846,7 +857,7 @@ function updateJobEvent(wait, event) {
   if (["progress", "transport"].includes(event.event) && typeof event.data.label === "string") wait.progressText.textContent = event.data.label;
   if (["reset", "snapshot"].includes(event.event) && event.data.cursor_reset) {
     wait.draft = ""; wait.preview.replaceChildren(); wait.preview.hidden = true;
-    wait.progressText.textContent = "部分实时内容已过期，继续查询最终结果";
+    wait.progressText.textContent = execution ? jobExecutionLabel(execution) : "部分实时内容已过期，继续查询最终结果";
   }
   if (event.event === "delta" && wait.mode === "rag" && typeof event.data.text === "string") {
     // Plain text while incomplete: no reparsing partial Markdown on each token.

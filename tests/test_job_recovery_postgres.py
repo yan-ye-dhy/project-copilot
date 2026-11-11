@@ -50,7 +50,7 @@ def recovery_setup(ticket_database, tmp_path, monkeypatch):
         manifest_dir=tmp_path / "manifests", tracing_enabled=False)
     # Admission/session/grant SQL is real; no synthetic values certify a live deployment.
     monkeypatch.setattr(release, "code_fingerprint", lambda: "synthetic-recovery-code")
-    monkeypatch.setattr(release, "config_fingerprint", lambda _: "synthetic-recovery-settings")
+    monkeypatch.setattr(release, "config_fingerprint", lambda _: "a" * 64)
     monkeypatch.setattr(release, "dependencies_ready", lambda *_: None)
     monkeypatch.setattr(ai_worker, "dependencies_ready", lambda *_: None)
     from project_copilot.services import entry_protection

@@ -289,6 +289,109 @@ def test_closed_gate_returns_503_before_stream_headers(event_setup, monkeypatch)
     assert response.status_code == 503 and not response.headers["content-type"].startswith("text/event-stream")
 
 
+def recovery_state(session, job_id, *, attempt=2, floor=0, reason=None):
+    from project_copilot.db.recovery import AiJobRecoveryState
+    state = AiJobRecoveryState(job_id=job_id, current_attempt_no=attempt, event_floor=floor,
+        timeout_seconds=900, max_model_calls=24, max_tool_calls=80, max_provider_attempts=160,
+        blocked_reason=reason)
+    session.add(state)
+    session.flush()
+    return state
+
+
+def test_recovery_sse_after_zero_excludes_old_attempt_terminal_and_draft(event_setup):
+    setup = event_setup
+    identity = setup.create(status="unknown")
+    with setup.database.transaction() as session:
+        recovery_state(session, identity, floor=3)
+        append_event(session, identity, "progress", {"stage": "running", "label": LABELS["running"]})
+        append_event(session, identity, "delta", {"text": "current attempt draft"})
+        append_event(session, identity, "terminal", {"status": "succeeded"})
+        reservation = session.get(AiRequestReservation, identity)
+        reservation.state, reservation.finished_at = "succeeded", datetime.now(timezone.utc)
+        session.get(AiJob, identity).result = {"answer": "current verified result"}
+    response = sse(setup, identity)
+    assert response.status_code == 200
+    assert "provisional" not in response.text and '"status":"unknown"' not in response.text
+    assert "id: 3\nevent: reset" in response.text
+    assert "id: 4\nevent: progress" in response.text
+    assert "id: 5\nevent: delta" in response.text
+    assert '"attempt_no":2' in response.text and '"event_floor":3' in response.text
+    assert "current verified result" not in response.text  # GET alone contains the result.
+    with setup.database.transaction() as session:
+        assert [event.sequence for event in recent_events(session, identity)] == [4, 5, 6]
+        assert session.scalar(select(func.count()).select_from(AiJobEvent).where(AiJobEvent.job_id == identity)) == 6
+        assert session.get(AiRequestReservation, identity).provider_attempts == 0
+
+
+def test_recovery_floor_hides_old_polling_progress_and_diagnostic(event_setup):
+    from project_copilot.services.job_events import execution_info, latest_failure, latest_progress
+    setup = event_setup
+    identity = setup.create(status="unknown")
+    with setup.database.transaction() as session:
+        append_event(session, identity, "diagnostic", {"failure_type": "model_timeout"})
+        recovery_state(session, identity, floor=4)
+        session.get(AiRequestReservation, identity).state = "reserved"
+    with setup.database.transaction() as session:
+        assert recent_events(session, identity) == []
+        assert latest_failure(session, identity) is None and latest_progress(session, identity) is None
+        info = execution_info(session, identity)
+        assert info["attempt_no"] == 2 and info["event_floor"] == 4
+        assert info["recovery_status"] == "waiting_dispatch" and info["can_resume_waiting"]
+        append_event(session, identity, "delta", {"text": "new"})
+        append_event(session, identity, "progress", {"stage": "model", "label": LABELS["model"]})
+    with setup.database.transaction() as session:
+        assert [event.sequence for event in recent_events(session, identity, through=5)] == [5]
+        assert latest_progress(session, identity) == {"stage": "model", "label": LABELS["model"]}
+
+
+def test_live_sse_attempt_change_resets_before_new_events_without_replaying_old_terminal(event_setup, monkeypatch):
+    from project_copilot.db.recovery import AiJobRecoveryState
+    setup = event_setup
+    identity = setup.create(status="running")
+    with setup.database.transaction() as session:
+        recovery_state(session, identity, attempt=1)
+    monkeypatch.setattr(job_events, "POLL_SECONDS", 0)
+    request = request_for(setup, setup.people["alice"].token)
+    async def check():
+        response = await job_events.stream_events(request, identity)
+        stream = response.body_iterator
+        assert await anext(stream) == ": connected\n\n"
+        assert "event: snapshot" in await anext(stream)
+        assert "event: progress" in await anext(stream)
+        assert "provisional" in await anext(stream)
+        with setup.database.transaction() as session:
+            append_event(session, identity, "terminal", {"status": "unknown"})
+            state = session.get(AiJobRecoveryState, identity)
+            state.current_attempt_no, state.event_floor = 2, 3
+            append_event(session, identity, "progress", {"stage": "model", "label": LABELS["model"]})
+            append_event(session, identity, "delta", {"text": "fresh attempt"})
+        reset = await anext(stream)
+        assert "id: 3\nevent: reset" in reset and '"reason":"attempt_changed"' in reset
+        assert '"attempt_no":2' in reset
+        assert "id: 4\nevent: progress" in await anext(stream)
+        fresh = await anext(stream)
+        assert "fresh attempt" in fresh and "unknown" not in fresh
+        await stream.aclose()
+    asyncio.run(check())
+
+
+def test_execution_view_preserves_legacy_shape_and_sanitizes_blocked_reason(event_setup):
+    from project_copilot.services.job_events import execution_info, execution_snapshot
+    setup = event_setup
+    identity = setup.create(status="running")
+    with setup.database.transaction() as session:
+        assert execution_info(session, identity) is None
+        state = recovery_state(session, identity, attempt=1, reason="live_or_invalid_proof")
+        assert execution_snapshot(state, "running")["recovery_status"] == "running"
+        assert execution_snapshot(state, "running")["can_resume_waiting"] is True
+        state.blocked_reason = "PRIVATE_DIAGNOSTIC"
+        view = execution_snapshot(state, "unknown")
+        assert view["blocked_reason"] == "metadata_mismatch"
+        assert view["recovery_status"] == "blocked" and not view["can_resume_waiting"]
+        assert "PRIVATE_DIAGNOSTIC" not in str(view)
+
+
 def test_controlled_retention_clears_only_old_terminal_events_preserving_unknown_evidence(event_setup):
     from project_copilot.services.public_maintenance import cleanup
 

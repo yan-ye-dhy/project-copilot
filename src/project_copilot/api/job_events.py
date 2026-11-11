@@ -14,7 +14,8 @@ from project_copilot.api.access import public_identity, public_mode
 from project_copilot.db.jobs import AiJob
 from project_copilot.db.models import AiRequestReservation
 from project_copilot.db.operations import JobContentTombstone
-from project_copilot.services.job_events import recent_events
+from project_copilot.db.recovery import AiJobRecoveryState
+from project_copilot.services.job_events import execution_snapshot, recent_events
 from project_copilot.services.release_control import ReleaseClosed, require_open
 
 STREAM_SECONDS = 20
@@ -39,14 +40,19 @@ def read_batch(request, job_id, after):
         with request.app.state.database.transaction() as session:
             principal = public_identity(request, session)
             require_open(session, request.app.state.settings, user_id=principal.id)
-            row = session.execute(select(AiJob, AiRequestReservation).join(AiRequestReservation).where(
+            row = session.execute(select(AiJob, AiRequestReservation, AiJobRecoveryState)
+                .join(AiRequestReservation, AiRequestReservation.id == AiJob.id)
+                .outerjoin(AiJobRecoveryState, AiJobRecoveryState.job_id == AiJob.id).where(
                 AiJob.id == job_id, AiRequestReservation.user_id == principal.id)).one_or_none()
             if row is None:
                 raise HTTPException(404, "任务不存在")
-            job, reservation = row
+            job, reservation, recovery = row
+            execution = execution_snapshot(recovery, reservation.state)
             expired = session.get(JobContentTombstone, job_id) is not None
-            events = [] if expired else recent_events(session, job_id, after=after)
+            events = [] if expired else recent_events(session, job_id, after=after,
+                through=job.event_sequence, floor=execution["event_floor"] if execution else None)
             return {"status": reservation.state, "cursor": job.event_sequence,
+                    "execution": execution,
                     "expired": expired, "events": [
                         {"id": event.sequence, "kind": event.kind, "data": event.data} for event in events]}
     except ReleaseClosed:
@@ -73,23 +79,39 @@ async def stream_events(request: Request, job_id: UUID):
         nonlocal after
         deadline, heartbeat = time.monotonic() + STREAM_SECONDS, time.monotonic()
         batch = initial
+        observed_attempt = None
         yield ": connected\n\n"
         while time.monotonic() < deadline:
             if await request.is_disconnected():
                 return
             events = batch["events"]
+            execution = batch.get("execution")
+            metadata = {"execution": execution} if execution else {}
+            if execution:
+                attempt = (execution["attempt_no"], execution["event_floor"])
+                changed = observed_attempt is not None and observed_attempt != attempt
+                if observed_attempt is None:
+                    # Opt-in snapshots carry no answer, tool output or proposal.
+                    yield encode("snapshot", {"status": batch["status"], **metadata})
+                if changed or after < execution["event_floor"] or (
+                        observed_attempt is None and execution["attempt_no"] > 1
+                        and after == execution["event_floor"]):
+                    after = execution["event_floor"]
+                    yield encode("reset", {"status": batch["status"], "cursor_reset": True,
+                        "reason": "attempt_changed", **metadata}, after)
+                observed_attempt = attempt
             # Missing retained history (or a tampered future cursor) is explicit.
             # A reset discards provisional text; the canonical GET remains authoritative.
             if batch["expired"] or after > batch["cursor"] or (events and events[0]["id"] > after + 1) or (not events and after < batch["cursor"]):
                 after = batch["cursor"]
-                yield encode("reset", {"status": batch["status"], "cursor_reset": True}, after)
+                yield encode("reset", {"status": batch["status"], "cursor_reset": True, **metadata}, after)
             else:
                 for event in events:
                     after = event["id"]
-                    yield encode(event["kind"], event["data"], after)
+                    yield encode(event["kind"], {**event["data"], **metadata}, after)
             if batch["status"] in TERMINAL:
                 # Old pre-journal jobs still terminate correctly; no synthetic model delta.
-                yield encode("snapshot", {"status": batch["status"]})
+                yield encode("snapshot", {"status": batch["status"], **metadata})
                 return
             if time.monotonic() - heartbeat >= HEARTBEAT_SECONDS:
                 yield ": heartbeat\n\n"

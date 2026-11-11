@@ -1,4 +1,5 @@
 // Account-scoped recovery metadata only. Results, questions and credentials never belong here.
+import { jobExecution, jobExecutionLabel } from "./api.js";
 const ID = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 export const RECOVERY_LIMIT = 32;
 const RETENTION_MS = 7 * 86400000;
@@ -19,16 +20,21 @@ export function recoveryRecords(value, now = Date.now()) {
 export function jobObservation(value, expectedId = null) {
   if (expectedId !== null && (!ID.test(expectedId) || value?.job_id !== expectedId)) return null;
   if (!value || !Object.hasOwn(STATES, value.status)) return null;
-  return Object.freeze({ status: value.status, expired: value.result_expired === true });
+  const execution = jobExecution(value.execution);
+  if (value.execution !== undefined && value.execution !== null && !execution) return null;
+  return Object.freeze({ status: value.status, expired: value.result_expired === true,
+    ...(execution ? { execution } : {}) });
 }
 
 export function jobStateLabel(observation) {
   if (!observation) return "尚未查询";
-  return observation.expired ? "结果保留期已过" : STATES[observation.status] || "尚未查询";
+  if (observation.expired) return "结果保留期已过";
+  if (observation.execution && observation.execution.recovery_status !== "completed") return jobExecutionLabel(observation.execution);
+  return STATES[observation.status] || "尚未查询";
 }
 
 export function canHideJob(observation) {
-  return ["failed", "unknown"].includes(observation?.status);
+  return ["failed", "unknown"].includes(observation?.status) && observation?.execution?.can_resume_waiting !== true;
 }
 
 export function setRecoveryHidden(records, id, hidden, observation, now = Date.now()) {

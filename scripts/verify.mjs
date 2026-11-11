@@ -48,9 +48,11 @@ const env = { ...process.env, PYTHONPATH: root + path.delimiter + path.join(root
 // Application broker settings never authorize checks to use a live broker.
 // Native tests opt in solely through the dedicated synthetic test URL.
 for (const name of Object.keys(env)) {
-  if (name.startsWith('PROJECT_COPILOT_RABBITMQ_') || name === 'PROJECT_COPILOT_TEST_RABBITMQ_URL') delete env[name];
+  if (name.startsWith('PROJECT_COPILOT_RABBITMQ_') || name.startsWith('PROJECT_COPILOT_JOB_RECOVERY_') ||
+      name === 'PROJECT_COPILOT_TEST_RABBITMQ_URL') delete env[name];
 }
 env.PROJECT_COPILOT_MESSAGE_QUEUE_ENABLED = 'false';
+env.PROJECT_COPILOT_JOB_RECOVERY_ENABLED = 'false';
 if (mode === '--services') env.PROJECT_COPILOT_TEST_RABBITMQ_URL = testRabbitURL;
 
 async function run(command, argv) {

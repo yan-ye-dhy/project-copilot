@@ -32,6 +32,16 @@ npm run verify
 
 第一周升级后，服务回归还要求独立Redis：`redis://127.0.0.1:16379/15`。测试只清理自己新建的随机namespace，不执行FLUSHDB/FLUSHALL；默认离线入口强制关闭真实Redis测试。需要统一准备时可显式运行 `docker compose -p pc-week1-lab -f docker-compose.week1-lab.yml --profile full-regression up -d --wait`；该文件使用tmpfs，无业务env/模型/持久化卷。Redis原生进程重启专项另需`PROJECT_COPILOT_TEST_REDIS_SERVER_BIN`指向显式测试二进制；没有时如实跳过，不重启共享服务。
 
+消息队列升级后还要求独立 RabbitMQ：服务入口固定合成测试账号/vhost、loopback:15672，忽略继承的业务 broker/恢复授权。[docker-compose.messaging-lab.yml](../docker-compose.messaging-lab.yml) 提供PG和RabbitMQ；week1文件补充Redis和Qdrant，只启动这两个服务，避免再启动一套占用5434的PG：
+
+```bash
+docker compose -p pc-messaging-lab -f docker-compose.messaging-lab.yml up -d --wait
+docker compose -p pc-week1-lab -f docker-compose.week1-lab.yml --profile full-regression up -d --wait redis qdrant
+npm run verify -- --services
+```
+
+以上只适用于空闲测试端口，不能覆盖已存在的其它服务。参见[升级与证明边界](MESSAGING_UPGRADE.md)。恢复专项使用真实PG、实际编译图、受控供应商及真实HTTP索引；不自动迁移演示库或重放历史unknown。可选 `PROJECT_COPILOT_TEST_COMPOSE_BIN` 只对指定Compose二进制执行合成环境配置解析，不启动容器。
+
 ## 5. 自动测试结果
 
 2026-11-10后端工程升级的最终本机/CI统计、真实服务版本及合成压测见[本批验证记录](WEEK1_BACKEND_VERIFICATION.md)。下文保留既有历史批次原结果，不替新代码背书。
@@ -44,7 +54,7 @@ npm run verify
 
 ## 6. Git与发布
 
-`.github/workflows/checks.yml`在面向main的PR、main推送和手动dispatch时执行三项独立检查：前端/Chromium、离线Python、真实隔离PostgreSQL与Qdrant。工作流只有`contents: read`权限，Actions固定提交SHA，无Secrets、部署或付费模型步骤，测试产物保留7天；同一分支的新运行取消被替代的旧检查。最初推送因缺少`workflow`权限被拒绝，用户完成正常GitHub授权后通过独立PR启用。每次是否通过须核对该提交的Checks，不能将本机通过称为云端CI通过。EdgeOne既有main自动部署独立运行，也不能把CI成功当成EdgeOne发布成功。
+`.github/workflows/checks.yml`在面向main或本次三个依赖分支的PR、main推送和手动dispatch时执行三项独立检查：前端/Chromium、离线Python、真实隔离PostgreSQL/Redis/Qdrant/RabbitMQ。工作流只有`contents: read`权限，Actions固定提交SHA，无Secrets、部署或付费模型步骤，测试产物保留7天；同一分支的新运行取消被替代的旧检查。最初推送因缺少`workflow`权限被拒绝，用户完成正常GitHub授权后通过独立PR启用。每次是否通过须核对该提交的Checks，不能将本机通过称为云端CI通过。EdgeOne既有main自动部署独立运行，也不能把CI成功当成EdgeOne发布成功。
 
 ## 7. 复习重点
 

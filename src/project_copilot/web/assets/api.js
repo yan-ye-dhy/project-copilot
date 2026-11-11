@@ -56,6 +56,8 @@ const FAILURE_LABELS = Object.freeze({
   grant_ended: "授权已结束，排队任务未执行；不会自动重试或退款",
   admission_rate_limited: "模型请求准入暂时受限，本次任务不会自动重试",
   admission_unavailable: "请求准入服务暂不可用，本次任务不会自动重试",
+  checkpoint_error: "执行检查点暂不可用，原任务与执行记录已保留",
+  step_uncertain: "上一步执行结果尚未核实，已暂停继续调用",
   context_budget: "上下文达到处理上限",
   tool_output_invalid: "工具结果未通过校验", tool_output_too_large: "工具结果超过处理上限",
 });
@@ -73,6 +75,25 @@ export function safeFailureType(value) {
 }
 export function jobFailureLabel(value) {
   return FAILURE_LABELS[safeFailureType(value)] || "处理未能完成";
+}
+const EXECUTION_PHASES = Object.freeze({ waiting_dispatch: "等待分发", running: "后台正在执行",
+  recovering: "正在恢复处理", awaiting_recovery: "正在核实恢复条件", blocked: "恢复已暂停，请核实原任务", completed: "处理已结束" });
+const RECOVERY_REASONS = new Set(["disabled", "legacy", "not_personal", "not_recoverable", "attempt_limit",
+  "deadline", "budget", "authorization", "release_closed", "missing_proof", "live_or_invalid_proof",
+  "provider_open", "provider_uncertain", "business_binding", "model_repeat_required", "capacity",
+  "metadata_mismatch", "no_provider", "checkpoint", "model_repeat", "already_queued"]);
+export function jobExecution(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value) ||
+      !Number.isSafeInteger(value.attempt_no) || value.attempt_no < 1 || value.attempt_no > 2 ||
+      !Number.isSafeInteger(value.event_floor) || value.event_floor < 0 || value.event_floor > 2147483647 ||
+      !Object.hasOwn(EXECUTION_PHASES, value.recovery_status) || typeof value.can_resume_waiting !== "boolean" ||
+      (value.blocked_reason !== null && !RECOVERY_REASONS.has(value.blocked_reason))) return null;
+  return Object.freeze({ attempt_no: value.attempt_no, event_floor: value.event_floor,
+    recovery_status: value.recovery_status, blocked_reason: value.blocked_reason,
+    can_resume_waiting: value.can_resume_waiting });
+}
+export function jobExecutionLabel(value) {
+  return EXECUTION_PHASES[value?.recovery_status] || "正在查询原任务";
 }
 function quotaReason(value) {
   const reason = value?.reason ?? value?.detail?.reason;
@@ -144,7 +165,7 @@ function jobReadError(error, id) {
 
 // Read-only SSE connection. Reconnection never repeats a model or tool request.
 export async function readJobEvents(id, { after = 0, signal, onEvent = () => {}, fetchImpl = globalThis.fetch,
-  timeoutMs = 27000 } = {}) {
+  timeoutMs = 27000, execution = null } = {}) {
   if (!JOB_ID.test(id) || !Number.isSafeInteger(after) || after < 0) throw new ApiError("任务编号无效。", { kind: "response" });
   if (!Number.isFinite(timeoutMs) || timeoutMs <= 0 || timeoutMs > 27000) throw new ApiError("实时连接时限无效。", { kind: "configuration" });
   const controller = new AbortController();
@@ -167,7 +188,7 @@ export async function readJobEvents(id, { after = 0, signal, onEvent = () => {},
     }
     reader = response.body.getReader();
     const decoder = new TextDecoder();
-    let buffer = "", last = after, terminal = false;
+    let buffer = "", last = after, terminal = false, currentExecution = jobExecution(execution);
     while (true) {
       const { done, value } = await reader.read();
       if (signal?.aborted) throw new ApiError("已停止等待，后台任务可能继续执行。", { kind: "aborted" });
@@ -188,6 +209,19 @@ export async function readJobEvents(id, { after = 0, signal, onEvent = () => {},
         let payload;
         try { payload = JSON.parse(data.join("\n")); } catch { throw new ApiError("实时事件格式无效。", { kind: "stream" }); }
         if (!payload || typeof payload !== "object" || Array.isArray(payload)) throw new ApiError("实时事件格式无效。", { kind: "stream" });
+        const incoming = jobExecution(payload.execution);
+        if (payload.execution !== undefined && !incoming) throw new ApiError("实时执行状态无效。", { kind: "stream" });
+        if (currentExecution && (!incoming || incoming.attempt_no < currentExecution.attempt_no ||
+            (incoming.attempt_no === currentExecution.attempt_no && incoming.event_floor !== currentExecution.event_floor))) continue;
+        if (incoming) {
+          if (currentExecution && incoming.attempt_no > currentExecution.attempt_no) {
+            last = incoming.event_floor;
+            if (event !== "reset") onEvent({ id: last, event: "reset", data: { cursor_reset: true, reason: "attempt_changed", execution: incoming } });
+          }
+          currentExecution = incoming;
+          if (Number.isSafeInteger(sequence) && sequence <= incoming.event_floor && event !== "reset") continue;
+        }
+        if (event === "snapshot" && incoming) onEvent({ id: null, event, data: { status: payload.status, execution: incoming } });
         if (event === "snapshot" && ["succeeded", "failed", "unknown"].includes(payload.status)) {
           terminal = true; break; // Canonical GET is authoritative even without a journal event.
         }
@@ -202,7 +236,7 @@ export async function readJobEvents(id, { after = 0, signal, onEvent = () => {},
       }
       if (terminal) break;
     }
-    return { after: last, terminal };
+    return { after: last, terminal, ...(currentExecution ? { execution: currentExecution } : {}) };
   } catch (error) {
     if (signal?.aborted) throw new ApiError("已停止等待，后台任务可能继续执行。", { kind: "aborted" });
     if (error instanceof ApiError) throw error;
@@ -223,7 +257,7 @@ export async function resumePublicJob(id, { request = apiRequest, signal, onEven
   const polls = maxPolls === undefined ? Math.ceil(maxWaitMs / 2000) + 4 : maxPolls;
   if (!Number.isSafeInteger(polls) || polls < 1 || polls > 2000) throw new ApiError("查询次数无效。", { kind: "configuration" });
   const deadline = now() + maxWaitMs;
-  let cursor = after, streamFailures = 0, readFailures = 0;
+  let cursor = after, streamFailures = 0, readFailures = 0, execution = null;
   for (let i = 0; i < polls; i += 1) {
     jobStopped(signal, isCurrent);
     if (now() >= deadline) break;
@@ -244,31 +278,55 @@ export async function resumePublicJob(id, { request = apiRequest, signal, onEven
       continue;
     }
     jobStopped(signal, isCurrent);
+    const observed = jobExecution(current.data?.execution);
+    if ((execution && !observed) ||
+        (current.data?.execution !== undefined && current.data.execution !== null && !observed)) {
+      throw new ApiError("任务执行状态无效，请查询原任务。", { kind: "response", meta: { jobId: id } });
+    }
+    if (observed) {
+      if (execution && observed.attempt_no < execution.attempt_no) throw jobReadError(new ApiError("执行状态已变更。", { kind: "response" }), id);
+      if ((execution && observed.attempt_no !== execution.attempt_no) || cursor < observed.event_floor) {
+        cursor = observed.event_floor;
+        onEvent({ id: cursor, event: "reset", data: { cursor_reset: true, reason: "attempt_changed", execution: observed } });
+      }
+      execution = observed;
+      onEvent({ id: null, event: "snapshot", data: { status: current.data.status, execution } });
+    }
     if (current.data?.result_expired === true) {
       throw new ApiError(`任务内容已超过保留期限，请勿重复提交。任务编号：${id}`, { kind: "job", meta: { jobId: id, jobStatus: "expired" } });
     }
     const status = current.data?.status;
     if (status === "succeeded" && current.data.result) return { data: current.data.result, meta: current.meta || {} };
-    if (["failed", "unknown"].includes(status)) {
+    if (observed?.recovery_status === "blocked" && !observed.can_resume_waiting) {
+      throw new ApiError(`恢复已暂停，请查询原任务并核实处理状态。任务编号：${id}`, {
+        kind: "job", meta: { jobId: id, jobStatus: status, recoveryStatus: "blocked", outcome: "uncertain" } });
+    }
+    const awaitingRecovery = status === "unknown" && observed?.can_resume_waiting === true;
+    if (["failed", "unknown"].includes(status) && !awaitingRecovery) {
       const failureType = safeFailureType(current.data.failure_type);
       const explanation = failureType ? `；${jobFailureLabel(failureType)}（${failureType}）` : "";
       throw new ApiError(`任务未完成（${status === "unknown" ? "结果待核实" : "处理失败"}${explanation}），请勿重复提交。任务编号：${id}`, {
         kind: "job", meta: { jobId: id, jobStatus: status, ...(failureType ? { failureType } : {}) },
       });
     }
-    if (!["reserved", "running"].includes(status)) throw new ApiError("任务状态无效，请勿重复提交。", { kind: "response" });
-    if (current.data.progress && typeof current.data.progress.label === "string") onEvent({ id: null, event: "progress", data: current.data.progress });
+    if (!["reserved", "running"].includes(status) && !awaitingRecovery) throw new ApiError("任务状态无效，请勿重复提交。", { kind: "response" });
+    if (observed && observed.recovery_status !== "running") onEvent({ id: null, event: "progress", data: { label: jobExecutionLabel(observed), execution: observed } });
+    else if (current.data.progress && typeof current.data.progress.label === "string") onEvent({ id: null, event: "progress", data: current.data.progress });
     else onEvent({ id: null, event: "progress", data: { stage: status, label: status === "reserved" ? "任务已入队，等待执行" : "后台正在执行" } });
-    if (useEvents && streamFailures < 2) {
+    if (useEvents && !awaitingRecovery && streamFailures < 2) {
       const connectedAt = now();
       try {
-        const stream = await eventReader(id, { after: cursor, signal, timeoutMs: Math.max(1, Math.min(27000, deadline - now())), onEvent: (event) => {
+        const stream = await eventReader(id, { after: cursor, signal, execution, timeoutMs: Math.max(1, Math.min(27000, deadline - now())), onEvent: (event) => {
           jobStopped(signal, isCurrent);
+          const incoming = jobExecution(event.data?.execution);
+          if (execution && (!incoming || incoming.attempt_no < execution.attempt_no)) return;
+          if (incoming) execution = incoming;
           if (event.event === "reset" && event.data.cursor_reset === true) cursor = event.id;
           else if (Number.isSafeInteger(event.id)) cursor = Math.max(cursor, event.id);
           onEvent(event);
         } });
-        if (Number.isSafeInteger(stream.after) && stream.after >= 0) cursor = stream.after;
+        if (stream.execution) execution = jobExecution(stream.execution) || execution;
+        if (Number.isSafeInteger(stream.after) && stream.after >= 0) cursor = Math.max(stream.after, execution?.event_floor || 0);
         if (!stream.terminal) {
           // An immediately ended stream must not create a reconnect/query loop.
           if (now() - connectedAt < 1500) streamFailures += 1;

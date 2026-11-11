@@ -26,6 +26,14 @@ services:
       PROJECT_COPILOT_MESSAGE_QUEUE_ENABLED: "true"
       PROJECT_COPILOT_RABBITMQ_URL: ${PROJECT_COPILOT_RABBITMQ_URL:?dedicated RabbitMQ URL required}
   worker:
+    # migrate and api share the base deployment's x-app resources. Inherit
+    # migrate so the Worker gets those mounts/configuration without API ports.
+    extends:
+      file: docker-compose.deploy.yml
+      service: migrate
+    command: ["python", "-m", "scripts.ai_worker"]
+    healthcheck: {disable: true}
+    stop_grace_period: 1260s
     environment:
       PROJECT_COPILOT_MESSAGE_QUEUE_ENABLED: "true"
       PROJECT_COPILOT_RABBITMQ_URL: ${PROJECT_COPILOT_RABBITMQ_URL:?dedicated RabbitMQ URL required}
@@ -33,6 +41,12 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
+      qdrant:
+        condition: service_healthy
+      phoenix:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
   outbox-relay:
     image: ${PROJECT_COPILOT_API_IMAGE:-project-copilot-api:cpu}
     user: "${PROJECT_COPILOT_CONTAINER_UID:-1000}:${PROJECT_COPILOT_CONTAINER_GID:-1000}"

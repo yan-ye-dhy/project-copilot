@@ -28,9 +28,13 @@ before(async () => { browser = await chromium.launch({ headless: true }); });
 after(async () => { await browser?.close(); });
 
 async function fixture(options = {}) {
-  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' });
+  const context = await browser.newContext({ viewport: { width: options.width || 390, height: 844 }, serviceWorkers: 'block' });
   const f = { session: options.session || null, meStatus: options.meStatus, calls: [], unexpected: [], action: null,
-    logoutFailure: options.logoutFailure || false, tickets401: false, progressMode: options.progressMode || false, jobDone: false, holdRag: null, releaseRag: null };
+    logoutFailure: options.logoutFailure || false, tickets401: false, progressMode: options.progressMode || false, jobDone: false, holdRag: null, releaseRag: null,
+    recoveryMode: options.recoveryMode || false, recoveryAttempt: 1, recoveryDone: false };
+  const recoveryExecution = (attempt, phase) => ({ attempt_no: attempt, event_floor: attempt === 1 ? 0 : 2,
+    recovery_status: phase, blocked_reason: null, can_resume_waiting: phase !== 'completed' });
+  const frame = (id, kind, data) => `${id === null ? '' : `id: ${id}\n`}event: ${kind}\ndata: ${JSON.stringify(data)}\n\n`;
   await context.route('**/*', async (route) => {
     const request = route.request(); const url = new URL(request.url()); const path = url.pathname;
     if (url.origin !== 'https://fixture.invalid') { f.unexpected.push(url.origin); return route.abort(); }
@@ -71,9 +75,21 @@ async function fixture(options = {}) {
     if (path === `/api/actions/${ACTION}`) return reply(f.action);
     if (path === '/api/jobs/upload' && request.method() === 'POST') { f.jobKind = 'upload'; return reply({ job_id: ID, status: 'reserved' }, 202); }
     if (path === '/api/jobs' && request.method() === 'POST') { f.jobKind = body.kind; return reply({ job_id: ID, status: 'reserved' }, 202); }
+    if (path === `/api/jobs/${ID}/events` && f.recoveryMode) {
+      const current = recoveryExecution(f.recoveryAttempt, f.recoveryAttempt === 1 ? 'running' : 'recovering');
+      return route.fulfill({ status: 200, contentType: 'text/event-stream', body: f.recoveryAttempt === 1
+        ? frame(null, 'snapshot', { status: 'running', execution: current }) + frame(1, 'delta', { text: 'OLD_RECOVERY_DRAFT', execution: current })
+        : frame(null, 'snapshot', { status: 'running', execution: current, result: { answer: 'UNVALIDATED_RESULT' } })
+          + frame(2, 'terminal', { status: 'succeeded', execution: recoveryExecution(1, 'completed'), result: { answer: 'UNVALIDATED_RESULT', sources: [{ kind: 'proposal' }] } })
+          + frame(2, 'reset', { cursor_reset: true, execution: current })
+          + frame(3, 'delta', { text: 'FRESH_RECOVERY_DRAFT', execution: current }) });
+    }
     if (path === `/api/jobs/${ID}/events` && f.progressMode) return route.fulfill({ status: 200,
       contentType: 'text/event-stream', body: 'id: 1\nevent: progress\ndata: {"stage":"search","label":"正在检索知识库"}\n\nid: 2\nevent: delta\ndata: {"text":"尚未验证的真实事件草稿"}\n\n' });
     if (path === `/api/jobs/${ID}` && request.method() === 'GET') {
+      if (f.recoveryMode) return reply({ job_id: ID, status: f.recoveryDone ? 'succeeded' : 'running',
+        execution: recoveryExecution(f.recoveryAttempt, f.recoveryDone ? 'completed' : f.recoveryAttempt === 1 ? 'running' : 'recovering'),
+        result: f.recoveryDone ? { status: 'answered', answer: '# 恢复后的核对答案\n\n从原任务读取的最终结果。', citations: [] } : null });
       if (f.progressMode) return reply({ job_id: ID, status: f.jobDone ? 'succeeded' : 'running', result: f.jobDone ? {
         status: 'answered', answer: '# 最终回答\n\n**核对完成**。 <img src=x onerror=alert(1)>\n\n| 项目 | 结果 |\n| --- | --- |\n| 校验 | 通过 |', citations: [] } : null });
 
@@ -258,3 +274,32 @@ test('real event display, stop, refresh and resume preserve identifier without a
     assert.deepEqual(f.unexpected, []); assert.deepEqual(errors, []);
   } finally { await context.close(); }
 });
+
+for (const width of [1440, 390]) {
+  test(`attempt reset discards old draft and terminal; stop/resume stays read-only at ${width}px`, async () => {
+    const { context, page, f, errors } = await fixture({ session: user('alice'), recoveryMode: true, width });
+    try {
+      await page.locator('#app-shell').waitFor({ state: 'visible' });
+      await page.locator('#chat-mode').selectOption('rag');
+      await page.locator('#question-input').fill('恢复原任务的受控问题');
+      await page.locator('#send-button').click();
+      await page.getByText('OLD_RECOVERY_DRAFT', { exact: true }).waitFor();
+      f.recoveryAttempt = 2;
+      await page.getByText('FRESH_RECOVERY_DRAFT', { exact: true }).waitFor();
+      assert.equal(await page.locator('.stream-preview').textContent(), 'FRESH_RECOVERY_DRAFT');
+      assert.doesNotMatch(await page.locator('#chat-messages').textContent(), /OLD_RECOVERY_DRAFT|UNVALIDATED_RESULT/);
+      assert.equal(await page.locator('.proposal-card').count(), 0);
+      assert.doesNotMatch(await page.evaluate(() => JSON.stringify({ ...localStorage })), /RECOVERY_DRAFT|UNVALIDATED_RESULT/);
+      await page.locator('#stop-wait').click();
+      await page.getByText(/已停止等待，后台任务可能继续执行/).waitFor();
+      f.recoveryDone = true;
+      await page.locator('#task-center-toggle').click();
+      await page.getByRole('button', { name: '查询 / 恢复等待' }).click();
+      await page.locator('.markdown-answer h2').getByText('恢复后的核对答案').waitFor();
+      assert.equal(f.calls.filter((call) => call.path === '/api/jobs' && call.method === 'POST').length, 1);
+      assert.equal(f.calls.some((call) => /\/actions\/.+\/(confirm|reject)$|\/actions\/preview$/.test(call.path)), false);
+      assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
+      assert.deepEqual(f.unexpected, []); assert.deepEqual(errors, []);
+    } finally { await context.close(); }
+  });
+}

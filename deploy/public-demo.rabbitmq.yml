@@ -27,6 +27,9 @@ services:
       PROJECT_COPILOT_MESSAGE_QUEUE_ENABLED: "true"
       PROJECT_COPILOT_RABBITMQ_URL: ${PROJECT_COPILOT_RABBITMQ_URL:?dedicated RabbitMQ URL required}
   worker:
+    # Preserve the existing personal 900s task plus already-started tool drain.
+    # Operators must still verify physical completion before a forced stop.
+    stop_grace_period: 1260s
     environment:
       PROJECT_COPILOT_MESSAGE_QUEUE_ENABLED: "true"
       PROJECT_COPILOT_RABBITMQ_URL: ${PROJECT_COPILOT_RABBITMQ_URL:?dedicated RabbitMQ URL required}
