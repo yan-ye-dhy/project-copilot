@@ -118,6 +118,9 @@ def internal(payload):
             operation = payload["operation"]
             if operation == "inspect-job":
                 return inspect_job(session, actor_id, UUID(payload["job_id"]))
+            if operation == "list-failures":
+                from project_copilot.services.queue_control import inspect_failures
+                return {"jobs": inspect_failures(session), "automatic_replay_allowed": False}
             if operation == "cleanup":
                 if payload.get("apply") is not True:
                     raise ValueError("explicit cleanup approval required")
@@ -137,7 +140,7 @@ def internal(payload):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("operation", choices=("inspect-job", "cleanup", "resolve-job", "retire-legacy-job"), nargs="?")
+    parser.add_argument("operation", choices=("inspect-job", "list-failures", "cleanup", "resolve-job", "retire-legacy-job"), nargs="?")
     parser.add_argument("--job-id", type=UUID)
     parser.add_argument("--env-file", default=".env.public-demo")
     parser.add_argument("--evidence", type=Path)
@@ -160,7 +163,7 @@ def main():
         else:
             if not sys.stdin.isatty() or not sys.stdout.isatty():
                 raise ValueError("interactive host terminal required")
-            if args.operation is None or args.operation != "cleanup" and args.job_id is None:
+            if args.operation is None or args.operation not in {"cleanup", "list-failures"} and args.job_id is None:
                 raise ValueError("operation/job identity required")
             if args.operation == "cleanup" and not args.apply:
                 raise ValueError("cleanup requires --apply")

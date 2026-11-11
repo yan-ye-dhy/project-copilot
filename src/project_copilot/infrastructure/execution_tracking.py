@@ -5,7 +5,7 @@ worker drains actual concurrent Futures before dropping its physical lease.
 """
 from collections.abc import Callable
 from concurrent.futures import Executor, Future, ThreadPoolExecutor
-from contextlib import contextmanager
+from contextlib import asynccontextmanager, contextmanager
 from contextvars import ContextVar, copy_context
 from dataclasses import dataclass
 import asyncio
@@ -138,3 +138,80 @@ def provider_request():
                 # Keep the durable open count when acknowledgement fails; no
                 # retry, raw provider exception, payload or credential is logged.
                 logger.warning('execution provider acknowledgement unavailable error_type=%s', type(exc).__name__)
+
+
+def _boundary_future(function, *args, **kwargs):
+    """Keep the real tracked Future alive even if its async waiter is cancelled."""
+    # Scheduling follows the owned execution context; receipt identity is
+    # captured separately before crossing this thread boundary.
+    tracker = _current.get()
+    if tracker is None:
+        return asyncio.create_task(asyncio.to_thread(function, *args, **kwargs))
+    return asyncio.wrap_future(tracker.submit(None, function, *args, **kwargs))
+
+
+async def _settle_boundary(future):
+    """Defer cancellation until this one physical operation has really settled.
+
+    Repeated cancellation only repeats a shielded wait; it never resubmits the
+    database operation. The caller decides whether a receipt is safe to write.
+    """
+    cancelled = None
+    while True:
+        try:
+            return await asyncio.shield(future), cancelled
+        except asyncio.CancelledError as exc:
+            if future.cancelled():
+                raise
+            cancelled = exc
+        except BaseException:
+            if cancelled is not None:
+                raise cancelled from None
+            raise
+
+
+async def _acknowledge_provider(tracker, *, completed):
+    from project_copilot.services.execution_slots import provider_finished
+    try:
+        _, cancelled = await _settle_boundary(_boundary_future(
+            provider_finished, tracker.database, tracker.job_id, tracker.token, completed=completed))
+    except Exception as exc:
+        # An acknowledgement failure leaves the durable open/uncertain state;
+        # neither a retry nor raw database/provider text belongs in this path.
+        logger.warning('execution provider acknowledgement unavailable error_type=%s', type(exc).__name__)
+        return
+    if cancelled is not None:
+        raise cancelled
+
+
+@asynccontextmanager
+async def async_provider_request():
+    """Async provider admission with physical accounting/receipt work offloaded.
+
+    Accounting must commit before yielding permission to send HTTP. If entry is
+    cancelled, wait for that exact operation; a successful initiation can then
+    receive a completed receipt because this context has never yielded to HTTP.
+    The initiation count is deliberately retained. After yield, only an actual
+    complete response proves completion; cancellation/response loss is uncertain.
+    """
+    from project_copilot.infrastructure.call_accounting import record_provider_attempt
+    from project_copilot.services.execution_slots import ExecutionFenced
+
+    tracker = current_execution()
+    started, cancelled = await _settle_boundary(_boundary_future(record_provider_attempt))
+    if cancelled is not None:
+        if tracker is not None and started:
+            await _acknowledge_provider(tracker, completed=True)
+        raise cancelled
+    if tracker is not None and not started:
+        raise ExecutionFenced('provider attempt has no job accounting scope')
+    attempt = ProviderAttempt()
+    try:
+        yield attempt
+    except APIStatusError as exc:
+        if getattr(exc.response, 'is_stream_consumed', False):
+            attempt.completed()
+        raise
+    finally:
+        if tracker is not None:
+            await _acknowledge_provider(tracker, completed=attempt.terminal_observed)

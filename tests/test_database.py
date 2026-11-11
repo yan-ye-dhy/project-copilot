@@ -73,7 +73,7 @@ def test_application_lifespan_constructs_and_disposes_configured_database(monkey
     class FakeDatabase:
         def __init__(self, url, **kwargs):
             assert url == URL
-            assert kwargs == {"connect_timeout": 5, "pool_timeout": 5}
+            assert kwargs == {"connect_timeout": 5, "pool_timeout": 5, "pool_size": 5, "max_overflow": 5}
             events.append("engine")
 
         def close(self):

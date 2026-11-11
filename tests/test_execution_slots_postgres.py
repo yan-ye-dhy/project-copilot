@@ -108,7 +108,7 @@ def state(setup, identity):
 def test_empty_migration_and_orm_match_execution_evidence(ticket_database):
     check_model_drift(ticket_database)
     with ticket_database.transaction() as session:
-        assert session.scalar(text("SELECT version_num FROM alembic_version")) == "0015_personal_capacity"
+        assert session.scalar(text("SELECT version_num FROM alembic_version")) == "0016_queue_backpressure"
 
 
 def test_upgrade_releases_existing_terminal_only_and_never_invents_unknown_proof(postgres_database, tmp_path):

@@ -29,6 +29,8 @@ from project_copilot.services.auth import AuthService, AuthenticationRejected
 from project_copilot.services.ai_audit import record_attempt
 from project_copilot.services.quotas import IdempotencyConflict, QuotaExceeded, QuotaService
 from project_copilot.services.release_control import ReleaseClosed
+from project_copilot.services.redis_admission import RateLimited
+from project_copilot.infrastructure.redis_runtime import RedisUnavailable
 from project_copilot.services.upload_ingress import UploadIngressBusy, acquire_upload_slot, release_upload_slot
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
@@ -205,6 +207,13 @@ async def submit_upload(request: Request, response: Response):
         if identity is not None:
             await run_in_threadpool(_record_rejected, request.app.state.database, identity[0], "upload", "quota_rejected")
         raise HTTPException(429, {"message": "当前请求已达限额，请稍后再试", "reason": exc.reason}) from None
+    except RateLimited as exc:
+        if identity is not None:
+            await run_in_threadpool(_record_rejected, request.app.state.database, identity[0], "upload", "quota_rejected")
+        raise HTTPException(429, {"message": "请求过于频繁，请稍后再试", "reason": "admission_rate"},
+                            headers={"Retry-After": str(exc.retry_after)}) from None
+    except RedisUnavailable:
+        raise HTTPException(503, "请求准入暂不可用，请稍后查询原任务状态") from None
     except ValueError:
         if identity is not None:
             await run_in_threadpool(_record_rejected, request.app.state.database, identity[0], "upload", "failed")
@@ -275,6 +284,12 @@ def submit(body: JobInput, request: Request, response: Response):
     except QuotaExceeded as exc:
         _record_rejected(database, user_id, body.kind, "quota_rejected")
         raise HTTPException(429, {"message": "当前请求已达限额，请稍后再试", "reason": exc.reason}) from None
+    except RateLimited as exc:
+        _record_rejected(database, user_id, body.kind, "quota_rejected")
+        raise HTTPException(429, {"message": "请求过于频繁，请稍后再试", "reason": "admission_rate"},
+                            headers={"Retry-After": str(exc.retry_after)}) from None
+    except RedisUnavailable:
+        raise HTTPException(503, "请求准入暂不可用，请稍后查询原任务状态") from None
     except ValueError:
         _record_rejected(database, user_id, body.kind, "failed")
         raise HTTPException(400, "请求格式无效") from None

@@ -155,6 +155,8 @@ class AiRequestReservation(Base):
         Index("ix_ai_reservations_user_day", "user_id", "utc_day"),
         Index("ix_ai_reservations_user_state", "user_id", "state"),
         Index("ix_ai_reservations_personal_grant", "personal_demo_grant_id"),
+        Index("ix_ai_reserved_claim", "created_at", "id", postgresql_where=text("state = 'reserved'")),
+        Index("ix_ai_held_execution_slots", "state", postgresql_where=text("slot_released_at IS NULL")),
     )
 
     id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, server_default=text("gen_random_uuid()"))

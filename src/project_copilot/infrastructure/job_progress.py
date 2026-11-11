@@ -29,6 +29,13 @@ def progress(stage: str) -> None:
     emit("progress", {"stage": stage, "label": LABELS[stage]})
 
 
+async def progress_async(stage: str) -> None:
+    """Persist observed progress without blocking the Agent event loop."""
+    if active():
+        from project_copilot.infrastructure.execution_tracking import tracked_to_thread
+        await tracked_to_thread(progress, stage)
+
+
 @contextmanager
 def observe(observer):
     token = _observer.set(observer)

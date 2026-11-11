@@ -8,6 +8,12 @@ _current = ContextVar("project_copilot_provider_accounting", default=None)
 _settings = ContextVar("project_copilot_provider_release_settings", default=None)
 
 
+def current_account_id():
+    """Trusted execution scope for read-only caches; never a browser parameter."""
+    current = _current.get()
+    return current[1] if current is not None else None
+
+
 @contextmanager
 def account_job(database, user_id, reservation_id, *, max_attempts=16, prelocked_admin=False, settings=None):
     token = _current.set((database, user_id, reservation_id, max_attempts, prelocked_admin))
@@ -57,6 +63,11 @@ def record_provider_attempt():
             if tracker.database is not database or tracker.job_id != reservation_id:
                 raise ExecutionFenced("execution accounting binding mismatch")
             guard_execution(session, reservation_id, tracker.token)
+        if settings is not None:
+            from project_copilot.services.redis_admission import admit
+            # Refusal occurs before either the paid attempt or provider-open
+            # record is incremented. No provider request has been issued yet.
+            admit(settings, user_id, scope="provider")
         QuotaService(session).mark_provider_attempt(user_id, reservation_id, max_attempts=max_attempts)
         if tracker is not None:
             provider_started(session, reservation_id, tracker.token)

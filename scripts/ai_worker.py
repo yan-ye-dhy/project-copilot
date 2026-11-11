@@ -14,6 +14,7 @@ if __name__ == "__main__":
 from project_copilot.config import load_settings
 from project_copilot.db.session import Database
 from project_copilot.services.ai_worker import expire_unclaimed, process_one
+from project_copilot.services.personal_profile import worker_resource_scope
 
 
 def main():
@@ -25,8 +26,12 @@ def main():
     settings = load_settings()
     if not (settings.public_demo or settings.environment == "production") or settings.database_url is None:
         parser.error("worker requires configured public demo mode and database")
+    pool_size = getattr(settings, "database_pool_size", 5)
+    max_overflow = getattr(settings, "database_max_overflow", 5)
+    if pool_size + max_overflow < 3:
+        parser.error("worker database pool capacity must be at least three connections")
     database = Database(settings.database_url.get_secret_value(), connect_timeout=settings.database_connect_timeout_seconds,
-                        pool_timeout=settings.database_pool_timeout_seconds)
+                        pool_timeout=settings.database_pool_timeout_seconds, pool_size=pool_size, max_overflow=max_overflow)
     stopping = _STOPPING
     # PID 1 in a container must explicitly handle termination. Finish the
     # current job before exiting; forced termination remains an unknown outcome.
@@ -34,20 +39,22 @@ def main():
     signal.signal(signal.SIGINT, lambda *_: stopping.set())
     next_cleanup = 0.0
     try:
-        while not stopping.is_set():
-            try:
-                if time.monotonic() >= next_cleanup:
-                    expire_unclaimed(database, ttl_seconds=settings.public_job_queue_ttl_seconds)
-                    next_cleanup = time.monotonic() + 60
-                worked = process_one(database, settings)
-            except Exception as exc:
-                # Never log job content, credentials, DSNs, provider errors or response bodies.
-                logging.error("worker failure type=%s", type(exc).__name__)
-                raise SystemExit(1) from None
-            if args.once:
-                return
-            if not worked:
-                stopping.wait(1)
+        with worker_resource_scope(settings) as resources:
+            while not stopping.is_set():
+                try:
+                    resources.validate()
+                    if time.monotonic() >= next_cleanup:
+                        expire_unclaimed(database, ttl_seconds=settings.public_job_queue_ttl_seconds)
+                        next_cleanup = time.monotonic() + 60
+                    worked = process_one(database, settings)
+                except Exception as exc:
+                    # Never log job content, credentials, DSNs, provider errors or response bodies.
+                    logging.error("worker failure type=%s", type(exc).__name__)
+                    raise SystemExit(1) from None
+                if args.once:
+                    return
+                if not worked:
+                    stopping.wait(1)
     finally:
         database.close()
 
