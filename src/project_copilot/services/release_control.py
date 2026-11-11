@@ -75,6 +75,14 @@ def config_fingerprint(settings) -> str:
         target = urlsplit(settings.redis_url.get_secret_value())
         payload["redis"]["target"] = sha256(
             f"{target.scheme}://{target.hostname}:{target.port}{target.path}".encode()).hexdigest()
+    if getattr(settings, "message_queue_enabled", False):
+        from urllib.parse import urlsplit
+        fields = {name for name in type(settings).model_fields
+                  if name.startswith(("rabbitmq_", "outbox_")) and name != "rabbitmq_url"}
+        payload["messaging"] = settings.model_dump(mode="json", include=fields)
+        target = urlsplit(settings.rabbitmq_url.get_secret_value())
+        payload["messaging"]["target"] = sha256(
+            f"{target.scheme}://{target.hostname}:{target.port}{target.path}".encode()).hexdigest()
     return sha256(json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
 
 

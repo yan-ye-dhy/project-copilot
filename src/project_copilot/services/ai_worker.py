@@ -77,10 +77,10 @@ def expire_unclaimed(database, *, ttl_seconds: int, batch_size: int = 100) -> in
         return len(rows)
 
 
-def claim_one(database, *, ttl_seconds: int | None = None, settings=None) -> ClaimedJob | None:
+def claim_one(database, *, ttl_seconds: int | None = None, settings=None, job_id: UUID | None = None) -> ClaimedJob | None:
     leases = []
     try:
-        return _claim_one(database, ttl_seconds=ttl_seconds, settings=settings, leases=leases)
+        return _claim_one(database, ttl_seconds=ttl_seconds, settings=settings, leases=leases, job_id=job_id)
     except BaseException:
         # No execution can start before this claim transaction commits.
         for lease in leases:
@@ -88,10 +88,16 @@ def claim_one(database, *, ttl_seconds: int | None = None, settings=None) -> Cla
         raise
 
 
-def _claim_one(database, *, ttl_seconds, settings, leases):
+def _claim_one(database, *, ttl_seconds, settings, leases, job_id=None):
     # One transaction binds the job payload, physical lease and unique execution token.
     with database.transaction() as session:
         statement = select(AiJob, AiRequestReservation).join(AiRequestReservation).where(AiRequestReservation.state == "reserved")
+        if job_id is not None:
+            statement = statement.where(AiJob.id == job_id)
+        elif settings is not None and getattr(settings, "message_queue_enabled", False):
+            # Broker mode must claim the identity carried by its delivery;
+            # falling back to the head of the PG queue could execute another job.
+            return None
         release = require_open(session, settings, worker=True) if settings is not None else None
         if settings is not None:
             from project_copilot.services.queue_control import can_claim, lock_claim_capacity
@@ -182,7 +188,7 @@ def execute(settings, database, job):
         return service.answer(RagQuestion.model_validate(job.payload).question)
 
 
-def process_one(database, settings, *, runner=execute) -> bool:
+def process_one(database, settings, *, runner=execute, job_id: UUID | None = None) -> bool:
     # Keep the existing database execution lease through physical work drain.
     # PERSONAL_DEMO additionally has a durable per-job OS lease for crash proof.
     with execution_lease(database):
@@ -190,13 +196,13 @@ def process_one(database, settings, *, runner=execute) -> bool:
             with database.transaction() as session:
                 require_open(session, settings, worker=True)
             dependencies_ready(settings)
-            return _process_one(database, settings, runner=runner)
+            return _process_one(database, settings, runner=runner, job_id=job_id)
         except ReleaseClosed:
             return False
 
 
-def _process_one(database, settings, *, runner):
-    job = claim_one(database, ttl_seconds=settings.public_job_queue_ttl_seconds, settings=settings)
+def _process_one(database, settings, *, runner, job_id=None):
+    job = claim_one(database, ttl_seconds=settings.public_job_queue_ttl_seconds, settings=settings, job_id=job_id)
     if job is None:
         return False
     lease = job.execution_lease

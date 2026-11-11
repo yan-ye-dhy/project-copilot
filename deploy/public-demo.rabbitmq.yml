@@ -1,0 +1,58 @@
+# Optional public overlay; requires explicit dedicated-volume initialization.
+# The broker has no host ports and never shares another deployment's volume.
+services:
+  rabbitmq:
+    image: rabbitmq:4.2.9@sha256:97f4d5e14f7c59e585554b9e90c3dec2c7bb6b249792fa54f7e7cf56b6582203
+    hostname: rabbitmq
+    labels: {io.project-copilot.scope: public-demo-v2}
+    environment:
+      RABBITMQ_DEFAULT_USER: project_copilot_mq
+      RABBITMQ_DEFAULT_PASS: ${PROJECT_COPILOT_RABBITMQ_PASSWORD:?dedicated RabbitMQ password required}
+      RABBITMQ_DEFAULT_VHOST: project_copilot
+      RABBITMQ_ERLANG_COOKIE: ${PROJECT_COPILOT_RABBITMQ_ERLANG_COOKIE:?dedicated RabbitMQ cookie required}
+      RABBITMQ_CTL_ERL_ARGS: "+S 1:1 +SDcpu 1:1 +SDio 1"
+      RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: "+S 2:2 -rabbit disk_free_limit 104857600 vm_memory_high_watermark {absolute,268435456} consumer_timeout 1800000"
+    volumes: ["rabbitmq_data:/var/lib/rabbitmq"]
+    networks: [backend]
+    mem_limit: 512m
+    pids_limit: 256
+    security_opt: ["no-new-privileges:true"]
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+  api:
+    environment:
+      PROJECT_COPILOT_MESSAGE_QUEUE_ENABLED: "true"
+      PROJECT_COPILOT_RABBITMQ_URL: ${PROJECT_COPILOT_RABBITMQ_URL:?dedicated RabbitMQ URL required}
+  worker:
+    environment:
+      PROJECT_COPILOT_MESSAGE_QUEUE_ENABLED: "true"
+      PROJECT_COPILOT_RABBITMQ_URL: ${PROJECT_COPILOT_RABBITMQ_URL:?dedicated RabbitMQ URL required}
+    depends_on:
+      rabbitmq: {condition: service_healthy}
+  outbox-relay:
+    image: ${PROJECT_COPILOT_PUBLIC_API_IMAGE:-project-copilot-api:public-demo}
+    labels: {io.project-copilot.scope: public-demo-v2}
+    user: "${PROJECT_COPILOT_CONTAINER_UID:-1000}:${PROJECT_COPILOT_CONTAINER_GID:-1000}"
+    env_file: ["${PROJECT_COPILOT_PUBLIC_ENV_FILE:-.env.public-demo}"]
+    environment:
+      PROJECT_COPILOT_ENVIRONMENT: production
+      PROJECT_COPILOT_PUBLIC_DEMO: "true"
+      PROJECT_COPILOT_DATABASE_URL: ${PROJECT_COPILOT_DATABASE_URL:?public demo database URL required}
+      PROJECT_COPILOT_MESSAGE_QUEUE_ENABLED: "true"
+      PROJECT_COPILOT_RABBITMQ_URL: ${PROJECT_COPILOT_RABBITMQ_URL:?dedicated RabbitMQ URL required}
+    command: ["python", "-m", "scripts.outbox_relay"]
+    networks: [backend]
+    read_only: true
+    tmpfs: ["/tmp:size=32m"]
+    healthcheck: {disable: true}
+    stop_grace_period: 60s
+    depends_on:
+      rabbitmq: {condition: service_healthy}
+      migrate: {condition: service_completed_successfully}
+volumes:
+  rabbitmq_data:
+    name: pc-public-v2-rabbitmq
+    external: true

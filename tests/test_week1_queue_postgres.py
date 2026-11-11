@@ -7,12 +7,13 @@ from concurrent.futures import ThreadPoolExecutor
 import json
 from threading import Barrier
 
+from alembic.script import ScriptDirectory
 import pytest
 from sqlalchemy import func, select, text
 from sqlalchemy.exc import SQLAlchemyError, TimeoutError as PoolTimeout
 
 from project_copilot.db.jobs import AiJob, AiJobEvent
-from project_copilot.db.migrations import check_model_drift
+from project_copilot.db.migrations import check_model_drift, migration_config
 from project_copilot.db.models import AiRequestReservation
 from project_copilot.db.session import Database
 from project_copilot.infrastructure.redis_runtime import RedisUnavailable
@@ -42,7 +43,7 @@ def states(database):
 def test_queue_partial_indexes_and_orm_match_real_head(ticket_database):
     check_model_drift(ticket_database)
     with ticket_database.transaction() as session:
-        assert session.scalar(text("SELECT version_num FROM alembic_version")) == "0016_queue_backpressure"
+        assert session.scalar(text("SELECT version_num FROM alembic_version")) == ScriptDirectory.from_config(migration_config()).get_current_head()
         indexes = dict(session.execute(text("SELECT indexname,indexdef FROM pg_indexes "
             "WHERE schemaname='public' AND tablename='ai_request_reservations'")).all())
         assert "WHERE" in indexes["ix_ai_reserved_claim"] and "reserved" in indexes["ix_ai_reserved_claim"]

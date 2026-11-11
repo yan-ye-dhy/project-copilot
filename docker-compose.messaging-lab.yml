@@ -1,0 +1,34 @@
+# Isolated synthetic messaging lab; no business env, provider or data volumes.
+name: pc-messaging-lab
+services:
+  rabbitmq:
+    image: rabbitmq:4.2.9@sha256:97f4d5e14f7c59e585554b9e90c3dec2c7bb6b249792fa54f7e7cf56b6582203
+    hostname: messaging-lab-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: messaging_lab
+      RABBITMQ_DEFAULT_PASS: synthetic-lab-only
+      RABBITMQ_DEFAULT_VHOST: messaging_lab
+      RABBITMQ_CTL_ERL_ARGS: "+S 1:1 +SDcpu 1:1 +SDio 1"
+      RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: "+S 2:2 -rabbit disk_free_limit 104857600 vm_memory_high_watermark {absolute,268435456} consumer_timeout 1800000"
+    ports: ["127.0.0.1:15672:5672"]
+    tmpfs: ["/var/lib/rabbitmq:size=384m,uid=999,gid=999"]
+    mem_limit: 512m
+    pids_limit: 256
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 3s
+      timeout: 5s
+      retries: 20
+  postgres:
+    image: postgres:17.11-bookworm
+    environment:
+      POSTGRES_USER: project_copilot_test
+      POSTGRES_PASSWORD: local-test-only
+      POSTGRES_DB: project_copilot_test
+    ports: ["127.0.0.1:5434:5432"]
+    tmpfs: ["/var/lib/postgresql/data:size=512m"]
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "project_copilot_test", "-d", "project_copilot_test"]
+      interval: 2s
+      timeout: 2s
+      retries: 20

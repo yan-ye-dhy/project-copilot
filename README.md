@@ -18,6 +18,8 @@
 
 [知识与源码对应](docs/WEEK1_BACKEND_ENGINEERING.md) · [现状审计](docs/WEEK1_BACKEND_AUDIT.md) · [验证与测量边界](docs/WEEK1_BACKEND_VERIFICATION.md)。默认关闭 Redis 和新增容量选项；合并代码不等于启用能力或更新现有部署。隔离实验可使用 `docker-compose.week1-lab.yml`，不挂载业务数据。
 
+可选 [RabbitMQ 与 Outbox](docs/MESSAGING_UPGRADE.md) 将任务分发交给独立 broker，保留 PG 任务账本、执行证明和业务幂等。消息只携带任务编号，默认关闭；启用需新依赖镜像、数据库迁移和独立资源预检，不自动改变当前演示环境。
+
 ## 快速体验：无需密钥的本地模拟
 
 安装 Node.js 22 或更新版本，在仓库根目录运行：
