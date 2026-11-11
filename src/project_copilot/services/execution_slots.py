@@ -158,8 +158,30 @@ def register_execution(session, reservation, lease):
     if (reservation.personal_demo_grant_id is None or reservation.state != "running"
             or reservation.slot_released_at is not None or reservation.id != lease.job_id or not lease.valid_owned()):
         raise ExecutionFenced("execution enrollment rejected")
-    row = AiJobExecution(job_id=reservation.id, token=lease.token, lease_inode=lease.inode)
-    session.add(row)
+    from project_copilot.db.recovery import AiJobExecutionAttempt, AiJobRecoveryState
+    state = session.get(AiJobRecoveryState, reservation.id, with_for_update=True)
+    row = session.get(AiJobExecution, reservation.id, with_for_update=True)
+    if row is None:
+        if state is not None and state.current_attempt_no != 1:
+            raise ExecutionFenced("recovery predecessor proof is missing")
+        row = AiJobExecution(job_id=reservation.id, token=lease.token, lease_inode=lease.inode)
+        session.add(row)
+    else:
+        previous = (session.get(AiJobExecutionAttempt, (reservation.id, state.current_attempt_no - 1))
+                    if state is not None and state.current_attempt_no == 2 else None)
+        fields = ("token", "lease_inode", "provider_open", "provider_uncertain", "action_id",
+                  "local_done_at", "fenced_at", "release_reason")
+        if (previous is None or row.fenced_at is None or row.provider_open != 0 or row.provider_uncertain
+                or any(getattr(previous, field) != getattr(row, field) for field in fields)
+                or previous.execution_created_at != row.created_at
+                or not _business_valid(session, reservation, row)):
+            raise ExecutionFenced("recovery predecessor proof differs")
+        # The old immutable row and lease file remain evidence. All stale token
+        # writers now fail the same current-proof guard used by provider/tools.
+        row.token, row.lease_inode = lease.token, lease.inode
+        row.provider_open, row.provider_uncertain = 0, False
+        row.local_done_at, row.fenced_at, row.release_reason = None, None, None
+        row.created_at = session.scalar(select(func.clock_timestamp()))
     session.flush()
     return row
 
@@ -202,8 +224,15 @@ def provider_finished(database, job_id, token, *, completed):
 
 
 def _business_valid(session, reservation, execution):
+    from project_copilot.db.recovery import AiJobRecoveryState, JobBusinessOperation
+    protocol = session.get(AiJobRecoveryState, reservation.id)
+    operation = (session.get(JobBusinessOperation, (reservation.id, "propose_ticket"))
+                 if protocol is not None else None)
+    if protocol is not None and ((operation is None) != (execution.action_id is None)
+            or (operation is not None and operation.action_id != execution.action_id)):
+        return False
     if reservation.kind != "agent":
-        return execution.action_id is None
+        return execution.action_id is None and operation is None
     if execution.action_id is None:
         # Protocol v1 requires every proposal to publish its ID in this very
         # execution row and transaction. Old jobs lack v1 enrollment entirely.
@@ -213,6 +242,15 @@ def _business_valid(session, reservation, execution):
     if (job is None or action is None or job.context_id is None
             or action.context_id != job.context_id or action.owner_user_id != reservation.user_id):
         return False
+    if operation is not None:
+        from project_copilot.schemas.tickets import TicketCreate
+        from project_copilot.services.approvals import fingerprint
+        try:
+            actual = fingerprint(TicketCreate(title=action.title, description=action.description))
+        except (ValueError, TypeError):
+            return False
+        if actual != operation.payload_fingerprint or actual != action.payload_fingerprint:
+            return False
     if action.ticket_id is None:
         return action.status != "completed"
     ticket = session.get(Ticket, action.ticket_id)

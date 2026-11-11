@@ -97,6 +97,23 @@ def cleanup(session, actor_user_id: UUID, *, batch_size: int = 100):
             session.add(JobContentTombstone(job_id=job.id, cleared_at=now))
             counts["terminal_content"] += 1
 
+        # Step receipts contain ordinary conversation/tool display data. Prune
+        # only alongside the existing explicit content retention policy. The
+        # logical job, attempts, provider facts and proposal identities remain.
+        from project_copilot.db.recovery import AiJobStep
+        session.flush()
+        old_steps = session.scalars(select(AiJobStep).join(AiJob).join(AiRequestReservation).where(
+            AiRequestReservation.state.in_(("succeeded", "failed")),
+            AiRequestReservation.finished_at < now - timedelta(days=7),
+            AiRequestReservation.slot_released_at.is_not(None),
+            exists().where(JobContentTombstone.job_id == AiJobStep.job_id),
+            ~exists().where(JobRecoveryAudit.job_id == AiJobStep.job_id),
+        ).order_by(AiJobStep.job_id, AiJobStep.step_key).with_for_update(of=AiJobStep, skip_locked=True)
+            .limit(batch_size)).all()
+        for step in old_steps:
+            session.delete(step)
+        counts["step_content"] = len(old_steps)
+
         # Expiring display drafts is distinct from deleting uncertain execution evidence.
         old_events = session.scalars(select(AiJobEvent).join(AiJob).join(AiRequestReservation).where(
             AiJobEvent.created_at < now - timedelta(days=7),
@@ -177,6 +194,21 @@ def inspect_job(session, actor_user_id: UUID, job_id: UUID) -> dict:
         "fenced_at": execution.fenced_at.isoformat() if execution.fenced_at else None,
         "release_reason": execution.release_reason,
     }
+    from project_copilot.db.recovery import AiJobExecutionAttempt, AiJobRecoveryState, AiJobStep
+    recovery = session.get(AiJobRecoveryState, job_id)
+    if recovery is not None:
+        from project_copilot.services.job_recovery import RECOVERY_REASONS
+        result["recovery"] = {
+            "protocol_version": recovery.protocol_version, "attempt_no": recovery.current_attempt_no,
+            "deadline_at": recovery.deadline_at.isoformat() if recovery.deadline_at else None,
+            "model_calls": recovery.model_calls, "tool_calls": recovery.tool_calls,
+            "blocked_reason": recovery.blocked_reason if recovery.blocked_reason in RECOVERY_REASONS else None,
+            "archived_attempts": session.scalar(select(func.count()).select_from(AiJobExecutionAttempt)
+                .where(AiJobExecutionAttempt.job_id == job_id)),
+            "step_receipts": [[status, count] for status, count in session.execute(
+                select(AiJobStep.status, func.count()).where(AiJobStep.job_id == job_id)
+                .group_by(AiJobStep.status).order_by(AiJobStep.status)).all()],
+        }
     result["inspection_sha256"] = sha256(_canonical(result).encode()).hexdigest()
     return result
 

@@ -63,6 +63,11 @@ def record_provider_attempt():
             if tracker.database is not database or tracker.job_id != reservation_id:
                 raise ExecutionFenced("execution accounting binding mismatch")
             guard_execution(session, reservation_id, tracker.token)
+            if settings is not None and getattr(settings, "job_recovery_enabled", False):
+                from project_copilot.services.job_recovery import recovery_budget
+                recovery = recovery_budget(session, reservation_id, tracker.token)
+                if recovery is not None:
+                    max_attempts = min(max_attempts, recovery.max_provider_attempts)
         if settings is not None:
             from project_copilot.services.redis_admission import admit
             # Refusal occurs before either the paid attempt or provider-open

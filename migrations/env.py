@@ -9,6 +9,7 @@ from project_copilot.db import release  # noqa: F401 - durable release metadata
 from project_copilot.db import operations  # noqa: F401 - register operational evidence metadata
 from project_copilot.db import executions  # noqa: F401 - execution lease and slot metadata
 from project_copilot.db import messaging  # noqa: F401 - transactional dispatch and delivery evidence
+from project_copilot.db import recovery  # noqa: F401 - opt-in attempt and business identity evidence
 from project_copilot.db.session import Database
 
 

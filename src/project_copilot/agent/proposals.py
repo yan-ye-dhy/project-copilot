@@ -5,7 +5,7 @@ import threading
 from project_copilot.agent.backend import ReadOnlyBackend
 from project_copilot.infrastructure.execution_tracking import current_execution, tracked_to_thread
 from project_copilot.schemas.tickets import TicketCreate
-from project_copilot.services.approvals import ApprovalService
+from project_copilot.services.approvals import ApprovalService, fingerprint
 
 
 class ProposalBackend(ReadOnlyBackend):
@@ -38,9 +38,26 @@ class ProposalBackend(ReadOnlyBackend):
             context = self._context(service)
             tracker = current_execution()
             execution = None
+            recovery = None
             if tracker is not None:
                 from project_copilot.services.execution_slots import ExecutionFenced, guard_execution
                 execution = guard_execution(session, tracker.job_id, tracker.token)
+                from project_copilot.db.recovery import AiJobRecoveryState, JobBusinessOperation
+                recovery = session.get(AiJobRecoveryState, tracker.job_id)
+                if recovery is not None:
+                    operation = session.get(JobBusinessOperation, (tracker.job_id, "propose_ticket"))
+                    if operation is not None:
+                        from project_copilot.db.models import PendingAction
+                        existing = session.get(PendingAction, operation.action_id)
+                        if (existing is None or existing.context_id != context.id or principal is None
+                                or existing.owner_user_id != principal.id
+                                or execution.action_id != operation.action_id
+                                or operation.payload_fingerprint != existing.payload_fingerprint
+                                or operation.payload_fingerprint != fingerprint(payload)):
+                            raise ExecutionFenced("logical proposal binding mismatch")
+                        return service.get(context, existing.id)
+                    if execution.action_id is not None:
+                        raise ExecutionFenced("logical proposal identity is missing")
                 if execution.action_id is not None:
                     # A timed-out tool may have committed before cancellation.
                     # A later tool decision reuses that preview rather than creating a duplicate.
@@ -53,6 +70,9 @@ class ProposalBackend(ReadOnlyBackend):
             result = service.preview(context, payload)
             if execution is not None:
                 execution.action_id = result.action_id
+                if recovery is not None:
+                    session.add(JobBusinessOperation(job_id=tracker.job_id, operation_key="propose_ticket",
+                        action_id=result.action_id, payload_fingerprint=result.payload_fingerprint))
             if cancelled.is_set():
                 raise RuntimeError('request cancelled')
         return result

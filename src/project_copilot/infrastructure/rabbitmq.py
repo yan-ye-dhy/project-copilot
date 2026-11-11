@@ -6,7 +6,8 @@ may spend minutes running a job while the I/O thread keeps heartbeats moving.
 from concurrent.futures import ThreadPoolExecutor
 from contextvars import copy_context
 import logging
-from threading import get_ident
+from threading import Event, get_ident
+import time
 
 from project_copilot.services.messaging import JobMessage, parse_payload
 
@@ -164,18 +165,35 @@ class RabbitConsumer:
     def __init__(self, settings):
         self.settings = settings
 
-    def run(self, callback, stopping, *, once=False) -> int:
+    def run(self, callback, stopping, *, once=False, maintenance=None) -> int:
         if stopping.is_set():
             return 0
         connection, channel = _connect(self.settings)
         executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="amqp-job")
         active = None
+        maintenance_active = None
+        next_maintenance = 0.0
         delivery_tag = None
         completed = 0
+        draining = Event()
+        skipped = object()
+
+        def business(function, *args):
+            # A delivery can queue behind one maintenance operation. Recheck
+            # shutdown on its business thread before starting paid work.
+            if stopping.is_set() or draining.is_set():
+                return skipped
+            try:
+                return function(*args)
+            except Exception:
+                # Fence any queued delivery before the I/O thread observes a
+                # maintenance failure and closes the unacknowledged channel.
+                draining.set()
+                raise
 
         def delivered(_channel, method, _properties, body):
             nonlocal active, delivery_tag
-            if stopping.is_set():
+            if stopping.is_set() or draining.is_set():
                 # A signal may arrive inside process_data_events. Leave this
                 # delivery unacked and close rather than starting another job.
                 return
@@ -191,22 +209,33 @@ class RabbitConsumer:
                 logging.warning("rabbitmq rejected invalid envelope")
                 return
             delivery_tag = method.delivery_tag
-            active = executor.submit(copy_context().run, callback, message)
+            active = executor.submit(copy_context().run, business, callback, message)
 
         try:
             channel.basic_qos(prefetch_count=1)
             channel.basic_consume(queue=self.settings.rabbitmq_queue,
                                   on_message_callback=delivered, auto_ack=False)
             while True:
+                if maintenance_active is not None and maintenance_active.done():
+                    maintenance_active.result()
+                    maintenance_active = None
+                    next_maintenance = time.monotonic() + 10
                 if active is not None and active.done():
-                    active.result()
+                    if active.result() is skipped:
+                        return completed
                     channel.basic_ack(delivery_tag=delivery_tag)
                     completed += 1
                     active = delivery_tag = None
                     if once:
                         return completed
-                if stopping.is_set() and active is None:
+                if stopping.is_set() and active is None and maintenance_active is None:
                     return completed
+                if (maintenance is not None and not stopping.is_set() and active is None
+                        and maintenance_active is None and time.monotonic() >= next_maintenance):
+                    # One shared executor permits one running callback and at
+                    # most one queued prefetch delivery, never queued scans.
+                    next_maintenance = time.monotonic() + 10
+                    maintenance_active = executor.submit(copy_context().run, business, maintenance)
                 # Long provider calls run in the business thread; the same I/O
                 # thread continues heartbeats and detects channel cancellation.
                 connection.process_data_events(time_limit=0.25)
@@ -215,6 +244,7 @@ class RabbitConsumer:
         except Exception:
             raise RabbitMQTransportError() from None
         finally:
+            draining.set()
             _close(connection)
             # A disconnect cannot cancel a provider call already in progress.
             # Finish its PG result before letting the process create a new

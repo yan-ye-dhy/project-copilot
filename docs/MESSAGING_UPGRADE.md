@@ -54,3 +54,18 @@ flowchart LR
 隔离服务定义 `docker-compose.messaging-lab.yml`；真实数据库测试使用现有 `owned_test_database`，每例创建新的随机空库。真实 broker 测试只接受明确提供的 loopback:15672 测试 URL，并使用随机队列名。模型全部使用替身，不连接演示库或调用付费供应商。
 
 核心源码：`services/messaging.py`、`infrastructure/rabbitmq.py`、`services/mq_worker.py`、`scripts/outbox_relay.py`、`scripts/ai_worker.py`、`db/messaging.py`、迁移 `0017_messaging`。真实执行结果见各批验证报告和 PR，不把测试配置当作正式发布证据。
+
+## 第二批：有限恢复与业务幂等
+
+新增迁移 `0018_job_recovery`。`PROJECT_COPILOT_JOB_RECOVERY_ENABLED=false` 默认保留原行为，启用必须同时开启消息队列。只登记其后新建的 PERSONAL_DEMO RAG/Agent，不修改历史unknown或上传附件协议。
+
+- `JOB_RECOVERY_MAX_ATTEMPTS` 默认2、最高2；只创建一次额度reservation，不退款、不清零provider计数。
+- `JOB_RECOVERY_ALLOW_MODEL_REPEAT=false`：已发生供应商操作但缺少结果时不自动重复调用。显式开启会改变发布配置指纹，需管理员按原规则授权；不能覆盖provider_open/provider_uncertain或本地活跃工作。
+- `JOB_RECOVERY_RETRY_DELAY_SECONDS=5`：可恢复后通过下一代Outbox延后投递，不立即NACK循环。
+- `JOB_RECOVERY_CHECKPOINT_MAX_BYTES=262144`：每条标准化内容上限；另有每job256条和4MiB整体上限。
+- 保留原24次模型、80次工具、160次供应商和900秒个人任务上限，恢复共享原时限和预算。配置更低时仍取冻结的初始上限。
+- `failed` 维持确定性终态，不进行笼统自动重试。`running/unknown` 也必须先证明旧执行终止；历史缺证、人工终结、内容已清理或授权变更均不能自动恢复。
+- 完整旧执行证据和业务映射不可更新/删除；只轮换经过归档的当前证明。提案的身份属于logical job，重试不能生成第二个action。
+- 管理员显式CLOSED清理沿用7天已结算内容策略；未释放槽、unknown/running及人工调查证据不清理。普通后台不自动删除工单或提案。
+
+当前供应商HTTP响应与本地收据提交仍存在不可原子化窗口。因此只承诺至少一次消息投递、业务幂等及有界证据恢复，不承诺模型只计费一次，也不把unknown改称成功。

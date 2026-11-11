@@ -206,3 +206,81 @@ def test_pika_diagnostics_do_not_propagate_private_server_text(caplog):
     with caplog.at_level(logging.DEBUG):
         logging.getLogger("pika.adapters.utils.connection_workflow").error("PRIVATE_PASSWORD amqp://private")
     assert "PRIVATE_PASSWORD" not in caplog.text
+
+
+def test_idle_maintenance_and_queued_job_share_one_context_preserving_business_thread(monkeypatch):
+    message = JobMessage(uuid4(), uuid4())
+    connection, channel = install(monkeypatch)
+    scope = ContextVar("maintenance_scope")
+    token = scope.set("worker-resource-scope")
+    calls = []
+    def maintain():
+        assert scope.get() == "worker-resource-scope"
+        calls.append(("maintenance-start", get_ident()))
+        connection.body = message.to_payload()
+        time.sleep(0.04)
+        assert connection.pumps >= 3
+        assert not any(name == "basic_ack" for name, *_ in channel.calls)
+        calls.append(("maintenance-end", get_ident()))
+    def process(received):
+        assert received == message and scope.get() == "worker-resource-scope"
+        calls.append(("job", get_ident()))
+    try:
+        assert rabbitmq.RabbitConsumer(settings()).run(process, Event(), once=True, maintenance=maintain) == 1
+    finally:
+        scope.reset(token)
+    assert [name for name, _ in calls] == ["maintenance-start", "maintenance-end", "job"]
+    assert len({thread for _, thread in calls}) == 1 and calls[0][1] != get_ident()
+    assert sum(name == "basic_ack" for name, *_ in channel.calls) == 1
+
+
+def test_idle_maintenance_runs_at_most_once_per_ten_seconds_and_never_acks(monkeypatch):
+    connection, channel = install(monkeypatch)
+    stopping, clock, starts = Event(), [0.0], []
+    monkeypatch.setattr(rabbitmq, "time", SimpleNamespace(monotonic=lambda: clock[0]))
+    original = connection.process_data_events
+    def pump(**kwargs):
+        original(**kwargs)
+        clock[0] += 1
+    connection.process_data_events = pump
+    def maintain():
+        starts.append(clock[0])
+        if len(starts) == 2:
+            stopping.set()
+    assert rabbitmq.RabbitConsumer(settings()).run(lambda _: pytest.fail("unexpected job"), stopping,
+        maintenance=maintain) == 0
+    assert len(starts) == 2 and starts[1] - starts[0] >= 10
+    assert not any(name == "basic_ack" for name, *_ in channel.calls)
+
+
+def test_stop_while_maintenance_drains_it_and_never_starts_queued_job(monkeypatch):
+    connection, channel = install(monkeypatch)
+    stopping, finished = Event(), Event()
+    original = connection.process_data_events
+    def pump(**kwargs):
+        original(**kwargs)
+        if connection.pumps >= 3:
+            stopping.set()
+    connection.process_data_events = pump
+    def maintain():
+        connection.body = JobMessage(uuid4(), uuid4()).to_payload()
+        time.sleep(0.04)
+        assert not connection.closed
+        finished.set()
+    assert rabbitmq.RabbitConsumer(settings()).run(lambda _: pytest.fail("queued job started after stop"),
+        stopping, maintenance=maintain) == 0
+    assert finished.is_set() and connection.closed
+    assert not any(name == "basic_ack" for name, *_ in channel.calls)
+
+
+def test_maintenance_failure_fences_queued_job_and_redacts_error(monkeypatch, caplog):
+    connection, channel = install(monkeypatch)
+    def maintain():
+        connection.body = JobMessage(uuid4(), uuid4()).to_payload()
+        time.sleep(0.04)
+        raise RuntimeError("PRIVATE_MAINTENANCE_DIAGNOSTIC")
+    with pytest.raises(rabbitmq.RabbitMQTransportError) as error:
+        rabbitmq.RabbitConsumer(settings()).run(lambda _: pytest.fail("queued job started after maintenance failure"),
+            Event(), maintenance=maintain)
+    assert connection.closed and not any(name == "basic_ack" for name, *_ in channel.calls)
+    assert "PRIVATE_MAINTENANCE_DIAGNOSTIC" not in str(error.value) + caplog.text

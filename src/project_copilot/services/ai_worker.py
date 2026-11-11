@@ -3,7 +3,7 @@ import asyncio
 from dataclasses import dataclass
 from contextlib import nullcontext
 import logging
-from datetime import timedelta
+from datetime import datetime, timedelta
 from hashlib import sha256
 from io import BytesIO
 import time
@@ -47,6 +47,8 @@ class ClaimedJob:
     content_sha256: str | None = None
     execution_lease: object | None = None
     queue_wait_ms: float = 0
+    attempt_no: int = 1
+    deadline_at: datetime | None = None
 
 
 def expire_unclaimed(database, *, ttl_seconds: int, batch_size: int = 100) -> int:
@@ -136,6 +138,10 @@ def _claim_one(database, *, ttl_seconds, settings, leases, job_id=None):
             require_open(session, settings, user_id=reservation.user_id, worker=True, reservation=reservation)
         if not QuotaService(session).claim(reservation.user_id, reservation.id):
             return None
+        recovery = None
+        if getattr(settings, "job_recovery_enabled", False):
+            from project_copilot.services.job_recovery import start_recovery_budget
+            recovery = start_recovery_budget(session, job.id, settings)
         attachment = session.get(AiJobUpload, job.id) if reservation.kind == "upload" else None
         lease = None
         if reservation.personal_demo_grant_id is not None:
@@ -147,7 +153,9 @@ def _claim_one(database, *, ttl_seconds, settings, leases, job_id=None):
                             bytes(attachment.content) if attachment else None,
                             attachment.source_name if attachment else None,
                             attachment.media_type if attachment else None,
-                            attachment.content_sha256 if attachment else None, lease, queue_wait_ms)
+                            attachment.content_sha256 if attachment else None, lease, queue_wait_ms,
+                            recovery.current_attempt_no if recovery else 1,
+                            recovery.deadline_at if recovery else None)
         # Once claimed, the bytes are not retained in PostgreSQL or replayed after a crash.
         if attachment is not None:
             session.delete(attachment)
@@ -240,7 +248,7 @@ def _run_traced(database, settings, job, *, runner):
             trace_id = current_trace_id() if runtime else None
             started = time.perf_counter()
             with trace_span("worker.execution", {"queue_wait_ms": job.queue_wait_ms, "job.kind": job.kind,
-                                                  "retry_attempts": 0}) as span:
+                                                  "retry_attempts": job.attempt_no - 1}) as span:
                 try:
                     if runtime is not None:
                         from sqlalchemy.exc import SQLAlchemyError
@@ -309,6 +317,12 @@ def _execute_claimed(database, settings, job, *, runner):
         from project_copilot.services.quotas import QuotaExceeded
         if isinstance(exc, QuotaExceeded) and exc.reason == "provider_attempts":
             failure = "provider_budget"
+        from project_copilot.services.job_recovery import RecoveryBudgetExceeded
+        if isinstance(exc, RecoveryBudgetExceeded):
+            failure = {"deadline": "total_timeout", "budget": "provider_budget",
+                       "model_budget": "model_budget", "tool_budget": "tool_budget"}.get(exc.reason, "execution_error")
+            if personal and failure != "execution_error":
+                outcome = "failed"
         from project_copilot.services.redis_admission import RateLimited
         from project_copilot.infrastructure.redis_runtime import RedisUnavailable
         if isinstance(exc, (RateLimited, RedisUnavailable)):
@@ -332,6 +346,11 @@ def _execute_claimed(database, settings, job, *, runner):
         with database.transaction() as session:
             stored = session.get(AiJob, job.id)
             reservation = session.get(AiRequestReservation, job.id, with_for_update=True)
+            if getattr(settings, "job_recovery_enabled", False):
+                from project_copilot.services.job_usage import logical_usage
+                usage = logical_usage(session, job.id, usage)
+                if serialized is not None and job.kind == "agent":
+                    serialized["usage"] = usage
             reservation.usage = usage
             stored.failure_type = failure
         tracker = current_execution()
