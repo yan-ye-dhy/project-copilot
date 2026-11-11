@@ -81,6 +81,13 @@ class Settings(BaseSettings):
     outbox_lease_seconds: int = Field(default=60, ge=10, le=300)
     outbox_retry_base_seconds: int = Field(default=5, ge=1, le=60)
     outbox_retry_max_seconds: int = Field(default=300, ge=5, le=3600)
+    # Recovery applies only to newly enrolled PERSONAL_DEMO tasks. Existing
+    # evidence/unknown rows are never silently enrolled or replayed.
+    job_recovery_enabled: bool = False
+    job_recovery_max_attempts: int = Field(default=2, ge=1, le=2)
+    job_recovery_allow_model_repeat: bool = False
+    job_recovery_retry_delay_seconds: int = Field(default=5, ge=1, le=300)
+    job_recovery_checkpoint_max_bytes: int = Field(default=262144, ge=4096, le=262144)
 
     # Optional backend-only acceleration/admission; PG remains authoritative.
     redis_enabled: bool = False
@@ -152,6 +159,10 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def validate_final_retrieval(self):
+        if self.job_recovery_enabled and not self.message_queue_enabled:
+            raise ValueError("任务恢复必须显式启用可靠消息投递")
+        if self.job_recovery_allow_model_repeat and not self.job_recovery_enabled:
+            raise ValueError("重复模型请求策略必须显式启用任务恢复")
         if self.message_queue_enabled and (self.rabbitmq_url is None or self.database_url is None):
             raise ValueError("启用消息队列必须配置独立的RabbitMQ地址和任务数据库")
         if self.outbox_retry_base_seconds > self.outbox_retry_max_seconds:

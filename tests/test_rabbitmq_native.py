@@ -160,6 +160,25 @@ def test_real_finite_broker_delivery_limit_routes_to_dead_letter_queue(broker):
         connection.close()
 
 
+def test_real_idle_maintenance_can_publish_then_consume_without_blocking_heartbeat(broker):
+    from threading import get_ident
+
+    message = JobMessage(uuid4(), uuid4())
+    calls = []
+    def maintain():
+        calls.append(("maintenance-start", get_ident()))
+        time.sleep(12)  # The idle consumer must still send five-second heartbeats.
+        with RabbitPublisher(broker) as publisher:
+            publisher.publish(message)
+        calls.append(("maintenance-end", get_ident()))
+    def process(received):
+        assert received == message
+        calls.append(("job", get_ident()))
+    assert RabbitConsumer(broker).run(process, Event(), once=True, maintenance=maintain) == 1
+    assert [name for name, _ in calls] == ["maintenance-start", "maintenance-end", "job"]
+    assert len({thread for _, thread in calls}) == 1
+
+
 def test_real_outbox_pg_commit_lost_ack_and_redelivery_execute_business_once(broker, ticket_database):
     """Real PG + real broker; business work is a controlled local surrogate."""
     from project_copilot.db.jobs import AiJob

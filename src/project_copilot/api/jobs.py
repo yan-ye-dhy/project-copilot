@@ -274,6 +274,9 @@ def submit(body: JobInput, request: Request, response: Response):
                 if getattr(settings, "message_queue_enabled", False):
                     from project_copilot.services.messaging import enqueue_outbox
                     enqueue_outbox(session, job.id)
+                    if getattr(settings, "job_recovery_enabled", False):
+                        from project_copilot.services.job_recovery import initialize_recovery
+                        initialize_recovery(session, job.id, settings)
             record_attempt(session, principal.id, body.kind, "reused" if reused else "accepted", reservation.id)
             result = _response(job, reservation)
     except ValidationError:

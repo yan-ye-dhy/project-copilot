@@ -48,10 +48,17 @@ def main():
                     resources.validate()
                     expire_unclaimed(database, ttl_seconds=settings.public_job_queue_ttl_seconds)
                     return process_message(database, settings, message)
+                def maintain():
+                    resources.validate()
+                    if getattr(settings, "job_recovery_enabled", False):
+                        from project_copilot.services.job_recovery import recover_pending
+                        recover_pending(database, settings, limit=20)
+                    expire_unclaimed(database, ttl_seconds=settings.public_job_queue_ttl_seconds)
                 reconnect_delay = 1
                 while not stopping.is_set():
                     try:
-                        RabbitConsumer(settings).run(consume, stopping, once=args.once)
+                        RabbitConsumer(settings).run(consume, stopping, once=args.once,
+                                                     maintenance=maintain)
                         if args.once or stopping.is_set():
                             return
                         reconnect_delay = 1

@@ -83,6 +83,9 @@ def config_fingerprint(settings) -> str:
         target = urlsplit(settings.rabbitmq_url.get_secret_value())
         payload["messaging"]["target"] = sha256(
             f"{target.scheme}://{target.hostname}:{target.port}{target.path}".encode()).hexdigest()
+    if getattr(settings, "job_recovery_enabled", False):
+        fields = {name for name in type(settings).model_fields if name.startswith("job_recovery_")}
+        payload["job_recovery"] = settings.model_dump(mode="json", include=fields)
     return sha256(json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
 
 
