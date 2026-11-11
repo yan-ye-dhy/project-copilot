@@ -3,7 +3,7 @@ on:
   pull_request:
     branches: [main, feat/week1-backend-engineering, feat/rabbitmq-outbox, feat/job-recovery]
   push:
-    branches: [main, feat/week1-backend-engineering, feat/rabbitmq-outbox, feat/job-recovery]
+    branches: [main]
   workflow_dispatch:
 permissions:
   contents: read
