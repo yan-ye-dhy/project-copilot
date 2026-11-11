@@ -116,6 +116,9 @@ def _reserve_upload(request, identity, key, content, source_name, media_type, co
             session.add(AiJobUpload(job_id=job.id, content=content, source_name=source_name,
                                     media_type=media_type, content_sha256=content_sha256))
             session.flush()
+            if getattr(settings, "message_queue_enabled", False):
+                from project_copilot.services.messaging import enqueue_outbox
+                enqueue_outbox(session, job.id)
         record_attempt(session, principal.id, "upload", "reused" if reused else "accepted", reservation.id)
         return _response(job, reservation)
 
@@ -268,6 +271,9 @@ def submit(body: JobInput, request: Request, response: Response):
                 job = AiJob(id=reservation.id, login_session_id=login.id, context_id=context_id, payload=payload)
                 session.add(job)
                 session.flush()
+                if getattr(settings, "message_queue_enabled", False):
+                    from project_copilot.services.messaging import enqueue_outbox
+                    enqueue_outbox(session, job.id)
             record_attempt(session, principal.id, body.kind, "reused" if reused else "accepted", reservation.id)
             result = _response(job, reservation)
     except ValidationError:

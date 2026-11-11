@@ -1,7 +1,7 @@
 name: Reproducible checks
 on:
   pull_request:
-    branches: [main]
+    branches: [main, feat/week1-backend-engineering, feat/rabbitmq-outbox, feat/job-recovery]
   push:
     branches: [main]
   workflow_dispatch:
@@ -72,6 +72,17 @@ jobs:
         options: >-
           --health-cmd "redis-cli ping"
           --health-interval 2s --health-timeout 3s --health-retries 30
+      rabbitmq:
+        image: rabbitmq:4.2.9@sha256:97f4d5e14f7c59e585554b9e90c3dec2c7bb6b249792fa54f7e7cf56b6582203
+        env:
+          RABBITMQ_DEFAULT_USER: messaging_lab
+          RABBITMQ_DEFAULT_PASS: synthetic-lab-only
+          RABBITMQ_DEFAULT_VHOST: messaging_lab
+          RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: '+S 2:2'
+        ports: ['127.0.0.1:15672:5672']
+        options: >-
+          --health-cmd "rabbitmq-diagnostics -q ping"
+          --health-interval 3s --health-timeout 5s --health-retries 30
     env:
       PROJECT_COPILOT_QDRANT_URL: http://127.0.0.1:16433
     steps:

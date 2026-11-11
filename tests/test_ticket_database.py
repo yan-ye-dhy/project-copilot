@@ -6,7 +6,7 @@ from sqlalchemy import inspect, select, text
 from sqlalchemy.exc import SQLAlchemyError
 
 from project_copilot.db.migrations import check_model_drift, migration_config, upgrade
-from project_copilot.db.models import Ticket
+from project_copilot.db.models import Base, Ticket
 
 
 def test_empty_postgres_migrates_to_model_and_upgrade_is_repeatable(postgres_database):
@@ -17,14 +17,9 @@ def test_empty_postgres_migrates_to_model_and_upgrade_is_repeatable(postgres_dat
         assert session.scalar(text("SELECT current_database()")).startswith("pc_test_d20_")
     upgrade(db)
     upgrade(db)
-    assert set(inspect(db.engine).get_table_names()) == {
-        "alembic_version", "tickets", "agent_contexts", "pending_actions",
-        "user_accounts", "login_sessions", "registration_invites",
-        "ai_request_reservations", "auth_rate_buckets", "ai_jobs", "ai_job_uploads", "ai_request_attempts",
-        "ai_job_events", "ai_job_executions",
-        "ai_audit_rate_buckets",
-        "release_control", "release_events", "job_recovery_audits", "maintenance_audits", "job_content_tombstones",
-    }
+    # Compare the complete migrated schema with all registered production ORM
+    # tables; adding a migration must not leave a stale hand-written table list.
+    assert set(inspect(db.engine).get_table_names()) == {"alembic_version", *Base.metadata.tables}
     check_model_drift(db)
     columns = {c["name"]: c for c in inspect(db.engine).get_columns("tickets")}
     assert set(columns) == {"id", "title", "description", "status", "created_at", "updated_at", "creation_key", "owner_user_id"}

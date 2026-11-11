@@ -12,6 +12,8 @@ if (args.length > 1 || (args.length && !['--frontend', '--python', '--services']
   process.exit(2);
 }
 const mode = args[0] || '--all';
+const testDatabaseURL = 'postgresql+psycopg://project_copilot_test:local-test-only@127.0.0.1:5434/project_copilot_test';
+const testRabbitURL = 'amqp://messaging_lab:synthetic-lab-only@127.0.0.1:15672/messaging_lab';
 if (mode === '--services' && process.env.PROJECT_COPILOT_QDRANT_URL &&
     process.env.PROJECT_COPILOT_QDRANT_URL !== 'http://127.0.0.1:16433') {
   console.error('Service checks require the dedicated test Qdrant at http://127.0.0.1:16433.');
@@ -22,16 +24,34 @@ if (mode === '--services' && process.env.PROJECT_COPILOT_TEST_REDIS_URL &&
   console.error('Service checks require dedicated Redis at redis://127.0.0.1:16379/15.');
   process.exit(2);
 }
+if (mode === '--services' && process.env.PROJECT_COPILOT_TEST_DATABASE_URL &&
+    process.env.PROJECT_COPILOT_TEST_DATABASE_URL !== testDatabaseURL) {
+  console.error('Service checks require the dedicated project_copilot_test database at loopback port 5434.');
+  process.exit(2);
+}
+if (mode === '--services' && process.env.PROJECT_COPILOT_TEST_RABBITMQ_URL &&
+    process.env.PROJECT_COPILOT_TEST_RABBITMQ_URL !== testRabbitURL) {
+  console.error('Service checks require the dedicated messaging_lab broker at loopback port 15672.');
+  process.exit(2);
+}
 const env = { ...process.env, PYTHONPATH: root + path.delimiter + path.join(root, 'src'),
   PROJECT_COPILOT_QDRANT_URL: 'http://127.0.0.1:16433',
   HF_HUB_OFFLINE: '1', OMP_NUM_THREADS: '2', MKL_NUM_THREADS: '2',
   PROJECT_COPILOT_RUN_FINAL_GPU: '0', PROJECT_COPILOT_RUN_INGRESS_DOCKER: '0',
   PROJECT_COPILOT_RUN_POSTGRES_INTEGRATION: mode === '--services' ? '1' : '0',
+  PROJECT_COPILOT_TEST_DATABASE_URL: testDatabaseURL,
   PROJECT_COPILOT_RUN_REDIS_INTEGRATION: mode === '--services' ? '1' : '0',
   PROJECT_COPILOT_TEST_REDIS_URL: 'redis://127.0.0.1:16379/15',
   PROJECT_COPILOT_RUN_QDRANT_INTEGRATION: mode === '--services' ? '1' : '0',
   PROJECT_COPILOT_RUN_FINAL_QDRANT: mode === '--services' ? '1' : '0',
   PC_TEST_WEB_QDRANT: mode === '--services' ? '1' : '0' };
+// Application broker settings never authorize checks to use a live broker.
+// Native tests opt in solely through the dedicated synthetic test URL.
+for (const name of Object.keys(env)) {
+  if (name.startsWith('PROJECT_COPILOT_RABBITMQ_') || name === 'PROJECT_COPILOT_TEST_RABBITMQ_URL') delete env[name];
+}
+env.PROJECT_COPILOT_MESSAGE_QUEUE_ENABLED = 'false';
+if (mode === '--services') env.PROJECT_COPILOT_TEST_RABBITMQ_URL = testRabbitURL;
 
 async function run(command, argv) {
   console.log(`\n> ${command} ${argv.join(' ')}`);

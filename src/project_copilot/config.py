@@ -66,6 +66,22 @@ class Settings(BaseSettings):
     queue_max_pending_jobs: int = Field(default=0, ge=0, le=10000)
     worker_max_active_jobs: int = Field(default=0, ge=0, le=32)
 
+    # Dedicated delivery is optional; PostgreSQL remains the business ledger.
+    message_queue_enabled: bool = False
+    rabbitmq_url: SecretStr | None = None
+    rabbitmq_exchange: str = Field(default="pc.jobs.v1", pattern=r"^pc\.[A-Za-z0-9_.-]{1,100}$")
+    rabbitmq_queue: str = Field(default="pc.jobs.v1", pattern=r"^pc\.[A-Za-z0-9_.-]{1,100}$")
+    rabbitmq_routing_key: str = Field(default="job", pattern=r"^[A-Za-z0-9_.-]{1,100}$")
+    rabbitmq_queue_max_length: int = Field(default=10000, ge=1, le=100000)
+    rabbitmq_delivery_limit: int = Field(default=20, ge=1, le=100)
+    rabbitmq_heartbeat_seconds: int = Field(default=30, ge=5, le=120)
+    rabbitmq_socket_timeout_seconds: float = Field(default=5, gt=0, le=30, allow_inf_nan=False)
+    rabbitmq_blocked_timeout_seconds: float = Field(default=10, gt=0, le=60, allow_inf_nan=False)
+    outbox_relay_batch_size: int = Field(default=100, ge=1, le=1000)
+    outbox_lease_seconds: int = Field(default=60, ge=10, le=300)
+    outbox_retry_base_seconds: int = Field(default=5, ge=1, le=60)
+    outbox_retry_max_seconds: int = Field(default=300, ge=5, le=3600)
+
     # Optional backend-only acceleration/admission; PG remains authoritative.
     redis_enabled: bool = False
     redis_url: SecretStr | None = None
@@ -136,6 +152,10 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def validate_final_retrieval(self):
+        if self.message_queue_enabled and (self.rabbitmq_url is None or self.database_url is None):
+            raise ValueError("启用消息队列必须配置独立的RabbitMQ地址和任务数据库")
+        if self.outbox_retry_base_seconds > self.outbox_retry_max_seconds:
+            raise ValueError("Outbox初始退避不能超过最大退避")
         if self.redis_admission_enabled and not self.redis_enabled:
             raise ValueError("Redis准入必须显式启用Redis连接")
         if self.redis_enabled and self.redis_url is None:
@@ -155,6 +175,23 @@ class Settings(BaseSettings):
             if not re.fullmatch(r"[A-Za-z0-9_-]{32,128}", secret) or self.auth_public_origin is None:
                 raise ValueError("公开模式必须配置有效的代理共享密钥和HTTPS站点来源")
         return self
+
+    @field_validator("rabbitmq_url")
+    @classmethod
+    def validate_rabbitmq_url(cls, value: SecretStr | None) -> SecretStr | None:
+        if value is None:
+            return value
+        try:
+            parsed = urlsplit(value.get_secret_value())
+            valid = (parsed.scheme in {"amqp", "amqps"} and parsed.hostname and
+                     parsed.port is not None and 1 <= parsed.port <= 65535 and
+                     parsed.username and parsed.password and parsed.path.startswith("/") and
+                     not parsed.query and not parsed.fragment)
+        except ValueError:
+            valid = False
+        if not valid:
+            raise ValueError("RabbitMQ地址须包含用户、密码、主机、端口及vhost路径，不能含查询参数")
+        return value
 
     @field_validator("redis_cache_hmac_key")
     @classmethod

@@ -21,6 +21,8 @@ VOLUMES = {"postgres_data": "pc-public-v2-postgres", "qdrant_data": "pc-public-v
 # Redis is optional acceleration/admission state, outside the authoritative
 # backup roles imported by public_backup and existing maintenance commands.
 REDIS_VOLUMES = {"redis_data": "pc-public-v2-redis"}
+RABBITMQ_VOLUMES = {"rabbitmq_data": "pc-public-v2-rabbitmq"}
+RABBITMQ_IMAGE = "rabbitmq:4.2.9@sha256:97f4d5e14f7c59e585554b9e90c3dec2c7bb6b249792fa54f7e7cf56b6582203"
 REDIS_IMAGE = "redis:8.2.3-alpine@sha256:08ad0b1d280850169a790dba1393ff7a90aef951fc19632cf4d3ce4f78e679ba"
 REDIS_COMMAND = ["redis-server", "--appendonly", "yes", "--appendfsync", "always", "--maxmemory", "64mb",
                  "--maxmemory-policy", "noeviction", "--save", ""]
@@ -66,17 +68,19 @@ def validate_volume(info, name, role):
         raise ResourceError("only ordinary local dedicated volumes are supported")
 
 
-def selected_volumes(*, with_redis=False):
-    return {**VOLUMES, **(REDIS_VOLUMES if with_redis else {})}
+def selected_volumes(*, with_redis=False, with_rabbitmq=False):
+    return {**VOLUMES, **(REDIS_VOLUMES if with_redis else {}),
+            **(RABBITMQ_VOLUMES if with_rabbitmq else {})}
 
 
-def compose_files(*, with_redis=False):
+def compose_files(*, with_redis=False, with_rabbitmq=False):
     files = ("-f", str(ROOT / "docker-compose.public-demo.yml"))
-    return files + (("-f", str(ROOT / "deploy/public-demo.redis.yml")) if with_redis else ())
+    return (files + (("-f", str(ROOT / "deploy/public-demo.redis.yml")) if with_redis else ())
+            + (("-f", str(ROOT / "deploy/public-demo.rabbitmq.yml")) if with_rabbitmq else ()))
 
 
-def check_volumes(*, initialize=False, with_redis=False):
-    volumes = selected_volumes(with_redis=with_redis)
+def check_volumes(*, initialize=False, with_redis=False, with_rabbitmq=False):
+    volumes = selected_volumes(with_redis=with_redis, with_rabbitmq=with_rabbitmq)
     existing = {}
     for role, name in volumes.items():
         info = inspect_volume(name)
@@ -138,15 +142,15 @@ def host_bind_paths(values):
     return result
 
 
-def validate_rendered_env(path, values, *, with_redis=False):
-    command = ("compose", "--env-file", str(path), *compose_files(with_redis=with_redis), "config")
+def validate_rendered_env(path, values, *, with_redis=False, with_rabbitmq=False):
+    command = ("compose", "--env-file", str(path), *compose_files(with_redis=with_redis, with_rabbitmq=with_rabbitmq), "config")
     # Compose 2.40 drops env_file after interpolation even with
     # --no-env-resolution. Preserve its declaration before inspecting it.
     raw = json.loads(docker(*command, "--no-interpolate", "--no-env-resolution", "--format", "json"))
     rendered = json.loads(docker(*command, "--format", "json"))
     if rendered.get("name") != PROJECT or raw.get("name") != PROJECT:
         raise ResourceError("rendered project differs from dedicated public deployment")
-    for role in ("api", "worker", "migrate"):
+    for role in ("api", "worker", "migrate", *(("outbox-relay",) if with_rabbitmq else ())):
         files = raw["services"][role].get("env_file", [])
         if len(files) != 1 or _env_file_path(files[0]["path"], values) != Path(path).resolve():
             raise ResourceError("rendered application env-file differs from reviewed private file")
@@ -156,6 +160,8 @@ def validate_rendered_env(path, values, *, with_redis=False):
         raise ResourceError("rendered datastore credentials differ")
     if with_redis:
         _check_redis_config(rendered)
+    if with_rabbitmq:
+        _check_rabbitmq_config(rendered, values=values)
 
 
 def _env_file_path(declaration, values):
@@ -197,7 +203,7 @@ def check_networks(*, initialize=False):
 
 
 def service_networks(service):
-    return ({"backend"} if service in {"postgres", "qdrant", "phoenix", "redis"}
+    return ({"backend"} if service in {"postgres", "qdrant", "phoenix", "redis", "rabbitmq", "outbox-relay"}
             else {"ingress"} if service == "cloudflared"
             else {"backend", "ingress"} if service == "ingress"
             else {"backend", "egress"})
@@ -233,8 +239,67 @@ def _check_redis_config(config):
             raise ResourceError("application Redis configuration differs from optional overlay")
 
 
-def check_config(*, with_redis=False):
-    config = json.loads(docker("compose", *compose_files(with_redis=with_redis), "config",
+def _environment(service):
+    values = service.get("environment", {})
+    if isinstance(values, list):
+        pairs = [item.split("=", 1) for item in values if isinstance(item, str) and "=" in item]
+        if len(pairs) != len(values) or len({key for key, _ in pairs}) != len(pairs):
+            raise ResourceError("invalid messaging environment")
+        values = dict(pairs)
+    if not isinstance(values, dict):
+        raise ResourceError("invalid messaging environment")
+    return values
+
+
+def _check_rabbitmq_config(config, *, values=None):
+    from urllib.parse import urlsplit
+    broker = config["services"].get("rabbitmq", {})
+    volume = config["volumes"].get("rabbitmq_data", {})
+    if volume.get("name") != RABBITMQ_VOLUMES["rabbitmq_data"] or not volume.get("external"):
+        raise ResourceError("RabbitMQ must use its dedicated external volume")
+    if (broker.get("image") != RABBITMQ_IMAGE or broker.get("hostname") != "rabbitmq"
+            or (broker.get("labels") or {}).get(LABEL) != SCOPE
+            or set(broker.get("networks", {})) != {"backend"} or broker.get("ports")):
+        raise ResourceError("RabbitMQ image, identity or network differs")
+    mounts = broker.get("volumes", [])
+    if (len(mounts) != 1 or mounts[0].get("type") != "volume"
+            or mounts[0].get("source") != "rabbitmq_data" or mounts[0].get("target") != "/var/lib/rabbitmq"):
+        raise ResourceError("RabbitMQ storage role differs")
+    broker_env = _environment(broker)
+    if (broker_env.get("RABBITMQ_DEFAULT_USER") != "project_copilot_mq"
+            or broker_env.get("RABBITMQ_DEFAULT_VHOST") != "project_copilot"):
+        raise ResourceError("RabbitMQ account or vhost differs")
+    relay = config["services"].get("outbox-relay", {})
+    if (relay.get("command") != ["python", "-m", "scripts.outbox_relay"]
+            or set(relay.get("networks", {})) != {"backend"} or relay.get("ports") or relay.get("volumes")
+            or (relay.get("labels") or {}).get(LABEL) != SCOPE or not relay.get("read_only")):
+        raise ResourceError("outbox relay boundary differs")
+    for role in ("api", "worker", "outbox-relay"):
+        env = _environment(config["services"][role])
+        if env.get("PROJECT_COPILOT_MESSAGE_QUEUE_ENABLED") != "true" or not env.get("PROJECT_COPILOT_RABBITMQ_URL"):
+            raise ResourceError("messaging enablement differs")
+    if values is not None:
+        target = values.get("PROJECT_COPILOT_RABBITMQ_URL") or ""
+        try:
+            url = urlsplit(target)
+            valid = (url.scheme == "amqp" and url.hostname == "rabbitmq" and url.port == 5672
+                     and url.username == "project_copilot_mq" and url.path == "/project_copilot"
+                     and url.password == values.get("PROJECT_COPILOT_RABBITMQ_PASSWORD")
+                     and len(url.password or "") >= 32 and not url.query and not url.fragment
+                     and len(values.get("PROJECT_COPILOT_RABBITMQ_ERLANG_COOKIE") or "") >= 32)
+        except ValueError:
+            valid = False
+        if not valid:
+            raise ResourceError("messaging must target the dedicated account, broker and vhost")
+        if (broker_env.get("RABBITMQ_DEFAULT_PASS") != values["PROJECT_COPILOT_RABBITMQ_PASSWORD"]
+                or broker_env.get("RABBITMQ_ERLANG_COOKIE") != values["PROJECT_COPILOT_RABBITMQ_ERLANG_COOKIE"]
+                or any(_environment(config["services"][role]).get("PROJECT_COPILOT_RABBITMQ_URL") != target
+                       for role in ("api", "worker", "outbox-relay"))):
+            raise ResourceError("rendered messaging credentials or destination differ")
+
+
+def check_config(*, with_redis=False, with_rabbitmq=False):
+    config = json.loads(docker("compose", *compose_files(with_redis=with_redis, with_rabbitmq=with_rabbitmq), "config",
                                "--no-interpolate", "--no-env-resolution", "--format", "json"))
     if config.get("name") != PROJECT:
         raise ResourceError("unexpected Compose project")
@@ -255,6 +320,8 @@ def check_config(*, with_redis=False):
             raise ResourceError("public-demo services must not publish host ports")
     if with_redis:
         _check_redis_config(config)
+    if with_rabbitmq:
+        _check_rabbitmq_config(config)
 
 
 def check_containers(values=None):
@@ -264,7 +331,7 @@ def check_containers(values=None):
     ids = set(docker("ps", "-aq", "--filter", f"label=com.docker.compose.project={PROJECT}").decode().split())
     # Old maintenance/backup entry points also inspect a present optional Redis,
     # without adding it to their capture/restore roles or requiring it to exist.
-    for volume in selected_volumes(with_redis=True).values():
+    for volume in selected_volumes(with_redis=True, with_rabbitmq=True).values():
         ids.update(docker("ps", "-aq", "--filter", f"volume={volume}").decode().split())
     running_ingress = 0
     for cid in ids:
@@ -277,9 +344,20 @@ def check_containers(values=None):
             running_ingress += 1
             if running_ingress > 1:
                 raise ResourceError("only one shared-zone ingress instance is supported")
-        if service not in {*MOUNTS, "cloudflared", "ingress", "redis"}:
+        if service not in {*MOUNTS, "cloudflared", "ingress", "redis", "rabbitmq", "outbox-relay"}:
             raise ResourceError("unknown service consumes dedicated resources")
         is_redis = service == "redis"
+        is_rabbitmq = service == "rabbitmq"
+        if is_rabbitmq:
+            broker_volume = inspect_volume(RABBITMQ_VOLUMES["rabbitmq_data"])
+            if broker_volume is None:
+                raise ResourceError("optional RabbitMQ volume missing")
+            validate_volume(broker_volume, RABBITMQ_VOLUMES["rabbitmq_data"], "rabbitmq_data")
+            if (labels.get(LABEL) != SCOPE or info.get("Config", {}).get("Image") != RABBITMQ_IMAGE
+                    or info.get("HostConfig", {}).get("PortBindings")
+                    or info.get("HostConfig", {}).get("PublishAllPorts")
+                    or any((info.get("NetworkSettings", {}).get("Ports") or {}).values())):
+                raise ResourceError("optional RabbitMQ image, role or published ports differ")
         if is_redis:
             redis_volume = inspect_volume(REDIS_VOLUMES["redis_data"])
             if redis_volume is None:
@@ -291,10 +369,19 @@ def check_containers(values=None):
                     or info.get("HostConfig", {}).get("PublishAllPorts")
                     or any((info.get("NetworkSettings", {}).get("Ports") or {}).values())):
                 raise ResourceError("optional Redis container image, role or published ports differ")
-        wanted = {"/data": REDIS_VOLUMES["redis_data"]} if is_redis else MOUNTS.get(service, {})
+        wanted = ({"/data": REDIS_VOLUMES["redis_data"]} if is_redis else
+                  {"/var/lib/rabbitmq": RABBITMQ_VOLUMES["rabbitmq_data"]} if is_rabbitmq else MOUNTS.get(service, {}))
         actual = {item["Destination"]: item for item in info.get("Mounts", [])}
         if is_redis and set(actual) != {"/data"}:
             raise ResourceError("optional Redis must mount only its dedicated data volume")
+        if is_rabbitmq and set(actual) != {"/var/lib/rabbitmq"}:
+            raise ResourceError("optional RabbitMQ must mount only its dedicated data volume")
+        if service == "outbox-relay":
+            if (labels.get(LABEL) != SCOPE
+                    or info.get("Config", {}).get("Cmd") != ["python", "-m", "scripts.outbox_relay"]
+                    or info.get("HostConfig", {}).get("ReadonlyRootfs") is not True
+                    or any(item.get("Type") != "tmpfs" or target != "/tmp" for target, item in actual.items())):
+                raise ResourceError("outbox relay command or resource boundary differs")
         for target, volume in wanted.items():
             item = actual.get(target, {})
             if item.get("Type") != "volume" or item.get("Name") != volume:
@@ -305,19 +392,20 @@ def check_containers(values=None):
                 if (item.get("Type") != "bind" or item.get("RW") or
                         Path(item.get("Source", "/")).resolve() != source):
                     raise ResourceError("application read-only host mount is missing or differs")
-        allowed_volumes = REDIS_VOLUMES.values() if is_redis else VOLUMES.values()
+        allowed_volumes = (REDIS_VOLUMES.values() if is_redis else
+                           RABBITMQ_VOLUMES.values() if is_rabbitmq else VOLUMES.values())
         for item in actual.values():
             if item.get("Type") == "volume" and item.get("Name") not in allowed_volumes:
                 raise ResourceError("unexpected persistent volume attached")
             if item.get("Type") == "bind":
                 target = item.get("Destination")
-                if is_redis or target not in {"/app/models/huggingface", "/app/release"} or item.get("RW"):
+                if is_redis or is_rabbitmq or target not in {"/app/models/huggingface", "/app/release"} or item.get("RW"):
                     raise ResourceError("unexpected or writable host bind attached")
                 if binds is not None and Path(item["Source"]).resolve() != binds[target]:
                     raise ResourceError("actual host bind differs from reviewed private setting")
         attached = set(info.get("NetworkSettings", {}).get("Networks", {}))
         expected = {NETWORKS[role] for role in service_networks(service)}
-        if (attached or is_redis) and attached != expected:
+        if (attached or is_redis or is_rabbitmq or service == "outbox-relay") and attached != expected:
             raise ResourceError("container attached to unexpected network")
 
 
@@ -326,19 +414,21 @@ def main():
     parser.add_argument("operation", choices=("check", "initialize"))
     parser.add_argument("--env-file", default=str(ROOT / ".env.public-demo"))
     parser.add_argument("--with-redis", action="store_true", help="include the optional dedicated Redis overlay and volume")
+    parser.add_argument("--with-rabbitmq", action="store_true", help="include the dedicated RabbitMQ overlay and volume")
     args = parser.parse_args()
     try:
         values = validate_env(args.env_file)
         host_bind_paths(values)
-        check_config(with_redis=args.with_redis)
-        validate_rendered_env(args.env_file, values, with_redis=args.with_redis)
-        check_volumes(initialize=args.operation == "initialize", with_redis=args.with_redis)
+        selected = {"with_redis": args.with_redis, **({"with_rabbitmq": True} if args.with_rabbitmq else {})}
+        check_config(**selected)
+        validate_rendered_env(args.env_file, values, **selected)
+        check_volumes(initialize=args.operation == "initialize", **selected)
         check_networks(initialize=args.operation == "initialize")
         check_containers(values)
     except (ResourceError, OSError, ValueError, KeyError):
         print(json.dumps({"status": "error", "message": "public resource preflight failed; no old volume was adopted or removed"}))
         return 1
-    print(json.dumps({"status": "ok", "scope": SCOPE, "volumes": selected_volumes(with_redis=args.with_redis)}))
+    print(json.dumps({"status": "ok", "scope": SCOPE, "volumes": selected_volumes(**selected)}))
     return 0
 
 

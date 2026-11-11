@@ -40,6 +40,31 @@ def main():
     next_cleanup = 0.0
     try:
         with worker_resource_scope(settings) as resources:
+            if getattr(settings, "message_queue_enabled", False):
+                from project_copilot.infrastructure.rabbitmq import RabbitConsumer
+                from project_copilot.infrastructure.rabbitmq import RabbitMQTransportError
+                from project_copilot.services.mq_worker import process_message
+                def consume(message):
+                    resources.validate()
+                    expire_unclaimed(database, ttl_seconds=settings.public_job_queue_ttl_seconds)
+                    return process_message(database, settings, message)
+                reconnect_delay = 1
+                while not stopping.is_set():
+                    try:
+                        RabbitConsumer(settings).run(consume, stopping, once=args.once)
+                        if args.once or stopping.is_set():
+                            return
+                        reconnect_delay = 1
+                    except RabbitMQTransportError:
+                        # run() drains the physical business Future before it
+                        # raises. Reconnect redelivers IDs, never repeats work
+                        # without consulting PostgreSQL and its execution proof.
+                        logging.warning("broker connection unavailable; waiting for delivery recovery")
+                        if args.once:
+                            raise SystemExit(1) from None
+                        stopping.wait(reconnect_delay)
+                        reconnect_delay = min(reconnect_delay * 2, 30)
+                return
             while not stopping.is_set():
                 try:
                     resources.validate()

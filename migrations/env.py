@@ -8,6 +8,7 @@ from project_copilot.db import jobs  # noqa: F401 - register job metadata for mi
 from project_copilot.db import release  # noqa: F401 - durable release metadata
 from project_copilot.db import operations  # noqa: F401 - register operational evidence metadata
 from project_copilot.db import executions  # noqa: F401 - execution lease and slot metadata
+from project_copilot.db import messaging  # noqa: F401 - transactional dispatch and delivery evidence
 from project_copilot.db.session import Database
 
 

@@ -9,6 +9,7 @@ from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 from uuid import uuid4
 
+from alembic.script import ScriptDirectory
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 import pytest
@@ -20,7 +21,7 @@ from project_copilot.api import job_events
 from project_copilot.api.jobs import router
 from project_copilot.config import Settings
 from project_copilot.db.jobs import AiJob, AiJobEvent
-from project_copilot.db.migrations import check_model_drift, upgrade
+from project_copilot.db.migrations import check_model_drift, migration_config, upgrade
 from project_copilot.db.models import AiRequestReservation, LoginSession, UserAccount
 from project_copilot.db.operations import JobContentTombstone, JobRecoveryAudit
 from project_copilot.infrastructure.job_progress import LABELS
@@ -97,7 +98,7 @@ def test_empty_migration_and_event_schema_match_orm(ticket_database):
     columns = {row["name"] for row in inspect(ticket_database.engine).get_columns("ai_job_events")}
     assert columns == {"job_id", "sequence", "kind", "data", "created_at"}
     with ticket_database.transaction() as session:
-        assert session.scalar(text("SELECT version_num FROM alembic_version")) == "0016_queue_backpressure"
+        assert session.scalar(text("SELECT version_num FROM alembic_version")) == ScriptDirectory.from_config(migration_config()).get_current_head()
 
 
 def test_sequence_cap_and_expiry_keep_reservation_identity(event_setup):
