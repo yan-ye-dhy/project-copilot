@@ -21,8 +21,11 @@ from project_copilot.infrastructure.agent_model import (
 from project_copilot.agent.state import AgentState, GraphLimits
 from project_copilot.agent.tools import ToolRegistry, ToolResult
 from project_copilot.agent.observations import model_observation
+from project_copilot.agent import recovery
 from project_copilot.schemas.agent import AgentFinal, AgentQuestion, AgentRun, AgentSource, ToolEvent
 from project_copilot.services.quotas import QuotaExceeded
+from project_copilot.services.job_steps import StepRejected
+from project_copilot.services.job_recovery import RecoveryBudgetExceeded
 from project_copilot.services.redis_admission import RateLimited
 from project_copilot.infrastructure.redis_runtime import RedisUnavailable
 
@@ -116,8 +119,9 @@ class AgentRunner:
                     span.set_attribute("provider.http_status", event["provider_http_status"])
                 if event.get("model") in {"deepseek-flash", "deepseek-v4-pro"}:
                     span.set_attribute("llm.model_name", event["model"])
+                span.set_attribute("checkpoint.replayed", event.get("replayed", False))
                 usage = event.get("usage")
-                if usage is not None:
+                if usage is not None and not event.get("replayed", False):
                     for key, value in usage.items():
                         span.set_attribute("usage." + key, value)
                     span.set_attribute("llm.token_count.prompt", usage["prompt_tokens"])
@@ -139,17 +143,20 @@ class AgentRunner:
         count = state["model_calls"] + 1
         event = {"step": count, "status": "ok", "model": None, "usage": None}
         base = {"model_calls": count}
-        await progress_async("model")
+        if recovery.current_recovery() is None:
+            await progress_async("model")
         try:
-            message = await asyncio.wait_for(
-                self.model.ainvoke(list(state["messages"]), self.registry.schemas()),
-                timeout=min(self.limits.model_timeout_seconds, self._remaining(state)),
-            )
+            message = await recovery.model_call(self.model, list(state["messages"]), self.registry.schemas(),
+                count=count, timeout=min(self.limits.model_timeout_seconds, self._remaining(state)))
             if not isinstance(message, AIMessage) or _context_chars([message]) > self.limits.max_context_chars:
                 raise ValueError("模型消息合同非法")
             usage = _usage(message)
             model = message.response_metadata.get("model")
             event.update(model=model if isinstance(model, str) and len(model) <= 200 else None, usage=usage)
+            if hasattr(message, "_copilot_checkpoint_replayed"):
+                event["replayed"] = message._copilot_checkpoint_replayed
+        except (StepRejected, RecoveryBudgetExceeded):
+            raise
         except TimeoutError:
             kind = "total_timeout" if self._remaining(state) <= 0 else "model_timeout"
             event.update(status="error", failure_type=kind, elapsed_ms=(time.monotonic() - started) * 1000)
@@ -186,7 +193,7 @@ class AgentRunner:
             event.update(status="error", failure_type="model_error", elapsed_ms=(time.monotonic() - started) * 1000)
             return {**base, "model_events": [*state["model_events"], event],
                     "usage": None, "usage_complete": False, **_failure("model_error")}
-        event["elapsed_ms"] = (time.monotonic() - started) * 1000
+        event["elapsed_ms"] = 0 if event.get("replayed", False) else (time.monotonic() - started) * 1000
         complete = state["usage_complete"] and usage is not None
         total: dict[str, int] = {}
         if complete and usage is not None:
@@ -219,15 +226,18 @@ class AgentRunner:
     async def _tools_node(self, state: AgentState) -> dict:
         with trace_span("agent.tools", {"openinference.span.kind": "CHAIN"}) as span:
             result = await self._execute_tools(state)
+            replayed = set(result.pop("_checkpoint_tool_replay_ids", []))
             new_events = result["events"][len(state["events"]):]
+            span.set_attribute("checkpoint.tool_replay_count", len(replayed))
             span.set_attribute("tool.attempt_count", result["tool_calls"] - state["tool_calls"])
-            span.set_attribute("tool.execution_count", result["tool_executions"] - state["tool_executions"])
+            span.set_attribute("tool.execution_count", sum(event.executed and event.tool_call_id not in replayed for event in new_events))
             span.set_attribute("tool.failure_count", result["tool_failures"] - state["tool_failures"])
             for event in new_events:
                 name = event.name if event.name in {"get_ticket", "search_tickets", "search_knowledge", "propose_ticket"} else "unknown"
                 with trace_span("agent.tool.result", {"openinference.span.kind": "TOOL", "tool.name": name,
                                 "tool.call_id": event.tool_call_id, "status": event.status,
-                                "tool.executed": event.executed,
+                                "tool.executed": event.executed and event.tool_call_id not in replayed,
+                                "checkpoint.replayed": event.tool_call_id in replayed,
                                 "tool.reported_elapsed_ms": event.elapsed_ms}) as result_span:
                     if event.failure_type:
                         result_span.set_attribute("failure.type", event.failure_type)
@@ -256,126 +266,182 @@ class AgentRunner:
         attempts = state["tool_calls"]
         executions = state["tool_executions"]
         failures = state["tool_failures"]
-        # Only identities of successful observations are retained. No cached
-        # result is replayed, and every run starts a new authority-bound state.
+        # Rebuild successful observation identities in the original order;
+        # receipt reuse still passes current runtime authority checks.
         completed_reads = dict(state["completed_read_calls"])
         round_progress = False
         repeated_read = False
         knowledge_failed = False
         provider_budget_exhausted = False
-        for call, malformed in calls:
+        replayed_ids = []
+        for ordinal, (call, malformed) in enumerate(calls, start=1):
             started = time.monotonic()
             attempts += 1
             call_id = call.get("id")
             name = call.get("name")
-            # Never copy untrusted IDs/names with control characters into records or logs.
-            if not safe_id(call_id):
-                updates = _failure("tool_protocol_error")
-                failures += 1
-                continue
-            event_name = name if safe_name(name) else "invalid_name"
-            kind: str | None = None
-            output: dict | None = None
-            executed = False
-            if protocol_error:
-                kind = "tool_protocol_error"
-                updates = _failure(kind)
-            elif provider_budget_exhausted:
-                kind = "provider_budget"
-            elif knowledge_failed:
-                kind = "prior_tool_failure"
-            elif attempts > self.limits.max_tool_calls:
-                kind = "tool_budget"
-                updates = _failure(kind, budget=True)
-            elif self._remaining(state) <= 0:
-                kind = "total_timeout"
-                updates = _failure(kind, budget=True)
-            elif malformed or not isinstance(call.get("args"), dict):
-                kind = "arguments_invalid"
+            key = f"agent:tool:{state['model_calls']}:{ordinal}"
+            before_sources = set(sources)
+            runtime, cached = (await recovery.begin_tool(key, {
+                "call": call, "malformed": malformed, "schemas": self.registry.schemas(),
+                "model_step": state["model_calls"], "ordinal": ordinal,
+                "attempt": attempts, "protocol_error": protocol_error,
+                "completed_reads": completed_reads,
+            }, readonly=name in _READONLY_TOOLS)
+                if attempts <= self.limits.max_tool_calls else (None, None))
+            receipt_elapsed = None
+            async def save_receipt(*, skip=False):
+                nonlocal receipt_elapsed
+                if runtime is not None:
+                    receipt_elapsed = (time.monotonic() - started) * 1000
+                    data = {"skip": skip, "kind": kind if not skip else "tool_protocol_error",
+                        "output": output if not skip else None, "executed": executed if not skip else False,
+                        "output_json": _json(output) if not skip else None,
+                        "elapsed_ms": receipt_elapsed,
+                        "updates": updates, "round_progress": round_progress, "repeated_read": repeated_read,
+                        "knowledge_failed": knowledge_failed, "provider_budget_exhausted": provider_budget_exhausted,
+                        "completed_reads": completed_reads, "executions": executions, "failures": failures}
+                    delta = [source.model_dump(mode="json") for identity, source in sources.items()
+                             if identity not in before_sources]
+                    await recovery.complete_tool(runtime, key, data, delta)
+            if cached is not None:
+                await progress_async("checkpoint")
+                replayed_ids.append(call_id)
+                receipt = cached["data"]
+                kind, output, executed = receipt["kind"], receipt["output"], receipt["executed"]
+                updates = receipt["updates"]
+                round_progress, repeated_read = receipt["round_progress"], receipt["repeated_read"]
+                knowledge_failed = receipt["knowledge_failed"]
+                provider_budget_exhausted = receipt["provider_budget_exhausted"]
+                completed_reads = receipt["completed_reads"]
+                executions, failures = receipt["executions"], receipt["failures"]
+                for value in cached["sources"]:
+                    source = AgentSource.model_validate(value)
+                    if source.id in sources and sources[source.id] != source:
+                        raise recovery.AgentCheckpointError()
+                    sources[source.id] = source
+                if receipt["skip"]:
+                    continue
+                event_name = name if safe_name(name) else "invalid_name"
             else:
-                tool = self.registry.get(name)
-                if tool is None:
-                    kind = "unknown_tool"
+                # Never copy untrusted IDs/names with control characters into records or logs.
+                if not safe_id(call_id):
+                    updates = _failure("tool_protocol_error")
+                    failures += 1
+                    await save_receipt(skip=True)
+                    continue
+                event_name = name if safe_name(name) else "invalid_name"
+                kind: str | None = None
+                output: dict | None = None
+                executed = False
+                if protocol_error:
+                    kind = "tool_protocol_error"
+                    updates = _failure(kind)
+                elif provider_budget_exhausted:
+                    kind = "provider_budget"
+                elif knowledge_failed:
+                    kind = "prior_tool_failure"
+                elif attempts > self.limits.max_tool_calls:
+                    kind = "tool_budget"
+                    updates = _failure(kind, budget=True)
+                elif recovery.fresh_remaining(self._remaining(state)) <= 0:
+                    kind = "total_timeout"
+                    updates = _failure(kind, budget=True)
+                elif malformed or not isinstance(call.get("args"), dict):
+                    kind = "arguments_invalid"
                 else:
-                    try:
-                        arguments = tool.args_model.model_validate(call["args"])
-                    except (ValidationError, ValueError):
-                        kind = "arguments_invalid"
+                    tool = self.registry.get(name)
+                    if tool is None:
+                        kind = "unknown_tool"
                     else:
-                        signature = json.dumps({"tool": name, "args": arguments.model_dump(mode="json")},
-                                               sort_keys=True, ensure_ascii=False, allow_nan=False)
-                        if name in _READONLY_TOOLS and signature in completed_reads:
-                            kind = "duplicate_read"
-                            repeated_read = True
-                            output = {"status": "error", "failure_type": kind,
-                                "previous_tool_call_id": completed_reads[signature],
-                                "message": "本轮该查询已成功完成；请使用此前对应ToolMessage的观察结果，或根据缺失的新事实调整参数。"}
-                        # Explicit rejection refers to the earlier observation;
-                        # no stale cached ticket or extra backend call is returned.
-                        if kind is None:
-                            try:
-                                await progress_async(name if name in {"get_ticket", "search_tickets", "search_knowledge", "propose_ticket"} else "tool")
-                                executions += 1
-                                executed = True
-                                with trace_span("agent.tool.execute", {"openinference.span.kind": "TOOL",
-                                                "tool.name": tool.name, "tool.call_id": call_id}) as tool_span:
-                                    result = await asyncio.wait_for(
-                                        tool.handler(**arguments.model_dump()),
-                                        timeout=min(self.limits.tool_timeout_seconds, self._remaining(state)),
-                                    )
-                                    parsed = ToolResult.model_validate(result)
-                                    tool_span.set_attribute("tool.source_count", len(parsed.sources))
-                                output = model_observation(parsed)
-                                if len(_json(output)) > self.limits.max_tool_result_chars:
-                                    kind = "tool_output_too_large"
-                                else:
-                                    fresh: dict[str, AgentSource] = {}
-                                    for source in parsed.sources:
-                                        if source.id in sources and sources[source.id] != source:
-                                            raise ValueError("重复来源内容不一致")
-                                        if source.id in fresh and fresh[source.id] != source:
-                                            raise ValueError("同一结果的来源不一致")
-                                        fresh[source.id] = source
-                                    sources.update(fresh)
-                                    round_progress = True
-                                    if name in _READONLY_TOOLS:
-                                        completed_reads[signature] = call_id
-                                    if name == "propose_ticket":
-                                        updates = {"status": "pending_confirmation", "answer": "已生成待确认工单提案；请查看预览并明确确认或拒绝。"}
-                            except TimeoutError:
-                                kind = "tool_timeout"
-                            except LookupError:
-                                kind = "not_found"
-                            except (RateLimited, RedisUnavailable) as exc:
-                                kind = "admission_rate_limited" if isinstance(exc, RateLimited) else "admission_unavailable"
-                                updates = _failure(kind)
-                            except QuotaExceeded as exc:
-                                if exc.reason == "provider_attempts":
-                                    kind = "provider_budget"
-                                    provider_budget_exhausted = True
-                                    updates = _failure(kind, budget=True)
-                                else:
+                        try:
+                            arguments = tool.args_model.model_validate(call["args"])
+                        except (ValidationError, ValueError):
+                            kind = "arguments_invalid"
+                        else:
+                            signature = json.dumps({"tool": name, "args": arguments.model_dump(mode="json")},
+                                                   sort_keys=True, ensure_ascii=False, allow_nan=False)
+                            if name in _READONLY_TOOLS and signature in completed_reads:
+                                kind = "duplicate_read"
+                                repeated_read = True
+                                output = {"status": "error", "failure_type": kind,
+                                    "previous_tool_call_id": completed_reads[signature],
+                                    "message": "本轮该查询已成功完成；请使用此前对应ToolMessage的观察结果，或根据缺失的新事实调整参数。"}
+                            # Explicit rejection refers to the earlier observation;
+                            # no stale cached ticket or extra backend call is returned.
+                            if kind is None:
+                                try:
+                                    await progress_async(name if name in {"get_ticket", "search_tickets", "search_knowledge", "propose_ticket"} else "tool")
+                                    executions += 1
+                                    executed = True
+                                    with trace_span("agent.tool.execute", {"openinference.span.kind": "TOOL",
+                                                    "tool.name": tool.name, "tool.call_id": call_id}) as tool_span:
+                                        result = await asyncio.wait_for(
+                                            tool.handler(**arguments.model_dump()),
+                                            timeout=min(self.limits.tool_timeout_seconds,
+                                                        recovery.fresh_remaining(self._remaining(state))),
+                                        )
+                                        parsed = ToolResult.model_validate(result)
+                                        tool_span.set_attribute("tool.source_count", len(parsed.sources))
+                                    output = model_observation(parsed)
+                                    if len(_json(output)) > self.limits.max_tool_result_chars:
+                                        kind = "tool_output_too_large"
+                                    else:
+                                        fresh: dict[str, AgentSource] = {}
+                                        for source in parsed.sources:
+                                            if source.id in sources and sources[source.id] != source:
+                                                raise ValueError("重复来源内容不一致")
+                                            if source.id in fresh and fresh[source.id] != source:
+                                                raise ValueError("同一结果的来源不一致")
+                                            fresh[source.id] = source
+                                        sources.update(fresh)
+                                        round_progress = True
+                                        if name in _READONLY_TOOLS:
+                                            completed_reads[signature] = call_id
+                                        if name == "propose_ticket":
+                                            updates = {"status": "pending_confirmation", "answer": "已生成待确认工单提案；请查看预览并明确确认或拒绝。"}
+                                except TimeoutError:
+                                    kind = "tool_timeout"
+                                except LookupError:
+                                    kind = "not_found"
+                                except (RateLimited, RedisUnavailable) as exc:
+                                    kind = "admission_rate_limited" if isinstance(exc, RateLimited) else "admission_unavailable"
+                                    updates = _failure(kind)
+                                except QuotaExceeded as exc:
+                                    if exc.reason == "provider_attempts":
+                                        kind = "provider_budget"
+                                        provider_budget_exhausted = True
+                                        updates = _failure(kind, budget=True)
+                                    else:
+                                        kind = "tool_exception"
+                                except (ValidationError, ValueError, TypeError):
+                                    kind = "tool_output_invalid"
+                                except (StepRejected, RecoveryBudgetExceeded):
+                                    raise
+                                except Exception:
                                     kind = "tool_exception"
-                            except (ValidationError, ValueError, TypeError):
-                                kind = "tool_output_invalid"
-                            except Exception:
-                                kind = "tool_exception"
-            if kind is not None:
-                failures += 1
-                if kind != "duplicate_read":
-                    output = {"status": "error", "failure_type": kind, "message": "工具调用未完成，请检查参数、权限或服务状态。"}
-                if name == "search_knowledge" and kind in {"tool_exception", "tool_timeout", "tool_output_invalid", "tool_output_too_large"}:
-                    knowledge_failed = True
-                    if not updates:
-                        updates = _failure("knowledge_retrieval_failed")
+                if kind is not None:
+                    failures += 1
+                    if kind != "duplicate_read":
+                        output = {"status": "error", "failure_type": kind, "message": "工具调用未完成，请检查参数、权限或服务状态。"}
+                    if name == "search_knowledge" and kind in {"tool_exception", "tool_timeout", "tool_output_invalid", "tool_output_too_large"}:
+                        knowledge_failed = True
+                        if not updates:
+                            updates = _failure("knowledge_retrieval_failed")
+                await save_receipt()
             assert output is not None
-            messages.append(ToolMessage(content=_json(output), tool_call_id=call_id, name=event_name,
+            # JSONB reorders object keys. Retain the original observation text
+            # so a replay sends byte-identical ToolMessage content to the model.
+            output_json = cached["data"]["output_json"] if cached is not None else _json(output)
+            messages.append(ToolMessage(content=output_json, tool_call_id=call_id, name=event_name,
                                         status="error" if kind else "success"))
-            await progress_async("tool_done")
+            if cached is None:
+                await progress_async("tool_done")
             events.append(ToolEvent(tool_call_id=call_id, name=event_name,
                                     status="error" if kind else "ok", failure_type=kind,
                                     executed=executed,
-                                    elapsed_ms=(time.monotonic() - started) * 1000))
+                                    elapsed_ms=(cached["data"]["elapsed_ms"] if cached is not None else
+                                                receipt_elapsed if receipt_elapsed is not None else
+                                                (time.monotonic() - started) * 1000)))
         no_progress_rounds = 0 if round_progress else state["no_progress_rounds"] + 1
         if not updates and no_progress_rounds >= self.limits.max_no_progress_rounds:
             updates = _failure("repeated_tool_loop" if repeated_read else "tool_no_progress", budget=True)
@@ -384,7 +450,8 @@ class AgentRunner:
         return {"messages": messages, "events": events, "sources": list(sources.values()),
                 "used_call_ids": [*state["used_call_ids"], *(value for value in ids if safe_id(value))],
                 "completed_read_calls": completed_reads, "no_progress_rounds": no_progress_rounds,
-                "tool_calls": attempts, "tool_executions": executions, "tool_failures": failures, **updates}
+                "tool_calls": attempts, "tool_executions": executions, "tool_failures": failures,
+                "_checkpoint_tool_replay_ids": replayed_ids, **updates}
 
     async def run(self, payload: AgentQuestion, run_id: str) -> AgentRun:
         with trace_span("agent.run", {"openinference.span.kind": "AGENT", "run_id": run_id,
@@ -403,6 +470,7 @@ class AgentRunner:
             return result
 
     async def _run(self, payload: AgentQuestion, run_id: str) -> AgentRun:
+        await recovery.prepare()
         started = time.monotonic()
         history = [HumanMessage(content=item.content) if item.role == "user" else AIMessage(content=item.content)
                    for item in payload.history]

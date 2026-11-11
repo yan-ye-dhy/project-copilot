@@ -9,7 +9,7 @@ from project_copilot.db.executions import AiJobExecution
 from project_copilot.db.jobs import AiJob
 from project_copilot.db.models import AiRequestReservation
 from project_copilot.db.operations import JobContentTombstone, JobRecoveryAudit
-from project_copilot.db.recovery import AiJobExecutionAttempt, AiJobRecoveryState
+from project_copilot.db.recovery import AiJobExecutionAttempt, AiJobRecoveryState, AiJobStep, JobBusinessOperation
 from project_copilot.services.execution_slots import ExecutionLease, _business_valid, _locked, guard_execution
 
 RECOVERY_REASONS = frozenset({"disabled", "legacy", "not_personal", "not_recoverable", "attempt_limit",
@@ -113,7 +113,7 @@ def charge_recovery_step(session, job_id, token, *, kind):
     maximum = state.max_model_calls if kind == "model" else state.max_tool_calls
     count = getattr(state, field)
     if count >= maximum:
-        raise RecoveryBudgetExceeded("budget")
+        raise RecoveryBudgetExceeded(kind + "_budget")
     setattr(state, field, count + 1)
     session.flush()
     return count + 1
@@ -145,15 +145,65 @@ def _capacity_available(session, settings, reservation):
     return held < personal_limits(settings)["concurrent_limit"]
 
 
-def recover_job(database, settings, job_id, *, allow_model_repeat=False, checkpoint_available=False):
+def _checkpoint_bindings(settings):
+    # This helper only reads the atomically published manifest. It must never
+    # acquire an index flock, contact a provider, or construct/warm a model while
+    # this transaction holds the job's PostgreSQL rows.
+    from project_copilot.infrastructure.recovery_runtime import checkpoint_bindings
+    return checkpoint_bindings(settings)
+
+
+def _saved_checkpoint_available(session, settings, job, execution, state):
+    """Receipts admit replay; fresh authorization and resource checks still apply.
+
+    Every initiated step must have a complete, matching receipt. Without a
+    per-step provider initiation ledger, one completed earlier model cannot
+    prove that a later unfinished intent is free to repeat. A mapped proposal
+    is independent proof: its original action can be read without running the
+    graph or repeating the model which requested it.
+    """
+    operation = session.get(JobBusinessOperation, (job.id, "propose_ticket"))
+    if operation is not None:
+        return operation.action_id == execution.action_id
+    from project_copilot.services.job_steps import (
+        MAX_JOB_STEPS, bounded_json, fingerprint, normalize_tool_result, restore_model_message,
+    )
+    rows = session.scalars(select(AiJobStep).where(AiJobStep.job_id == job.id).limit(MAX_JOB_STEPS + 1)).all()
+    if (not rows or len(rows) > MAX_JOB_STEPS or not any(row.kind in {"model", "tool"} for row in rows)
+            or any(row.status != "completed" for row in rows)):
+        return False
+    try:
+        config, index = _checkpoint_bindings(settings)
+        for row in rows:
+            if (row.config_sha256 != config or row.index_fingerprint != index
+                    or row.execution_token != execution.token or row.attempt_no != state.current_attempt_no):
+                return False
+            if row.kind == "model":
+                restore_model_message(row.result)
+            elif row.kind == "tool":
+                normalize_tool_result(row.result)
+            else:
+                bounded_json(row.result)
+            if row.result_sha256 != fingerprint(row.result):
+                return False
+    except Exception:
+        # A missing/changed resource or malformed receipt is not retry proof.
+        # No exception text, file content or provider data crosses this boundary.
+        return False
+    return True
+
+
+def recover_job(database, settings, job_id, *, allow_model_repeat=False, checkpoint_available=None):
     """Inspect a redelivery and requeue only proven-ended, eligible protocol-v2 work.
 
-    checkpoint_available is a trusted backend proof that existing results suffice;
-    it is never an HTTP parameter. Neither it nor fee consent overrides uncertainty.
+    By default complete receipts or a verified stable proposal supply replay
+    proof. checkpoint_available is an optional trusted backend/test override;
+    it is never an HTTP parameter. Neither it nor consent overrides uncertainty.
     All old execution facts are retained in an immutable row before current proof
     is fenced. The later claim rotates that pointer only after verifying the row.
     """
-    if type(job_id) is not UUID or type(allow_model_repeat) is not bool or type(checkpoint_available) is not bool:
+    if (type(job_id) is not UUID or type(allow_model_repeat) is not bool
+            or (checkpoint_available is not None and type(checkpoint_available) is not bool)):
         raise ValueError("invalid recovery request")
     if not _enabled(settings):
         return RecoveryDecision("unchanged", "disabled")
@@ -191,8 +241,6 @@ def recover_job(database, settings, job_id, *, allow_model_repeat=False, checkpo
             if state.deadline_at is None:
                 return _decision(session, state, "metadata_mismatch")
             now = session.scalar(select(func.clock_timestamp()))
-            if now >= state.deadline_at and not checkpoint_available:
-                return _decision(session, state, "deadline")
             if execution is None:
                 return _decision(session, state, "missing_proof")
             if execution.provider_open:
@@ -206,6 +254,10 @@ def recover_job(database, settings, job_id, *, allow_model_repeat=False, checkpo
                 return _decision(session, state, "live_or_invalid_proof")
             if not lease.valid_owned():
                 return _decision(session, state, "live_or_invalid_proof")
+            if checkpoint_available is None:
+                checkpoint_available = _saved_checkpoint_available(session, settings, job, execution, state)
+            if now >= state.deadline_at and not checkpoint_available:
+                return _decision(session, state, "deadline")
             paid = reservation.provider_attempts > state.attempt_provider_baseline
             if paid and not checkpoint_available and not allow_model_repeat:
                 return _decision(session, state, "model_repeat_required")
@@ -264,7 +316,9 @@ def authorize_step_retry(session, state, step):
         return False
     if proof.reason == "no_provider":
         return proof.provider_attempts == proof.provider_baseline
-    return proof.reason == "model_repeat" and step.kind == "model"
+    # StepJournal additionally requires its explicit readonly_tool retry policy
+    # for tools. A proposal is reconciled through its stable operation instead.
+    return proof.reason == "model_repeat" and step.kind in {"model", "tool"}
 
 
 def recover_pending(database, settings, *, limit=20):

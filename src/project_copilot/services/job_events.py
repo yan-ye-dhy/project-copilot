@@ -10,12 +10,54 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.exc import SQLAlchemyError
 
 from project_copilot.db.jobs import AiJob, AiJobEvent
+from project_copilot.db.models import AiRequestReservation
+from project_copilot.db.recovery import AiJobRecoveryState
 from project_copilot.infrastructure.job_progress import LABELS
 from project_copilot.services.job_failures import SAFE_FAILURE_TYPES
 
 MAX_EVENTS = 512
 RETENTION_DAYS = 7
 logger = logging.getLogger(__name__)
+
+
+def execution_snapshot(state, status):
+    """Public, read-only recovery metadata; no physical proof or private state."""
+    if state is None or state.protocol_version != 2:
+        return None
+    from project_copilot.services.job_recovery import RECOVERY_REASONS
+
+    reason = state.blocked_reason
+    if reason is not None and reason not in RECOVERY_REASONS:
+        reason = "metadata_mismatch"
+    if status in {"succeeded", "failed"}:
+        phase = "completed"
+    elif status == "reserved":
+        phase = "waiting_dispatch"
+    elif status == "running":
+        # A scan may have observed the original execution still alive. That
+        # fact must not label an actively running task as blocked or failed.
+        phase = "recovering" if state.current_attempt_no > 1 else "running"
+    else:
+        phase = "blocked" if reason else "awaiting_recovery"
+    return {"attempt_no": state.current_attempt_no, "event_floor": state.event_floor,
+            "recovery_status": phase, "blocked_reason": reason,
+            "deadline_at": state.deadline_at.isoformat() if state.deadline_at is not None else None,
+            "model_calls": state.model_calls, "tool_calls": state.tool_calls,
+            "can_resume_waiting": phase not in {"completed", "blocked"}}
+
+
+def execution_info(session, job_id):
+    row = session.execute(select(AiJobRecoveryState, AiRequestReservation.state)
+        .join(AiRequestReservation, AiRequestReservation.id == AiJobRecoveryState.job_id)
+        .where(AiJobRecoveryState.job_id == job_id)).one_or_none()
+    return execution_snapshot(*row) if row is not None else None
+
+
+def _event_floor(job_id):
+    # Read the floor in the same SQL snapshot as the events. Jobs that never
+    # opted into recovery retain their existing journal and response contract.
+    return func.coalesce(select(AiJobRecoveryState.event_floor)
+        .where(AiJobRecoveryState.job_id == job_id).scalar_subquery(), 0)
 
 
 def append_event(session, job_id: UUID, kind: str, data: dict):
@@ -49,16 +91,21 @@ def append_event(session, job_id: UUID, kind: str, data: dict):
     return event
 
 
-def recent_events(session, job_id, *, after=0):
-    return session.scalars(select(AiJobEvent).where(AiJobEvent.job_id == job_id,
-        AiJobEvent.sequence > after,
+def recent_events(session, job_id, *, after=0, through=None, floor=None):
+    statement = select(AiJobEvent).where(AiJobEvent.job_id == job_id,
+        AiJobEvent.sequence > max(after, floor or 0),
+        AiJobEvent.sequence > (_event_floor(job_id) if floor is None else floor),
         AiJobEvent.created_at >= func.clock_timestamp() - timedelta(days=RETENTION_DAYS),
-    ).order_by(AiJobEvent.sequence).limit(MAX_EVENTS)).all()
+    )
+    if through is not None:
+        statement = statement.where(AiJobEvent.sequence <= through)
+    return session.scalars(statement.order_by(AiJobEvent.sequence).limit(MAX_EVENTS)).all()
 
 
 def latest_progress(session, job_id):
     # Polling needs a label, not the whole draft journal on every request.
     return session.scalar(select(AiJobEvent.data).where(AiJobEvent.job_id == job_id,
+        AiJobEvent.sequence > _event_floor(job_id),
         AiJobEvent.kind == "progress",
         AiJobEvent.created_at >= func.clock_timestamp() - timedelta(days=RETENTION_DAYS),
     ).order_by(AiJobEvent.sequence.desc()).limit(1))
@@ -67,6 +114,7 @@ def latest_progress(session, job_id):
 def latest_failure(session, job_id):
     """Read an old diagnostic without backfilling or rewriting task history."""
     value = session.scalar(select(AiJobEvent.data).where(AiJobEvent.job_id == job_id,
+        AiJobEvent.sequence > _event_floor(job_id),
         AiJobEvent.kind == "diagnostic").order_by(AiJobEvent.sequence.desc()).limit(1))
     if isinstance(value, dict) and value.get("failure_type") in SAFE_FAILURE_TYPES:
         return value["failure_type"]

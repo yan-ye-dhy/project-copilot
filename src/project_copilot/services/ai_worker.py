@@ -175,6 +175,11 @@ def execute(settings, database, job):
         if principal.id != job.user_id:
             raise AuthenticationRejected()
     if job.kind == "agent":
+        from project_copilot.infrastructure.recovery_runtime import current_recovery
+        recovery = current_recovery()
+        restored = recovery.recover_proposal() if recovery is not None else None
+        if restored is not None:
+            return restored
         return asyncio.run(_agent(settings, database, job))
     if job.kind == "upload":
         from project_copilot.api.documents import _ingest_upload
@@ -289,7 +294,8 @@ def _execute_claimed(database, settings, job, *, runner):
     personal = job.execution_lease is not None
     runtime_settings = personal_runtime_settings(settings) if personal else settings
     try:
-        with observe(writer), account_job(database, job.user_id, job.id,
+        from project_copilot.infrastructure.recovery_runtime import recovery_scope
+        with recovery_scope(database, settings, runtime_settings, job), observe(writer), account_job(database, job.user_id, job.id,
                 max_attempts=runtime_settings.max_provider_attempts_per_job, settings=settings):
             progress("running")
             result = runner(runtime_settings, database, job)
@@ -323,6 +329,10 @@ def _execute_claimed(database, settings, job, *, runner):
                        "model_budget": "model_budget", "tool_budget": "tool_budget"}.get(exc.reason, "execution_error")
             if personal and failure != "execution_error":
                 outcome = "failed"
+        from project_copilot.services.job_steps import StepRejected, StepUncertain
+        if isinstance(exc, StepRejected):
+            failure = "step_uncertain" if isinstance(exc, StepUncertain) else "checkpoint_error"
+            outcome = "unknown"
         from project_copilot.services.redis_admission import RateLimited
         from project_copilot.infrastructure.redis_runtime import RedisUnavailable
         if isinstance(exc, (RateLimited, RedisUnavailable)):

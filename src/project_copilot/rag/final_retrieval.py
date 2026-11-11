@@ -230,6 +230,24 @@ class FinalRetriever:
     def synchronize(self, client):
         return self.snapshots.synchronize(client)
 
+    def checkpoint_view(self):
+        """Validate current cached evidence without another embedding request."""
+        from project_copilot.services.job_steps import fingerprint
+        with index_lock(self.manifest.path):
+            current = self.manifest.load()
+            if not current.documents:
+                return fingerprint(current.model_dump(mode="json")), {}
+            with create_qdrant_store(self.settings) as store:
+                index = self.snapshots.get_locked(store._client)
+                chunks = read_completed_chunks(store._client, index.snapshot.manifest)
+                by_id = lambda chunk: str(chunk.metadata.chunk_id)
+                if sorted(chunks, key=by_id) != sorted(index.snapshot.chunks, key=by_id):
+                    raise BM25Error("Qdrant完成片段与BM25快照不一致；拒绝恢复")
+                self.reranker.prepare()
+                if self.manifest.load() != current:
+                    raise BM25Error("恢复期间索引版本改变")
+                return fingerprint(current.model_dump(mode="json")), {chunk.metadata.chunk_id: chunk for chunk in chunks}
+
     def search(self, query: str) -> list[RetrievedChunk]:
         with trace_span("rag.retrieve", {"openinference.span.kind": "RETRIEVER", "retrieval.mode": "HYBRID_RERANK",
                         "retrieval.dense_candidates": 10, "retrieval.bm25_candidates": 10,

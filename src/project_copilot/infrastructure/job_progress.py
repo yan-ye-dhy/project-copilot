@@ -12,6 +12,7 @@ LABELS = {
     "search_knowledge": "正在检索知识库", "propose_ticket": "正在生成待确认提案",
     "tool": "正在执行工具", "tool_done": "工具执行结束", "validate": "正在校验回答与来源",
     "draining": "正在等待已启动的工具执行结束", "finalizing": "正在核实执行结果并保存任务状态",
+    "checkpoint": "正在恢复已保存的执行结果",
 }
 
 

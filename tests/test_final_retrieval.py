@@ -255,6 +255,54 @@ def test_empty_completed_manifest_returns_empty_without_model_or_embedding(syste
     assert system[3].reranker.prepares == 0
 
 
+def test_checkpoint_view_returns_current_completed_chunks_without_embedding(system, tmp_path, monkeypatch):
+    from project_copilot.services.job_steps import fingerprint
+    document = ingest(system, tmp_path, "checkpoint.txt", "可恢复证据 CHECKPOINT-418。")
+    _, _, vectors, retriever = system
+    monkeypatch.setattr(final, "create_embedding_client", lambda *_: pytest.fail("checkpoint sent embedding request"))
+    monkeypatch.setattr(vectors, "embed_query", lambda *_: pytest.fail("checkpoint embedded a query"))
+    generation, chunks = retriever.checkpoint_view()
+    assert generation == fingerprint(retriever.manifest.load().model_dump(mode="json"))
+    assert set(chunks) == set(document.chunk_ids)
+    assert all(chunk.text == "可恢复证据 CHECKPOINT-418。" for chunk in chunks.values())
+    assert retriever.reranker.prepares == 1 and retriever.reranker.seen == []
+
+
+@pytest.mark.parametrize("corruption", ["text", "missing"])
+def test_checkpoint_view_rechecks_completed_points_instead_of_trusting_snapshot(system, tmp_path, corruption):
+    from qdrant_client import models
+    document = ingest(system, tmp_path, "checkpoint.txt", "已完成证据 RECEIPT-426。")
+    settings, store, _, retriever = system
+    retriever.checkpoint_view()
+    before = retriever.reranker.prepares
+    if corruption == "text":
+        store._client.set_payload(collection_name=settings.qdrant_collection_name,
+            payload={"text": "被改动的证据"}, points=[str(document.chunk_ids[0])], wait=True)
+    else:
+        store._client.delete(collection_name=settings.qdrant_collection_name,
+            points_selector=models.PointIdsList(points=[str(document.chunk_ids[0])]), wait=True)
+    with pytest.raises(BM25Error):
+        retriever.checkpoint_view()
+    assert retriever.reranker.prepares == before
+
+
+def test_checkpoint_view_rejects_unavailable_reranker_and_changed_manifest(system, tmp_path, monkeypatch):
+    ingest(system, tmp_path, "checkpoint.txt", "已完成证据 RECEIPT-978。")
+    retriever = system[3]
+    def unavailable():
+        raise final.FinalRetrievalError("controlled unavailable local reranker")
+    monkeypatch.setattr(retriever.reranker, "prepare", unavailable)
+    with pytest.raises(final.FinalRetrievalError):
+        retriever.checkpoint_view()
+    def changed():
+        current = retriever.manifest.load()
+        document = current.documents[0].model_copy(update={"source_name": "changed.txt"})
+        retriever.manifest._publish(current.model_copy(update={"documents": (document,)}))
+    monkeypatch.setattr(retriever.reranker, "prepare", changed)
+    with pytest.raises(BM25Error, match="索引版本改变"):
+        retriever.checkpoint_view()
+
+
 def test_rerank_timeout_fails_closed_until_running_work_finishes(tmp_path, monkeypatch):
     import threading
     event = threading.Event()

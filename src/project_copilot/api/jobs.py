@@ -57,10 +57,16 @@ def _response(job, reservation):
     failure = job.failure_type
     if failure is None and session is not None and reservation.state in {"unknown", "failed"}:
         failure = latest_failure(session, job.id)
-    return {"progress": progress, "event_cursor": job.event_sequence, "job_id": str(job.id), "kind": reservation.kind, "status": reservation.state,
+    result = {"progress": progress, "event_cursor": job.event_sequence, "job_id": str(job.id), "kind": reservation.kind, "status": reservation.state,
             "failure_type": safe_failure(failure) if failure else None,
             "result": job.result if reservation.state == "succeeded" and not result_expired else None,
             "result_expired": result_expired}
+    if session is not None:
+        from project_copilot.services.job_events import execution_info
+        execution = execution_info(session, job.id)
+        if execution is not None:
+            result["execution"] = execution
+    return result
 
 
 def _record_rejected(database, user_id, kind, outcome):

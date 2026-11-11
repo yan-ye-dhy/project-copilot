@@ -150,16 +150,38 @@ class RagAnswerer:
 
     def _answer(self, question: str) -> RagAnswer:
         question = RagQuestion(question=question).question
-        progress("retrieval")
+        from project_copilot.infrastructure.recovery_runtime import current_recovery
+        from project_copilot.services.job_steps import fingerprint, StepRejected
+        recovery = current_recovery()
+        retrieval_receipt = None
+        replayed = None
+        if recovery is not None:
+            recovery.prepare()
+            retrieval_receipt = recovery.journal.begin("rag:retrieval", kind="tool",
+                input_sha256=fingerprint({"question": question, "prompt": self.prompt.model_dump(mode="json")}),
+                retry_policy="readonly_tool")
+            if retrieval_receipt.decision == "replay":
+                saved = retrieval_receipt.result
+                if fingerprint(saved["data"]) != fingerprint([source["data"] for source in saved["sources"]]):
+                    raise StepRejected("result_contract")
+                replayed = [RetrievedChunk.model_validate(item) for item in saved["data"]]
+        progress("checkpoint" if replayed is not None else "retrieval")
         evidence: list[RetrievedChunk] = []
         seen = set()
         remaining = self.prompt.context_max_chars
-        for item in self.retriever.search(question):
+        for item in replayed if replayed is not None else self.retriever.search(question):
             if item.metadata.chunk_id in seen or not item.text.strip() or len(item.text) > remaining:
                 continue
             evidence.append(item)
             seen.add(item.metadata.chunk_id)
             remaining -= len(item.text)
+        if recovery is not None and retrieval_receipt.decision == "execute":
+            recovery.validate_generation()
+            recovery.journal.complete("rag:retrieval", {
+                "data": [item.model_dump(mode="json") for item in evidence],
+                "sources": [{"id": "knowledge:" + str(item.metadata.chunk_id), "kind": "knowledge",
+                             "data": item.model_dump(mode="json")} for item in evidence],
+            })
         common = {"question": question, "evidence_count": len(evidence),
                   "prompt": self.prompt, "index_version": self.index_version}
         if not evidence:
@@ -167,16 +189,32 @@ class RagAnswerer:
                              answer="当前没有可用的检索证据，无法回答该问题。", citations=(), generation=None)
 
         with trace_span("rag.generate", {"openinference.span.kind": "LLM", "rag.evidence_count": len(evidence)}) as span:
-            progress("model")
+            model_replayed = False
             messages = build_messages(question, evidence, template=self._prompt_template)
-            if active() and callable(getattr(self.chat, "generate_json_stream", None)):
-                draft = AnswerDraft(lambda text: emit("delta", {"text": text}))
-                generated = self.chat.generate_json_stream(messages, draft.feed)
+            if recovery is not None:
+                from langchain_core.messages import AIMessage
+                from project_copilot.services.job_steps import normalize_model_message, restore_model_message
+                recovery.validate_generation()
+                receipt = recovery.journal.begin("rag:model:1", kind="model", input_sha256=fingerprint(messages))
+                if receipt.decision == "replay":
+                    model_replayed = True
+                    progress("checkpoint")
+                    cached = restore_model_message(receipt.result)
+                    generated = ChatGeneration(cached.content, cached.response_metadata["model"],
+                                               cached.response_metadata["usage"])
+                else:
+                    progress("model")
+                    generated = self._generate(messages)
+                    recovery.validate_generation()
+                    recovery.journal.complete("rag:model:1", normalize_model_message(AIMessage(
+                        content=generated.content, response_metadata={"model": generated.model, "usage": generated.usage})))
             else:
-                generated = self.chat.generate_json(messages)
+                progress("model")
+                generated = self._generate(messages)
             if generated.model in {"deepseek-flash", "deepseek-v4-pro"}:
                 span.set_attribute("llm.model_name", generated.model)
-            if generated.usage is not None:
+            span.set_attribute("checkpoint.replayed", model_replayed)
+            if generated.usage is not None and not model_replayed:
                 for key in ("prompt_tokens", "completion_tokens", "total_tokens", "prompt_cache_hit_tokens", "prompt_cache_miss_tokens"):
                     value = generated.usage.get(key)
                     if type(value) is int and value >= 0:
@@ -199,6 +237,12 @@ class RagAnswerer:
                                       temperature=self.chat.temperature, max_tokens=self.chat.max_tokens,
                                       usage=generated.usage),
         )
+
+    def _generate(self, messages):
+        if active() and callable(getattr(self.chat, "generate_json_stream", None)):
+            draft = AnswerDraft(lambda text: emit("delta", {"text": text}))
+            return self.chat.generate_json_stream(messages, draft.feed)
+        return self.chat.generate_json(messages)
 
 
 @contextmanager
